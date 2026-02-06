@@ -1,0 +1,111 @@
+### Gradle ###
+HELP.md
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.jar
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+*.code-workspace
+
+### Environment ###
+.env
+.env.*
+*.env
+application-local.yml
+application-local.yaml
+**/application-local.yml
+**/application-local.yaml
+
+### OS ###
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+### Logs ###
+*.log
+logs/
+**/logs/
+
+### Build artifacts ###
+*.jar
+*.war
+*.ear
+*.class
+!gradle/wrapper/*.jar
+!**/gradle/wrapper/*.jar
+
+### Test output ###
+test-output/
+target/
+**/test-results/
+**/jacoco/
+
+### Docker ###
+docker-compose.override.yml
+.docker/
+
+### Secrets & Credentials ###
+*.pem
+*.key
+*.p12
+*.jks
+credentials.json
+secrets.json
+firebase-*.json
+
+### Temporary files ###
+*.tmp
+*.temp
+*.swp
+*~
+.cache/
+
+### Node (if any frontend) ###
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+### Generated ###
+generated/
+**/generated/
+**/querydsl/
+
+### Claude / Sisyphus ###
+.sisyphus/
+.claude/
+CLAUDE.md
+.cursorrules
+.windsurfrules
+.idea/
