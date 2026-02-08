@@ -6,8 +6,11 @@ body:
   - type: input
     id: epic
     attributes:
-      label: 상위 Epic
-      placeholder: "#123"
+      label: "Related 상위 Epic"
+      description: "상위 Epic 이슈 번호를 입력하세요 (Jira 연동)"
+      placeholder: "#이슈번호 (예: #1, #12)"
+    validations:
+      required: true
 
   - type: textarea
     id: user_story
