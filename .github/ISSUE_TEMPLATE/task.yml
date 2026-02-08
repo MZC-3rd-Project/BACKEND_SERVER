@@ -20,7 +20,7 @@ body:
     validations:
       required: true
 
-  - type: testarea
+  - type: textarea
     id: done
     attributes:
       label: Done 기준
