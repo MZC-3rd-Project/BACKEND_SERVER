@@ -6,27 +6,25 @@ body:
   - type: input
     id: epic
     attributes:
-      label: "Related 상위 Epic"
+      label: "관련된 상위 Epic"
       description: "상위 Epic 이슈 번호를 입력하세요 (Jira 연동)"
-      placeholder: "#이슈번호 (예: #1, #12)"
+      placeholder: "- Related #이슈번호 (예: #1, #12)"
     validations:
       required: true
 
   - type: textarea
     id: user_story
     attributes:
-      label: 사용자 스토리
+      label: 배경
       placeholder: |
-        As a 사용자
-        I want 기능
-        So that 목적
+        사용자가 사이트에 회원가입 및 로그인 할 수 있는 기능이 필요함
     validations:
       required: true
 
   - type: textarea
     id: ac
     attributes:
-      label: 인수 조건
+      label: 수용 조건
       placeholder: |
         - [ ] 조건 1
         - [ ] 조건 2
