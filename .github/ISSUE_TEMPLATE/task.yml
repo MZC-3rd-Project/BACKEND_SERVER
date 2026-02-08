@@ -25,5 +25,8 @@ body:
       label: Done 기준
       options:
         - label: 코드 작성
+          required: false
         - label: 테스트 작성
+          required: false
         - label: 문서 업데이트
+          required: false
