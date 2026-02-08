@@ -1,0 +1,21 @@
+name: Epic
+description: 큰 단위 기능
+title: "[EPIC] "
+labels: ["epic"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: 목표
+      description: 무엇을 달성하려고 하나요?
+      placeholder: 사용자 인증 시스템 구현
+    validations:
+      required: true
+
+  - type: textarea
+    id: stories
+    attributes:
+      label: 하위 Story 목록
+      value: |
+        - [ ] Story 1
+        - [ ] Story 2

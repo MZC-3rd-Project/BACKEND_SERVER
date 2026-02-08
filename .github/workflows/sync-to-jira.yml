@@ -1,0 +1,396 @@
+# GitHub Issue → Jira 동기화
+
+name: Sync Issue to Jira
+
+on:
+  issues:
+    types: [opened, edited, closed, reopened]
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  # ──────────────────────────────────────────────
+  # 1. 이슈 생성 → Jira 이슈 생성 + 링크 연결
+  # ──────────────────────────────────────────────
+  create-jira-issue:
+    if: github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Jira Issue and Link Parent
+        uses: actions/github-script@v7
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+        with:
+          script: |
+            const title = context.payload.issue.title;
+            const body = context.payload.issue.body || '';
+            const issueUrl = context.payload.issue.html_url;
+            const author = context.payload.issue.user.login;
+
+            const jiraAuth = Buffer.from(
+              `${process.env.JIRA_USER_EMAIL}:${process.env.JIRA_API_TOKEN}`
+            ).toString('base64');
+
+            const jiraHeaders = {
+              'Authorization': `Basic ${jiraAuth}`,
+              'Content-Type': 'application/json'
+            };
+
+            // ── 1) 타이틀에서 Issue Type 결정 ──
+            let issueType = 'Task';
+            if (/^\[EPIC\]/i.test(title)) issueType = 'Epic';
+            else if (/^\[STORY\]/i.test(title)) issueType = 'Story';
+
+            // ── 2) 본문에서 상위 이슈 번호 추출 (#123 형태) ──
+            const parentMatches = body.match(/#(\d+)/g) || [];
+            const parentIssueNumbers = [...new Set(
+              parentMatches.map(m => parseInt(m.replace('#', '')))
+            )];
+
+            // ── 3) Jira 이슈 생성 ──
+            // 본문을 codeBlock으로 감싸서 마크다운 특수문자 문제를 완전 회피
+            // JSON.stringify가 \n, ", \, ` 등을 모두 안전하게 이스케이프함
+            const descriptionText = [
+              `GitHub Issue: ${issueUrl}`,
+              `Author: ${author}`,
+              '',
+              '---',
+              '',
+              body
+            ].join('\n');
+
+            const createPayload = {
+              fields: {
+                project: { key: process.env.JIRA_PROJECT_KEY },
+                issuetype: { name: issueType },
+                summary: title,
+                description: {
+                  type: 'doc',
+                  version: 1,
+                  content: [
+                    {
+                      type: 'codeBlock',
+                      attrs: { language: 'markdown' },
+                      content: [
+                        { type: 'text', text: descriptionText }
+                      ]
+                    }
+                  ]
+                }
+              }
+            };
+
+            const createRes = await fetch(
+              `${process.env.JIRA_BASE_URL}/rest/api/3/issue`,
+              {
+                method: 'POST',
+                headers: jiraHeaders,
+                body: JSON.stringify(createPayload)
+              }
+            );
+
+            if (!createRes.ok) {
+              const err = await createRes.text();
+              core.setFailed(`Jira 이슈 생성 실패: ${createRes.status} ${err}`);
+              return;
+            }
+
+            const { key: jiraKey } = await createRes.json();
+            core.info(`✓ Jira 이슈 생성: ${jiraKey} (${issueType})`);
+
+            // ── 4) GitHub 이슈 타이틀에 Jira 키 추가 ──
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              title: `[${jiraKey}] ${title}`
+            });
+
+            // ── 5) GitHub 이슈에 Jira 링크 코멘트 ──
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `🔗 Jira: [${jiraKey}](${process.env.JIRA_BASE_URL}/browse/${jiraKey})`
+            });
+
+            // ── 6) 상위 이슈와 Jira 링크 연결 ──
+            for (const parentNum of parentIssueNumbers) {
+              try {
+                // GitHub 상위 이슈 타이틀에서 Jira 키 추출
+                const parentIssue = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: parentNum
+                });
+
+                const parentTitle = parentIssue.data.title;
+                const keyMatch = parentTitle.match(/^\[([A-Z]+-\d+)\]/);
+
+                if (!keyMatch) {
+                  core.info(`상위 이슈 #${parentNum}에 Jira 키 없음, 링크 생략`);
+                  continue;
+                }
+
+                const parentJiraKey = keyMatch[1];
+
+                // 사용 가능한 link type 조회 후 매칭
+                const linkTypesRes = await fetch(
+                  `${process.env.JIRA_BASE_URL}/rest/api/3/issueLinkType`,
+                  { headers: jiraHeaders }
+                );
+                const linkTypesData = await linkTypesRes.json();
+
+                // "Relates" 또는 비슷한 이름 찾기 (Jira 설정마다 다름)
+                const relatesType = linkTypesData.issueLinkTypes.find(
+                  t => /relates/i.test(t.name) || /관련/i.test(t.name)
+                ) || linkTypesData.issueLinkTypes[0]; // fallback: 첫 번째 타입
+
+                const linkRes = await fetch(
+                  `${process.env.JIRA_BASE_URL}/rest/api/3/issueLink`,
+                  {
+                    method: 'POST',
+                    headers: jiraHeaders,
+                    body: JSON.stringify({
+                      type: { name: relatesType.name },
+                      inwardIssue: { key: jiraKey },
+                      outwardIssue: { key: parentJiraKey }
+                    })
+                  }
+                );
+
+                if (linkRes.ok || linkRes.status === 201) {
+                  core.info(`✓ Jira 링크: ${jiraKey} ↔ ${parentJiraKey}`);
+                } else {
+                  const err = await linkRes.text();
+                  core.warning(`✗ 링크 실패 ${jiraKey} → ${parentJiraKey}: ${err}`);
+                }
+              } catch (err) {
+                core.warning(`✗ 상위 이슈 #${parentNum} 처리 오류: ${err.message}`);
+              }
+            }
+
+  # ──────────────────────────────────────────────
+  # 2. 이슈 수정 → Jira 이슈 업데이트 (markdown-safe)
+  # ──────────────────────────────────────────────
+  update-jira-issue:
+    if: github.event.action == 'edited'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Jira Issue
+        uses: actions/github-script@v7
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        with:
+          script: |
+            const title = context.payload.issue.title;
+            const body = context.payload.issue.body || '';
+            const issueUrl = context.payload.issue.html_url;
+            const author = context.payload.issue.user.login;
+
+            // 타이틀에서 Jira 키 추출
+            const keyMatch = title.match(/^\[([A-Z]+-\d+)\]/);
+            if (!keyMatch) {
+              core.info('Jira 키 없음, 업데이트 생략');
+              return;
+            }
+
+            const jiraKey = keyMatch[1];
+            const jiraAuth = Buffer.from(
+              `${process.env.JIRA_USER_EMAIL}:${process.env.JIRA_API_TOKEN}`
+            ).toString('base64');
+
+            const descriptionText = [
+              `GitHub Issue: ${issueUrl}`,
+              `Author: ${author}`,
+              '',
+              '---',
+              '',
+              body
+            ].join('\n');
+
+            const res = await fetch(
+              `${process.env.JIRA_BASE_URL}/rest/api/3/issue/${jiraKey}`,
+              {
+                method: 'PUT',
+                headers: {
+                  'Authorization': `Basic ${jiraAuth}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  fields: {
+                    summary: title,
+                    description: {
+                      type: 'doc',
+                      version: 1,
+                      content: [
+                        {
+                          type: 'codeBlock',
+                          attrs: { language: 'markdown' },
+                          content: [
+                            { type: 'text', text: descriptionText }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                })
+              }
+            );
+
+            if (res.ok || res.status === 204) {
+              core.info(`✓ ${jiraKey} 업데이트 완료`);
+            } else {
+              const err = await res.text();
+              core.setFailed(`✗ ${jiraKey} 업데이트 실패: ${res.status} ${err}`);
+            }
+
+  # ──────────────────────────────────────────────
+  # 3. 이슈 닫힘 → Jira Done 전환
+  # ──────────────────────────────────────────────
+  close-jira-issue:
+    if: github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Transition Jira to Done
+        uses: actions/github-script@v7
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        with:
+          script: |
+            const title = context.payload.issue.title;
+            const keyMatch = title.match(/^\[([A-Z]+-\d+)\]/);
+            if (!keyMatch) {
+              core.info('Jira 키 없음, 생략');
+              return;
+            }
+
+            const jiraKey = keyMatch[1];
+            const jiraAuth = Buffer.from(
+              `${process.env.JIRA_USER_EMAIL}:${process.env.JIRA_API_TOKEN}`
+            ).toString('base64');
+            const jiraHeaders = {
+              'Authorization': `Basic ${jiraAuth}`,
+              'Content-Type': 'application/json'
+            };
+
+            // 사용 가능한 transition 조회
+            const transRes = await fetch(
+              `${process.env.JIRA_BASE_URL}/rest/api/3/issue/${jiraKey}/transitions`,
+              { headers: jiraHeaders }
+            );
+
+            if (!transRes.ok) {
+              core.setFailed(`Transition 조회 실패: ${transRes.status}`);
+              return;
+            }
+
+            const { transitions } = await transRes.json();
+            const doneTransition = transitions.find(
+              t => /done|완료|closed|close/i.test(t.name)
+            );
+
+            if (!doneTransition) {
+              core.warning(
+                `"Done" transition을 찾을 수 없습니다. 가능한 transition: ${
+                  transitions.map(t => `"${t.name}" (id:${t.id})`).join(', ')
+                }`
+              );
+              return;
+            }
+
+            const execRes = await fetch(
+              `${process.env.JIRA_BASE_URL}/rest/api/3/issue/${jiraKey}/transitions`,
+              {
+                method: 'POST',
+                headers: jiraHeaders,
+                body: JSON.stringify({ transition: { id: doneTransition.id } })
+              }
+            );
+
+            if (execRes.ok || execRes.status === 204) {
+              core.info(`✓ ${jiraKey} → "${doneTransition.name}"`);
+            } else {
+              const err = await execRes.text();
+              core.setFailed(`✗ ${jiraKey} transition 실패: ${err}`);
+            }
+
+  # ──────────────────────────────────────────────
+  # 4. 이슈 재오픈 → Jira 다시 열기
+  # ──────────────────────────────────────────────
+  reopen-jira-issue:
+    if: github.event.action == 'reopened'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Transition Jira to To Do
+        uses: actions/github-script@v7
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        with:
+          script: |
+            const title = context.payload.issue.title;
+            const keyMatch = title.match(/^\[([A-Z]+-\d+)\]/);
+            if (!keyMatch) {
+              core.info('Jira 키 없음, 생략');
+              return;
+            }
+
+            const jiraKey = keyMatch[1];
+            const jiraAuth = Buffer.from(
+              `${process.env.JIRA_USER_EMAIL}:${process.env.JIRA_API_TOKEN}`
+            ).toString('base64');
+            const jiraHeaders = {
+              'Authorization': `Basic ${jiraAuth}`,
+              'Content-Type': 'application/json'
+            };
+
+            const transRes = await fetch(
+              `${process.env.JIRA_BASE_URL}/rest/api/3/issue/${jiraKey}/transitions`,
+              { headers: jiraHeaders }
+            );
+
+            if (!transRes.ok) {
+              core.setFailed(`Transition 조회 실패: ${transRes.status}`);
+              return;
+            }
+
+            const { transitions } = await transRes.json();
+            const reopenTransition = transitions.find(
+              t => /to.?do|open|backlog|할.?일|재오픈|reopen/i.test(t.name)
+            );
+
+            if (!reopenTransition) {
+              core.warning(
+                `재오픈 transition을 찾을 수 없습니다. 가능한 transition: ${
+                  transitions.map(t => `"${t.name}" (id:${t.id})`).join(', ')
+                }`
+              );
+              return;
+            }
+
+            const execRes = await fetch(
+              `${process.env.JIRA_BASE_URL}/rest/api/3/issue/${jiraKey}/transitions`,
+              {
+                method: 'POST',
+                headers: jiraHeaders,
+                body: JSON.stringify({ transition: { id: reopenTransition.id } })
+              }
+            );
+
+            if (execRes.ok || execRes.status === 204) {
+              core.info(`✓ ${jiraKey} → "${reopenTransition.name}"`);
+            } else {
+              const err = await execRes.text();
+              core.setFailed(`✗ ${jiraKey} transition 실패: ${err}`);
+            }

@@ -13,8 +13,9 @@ tasks.jar {
 }
 
 dependencies {
-    // Spring Boot
-    api("org.springframework.boot:spring-boot")
+    // Jackson
+    api("com.fasterxml.jackson.core:jackson-databind")
+    api("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
 
     // Lombok
     compileOnly("org.projectlombok:lombok")

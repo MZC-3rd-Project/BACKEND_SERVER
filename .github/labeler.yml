@@ -1,0 +1,43 @@
+backend:
+  - changed-files:
+      - any-glob-to-any-file: 'servers/services/**'
+  - changed-files:
+      - any-glob-to-any-file: 'libs/**'
+
+gateway:
+  - changed-files:
+      - any-glob-to-any-file: 'servers/gateways/**'
+
+database:
+  - changed-files:
+      - any-glob-to-any-file: '**/*migration*.sql'
+  - changed-files:
+      - any-glob-to-any-file: '**/*schema*.sql'
+  - changed-files:
+      - any-glob-to-any-file: '**/resources/db/**'
+
+docs:
+  - changed-files:
+      - any-glob-to-any-file: '**/*.md'
+  - changed-files:
+      - any-glob-to-any-file: 'docs/**'
+
+infra:
+  - changed-files:
+      - any-glob-to-any-file: '.github/**'
+  - changed-files:
+      - any-glob-to-any-file: 'Dockerfile'
+  - changed-files:
+      - any-glob-to-any-file: 'docker-compose*.yml'
+
+config:
+  - changed-files:
+      - any-glob-to-any-file: '**/resources/**/*.yml'
+  - changed-files:
+      - any-glob-to-any-file: '**/resources/**/*.properties'
+
+test:
+  - changed-files:
+      - any-glob-to-any-file: '**/src/test/**'
+  - changed-files:
+      - any-glob-to-any-file: '**/*Test.java'

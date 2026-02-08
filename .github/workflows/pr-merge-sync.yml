@@ -1,0 +1,195 @@
+# PR 머지 시 연결된 GitHub 이슈 닫기 + Jira 상태 전환
+#
+# 동작 흐름:
+#   1. PR 본문에서 "Closes #123", "Fixes #456" 등 패턴 추출
+#   2. 해당 GitHub 이슈들을 closed 처리
+#   3. 각 이슈 타이틀에서 Jira 키 추출 → Jira "Done" 전환
+#   4. PR 자체의 타이틀에 Jira 키가 있으면 그것도 전환
+
+name: PR Merge - Close Issues & Sync Jira
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [develop, main]
+
+permissions:
+  issues: write
+  pull-requests: read
+
+jobs:
+  close-and-sync:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close GitHub Issues & Transition Jira
+        uses: actions/github-script@v7
+        env:
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+        with:
+          script: |
+            const prBody = context.payload.pull_request.body || '';
+            const prTitle = context.payload.pull_request.title || '';
+            const prNumber = context.payload.pull_request.number;
+            const baseBranch = context.payload.pull_request.base.ref;
+
+            const jiraAuth = Buffer.from(
+              `${process.env.JIRA_USER_EMAIL}:${process.env.JIRA_API_TOKEN}`
+            ).toString('base64');
+            const jiraHeaders = {
+              'Authorization': `Basic ${jiraAuth}`,
+              'Content-Type': 'application/json'
+            };
+
+            // ── Jira transition 헬퍼 함수 ──
+            async function transitionJira(jiraKey, targetPattern) {
+              try {
+                const transRes = await fetch(
+                  `${process.env.JIRA_BASE_URL}/rest/api/3/issue/${jiraKey}/transitions`,
+                  { headers: jiraHeaders }
+                );
+
+                if (!transRes.ok) {
+                  core.warning(`${jiraKey}: transition 조회 실패 (${transRes.status})`);
+                  return;
+                }
+
+                const { transitions } = await transRes.json();
+                const target = transitions.find(t => targetPattern.test(t.name));
+
+                if (!target) {
+                  core.warning(
+                    `${jiraKey}: 매칭되는 transition 없음. 가능한 목록: ${
+                      transitions.map(t => `"${t.name}"`).join(', ')
+                    }`
+                  );
+                  return;
+                }
+
+                const execRes = await fetch(
+                  `${process.env.JIRA_BASE_URL}/rest/api/3/issue/${jiraKey}/transitions`,
+                  {
+                    method: 'POST',
+                    headers: jiraHeaders,
+                    body: JSON.stringify({ transition: { id: target.id } })
+                  }
+                );
+
+                if (execRes.ok || execRes.status === 204) {
+                  core.info(`✓ Jira ${jiraKey} → "${target.name}"`);
+                } else {
+                  const err = await execRes.text();
+                  core.warning(`✗ ${jiraKey} transition 실패: ${err}`);
+                }
+              } catch (err) {
+                core.warning(`✗ ${jiraKey} 처리 오류: ${err.message}`);
+              }
+            }
+
+            // ── Jira 코멘트 헬퍼 함수 ──
+            async function commentJira(jiraKey, message) {
+              try {
+                await fetch(
+                  `${process.env.JIRA_BASE_URL}/rest/api/3/issue/${jiraKey}/comment`,
+                  {
+                    method: 'POST',
+                    headers: jiraHeaders,
+                    body: JSON.stringify({
+                      body: {
+                        type: 'doc',
+                        version: 1,
+                        content: [
+                          {
+                            type: 'paragraph',
+                            content: [{ type: 'text', text: message }]
+                          }
+                        ]
+                      }
+                    })
+                  }
+                );
+              } catch (err) {
+                core.warning(`Jira 코멘트 실패: ${err.message}`);
+              }
+            }
+
+            // ── main 머지인지 develop 머지인지에 따라 전환 대상 결정 ──
+            // develop 머지 → "In Progress" 또는 "In Review" (선택적)
+            // main 머지 → "Done"
+            const isDoneTransition = (baseBranch === 'main');
+            const transitionPattern = isDoneTransition
+              ? /done|완료|closed|close/i
+              : /done|완료|closed|close/i;  // develop도 Done으로 처리 (원하면 아래 주석 해제)
+              // : /in.?progress|in.?review|진행|리뷰/i;  // develop 머지 시 "In Progress"로 전환하려면 이 줄 사용
+
+            // ── 1) PR 본문에서 연결된 이슈 번호 추출 ──
+            const issueRegex = /(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)/gi;
+            const matches = [...prBody.matchAll(issueRegex)];
+            const issueNumbers = [...new Set(matches.map(m => parseInt(m[1])))];
+
+            if (issueNumbers.length === 0) {
+              core.info('PR 본문에 연결된 이슈 없음');
+            }
+
+            // ── 2) 각 GitHub 이슈 닫기 + Jira 전환 ──
+            for (const issueNumber of issueNumbers) {
+              try {
+                // GitHub 이슈 닫기
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  state: 'closed'
+                });
+
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  body: ` Closed by PR #${prNumber} (→ ${baseBranch})`
+                });
+
+                core.info(`✓ GitHub Issue #${issueNumber} closed`);
+
+                // 해당 이슈 타이틀에서 Jira 키 추출 → Jira 전환
+                const issue = await github.rest.issues.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber
+                });
+
+                const jiraKeyMatch = issue.data.title.match(/^\[([A-Z]+-\d+)\]/);
+                if (jiraKeyMatch) {
+                  const jiraKey = jiraKeyMatch[1];
+                  await transitionJira(jiraKey, transitionPattern);
+                  await commentJira(
+                    jiraKey,
+                    `GitHub PR #${prNumber} merged to ${baseBranch}\n${context.payload.pull_request.html_url}`
+                  );
+                }
+              } catch (err) {
+                core.warning(`✗ Issue #${issueNumber} 처리 실패: ${err.message}`);
+              }
+            }
+
+            // ── 3) PR 타이틀 자체에 Jira 키가 있으면 그것도 전환 ──
+            //    예: "[MESP-15] feat: 로그인 API" 같은 PR 타이틀
+            const prJiraKeyMatch = prTitle.match(/\[([A-Z]+-\d+)\]/);
+            if (prJiraKeyMatch) {
+              const prJiraKey = prJiraKeyMatch[1];
+              // 이미 위에서 처리한 키는 스킵
+              const alreadyProcessed = issueNumbers.length > 0; // 간단한 중복 방지
+            
+              core.info(`PR 타이틀에서 Jira 키 발견: ${prJiraKey}`);
+              await transitionJira(prJiraKey, transitionPattern);
+              await commentJira(
+                prJiraKey,
+                `GitHub PR #${prNumber} merged to ${baseBranch}\n${context.payload.pull_request.html_url}`
+              );
+            }
+
+            core.info(`\n=== 완료 ===`);
+            core.info(`PR #${prNumber} → ${baseBranch}`);
+            core.info(`닫은 이슈: ${issueNumbers.length > 0 ? issueNumbers.map(n => '#'+n).join(', ') : '없음'}`);
