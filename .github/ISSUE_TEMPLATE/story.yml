@@ -1,0 +1,32 @@
+name: Story
+description: 사용자 스토리
+title: "[STORY] "
+labels: ["story"]
+body:
+  - type: input
+    id: epic
+    attributes:
+      label: 상위 Epic
+      placeholder: "#123"
+
+  - type: textarea
+    id: user_story
+    attributes:
+      label: 사용자 스토리
+      placeholder: |
+        As a 사용자
+        I want 기능
+        So that 목적
+    validations:
+      required: true
+
+  - type: textarea
+    id: ac
+    attributes:
+      label: 인수 조건
+      placeholder: |
+        - [ ] 조건 1
+        - [ ] 조건 2
+    validations:
+      required: true
+
