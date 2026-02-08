@@ -8,7 +8,7 @@ body:
     attributes:
       label: "관련된 Story/Epic"
       description: "상위 Story 또는 Epic 이슈 번호를 입력하세요 (Jira 연동)"
-      placeholder: "- Related #이슈번호 (예: #2, #15)"
+      placeholder: "- Related #이슈번호 (예: #2, #15) "
     validations:
       required: true
 
