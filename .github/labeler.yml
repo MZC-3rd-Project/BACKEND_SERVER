@@ -1,0 +1,14 @@
+backend:
+  - 'servers/services/**'
+  - 'libs/**'
+
+gateway:
+  - 'servers/gateways/**'
+
+database:
+  - '**/*migration*.sql'
+  - '**/*schema*.sql'
+
+docs:
+  - '**/*.md'
+  - 'docs/**'
