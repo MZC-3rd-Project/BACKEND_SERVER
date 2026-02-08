@@ -6,7 +6,7 @@ body:
   - type: input
     id: parent
     attributes:
-      label: "Related 상위 Story/Epic"
+      label: "Related Story/Epic"
       description: "상위 Story 또는 Epic 이슈 번호를 입력하세요 (Jira 연동)"
       placeholder: "#이슈번호 (예: #2, #15)"
     validations:
