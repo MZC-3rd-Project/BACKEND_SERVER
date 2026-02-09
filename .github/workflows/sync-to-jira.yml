@@ -45,6 +45,7 @@ jobs:
             let issueType = 'Task';
             if (/^\[EPIC\]/i.test(title)) issueType = 'Epic';
             else if (/^\[STORY\]/i.test(title)) issueType = 'Story';
+            else if (/^\[BUGFIX\]/i.test(title)) issueType = 'Bugfix';
 
             // ── 2) 본문에서 상위 이슈 번호 추출 (#123 형태) ──
             const parentMatches = body.match(/#(\d+)/g) || [];
