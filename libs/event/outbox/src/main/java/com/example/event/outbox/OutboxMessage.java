@@ -54,8 +54,20 @@ public class OutboxMessage extends BaseEntity {
     @Column(name = "error_message")
     private String errorMessage;
 
+    @Column(name = "correlation_id")
+    private String correlationId;
+
+    @Column(name = "causation_id")
+    private String causationId;
+
     public static OutboxMessage create(String eventId, String aggregateType, String aggregateId,
                                         String topic, String eventType, String payload) {
+        return create(eventId, aggregateType, aggregateId, topic, eventType, payload, null, null);
+    }
+
+    public static OutboxMessage create(String eventId, String aggregateType, String aggregateId,
+                                        String topic, String eventType, String payload,
+                                        String correlationId, String causationId) {
         OutboxMessage message = new OutboxMessage();
         message.eventId = eventId;
         message.aggregateType = aggregateType;
@@ -65,12 +77,22 @@ public class OutboxMessage extends BaseEntity {
         message.payload = payload;
         message.status = OutboxStatus.PENDING;
         message.retryCount = 0;
+        message.correlationId = correlationId;
+        message.causationId = causationId;
         return message;
+    }
+
+    public void markAsSending() {
+        this.status = OutboxStatus.SENDING;
     }
 
     public void markAsPublished() {
         this.status = OutboxStatus.PUBLISHED;
         this.publishedAt = LocalDateTime.now();
+    }
+
+    public void revertToPending() {
+        this.status = OutboxStatus.PENDING;
     }
 
     public void markAsFailed(String errorMessage) {

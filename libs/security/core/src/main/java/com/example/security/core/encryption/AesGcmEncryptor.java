@@ -71,8 +71,7 @@ public class AesGcmEncryptor implements Encryptor {
         if (key.length == 16 || key.length == 24 || key.length == 32) {
             return key;
         }
-        byte[] normalized = new byte[32];
-        System.arraycopy(key, 0, normalized, 0, Math.min(key.length, 32));
-        return normalized;
+        throw new EncryptionException(
+                "AES 키 길이는 16, 24, 32 바이트 중 하나여야 합니다. 현재: " + key.length + " 바이트");
     }
 }

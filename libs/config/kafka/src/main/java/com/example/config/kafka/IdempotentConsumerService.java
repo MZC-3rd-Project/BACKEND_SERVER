@@ -2,6 +2,7 @@ package com.example.config.kafka;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,8 +28,14 @@ public class IdempotentConsumerService {
             log.debug("Event already processed or processing: {}", eventId);
             return false;
         }
-        processedEventRepository.save(ProcessedEvent.create(eventId, eventType));
-        return true;
+        try {
+            processedEventRepository.save(ProcessedEvent.create(eventId, eventType));
+            processedEventRepository.flush();
+            return true;
+        } catch (DataIntegrityViolationException e) {
+            log.debug("Concurrent duplicate event detected: {}", eventId);
+            return false;
+        }
     }
 
     @Transactional
