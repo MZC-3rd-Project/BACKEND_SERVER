@@ -68,9 +68,17 @@ public class OutboxMessage extends BaseEntity {
         return message;
     }
 
+    public void markAsSending() {
+        this.status = OutboxStatus.SENDING;
+    }
+
     public void markAsPublished() {
         this.status = OutboxStatus.PUBLISHED;
         this.publishedAt = LocalDateTime.now();
+    }
+
+    public void revertToPending() {
+        this.status = OutboxStatus.PENDING;
     }
 
     public void markAsFailed(String errorMessage) {

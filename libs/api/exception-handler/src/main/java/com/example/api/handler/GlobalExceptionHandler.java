@@ -34,7 +34,7 @@ public class GlobalExceptionHandler {
         log.error("[Technical] code={}, message={}", e.getErrorCode().getCode(), e.getMessage(), e);
         return ResponseEntity
                 .status(e.getErrorCode().getHttpStatus())
-                .body(ApiResponse.error(e.getErrorCode(), e.getMessage()));
+                .body(ApiResponse.error(e.getErrorCode(), e.getErrorCode().getMessage()));
     }
 
     @ExceptionHandler(ApplicationException.class)

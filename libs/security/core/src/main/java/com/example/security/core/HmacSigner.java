@@ -28,7 +28,9 @@ public class HmacSigner {
 
     public boolean verify(String payload, String signature) {
         String computed = sign(payload);
-        return computed.equals(signature);
+        return java.security.MessageDigest.isEqual(
+                computed.getBytes(StandardCharsets.UTF_8),
+                signature.getBytes(StandardCharsets.UTF_8));
     }
 
     public static String buildSignaturePayload(String userId, String roles, String nonce, long timestamp) {
