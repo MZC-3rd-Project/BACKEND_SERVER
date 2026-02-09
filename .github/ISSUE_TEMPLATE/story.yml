@@ -28,6 +28,5 @@ body:
       placeholder: |
         - [ ] 조건 1
         - [ ] 조건 2
-    validations:
-      required: true
+
 
