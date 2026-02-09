@@ -23,11 +23,14 @@ public class WebClientErrorHandler implements ExchangeFilterFunction {
                         return response.bodyToMono(String.class)
                                 .defaultIfEmpty("")
                                 .flatMap(body -> {
-                                    log.error("WebClient error response: {} {} - Status: {} - Body: {}",
+                                    String truncatedBody = body.length() > 500
+                                            ? body.substring(0, 500) + "...[truncated]"
+                                            : body;
+                                    log.error("WebClient error response: {} {} - Status: {}",
                                             request.method(),
-                                            request.url(),
-                                            statusCode.value(),
-                                            body);
+                                            request.url().getPath(),
+                                            statusCode.value());
+                                    log.debug("WebClient error body: {}", truncatedBody);
                                     return Mono.error(new WebClientException(
                                             statusCode.value(),
                                             body

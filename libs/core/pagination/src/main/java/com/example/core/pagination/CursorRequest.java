@@ -1,5 +1,6 @@
 package com.example.core.pagination;
 
+import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -12,7 +13,7 @@ import lombok.Getter;
  * - API 요청 제한 (무상태 커서)
  */
 @Getter
-@Builder
+@Builder(access = AccessLevel.PRIVATE)
 public class CursorRequest {
 
     private static final int DEFAULT_SIZE = 20;

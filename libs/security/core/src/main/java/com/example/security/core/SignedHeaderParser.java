@@ -25,7 +25,12 @@ public class SignedHeaderParser {
             throw new HeaderSecurityException("필수 보안 헤더가 누락되었습니다");
         }
 
-        long timestamp = Long.parseLong(timestampStr);
+        long timestamp;
+        try {
+            timestamp = Long.parseLong(timestampStr);
+        } catch (NumberFormatException e) {
+            throw new HeaderSecurityException("유효하지 않은 타임스탬프입니다");
+        }
 
         long age = System.currentTimeMillis() - timestamp;
         if (age > maxAgeMillis || age < -maxAgeMillis) {

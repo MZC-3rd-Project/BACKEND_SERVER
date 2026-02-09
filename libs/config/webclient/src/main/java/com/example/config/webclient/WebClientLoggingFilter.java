@@ -8,6 +8,8 @@ import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
 import reactor.core.publisher.Mono;
 
+import java.net.URI;
+
 @Slf4j
 @Component
 public class WebClientLoggingFilter implements ExchangeFilterFunction {
@@ -15,15 +17,16 @@ public class WebClientLoggingFilter implements ExchangeFilterFunction {
     @Override
     public Mono<ClientResponse> filter(ClientRequest request, ExchangeFunction next) {
         long startTime = System.currentTimeMillis();
+        String sanitizedUrl = sanitizeUrl(request.url());
 
-        log.info("WebClient Request: {} {}", request.method(), request.url());
+        log.info("WebClient Request: {} {}", request.method(), sanitizedUrl);
 
         return next.exchange(request)
                 .doOnNext(response -> {
                     long elapsedTime = System.currentTimeMillis() - startTime;
                     log.info("WebClient Response: {} {} - Status: {} - Elapsed: {}ms",
                             request.method(),
-                            request.url(),
+                            sanitizedUrl,
                             response.statusCode().value(),
                             elapsedTime);
                 })
@@ -31,9 +34,17 @@ public class WebClientLoggingFilter implements ExchangeFilterFunction {
                     long elapsedTime = System.currentTimeMillis() - startTime;
                     log.error("WebClient Error: {} {} - Elapsed: {}ms - Error: {}",
                             request.method(),
-                            request.url(),
+                            sanitizedUrl,
                             elapsedTime,
                             error.getMessage());
                 });
+    }
+
+    private String sanitizeUrl(URI uri) {
+        String query = uri.getQuery();
+        if (query == null || query.isEmpty()) {
+            return uri.toString();
+        }
+        return uri.getScheme() + "://" + uri.getAuthority() + uri.getPath() + "?[REDACTED]";
     }
 }

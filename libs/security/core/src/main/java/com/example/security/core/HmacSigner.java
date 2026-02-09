@@ -28,10 +28,15 @@ public class HmacSigner {
 
     public boolean verify(String payload, String signature) {
         String computed = sign(payload);
-        return computed.equals(signature);
+        return java.security.MessageDigest.isEqual(
+                computed.getBytes(StandardCharsets.UTF_8),
+                signature.getBytes(StandardCharsets.UTF_8));
     }
 
     public static String buildSignaturePayload(String userId, String roles, String nonce, long timestamp) {
+        if (userId.contains("|") || roles.contains("|") || nonce.contains("|")) {
+            throw new IllegalArgumentException("서명 페이로드 필드에 구분자(|)를 포함할 수 없습니다");
+        }
         return String.join("|", userId, roles, nonce, String.valueOf(timestamp));
     }
 }

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Getter
 @Builder
@@ -15,20 +15,20 @@ public class ApiResponse<T> {
     private final boolean success;
     private final T data;
     private final ErrorResponse error;
-    private final LocalDateTime timestamp;
+    private final Instant timestamp;
 
     public static <T> ApiResponse<T> success(T data) {
         return ApiResponse.<T>builder()
                 .success(true)
                 .data(data)
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now())
                 .build();
     }
 
     public static <T> ApiResponse<T> success() {
         return ApiResponse.<T>builder()
                 .success(true)
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now())
                 .build();
     }
 
@@ -36,7 +36,7 @@ public class ApiResponse<T> {
         return ApiResponse.<T>builder()
                 .success(false)
                 .error(ErrorResponse.of(errorCode))
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now())
                 .build();
     }
 
@@ -44,7 +44,7 @@ public class ApiResponse<T> {
         return ApiResponse.<T>builder()
                 .success(false)
                 .error(ErrorResponse.of(errorCode.getCode(), message))
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now())
                 .build();
     }
 }

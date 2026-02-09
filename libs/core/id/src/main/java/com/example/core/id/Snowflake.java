@@ -59,8 +59,14 @@ public class Snowflake {
         long currentTimestamp = currentTimeMillis();
 
         if (currentTimestamp < lastTimestamp) {
-            throw new IllegalStateException(
-                    "Clock moved backwards. Refusing to generate id for " + (lastTimestamp - currentTimestamp) + " ms");
+            long offset = lastTimestamp - currentTimestamp;
+            if (offset <= 5) {
+                // NTP 등에 의한 소규모 클럭 역행은 대기로 처리
+                currentTimestamp = waitNextMillis(lastTimestamp);
+            } else {
+                throw new IllegalStateException(
+                        "Clock moved backwards. Refusing to generate id for " + offset + " ms");
+            }
         }
 
         if (currentTimestamp == lastTimestamp) {
@@ -121,6 +127,7 @@ public class Snowflake {
     private long waitNextMillis(long lastTimestamp) {
         long timestamp = currentTimeMillis();
         while (timestamp <= lastTimestamp) {
+            java.util.concurrent.locks.LockSupport.parkNanos(100_000); // 100μs 대기로 CPU 낭비 방지
             timestamp = currentTimeMillis();
         }
         return timestamp;

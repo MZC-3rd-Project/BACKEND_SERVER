@@ -6,6 +6,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -18,36 +19,51 @@ import java.util.List;
 public class OutboxRelayScheduler {
 
     private static final int MAX_RETRIES = 5;
+    private static final int BATCH_SIZE = 100;
 
     private final OutboxRepository outboxRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Scheduled(fixedDelay = 5000)
-    @Transactional
     public void relayPendingMessages() {
         LocalDateTime fiveSecondsAgo = LocalDateTime.now().minusSeconds(5);
         List<OutboxMessage> pendingMessages =
-                outboxRepository.findByStatusAndCreatedBefore(OutboxStatus.PENDING, fiveSecondsAgo);
+                fetchPendingMessages(fiveSecondsAgo);
 
         for (OutboxMessage message : pendingMessages) {
-            if (message.exceedsMaxRetries(MAX_RETRIES)) {
-                message.markAsFailed("Max retries exceeded");
-                outboxRepository.save(message);
-                log.error("Outbox message exceeded max retries: eventId={}", message.getEventId());
-                continue;
-            }
-
-            try {
-                kafkaTemplate.send(message.getTopic(), message.getAggregateId(), message.getPayload())
-                        .get(); // blocking for relay
-                message.markAsPublished();
-                log.info("Relay publish success: eventId={}", message.getEventId());
-            } catch (Exception e) {
-                message.incrementRetryCount();
-                log.warn("Relay publish failed: eventId={}, retry={}, error={}",
-                        message.getEventId(), message.getRetryCount(), e.getMessage());
-            }
-            outboxRepository.save(message);
+            processMessage(message);
         }
+    }
+
+    @Transactional
+    public List<OutboxMessage> fetchPendingMessages(LocalDateTime before) {
+        return outboxRepository.findPendingMessagesForRelay(
+                OutboxStatus.PENDING.name(), before, BATCH_SIZE);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void processMessage(OutboxMessage message) {
+        if (message.exceedsMaxRetries(MAX_RETRIES)) {
+            message.markAsFailed("Max retries exceeded");
+            outboxRepository.save(message);
+            log.error("Outbox message exceeded max retries: eventId={}", message.getEventId());
+            return;
+        }
+
+        try {
+            message.markAsSending();
+            outboxRepository.save(message);
+
+            kafkaTemplate.send(message.getTopic(), message.getAggregateId(), message.getPayload())
+                    .get(); // blocking for relay
+            message.markAsPublished();
+            log.info("Relay publish success: eventId={}", message.getEventId());
+        } catch (Exception e) {
+            message.revertToPending();
+            message.incrementRetryCount();
+            log.warn("Relay publish failed: eventId={}, retry={}, error={}",
+                    message.getEventId(), message.getRetryCount(), e.getMessage());
+        }
+        outboxRepository.save(message);
     }
 }

@@ -8,6 +8,7 @@ tasks.bootJar { enabled = false }
 tasks.jar { enabled = true }
 
 dependencies {
+    api(project(":libs:core:exception"))
     api("org.springframework.boot:spring-boot-starter-webflux")
     api("org.springframework.boot:spring-boot-autoconfigure")
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")

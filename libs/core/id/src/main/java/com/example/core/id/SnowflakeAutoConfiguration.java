@@ -1,7 +1,6 @@
 package com.example.core.id;
 
 import com.example.core.id.jpa.SnowflakeIdentifierGenerator;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -29,14 +28,9 @@ public class SnowflakeAutoConfiguration {
     @Bean
     public Snowflake snowflake() {
         Snowflake snowflake = new Snowflake(properties.getDatacenterId(), properties.getWorkerId());
+        SnowflakeIdentifierGenerator.setInstance(snowflake);
         log.info("[Snowflake] Initialized: datacenterId={}, workerId={}",
                 properties.getDatacenterId(), properties.getWorkerId());
         return snowflake;
-    }
-
-    @PostConstruct
-    void registerJpaGenerator() {
-        Snowflake snowflake = new Snowflake(properties.getDatacenterId(), properties.getWorkerId());
-        SnowflakeIdentifierGenerator.setInstance(snowflake);
     }
 }

@@ -43,8 +43,8 @@ public class CircuitBreakerHelper {
     public <T> T executeWithCircuitBreakerAndRetry(String name, Supplier<T> supplier) {
         CircuitBreaker cb = circuitBreakerRegistry.circuitBreaker(name);
         Retry retry = retryRegistry.retry(name);
-        Supplier<T> decorated = CircuitBreaker.decorateSupplier(cb,
-                Retry.decorateSupplier(retry, supplier));
+        Supplier<T> decorated = Retry.decorateSupplier(retry,
+                CircuitBreaker.decorateSupplier(cb, supplier));
         return decorated.get();
     }
 
