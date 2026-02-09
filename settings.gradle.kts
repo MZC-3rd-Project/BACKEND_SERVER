@@ -30,6 +30,7 @@ include("servers:gateways:api-gateway")
 // 서비스
 include("servers:services:auth")
 include("servers:services:user")
+include("servers:services:product")
 
 // 테스트 서버
 include("servers:test:test-server")
