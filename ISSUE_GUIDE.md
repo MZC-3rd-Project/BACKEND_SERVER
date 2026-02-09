@@ -19,6 +19,7 @@
 | **Epic** | 큰 단위의 기능 목표 (예: 사용자 인증 시스템) | `[EPIC] 제목` |
 | **Story** | 사용자가 얻는 가치 중심의 요구사항 | `[STORY] 제목` |
 | **Task** | 실제 개발 및 테스트 단위 작업 (Java, Spring Boot 개발 등) | `[TASK] 제목` |
+| **Bugfix** | 버그 발견 및 수정, 결함 해결 | `[BUGFIX] 제목` |
 
 ### 2. Issue 연결 
 이슈 생성 시 템플릿의 **`Related Story/Epic`** 필드를 활용하세요.
