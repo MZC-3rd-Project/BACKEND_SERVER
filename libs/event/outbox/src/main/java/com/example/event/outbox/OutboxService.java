@@ -33,7 +33,9 @@ public class OutboxService implements EventPublisher {
                 metadata.aggregateId(),
                 event.getTopic(),
                 event.getEventTypeName(),
-                payload
+                payload,
+                metadata.correlationId(),
+                metadata.causationId()
         );
 
         outboxRepository.save(message);

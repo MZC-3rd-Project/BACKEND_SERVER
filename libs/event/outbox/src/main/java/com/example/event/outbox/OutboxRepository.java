@@ -30,4 +30,10 @@ public interface OutboxRepository extends JpaRepository<OutboxMessage, Long> {
                          @Param("newStatus") OutboxStatus newStatus);
 
     List<OutboxMessage> findByStatusOrderByCreatedAtAsc(OutboxStatus status);
+
+    @Modifying
+    @Query("DELETE FROM OutboxMessage o WHERE o.status = :status AND o.createdAt < :before")
+    int deleteByStatusAndCreatedBefore(
+            @Param("status") OutboxStatus status,
+            @Param("before") LocalDateTime before);
 }
