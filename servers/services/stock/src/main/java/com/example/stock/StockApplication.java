@@ -1,0 +1,16 @@
+package com.example.stock;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
+
+@SpringBootApplication(scanBasePackages = "com.example")
+@EnableAsync
+@EnableScheduling
+public class StockApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(StockApplication.class, args);
+    }
+}
