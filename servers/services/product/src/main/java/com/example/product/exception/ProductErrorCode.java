@@ -28,10 +28,17 @@ public enum ProductErrorCode implements DomainErrorCode {
     // Seat Grade
     SEAT_GRADE_NOT_FOUND("PRODUCT-301", "좌석 등급을 찾을 수 없습니다", HttpStatus.NOT_FOUND),
     DUPLICATE_SEAT_GRADE("PRODUCT-302", "중복된 좌석 등급입니다", HttpStatus.CONFLICT),
+    INVALID_FUNDING_QUANTITY("PRODUCT-303", "펀딩 수량은 총 수량을 초과할 수 없습니다", HttpStatus.BAD_REQUEST),
+
+    // Goods Link
+    INVALID_LINK_TARGET("PRODUCT-402", "연결 대상 상품이 유효하지 않습니다", HttpStatus.BAD_REQUEST),
 
     // Goods / Product
     GOODS_NOT_FOUND("PRODUCT-401", "굿즈 정보를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
     PRODUCT_OPTION_NOT_FOUND("PRODUCT-501", "상품 옵션을 찾을 수 없습니다", HttpStatus.NOT_FOUND),
+
+    // Image
+    IMAGE_NOT_FOUND("PRODUCT-601", "이미지를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
 
     // Authorization
     UNAUTHORIZED_ACCESS("PRODUCT-901", "해당 상품에 대한 권한이 없습니다", HttpStatus.FORBIDDEN);
