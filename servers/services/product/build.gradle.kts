@@ -16,9 +16,6 @@ dependencies {
     // Data
     implementation(project(":libs:data:entity"))
 
-    // Security
-    implementation(project(":libs:security:core"))
-
     // Config
     implementation(project(":libs:config:kafka"))
     implementation(project(":libs:config:redis"))
