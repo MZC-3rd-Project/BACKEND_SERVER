@@ -32,6 +32,9 @@ public class ParticipationResponse {
     private String status;
 
     @SnowflakeId
+    private Long orderId;
+
+    @SnowflakeId
     private Long reservationId;
 
     @SnowflakeId
@@ -50,6 +53,7 @@ public class ParticipationResponse {
                 .seatGradeId(p.getSeatGradeId())
                 .itemOptionId(p.getItemOptionId())
                 .status(p.getStatus().name())
+                .orderId(p.getOrderId())
                 .reservationId(p.getReservationId())
                 .paymentId(p.getPaymentId())
                 .createdAt(p.getCreatedAt())
