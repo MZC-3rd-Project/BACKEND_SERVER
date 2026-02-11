@@ -1,6 +1,7 @@
 package com.example.stock.service.query;
 
 import com.example.core.exception.BusinessException;
+import com.example.stock.dto.response.ReservationResponse;
 import com.example.stock.dto.response.StockHistoryResponse;
 import com.example.stock.dto.response.StockResponse;
 import com.example.stock.dto.response.StockSummaryResponse;
@@ -8,6 +9,7 @@ import com.example.stock.entity.StockItem;
 import com.example.stock.exception.StockErrorCode;
 import com.example.stock.repository.StockHistoryRepository;
 import com.example.stock.repository.StockItemRepository;
+import com.example.stock.repository.StockReservationRepository;
 import com.example.stock.service.StockCacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +26,7 @@ public class StockQueryService {
 
     private final StockItemRepository stockItemRepository;
     private final StockHistoryRepository stockHistoryRepository;
+    private final StockReservationRepository stockReservationRepository;
     private final StockCacheService stockCacheService;
 
     public StockResponse getStock(Long stockItemId) {
@@ -46,6 +49,12 @@ public class StockQueryService {
                         stockItemId, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")))
                 .stream()
                 .map(StockHistoryResponse::from)
+                .toList();
+    }
+
+    public List<ReservationResponse> getReservationsByOrderId(Long orderId) {
+        return stockReservationRepository.findByOrderId(orderId).stream()
+                .map(ReservationResponse::from)
                 .toList();
     }
 }

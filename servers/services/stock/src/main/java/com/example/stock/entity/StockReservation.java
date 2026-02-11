@@ -15,7 +15,8 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "stock_reservations", indexes = {
         @Index(name = "idx_reservation_stock_item", columnList = "stockItemId"),
-        @Index(name = "idx_reservation_status_expired", columnList = "status, expiredAt")
+        @Index(name = "idx_reservation_status_expired", columnList = "status, expiredAt"),
+        @Index(name = "idx_reservation_order_id", columnList = "orderId")
 })
 @SQLRestriction("deleted_at IS NULL")
 @Getter
@@ -32,6 +33,8 @@ public class StockReservation extends BaseEntity {
     @Column(nullable = false)
     private Long userId;
 
+    private Long orderId;
+
     @Column(nullable = false)
     private int quantity;
 
@@ -42,10 +45,11 @@ public class StockReservation extends BaseEntity {
     @Column(nullable = false)
     private LocalDateTime expiredAt;
 
-    public static StockReservation create(Long stockItemId, Long userId, int quantity, int ttlMinutes) {
+    public static StockReservation create(Long stockItemId, Long userId, Long orderId, int quantity, int ttlMinutes) {
         StockReservation reservation = new StockReservation();
         reservation.stockItemId = stockItemId;
         reservation.userId = userId;
+        reservation.orderId = orderId;
         reservation.quantity = quantity;
         reservation.status = ReservationStatus.RESERVED;
         reservation.expiredAt = LocalDateTime.now().plusMinutes(ttlMinutes);

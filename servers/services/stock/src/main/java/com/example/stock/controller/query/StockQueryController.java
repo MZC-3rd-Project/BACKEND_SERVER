@@ -2,6 +2,7 @@ package com.example.stock.controller.query;
 
 import com.example.api.response.ApiResponse;
 import com.example.stock.controller.api.query.StockQueryApi;
+import com.example.stock.dto.response.ReservationResponse;
 import com.example.stock.dto.response.StockHistoryResponse;
 import com.example.stock.dto.response.StockResponse;
 import com.example.stock.dto.response.StockSummaryResponse;
@@ -35,5 +36,10 @@ public class StockQueryController implements StockQueryApi {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return ApiResponse.success(stockQueryService.getStockHistory(stockItemId, page, size));
+    }
+
+    @Override
+    public ApiResponse<List<ReservationResponse>> getReservationsByOrderId(@RequestParam Long orderId) {
+        return ApiResponse.success(stockQueryService.getReservationsByOrderId(orderId));
     }
 }
