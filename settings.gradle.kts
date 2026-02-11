@@ -31,6 +31,7 @@ include("servers:gateways:api-gateway")
 include("servers:services:auth")
 include("servers:services:user")
 include("servers:services:product")
+include("servers:services:stock")
 
 // 테스트 서버
 include("servers:test:test-server")
