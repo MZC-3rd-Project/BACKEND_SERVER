@@ -9,6 +9,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -25,7 +28,11 @@ public class OutboxService implements EventPublisher {
     @Override
     @Transactional
     public void publish(DomainEvent event, EventMetadata metadata) {
-        String payload = JsonUtils.toJson(event.getPayload());
+        Map<String, Object> envelope = new LinkedHashMap<>();
+        envelope.put("eventId", event.getEventId());
+        envelope.put("eventType", event.getEventTypeName());
+        envelope.putAll(event.getPayload());
+        String payload = JsonUtils.toJson(envelope);
 
         OutboxMessage message = OutboxMessage.create(
                 event.getEventId(),

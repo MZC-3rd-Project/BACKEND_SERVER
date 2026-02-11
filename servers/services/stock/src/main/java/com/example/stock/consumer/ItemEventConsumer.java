@@ -2,11 +2,16 @@ package com.example.stock.consumer;
 
 import com.example.config.kafka.IdempotentConsumerService;
 import com.example.core.util.JsonUtils;
+import com.example.stock.dto.request.InitializeStockRequest;
+import com.example.stock.entity.StockItemType;
+import com.example.stock.service.command.StockCommandService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Slf4j
 @Component
@@ -14,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ItemEventConsumer {
 
     private final IdempotentConsumerService idempotentConsumerService;
+    private final StockCommandService stockCommandService;
 
     @KafkaListener(topics = "item-events", groupId = "${spring.kafka.consumer.group-id}")
     @Transactional
@@ -40,8 +46,26 @@ public class ItemEventConsumer {
     }
 
     private void handleItemCreated(ItemEventMessage event) {
-        // 향후 재고 자동 초기화 로직 — Product에서 SeatGrade/ItemOption 정보와 함께
-        // 별도 이벤트로 전달받아 자동 초기화할 예정
-        log.info("[ItemConsumer] 아이템 생성 이벤트 수신 — 재고 초기화 대기: itemId={}, type={}", event.getItemId(), event.getItemType());
+        log.info("[ItemConsumer] 아이템 생성 이벤트 수신: itemId={}, type={}", event.getItemId(), event.getItemType());
+
+        List<ItemEventMessage.StockItemPayload> stockItems = event.getStockItems();
+        if (stockItems == null || stockItems.isEmpty()) {
+            log.info("[ItemConsumer] stockItems 없음 — 재고 초기화 건너뜀: itemId={}", event.getItemId());
+            return;
+        }
+
+        for (ItemEventMessage.StockItemPayload si : stockItems) {
+            try {
+                StockItemType stockItemType = StockItemType.valueOf(si.getType());
+                InitializeStockRequest request = InitializeStockRequest.of(
+                        event.getItemId(), stockItemType, si.getReferenceId(), si.getTotalQuantity());
+                stockCommandService.initializeStock(request);
+                log.info("[ItemConsumer] 재고 자동 초기화 완료: itemId={}, type={}, refId={}, qty={}",
+                        event.getItemId(), si.getType(), si.getReferenceId(), si.getTotalQuantity());
+            } catch (Exception e) {
+                log.error("[ItemConsumer] 재고 초기화 실패: itemId={}, type={}, refId={}",
+                        event.getItemId(), si.getType(), si.getReferenceId(), e);
+            }
+        }
     }
 }

@@ -49,8 +49,13 @@ public class ProductCommandService {
             shippingInfo = saveShippingInfo(item.getId(), request.getShippingInfo());
         }
 
+        List<ItemCreatedEvent.StockItemInfo> stockItems = options.stream()
+                .map(opt -> new ItemCreatedEvent.StockItemInfo(
+                        "ITEM_OPTION", opt.getId(), opt.getStockQuantity()))
+                .toList();
+
         eventPublisher.publish(
-                new ItemCreatedEvent(item.getId(), item.getTitle(), item.getItemType().name(), sellerId),
+                new ItemCreatedEvent(item.getId(), item.getTitle(), item.getItemType().name(), sellerId, stockItems),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
         return GoodsDetailResponse.of(item, options, shippingInfo, List.of());

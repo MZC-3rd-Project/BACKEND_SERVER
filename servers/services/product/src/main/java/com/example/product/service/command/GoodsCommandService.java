@@ -14,6 +14,7 @@ import com.example.product.entity.goods.ItemGoodsLink;
 import com.example.product.entity.goods.ItemOption;
 import com.example.product.entity.goods.ShippingInfo;
 import com.example.product.event.ItemCreatedEvent;
+import com.example.product.event.ItemCreatedEvent.StockItemInfo;
 import com.example.product.event.ItemUpdatedEvent;
 import com.example.product.exception.ProductErrorCode;
 import com.example.product.repository.*;
@@ -53,8 +54,13 @@ public class GoodsCommandService {
             linkedIds = linkPerformances(item.getId(), request.getLinkedPerformanceItemIds());
         }
 
+        List<ItemCreatedEvent.StockItemInfo> stockItems = options.stream()
+                .map(opt -> new ItemCreatedEvent.StockItemInfo(
+                        "ITEM_OPTION", opt.getId(), opt.getStockQuantity()))
+                .toList();
+
         eventPublisher.publish(
-                new ItemCreatedEvent(item.getId(), item.getTitle(), item.getItemType().name(), sellerId),
+                new ItemCreatedEvent(item.getId(), item.getTitle(), item.getItemType().name(), sellerId, stockItems),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
         return GoodsDetailResponse.of(item, options, shippingInfo, linkedIds);
