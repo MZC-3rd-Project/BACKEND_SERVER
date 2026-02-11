@@ -118,6 +118,23 @@ public class StockCommandService {
         return ReservationResponse.from(reservation);
     }
 
+    // ─── TCC: Confirm (by ID — 이벤트 기반) ────
+    public ReservationResponse confirmReservationById(Long reservationId) {
+        StockReservation reservation = getReservation(reservationId);
+        reservation.confirm();
+
+        StockItem stockItem = getStockItemWithLock(reservation.getStockItemId());
+        stockItem.confirmReservation(reservation.getQuantity());
+
+        stockHistoryRepository.save(StockHistory.create(
+                stockItem.getId(), ChangeType.CONFIRM, reservation.getQuantity(),
+                "예약 확정 (결제 완료)", reservation.getId()));
+
+        publishStockEvents(stockItem, reservation.getQuantity());
+
+        return ReservationResponse.from(reservation);
+    }
+
     // ─── TCC: Cancel ──────────────────────────
     @DistributedLock(key = "'stock:' + #reservationId", waitTime = 5)
     public ReservationResponse cancelReservation(Long reservationId) {
@@ -137,21 +154,28 @@ public class StockCommandService {
     }
 
     public StockResponse initializeStock(InitializeStockRequest request) {
-        stockItemRepository.findByItemIdAndStockItemTypeAndReferenceId(
+        StockItem stockItem = stockItemRepository.findByItemIdAndStockItemTypeAndReferenceId(
                 request.getItemId(), request.getStockItemType(), request.getReferenceId()
-        ).ifPresent(existing -> {
-            throw new BusinessException(StockErrorCode.STOCK_ALREADY_EXISTS);
-        });
+        ).orElse(null);
 
-        StockItem stockItem = StockItem.create(
-                request.getItemId(), request.getStockItemType(),
-                request.getReferenceId(), request.getTotalQuantity());
-        stockItemRepository.save(stockItem);
+        if (stockItem != null) {
+            // Upsert: 기존 재고 업데이트
+            stockItem.updateTotal(request.getTotalQuantity());
+
+            stockHistoryRepository.save(StockHistory.create(
+                    stockItem.getId(), ChangeType.INCREASE, request.getTotalQuantity(), "재고 재초기화 (Upsert)"));
+        } else {
+            // Create: 신규 재고 생성
+            stockItem = StockItem.create(
+                    request.getItemId(), request.getStockItemType(),
+                    request.getReferenceId(), request.getTotalQuantity());
+            stockItemRepository.save(stockItem);
+
+            stockHistoryRepository.save(StockHistory.create(
+                    stockItem.getId(), ChangeType.INCREASE, request.getTotalQuantity(), "재고 초기화"));
+        }
 
         stockCacheService.cacheStock(stockItem.getId(), stockItem.getAvailableQuantity());
-
-        stockHistoryRepository.save(StockHistory.create(
-                stockItem.getId(), ChangeType.INCREASE, request.getTotalQuantity(), "재고 초기화"));
 
         return StockResponse.from(stockItem);
     }
