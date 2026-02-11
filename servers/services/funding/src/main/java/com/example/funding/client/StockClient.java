@@ -74,7 +74,7 @@ public class StockClient {
     public Long findStockItemId(Long itemId, Long referenceId) {
         try {
             JsonNode response = webClient.get()
-                    .uri("/internal/v1/stock/item/{itemId}", itemId)
+                    .uri("/internal/v1/stock/items/{itemId}", itemId)
                     .retrieve()
                     .bodyToMono(JsonNode.class)
                     .block();
@@ -83,16 +83,16 @@ public class StockClient {
                 throw new BusinessException(FundingErrorCode.STOCK_SERVICE_ERROR);
             }
 
-            JsonNode dataNode = response.path("data");
+            JsonNode stocksNode = response.path("data").path("stocks");
             List<JsonNode> stocks = new ArrayList<>();
-            if (dataNode.isArray()) {
-                dataNode.forEach(stocks::add);
+            if (stocksNode.isArray()) {
+                stocksNode.forEach(stocks::add);
             }
 
             return stocks.stream()
                     .filter(s -> s.path("referenceId").asLong() == referenceId)
                     .findFirst()
-                    .map(s -> s.path("id").asLong())
+                    .map(s -> s.path("stockItemId").asLong())
                     .orElseThrow(() -> new BusinessException(FundingErrorCode.STOCK_SERVICE_ERROR));
         } catch (BusinessException e) {
             throw e;
