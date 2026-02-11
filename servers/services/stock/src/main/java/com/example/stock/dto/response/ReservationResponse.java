@@ -14,6 +14,7 @@ public class ReservationResponse {
     private Long id;
     private Long stockItemId;
     private Long userId;
+    private Long orderId;
     private int quantity;
     private ReservationStatus status;
     private LocalDateTime expiredAt;
@@ -23,6 +24,7 @@ public class ReservationResponse {
                 .id(reservation.getId())
                 .stockItemId(reservation.getStockItemId())
                 .userId(reservation.getUserId())
+                .orderId(reservation.getOrderId())
                 .quantity(reservation.getQuantity())
                 .status(reservation.getStatus())
                 .expiredAt(reservation.getExpiredAt())
