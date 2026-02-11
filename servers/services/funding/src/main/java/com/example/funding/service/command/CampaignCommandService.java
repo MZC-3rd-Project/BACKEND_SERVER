@@ -8,9 +8,12 @@ import com.example.funding.entity.FundingCampaign;
 import com.example.funding.entity.FundingStatus;
 import com.example.funding.entity.FundingStatusHistory;
 import com.example.funding.entity.FundingType;
+import com.example.funding.event.FundingCreatedEvent;
 import com.example.funding.exception.FundingErrorCode;
 import com.example.funding.repository.FundingCampaignRepository;
 import com.example.funding.repository.FundingStatusHistoryRepository;
+import com.example.event.EventMetadata;
+import com.example.event.EventPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +27,7 @@ public class CampaignCommandService {
 
     private final FundingCampaignRepository campaignRepository;
     private final FundingStatusHistoryRepository statusHistoryRepository;
+    private final EventPublisher eventPublisher;
 
     public CampaignResponse create(CampaignCreateRequest request, Long sellerId) {
         if (campaignRepository.existsByItemId(request.getItemId())) {
@@ -46,6 +50,16 @@ public class CampaignCommandService {
         );
 
         campaignRepository.save(campaign);
+
+        eventPublisher.publish(
+                new FundingCreatedEvent(
+                        campaign.getId(), campaign.getItemId(), sellerId,
+                        fundingType.name(), campaign.getGoalAmount(),
+                        campaign.getStartAt(), campaign.getEndAt()
+                ),
+                EventMetadata.of("FundingCampaign", String.valueOf(campaign.getId()))
+        );
+
         return CampaignResponse.from(campaign);
     }
 
