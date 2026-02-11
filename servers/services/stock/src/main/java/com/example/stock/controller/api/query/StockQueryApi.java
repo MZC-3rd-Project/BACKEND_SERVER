@@ -1,6 +1,7 @@
 package com.example.stock.controller.api.query;
 
 import com.example.api.response.ApiResponse;
+import com.example.stock.dto.response.ReservationResponse;
 import com.example.stock.dto.response.StockHistoryResponse;
 import com.example.stock.dto.response.StockResponse;
 import com.example.stock.dto.response.StockSummaryResponse;
@@ -29,4 +30,8 @@ public interface StockQueryApi {
             @PathVariable Long stockItemId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size);
+
+    @Operation(summary = "orderId 기반 예약 조회")
+    @GetMapping("/internal/v1/stock/reservations")
+    ApiResponse<List<ReservationResponse>> getReservationsByOrderId(@RequestParam Long orderId);
 }

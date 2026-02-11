@@ -89,7 +89,7 @@ public class StockCommandService {
         stockItem.reserve(request.getQuantity());
 
         StockReservation reservation = StockReservation.create(
-                stockItem.getId(), request.getUserId(), request.getQuantity(), RESERVATION_TTL_MINUTES);
+                stockItem.getId(), request.getUserId(), request.getOrderId(), request.getQuantity(), RESERVATION_TTL_MINUTES);
         stockReservationRepository.save(reservation);
 
         stockHistoryRepository.save(StockHistory.create(
