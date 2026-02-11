@@ -24,11 +24,12 @@ public class StockClient {
         this.webClient = webClientBuilder.baseUrl(stockUrl).build();
     }
 
-    public Long reserveStock(Long stockItemId, Long userId, int quantity) {
+    public Long reserveStock(Long stockItemId, Long userId, int quantity, Long orderId) {
         Map<String, Object> body = Map.of(
                 "stockItemId", stockItemId,
                 "userId", userId,
-                "quantity", quantity
+                "quantity", quantity,
+                "orderId", orderId
         );
 
         try {
