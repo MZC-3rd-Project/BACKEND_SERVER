@@ -22,4 +22,14 @@ public class InitializeStockRequest {
     @NotNull
     @Min(0)
     private Integer totalQuantity;
+
+    public static InitializeStockRequest of(Long itemId, StockItemType stockItemType,
+                                            Long referenceId, int totalQuantity) {
+        InitializeStockRequest req = new InitializeStockRequest();
+        req.itemId = itemId;
+        req.stockItemType = stockItemType;
+        req.referenceId = referenceId;
+        req.totalQuantity = totalQuantity;
+        return req;
+    }
 }
