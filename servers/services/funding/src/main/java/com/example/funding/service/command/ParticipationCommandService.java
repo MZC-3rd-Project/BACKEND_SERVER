@@ -10,6 +10,7 @@ import com.example.funding.entity.FundingType;
 import com.example.funding.exception.FundingErrorCode;
 import com.example.funding.repository.FundingCampaignRepository;
 import com.example.funding.repository.FundingParticipationRepository;
+import com.example.funding.service.CampaignCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ public class ParticipationCommandService {
     private final FundingCampaignRepository campaignRepository;
     private final FundingParticipationRepository participationRepository;
     private final StockClient stockClient;
+    private final CampaignCacheService campaignCacheService;
 
     public ParticipationResponse participate(Long campaignId, ParticipateRequest request, Long userId) {
         FundingCampaign campaign = campaignRepository.findById(campaignId)
@@ -62,6 +64,8 @@ public class ParticipationCommandService {
 
         participation.refund();
         campaign.removeParticipation(participation.getAmount(), participation.getQuantity());
+        campaignCacheService.decrementProgress(campaign.getId(),
+                participation.getAmount(), participation.getQuantity());
     }
 
     private ParticipationResponse participateAmountBased(FundingCampaign campaign,
@@ -78,6 +82,7 @@ public class ParticipationCommandService {
 
         participationRepository.save(participation);
         campaign.addParticipation(request.getAmount(), 1);
+        campaignCacheService.incrementProgress(campaign.getId(), request.getAmount(), 1);
 
         return ParticipationResponse.from(participation);
     }
@@ -100,6 +105,7 @@ public class ParticipationCommandService {
 
         participationRepository.save(participation);
         campaign.addParticipation(request.getAmount(), quantity);
+        campaignCacheService.incrementProgress(campaign.getId(), request.getAmount(), quantity);
 
         return ParticipationResponse.from(participation);
     }
