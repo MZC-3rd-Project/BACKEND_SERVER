@@ -1,5 +1,6 @@
 package com.example.funding.entity;
 
+import com.example.core.id.jpa.SnowflakeGenerated;
 import com.example.data.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -16,7 +17,7 @@ import lombok.NoArgsConstructor;
 public class FundingStatusHistory extends BaseEntity {
 
     @Id
-    @com.example.core.id.jpa.SnowflakeGenerated
+    @SnowflakeGenerated
     private Long id;
 
     @Column(name = "campaign_id", nullable = false)

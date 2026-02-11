@@ -1,6 +1,7 @@
 package com.example.funding.entity;
 
 import com.example.core.exception.BusinessException;
+import com.example.core.id.jpa.SnowflakeGenerated;
 import com.example.data.entity.BaseEntity;
 import com.example.funding.exception.FundingErrorCode;
 import jakarta.persistence.*;
@@ -24,7 +25,7 @@ import java.time.LocalDateTime;
 public class FundingCampaign extends BaseEntity {
 
     @Id
-    @com.example.core.id.jpa.SnowflakeGenerated
+    @SnowflakeGenerated
     private Long id;
 
     @Column(name = "item_id", nullable = false, unique = true)
