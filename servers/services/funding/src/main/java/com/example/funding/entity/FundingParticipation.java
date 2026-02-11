@@ -13,7 +13,8 @@ import org.hibernate.annotations.SQLRestriction;
         indexes = {
                 @Index(name = "idx_participation_campaign_id", columnList = "campaignId"),
                 @Index(name = "idx_participation_user_id", columnList = "userId"),
-                @Index(name = "idx_participation_status", columnList = "status")
+                @Index(name = "idx_participation_status", columnList = "status"),
+                @Index(name = "idx_participation_order_id", columnList = "orderId")
         })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -46,6 +47,9 @@ public class FundingParticipation extends BaseEntity {
     @Column(name = "status", nullable = false, length = 20)
     private ParticipationStatus status;
 
+    @Column(name = "order_id", nullable = false)
+    private Long orderId;
+
     @Column(name = "reservation_id")
     private Long reservationId;
 
@@ -54,7 +58,8 @@ public class FundingParticipation extends BaseEntity {
 
     public static FundingParticipation create(Long campaignId, Long userId, Long amount,
                                                Integer quantity, Long seatGradeId,
-                                               Long itemOptionId, Long reservationId) {
+                                               Long itemOptionId, Long orderId,
+                                               Long reservationId) {
         FundingParticipation p = new FundingParticipation();
         p.campaignId = campaignId;
         p.userId = userId;
@@ -62,6 +67,7 @@ public class FundingParticipation extends BaseEntity {
         p.quantity = quantity;
         p.seatGradeId = seatGradeId;
         p.itemOptionId = itemOptionId;
+        p.orderId = orderId;
         p.reservationId = reservationId;
         p.status = ParticipationStatus.PENDING;
         return p;
