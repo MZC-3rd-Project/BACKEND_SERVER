@@ -15,6 +15,8 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Component;
 
+import java.lang.reflect.Method;
+
 @Slf4j
 @Aspect
 @Component
@@ -27,8 +29,12 @@ public class DistributedLockAspect {
     private final RedissonClient redissonClient;
     private final SpelExpressionParser parser = new SpelExpressionParser();
 
-    @Around("@annotation(distributedLock)")
-    public Object around(ProceedingJoinPoint joinPoint, DistributedLock distributedLock) throws Throwable {
+    @Around("@annotation(com.example.config.redis.lock.DistributedLock)")
+    public Object around(ProceedingJoinPoint joinPoint) throws Throwable {
+        MethodSignature signature = (MethodSignature) joinPoint.getSignature();
+        Method method = signature.getMethod();
+        DistributedLock distributedLock = method.getAnnotation(DistributedLock.class);
+
         String lockKey = LOCK_PREFIX + parseLockKey(distributedLock.key(), joinPoint);
         RLock lock = redissonClient.getLock(lockKey);
 
