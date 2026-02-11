@@ -1,8 +1,12 @@
 package com.example.funding.scheduler;
 
+import com.example.event.EventMetadata;
+import com.example.event.EventPublisher;
 import com.example.funding.entity.FundingCampaign;
 import com.example.funding.entity.FundingStatus;
 import com.example.funding.entity.FundingStatusHistory;
+import com.example.funding.event.FundingFailedEvent;
+import com.example.funding.event.FundingSucceededEvent;
 import com.example.funding.repository.FundingCampaignRepository;
 import com.example.funding.repository.FundingStatusHistoryRepository;
 import com.example.funding.service.CampaignCacheService;
@@ -23,6 +27,7 @@ public class FundingDeadlineScheduler {
     private final FundingCampaignRepository campaignRepository;
     private final FundingStatusHistoryRepository statusHistoryRepository;
     private final CampaignCacheService campaignCacheService;
+    private final EventPublisher eventPublisher;
 
     @Scheduled(fixedDelay = 60000)
     @Transactional
@@ -67,6 +72,27 @@ public class FundingDeadlineScheduler {
         );
 
         campaignCacheService.invalidateProgress(campaign.getId());
+
+        // 도메인 이벤트 발행
+        if (newStatus == FundingStatus.SUCCEEDED) {
+            eventPublisher.publish(
+                    new FundingSucceededEvent(
+                            campaign.getId(), campaign.getItemId(), campaign.getSellerId(),
+                            campaign.getFundingType().name(), campaign.getGoalAmount(),
+                            campaign.getCurrentAmount(), campaign.getCurrentQuantity()
+                    ),
+                    EventMetadata.of("FundingCampaign", String.valueOf(campaign.getId()))
+            );
+        } else {
+            eventPublisher.publish(
+                    new FundingFailedEvent(
+                            campaign.getId(), campaign.getItemId(), campaign.getSellerId(),
+                            campaign.getFundingType().name(), campaign.getGoalAmount(),
+                            campaign.getCurrentAmount(), campaign.getCurrentQuantity()
+                    ),
+                    EventMetadata.of("FundingCampaign", String.valueOf(campaign.getId()))
+            );
+        }
 
         log.info("캠페인 판정 완료: campaignId={}, {} → {}",
                 campaign.getId(), previousStatus, newStatus);
