@@ -15,6 +15,7 @@ import com.example.event.outbox.OutboxStatus;
 import com.example.testserver.domain.TestItem;
 import com.example.testserver.domain.TestItemRepository;
 import com.example.testserver.event.TestItemCreatedEvent;
+import com.example.testserver.exception.TestErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;

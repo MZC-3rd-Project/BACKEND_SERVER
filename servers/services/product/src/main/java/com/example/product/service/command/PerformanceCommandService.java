@@ -59,8 +59,13 @@ public class PerformanceCommandService {
             castMemberRepository.saveAll(castMembers);
         }
 
+        List<ItemCreatedEvent.StockItemInfo> stockItems = seatGrades.stream()
+                .map(sg -> new ItemCreatedEvent.StockItemInfo(
+                        "SEAT_GRADE", sg.getId(), sg.getTotalQuantity()))
+                .toList();
+
         eventPublisher.publish(
-                new ItemCreatedEvent(item.getId(), item.getTitle(), item.getItemType().name(), sellerId),
+                new ItemCreatedEvent(item.getId(), item.getTitle(), item.getItemType().name(), sellerId, stockItems),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
         return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers);
