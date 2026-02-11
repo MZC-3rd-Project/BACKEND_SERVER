@@ -15,6 +15,8 @@ public class ReserveStockRequest {
     @NotNull
     private Long userId;
 
+    private Long orderId;
+
     @NotNull
     @Min(1)
     private Integer quantity;
