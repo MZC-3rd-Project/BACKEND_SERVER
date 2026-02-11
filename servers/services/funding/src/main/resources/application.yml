@@ -45,6 +45,10 @@ app:
     datacenter-id: ${SNOWFLAKE_DATACENTER_ID:1}
     worker-id: ${SNOWFLAKE_WORKER_ID:6}
 
+  # ─── Service URLs ────────────────────────────
+  service:
+    stock-url: ${STOCK_SERVICE_URL:http://localhost:8085}
+
   # ─── OpenAPI ──────────────────────────────────
   openapi:
     enabled: ${OPENAPI_ENABLED:true}
