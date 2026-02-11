@@ -1,0 +1,91 @@
+package com.example.funding.service.command;
+
+import com.example.core.exception.BusinessException;
+import com.example.funding.dto.campaign.request.CampaignCreateRequest;
+import com.example.funding.dto.campaign.request.CampaignUpdateRequest;
+import com.example.funding.dto.campaign.response.CampaignResponse;
+import com.example.funding.entity.FundingCampaign;
+import com.example.funding.entity.FundingStatus;
+import com.example.funding.entity.FundingStatusHistory;
+import com.example.funding.entity.FundingType;
+import com.example.funding.exception.FundingErrorCode;
+import com.example.funding.repository.FundingCampaignRepository;
+import com.example.funding.repository.FundingStatusHistoryRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+
+@Service
+@RequiredArgsConstructor
+@Transactional
+public class CampaignCommandService {
+
+    private final FundingCampaignRepository campaignRepository;
+    private final FundingStatusHistoryRepository statusHistoryRepository;
+
+    public CampaignResponse create(CampaignCreateRequest request, Long sellerId) {
+        if (campaignRepository.existsByItemId(request.getItemId())) {
+            throw new BusinessException(FundingErrorCode.CAMPAIGN_ALREADY_EXISTS);
+        }
+
+        validatePeriod(request.getStartAt(), request.getEndAt());
+
+        FundingType fundingType = FundingType.valueOf(request.getFundingType());
+
+        FundingCampaign campaign = FundingCampaign.create(
+                request.getItemId(),
+                sellerId,
+                fundingType,
+                request.getGoalAmount(),
+                request.getGoalQuantity(),
+                request.getMinAmount(),
+                request.getStartAt(),
+                request.getEndAt()
+        );
+
+        campaignRepository.save(campaign);
+        return CampaignResponse.from(campaign);
+    }
+
+    public CampaignResponse update(Long campaignId, CampaignUpdateRequest request, Long sellerId) {
+        FundingCampaign campaign = findCampaign(campaignId);
+        campaign.validateOwnership(sellerId);
+
+        validatePeriod(request.getStartAt(), request.getEndAt());
+
+        campaign.update(
+                request.getGoalAmount(),
+                request.getGoalQuantity(),
+                request.getMinAmount(),
+                request.getStartAt(),
+                request.getEndAt()
+        );
+
+        return CampaignResponse.from(campaign);
+    }
+
+    public void cancel(Long campaignId, String reason, Long sellerId) {
+        FundingCampaign campaign = findCampaign(campaignId);
+        campaign.validateOwnership(sellerId);
+
+        FundingStatus previousStatus = campaign.getStatus();
+        campaign.changeStatus(FundingStatus.CANCELLED);
+
+        statusHistoryRepository.save(
+                FundingStatusHistory.create(campaignId, previousStatus, FundingStatus.CANCELLED, reason)
+        );
+    }
+
+    private FundingCampaign findCampaign(Long campaignId) {
+        return campaignRepository.findById(campaignId)
+                .orElseThrow(() -> new BusinessException(FundingErrorCode.CAMPAIGN_NOT_FOUND));
+    }
+
+    private void validatePeriod(LocalDateTime startAt, LocalDateTime endAt) {
+        if (endAt.isBefore(startAt) || endAt.isEqual(startAt)) {
+            throw new BusinessException(FundingErrorCode.INVALID_CAMPAIGN_PERIOD);
+        }
+    }
+}
