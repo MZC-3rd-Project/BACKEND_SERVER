@@ -3,6 +3,7 @@ package com.example.funding.controller.api.query;
 import com.example.api.response.ApiResponse;
 import com.example.core.pagination.CursorResponse;
 import com.example.funding.dto.campaign.response.CampaignResponse;
+import com.example.funding.dto.campaign.response.ProgressResponse;
 import com.example.funding.dto.campaign.response.StatusHistoryResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -41,6 +42,14 @@ public interface CampaignQueryApi {
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String status);
+
+    @Operation(summary = "펀딩 진행률 조회 (실시간 캐시)")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "캠페인 없음")
+    })
+    @GetMapping("/{campaignId}/progress")
+    ApiResponse<ProgressResponse> getProgress(@PathVariable Long campaignId);
 
     @Operation(summary = "펀딩 캠페인 상태 이력 조회")
     @ApiResponses({
