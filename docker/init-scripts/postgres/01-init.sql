@@ -7,6 +7,7 @@ CREATE DATABASE auth_db;
 CREATE DATABASE user_db;
 CREATE DATABASE test_db;
 CREATE DATABASE sales_db;
+CREATE DATABASE hotdeal_db;
 
 -- auth_db 초기 설정
 \c auth_db;
@@ -18,4 +19,8 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- test_db 초기 설정 (테스트 서버용)
 \c test_db;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- hotdeal_db 초기 설정
+\c hotdeal_db;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
