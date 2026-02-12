@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -26,16 +25,5 @@ public interface PurchaseCommandApi {
     @PostMapping
     ApiResponse<PurchaseResponse> purchase(
             @Valid @RequestBody PurchaseRequest request,
-            @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long userId);
-
-    @Operation(summary = "구매 취소")
-    @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "취소 성공"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "취소 불가"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "구매 없음")
-    })
-    @PostMapping("/{purchaseId}/cancel")
-    ApiResponse<Void> cancel(
-            @PathVariable Long purchaseId,
             @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long userId);
 }
