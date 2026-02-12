@@ -28,14 +28,4 @@ public interface ParticipationCommandApi {
             @PathVariable Long campaignId,
             @Valid @RequestBody ParticipateRequest request,
             @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long userId);
-
-    @Operation(summary = "펀딩 참여 환불")
-    @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "환불 성공"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "참여 내역 없음")
-    })
-    @PostMapping("/participations/{participationId}/refund")
-    ApiResponse<Void> refund(
-            @PathVariable Long participationId,
-            @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long userId);
 }

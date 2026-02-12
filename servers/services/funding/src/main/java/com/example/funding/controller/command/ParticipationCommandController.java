@@ -21,10 +21,4 @@ public class ParticipationCommandController implements ParticipationCommandApi {
                                                            ParticipateRequest request, Long userId) {
         return ApiResponse.success(participationCommandService.participate(campaignId, request, userId));
     }
-
-    @Override
-    public ApiResponse<Void> refund(Long participationId, Long userId) {
-        participationCommandService.refund(participationId, userId);
-        return ApiResponse.success();
-    }
 }
