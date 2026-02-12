@@ -8,6 +8,7 @@ import com.example.sales.client.StockClient;
 import com.example.sales.dto.request.PurchaseRequest;
 import com.example.sales.dto.response.PurchaseResponse;
 import com.example.sales.entity.Purchase;
+import com.example.sales.event.PurchaseCancelledEvent;
 import com.example.sales.event.PurchaseCreatedEvent;
 import com.example.sales.exception.SalesErrorCode;
 import com.example.sales.repository.PurchaseRepository;
@@ -57,5 +58,24 @@ public class PurchaseCommandService {
                 request.getItemId(), totalAmount, request.getQuantity()));
 
         return PurchaseResponse.from(purchase);
+    }
+
+    public void cancel(Long purchaseId, Long userId) {
+        Purchase purchase = purchaseRepository.findById(purchaseId)
+                .orElseThrow(() -> new BusinessException(SalesErrorCode.PURCHASE_NOT_FOUND));
+
+        if (!purchase.getUserId().equals(userId)) {
+            throw new BusinessException(SalesErrorCode.PURCHASE_NOT_CANCELLABLE);
+        }
+
+        purchase.cancel();
+
+        if (purchase.getReservationId() != null) {
+            stockClient.cancelReservation(purchase.getReservationId());
+        }
+
+        eventPublisher.publish(new PurchaseCancelledEvent(
+                purchase.getId(), purchase.getOrderId(),
+                userId, purchase.getReservationId()));
     }
 }
