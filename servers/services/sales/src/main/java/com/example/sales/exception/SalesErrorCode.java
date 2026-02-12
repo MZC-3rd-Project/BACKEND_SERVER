@@ -17,7 +17,8 @@ public enum SalesErrorCode implements DomainErrorCode {
 
     // ─── External Service ────────────────────────
     STOCK_SERVICE_ERROR("SALES-201", "재고 서비스 호출 중 오류가 발생했습니다", HttpStatus.SERVICE_UNAVAILABLE),
-    PRODUCT_SERVICE_ERROR("SALES-202", "상품 서비스 호출 중 오류가 발생했습니다", HttpStatus.SERVICE_UNAVAILABLE);
+    PRODUCT_SERVICE_ERROR("SALES-202", "상품 서비스 호출 중 오류가 발생했습니다", HttpStatus.SERVICE_UNAVAILABLE),
+    STOCK_INSUFFICIENT("SALES-203", "재고가 부족합니다", HttpStatus.CONFLICT);
 
     private final String code;
     private final String message;
