@@ -20,10 +20,4 @@ public class PurchaseCommandController implements PurchaseCommandApi {
     public ApiResponse<PurchaseResponse> purchase(PurchaseRequest request, Long userId) {
         return ApiResponse.success(purchaseCommandService.purchase(request, userId));
     }
-
-    @Override
-    public ApiResponse<Void> cancel(Long purchaseId, Long userId) {
-        purchaseCommandService.cancel(purchaseId, userId);
-        return ApiResponse.success();
-    }
 }
