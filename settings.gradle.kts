@@ -34,6 +34,7 @@ include("servers:services:user")
 include("servers:services:product")
 include("servers:services:stock")
 include("servers:services:funding")
+include("servers:services:sales")
 
 // 테스트 서버
 include("servers:test:test-server")
