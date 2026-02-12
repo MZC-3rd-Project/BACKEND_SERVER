@@ -6,6 +6,7 @@
 CREATE DATABASE auth_db;
 CREATE DATABASE user_db;
 CREATE DATABASE test_db;
+CREATE DATABASE sales_db;
 
 -- auth_db 초기 설정
 \c auth_db;
