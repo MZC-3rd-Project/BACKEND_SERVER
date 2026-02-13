@@ -1,14 +1,14 @@
 package com.example.stock.scheduler;
 
+import com.example.config.redis.lock.DistributedLock;
 import com.example.stock.entity.ReservationStatus;
-import com.example.stock.entity.StockReservation;
 import com.example.stock.repository.StockReservationRepository;
 import com.example.stock.service.command.StockCommandService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,26 +20,36 @@ public class StockReservationScheduler {
 
     private final StockReservationRepository stockReservationRepository;
     private final StockCommandService stockCommandService;
+    private static final int BATCH_SIZE = 200;
 
     @Scheduled(fixedDelay = 60000) // 1분마다
-    @Transactional
+    @DistributedLock(key = "'stock:expire-reservations'", waitTime = 1, leaseTime = 55)
     public void expireReservations() {
-        List<StockReservation> expired = stockReservationRepository
-                .findExpiredReservations(ReservationStatus.RESERVED, LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        Long cursor = null;
+        int totalProcessed = 0;
 
-        if (expired.isEmpty()) return;
+        while (true) {
+            List<Long> expiredIds = stockReservationRepository.findExpiredReservationIdsWithCursor(
+                    ReservationStatus.RESERVED, now, cursor, PageRequest.of(0, BATCH_SIZE));
 
-        log.info("만료 예약 처리 시작: {}건", expired.size());
-
-        for (StockReservation reservation : expired) {
-            try {
-                stockCommandService.expireReservation(reservation);
-                log.info("예약 만료 처리 완료: reservationId={}", reservation.getId());
-            } catch (Exception e) {
-                log.error("예약 만료 처리 실패: reservationId={}", reservation.getId(), e);
+            if (expiredIds.isEmpty()) {
+                break;
             }
-        }
 
-        log.info("만료 예약 처리 완료: {}건", expired.size());
+            for (Long reservationId : expiredIds) {
+                try {
+                    stockCommandService.expireReservationById(reservationId);
+                    totalProcessed++;
+                } catch (Exception e) {
+                    log.error("예약 만료 처리 실패: reservationId={}", reservationId, e);
+                }
+            }
+
+            cursor = expiredIds.get(expiredIds.size() - 1);
+        }
+        if (totalProcessed > 0) {
+            log.info("만료 예약 처리 완료: {}건", totalProcessed);
+        }
     }
 }

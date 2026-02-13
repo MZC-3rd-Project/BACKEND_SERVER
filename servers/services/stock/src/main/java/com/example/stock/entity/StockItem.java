@@ -1,7 +1,9 @@
 package com.example.stock.entity;
 
+import com.example.core.exception.BusinessException;
 import com.example.core.id.jpa.SnowflakeGenerated;
 import com.example.data.entity.BaseEntity;
+import com.example.stock.exception.StockErrorCode;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -83,10 +85,11 @@ public class StockItem extends BaseEntity {
     }
 
     public void updateTotal(int totalQuantity) {
-        int diff = totalQuantity - this.totalQuantity;
+        if (totalQuantity < this.reservedQuantity) {
+            throw new BusinessException(StockErrorCode.STOCK_OVERFLOW);
+        }
         this.totalQuantity = totalQuantity;
-        this.availableQuantity += diff;
-        if (this.availableQuantity < 0) this.availableQuantity = 0;
+        this.availableQuantity = totalQuantity - this.reservedQuantity;
     }
 
     public boolean isDepleted() {
