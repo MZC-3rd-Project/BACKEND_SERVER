@@ -1,7 +1,9 @@
 package com.example.funding.entity;
 
+import com.example.core.exception.BusinessException;
 import com.example.core.id.jpa.SnowflakeGenerated;
 import com.example.data.entity.BaseEntity;
+import com.example.funding.exception.FundingErrorCode;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -74,11 +76,17 @@ public class FundingParticipation extends BaseEntity {
     }
 
     public void confirm(Long paymentId) {
+        if (this.status != ParticipationStatus.PENDING) {
+            throw new BusinessException(FundingErrorCode.INVALID_PARTICIPATION_STATUS);
+        }
         this.status = ParticipationStatus.CONFIRMED;
         this.paymentId = paymentId;
     }
 
     public void refund() {
+        if (this.status != ParticipationStatus.PENDING) {
+            throw new BusinessException(FundingErrorCode.INVALID_PARTICIPATION_STATUS);
+        }
         this.status = ParticipationStatus.REFUNDED;
     }
 }

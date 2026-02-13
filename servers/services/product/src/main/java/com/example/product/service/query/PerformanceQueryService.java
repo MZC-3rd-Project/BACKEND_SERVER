@@ -6,6 +6,7 @@ import com.example.core.pagination.CursorUtils;
 import com.example.product.dto.performance.response.PerformanceDetailResponse;
 import com.example.product.dto.performance.response.PerformanceListResponse;
 import com.example.product.entity.item.Item;
+import com.example.product.entity.item.ItemStatus;
 import com.example.product.entity.item.ItemType;
 import com.example.product.entity.performance.CastMember;
 import com.example.product.entity.performance.Performance;
@@ -31,6 +32,9 @@ public class PerformanceQueryService {
     private final SeatGradeRepository seatGradeRepository;
     private final CastMemberRepository castMemberRepository;
 
+    private static final List<ItemStatus> VISIBLE_STATUSES = List.of(
+            ItemStatus.FUNDING, ItemStatus.FUNDED, ItemStatus.ON_SALE, ItemStatus.HOT_DEAL);
+
     public PerformanceDetailResponse findById(Long itemId) {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
@@ -46,8 +50,8 @@ public class PerformanceQueryService {
         PageRequest pageable = PageRequest.of(0, size + 1);
 
         List<Item> items = cursorId == null
-                ? itemRepository.findByItemTypeOrderByIdDesc(ItemType.PERFORMANCE, pageable)
-                : itemRepository.findByItemTypeAndIdLessThan(ItemType.PERFORMANCE, cursorId, pageable);
+                ? itemRepository.findByItemTypeAndStatusIn(ItemType.PERFORMANCE, VISIBLE_STATUSES, pageable)
+                : itemRepository.findByItemTypeAndStatusInAndIdLessThan(ItemType.PERFORMANCE, VISIBLE_STATUSES, cursorId, pageable);
 
         boolean hasNext = items.size() > size;
         List<Item> pageItems = hasNext ? items.subList(0, size) : items;

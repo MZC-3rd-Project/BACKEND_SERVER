@@ -5,6 +5,7 @@ import com.example.core.pagination.CursorResponse;
 import com.example.core.pagination.CursorUtils;
 import com.example.product.dto.goods.response.GoodsDetailResponse;
 import com.example.product.entity.item.Item;
+import com.example.product.entity.item.ItemStatus;
 import com.example.product.entity.goods.ItemOption;
 import com.example.product.entity.item.ItemType;
 import com.example.product.entity.goods.ShippingInfo;
@@ -18,6 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -36,20 +39,30 @@ public class ProductQueryService {
         return GoodsDetailResponse.of(item, options, shippingInfo, List.of());
     }
 
+    private static final List<ItemStatus> VISIBLE_STATUSES = List.of(
+            ItemStatus.FUNDING, ItemStatus.FUNDED, ItemStatus.ON_SALE, ItemStatus.HOT_DEAL);
+
     public CursorResponse<GoodsDetailResponse> findProductList(String cursor, int size) {
         Long cursorId = CursorUtils.decodeLong(cursor);
         PageRequest pageable = PageRequest.of(0, size + 1);
 
         List<Item> items = cursorId == null
-                ? itemRepository.findByItemTypeOrderByIdDesc(ItemType.PRODUCT, pageable)
-                : itemRepository.findByItemTypeAndIdLessThan(ItemType.PRODUCT, cursorId, pageable);
+                ? itemRepository.findByItemTypeAndStatusIn(ItemType.PRODUCT, VISIBLE_STATUSES, pageable)
+                : itemRepository.findByItemTypeAndStatusInAndIdLessThan(ItemType.PRODUCT, VISIBLE_STATUSES, cursorId, pageable);
 
         boolean hasNext = items.size() > size;
         List<Item> pageItems = hasNext ? items.subList(0, size) : items;
+        List<Long> itemIds = pageItems.stream().map(Item::getId).toList();
+
+        Map<Long, List<ItemOption>> optionsMap = itemOptionRepository.findByItemIdIn(itemIds).stream()
+                .collect(Collectors.groupingBy(ItemOption::getItemId));
+
+        Map<Long, ShippingInfo> shippingMap = shippingInfoRepository.findByItemIdIn(itemIds).stream()
+                .collect(Collectors.toMap(ShippingInfo::getItemId, s -> s));
 
         List<GoodsDetailResponse> content = pageItems.stream().map(item -> {
-            List<ItemOption> options = itemOptionRepository.findByItemId(item.getId());
-            ShippingInfo shippingInfo = shippingInfoRepository.findByItemId(item.getId()).orElse(null);
+            List<ItemOption> options = optionsMap.getOrDefault(item.getId(), List.of());
+            ShippingInfo shippingInfo = shippingMap.get(item.getId());
             return GoodsDetailResponse.of(item, options, shippingInfo, List.of());
         }).toList();
 

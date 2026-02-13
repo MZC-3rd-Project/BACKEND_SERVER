@@ -29,4 +29,11 @@ public class InternalItemQueryController {
     public ApiResponse<List<ItemSummaryResponse>> findByIds(@RequestBody List<Long> itemIds) {
         return ApiResponse.success(internalItemQueryService.findByIds(itemIds));
     }
+
+    @Operation(summary = "마감 임박 상품 조회 (내부)")
+    @GetMapping("/ending-soon")
+    public ApiResponse<List<ItemSummaryResponse>> findItemsEndingSoon(
+            @RequestParam(defaultValue = "3") int withinDays) {
+        return ApiResponse.success(internalItemQueryService.findItemsEndingSoon(withinDays));
+    }
 }

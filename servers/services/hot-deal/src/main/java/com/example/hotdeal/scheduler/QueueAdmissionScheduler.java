@@ -5,6 +5,7 @@ import com.example.hotdeal.repository.HotDealRepository;
 import com.example.hotdeal.service.QueueService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -22,6 +23,7 @@ public class QueueAdmissionScheduler {
      * 매 1초마다 실행: ACTIVE 핫딜별 대기열에서 상위 N명 입장 허용
      */
     @Scheduled(fixedRate = 1000)
+    @SchedulerLock(name = "queueAdmission", lockAtLeastFor = "PT0.5S", lockAtMostFor = "PT5S")
     public void admitUsers() {
         hotDealRepository.findByStatus(HotDealStatus.ACTIVE)
                 .forEach(hotDeal -> {
