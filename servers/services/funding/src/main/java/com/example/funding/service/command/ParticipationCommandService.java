@@ -9,6 +9,7 @@ import com.example.funding.dto.participation.request.ParticipateRequest;
 import com.example.funding.dto.participation.response.ParticipationResponse;
 import com.example.funding.entity.FundingCampaign;
 import com.example.funding.entity.FundingParticipation;
+import com.example.funding.entity.FundingStatus;
 import com.example.funding.entity.FundingType;
 import com.example.funding.event.FundingParticipatedEvent;
 import com.example.funding.event.FundingRefundedEvent;
@@ -20,6 +21,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
+
+import java.time.LocalDateTime;
 
 @Slf4j
 @Service
@@ -114,7 +117,13 @@ public class ParticipationCommandService {
         );
 
         participationRepository.save(participation);
-        int updated = campaignRepository.incrementParticipation(campaign.getId(), request.getAmount(), 1);
+        int updated = campaignRepository.incrementParticipationIfAvailable(
+                campaign.getId(),
+                request.getAmount(),
+                1,
+                FundingStatus.ACTIVE,
+                LocalDateTime.now()
+        );
         if (updated == 0) {
             throw new BusinessException(FundingErrorCode.CAMPAIGN_NOT_ACTIVE);
         }
