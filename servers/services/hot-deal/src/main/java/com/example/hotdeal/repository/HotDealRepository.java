@@ -28,6 +28,12 @@ public interface HotDealRepository extends JpaRepository<HotDeal, Long> {
     boolean existsByItemIdAndStatusIn(Long itemId, List<HotDealStatus> statuses);
 
     @Modifying
-    @Query("UPDATE HotDeal h SET h.soldQuantity = h.soldQuantity + :quantity WHERE h.id = :id")
+    @Query("""
+            UPDATE HotDeal h
+            SET h.soldQuantity = h.soldQuantity + :quantity
+            WHERE h.id = :id
+              AND h.status = 'ACTIVE'
+              AND (h.soldQuantity + :quantity) <= h.maxQuantity
+            """)
     int incrementSoldQuantity(@Param("id") Long id, @Param("quantity") int quantity);
 }

@@ -2,7 +2,6 @@ package com.example.hotdeal.consumer;
 
 import com.example.config.kafka.IdempotentConsumerService;
 import com.example.hotdeal.client.ProductClient;
-import com.example.hotdeal.client.StockClient;
 import com.example.hotdeal.entity.HotDealStatus;
 import com.example.hotdeal.repository.HotDealRepository;
 import com.example.hotdeal.service.HotDealCommandService;
@@ -25,34 +24,33 @@ public class StockEventConsumer {
     private final HotDealRepository hotDealRepository;
     private final HotDealCommandService hotDealCommandService;
     private final ProductClient productClient;
-    private final StockClient stockClient;
     private final ObjectMapper objectMapper;
 
-    @KafkaListener(topics = "stock-events", groupId = "hot-deal-service-group")
+    @KafkaListener(topics = "stock-events", groupId = "${spring.kafka.consumer.group-id}")
     public void consume(String message) {
         try {
             JsonNode event = objectMapper.readTree(message);
             String eventType = event.path("eventType").asText();
             String eventId = event.path("eventId").asText();
 
-            if (!"STOCK_THRESHOLD".equals(eventType)) {
+            if (!"STOCK_THRESHOLD_REACHED".equals(eventType)) {
                 return;
             }
 
             idempotentConsumerService.executeIdempotent(eventId, "STOCK_EVENT", () -> {
-                handleStockThreshold(event.path("payload"));
+                handleStockThreshold(event);
                 return null;
             });
         } catch (Exception e) {
             log.error("Stock event consumption failed", e);
+            throw new IllegalStateException("Failed to consume stock event", e);
         }
     }
 
     private void handleStockThreshold(JsonNode payload) {
         Long itemId = payload.path("itemId").asLong();
-        Long stockItemId = payload.path("stockItemId").asLong();
         int totalQuantity = payload.path("totalQuantity").asInt();
-        int availableQuantity = payload.path("availableQuantity").asInt();
+        int remainingQuantity = payload.path("remainingQuantity").asInt();
 
         if (totalQuantity == 0) {
             return;
@@ -65,7 +63,7 @@ public class StockEventConsumer {
             return;
         }
 
-        double remainingRate = (double) availableQuantity / totalQuantity * 100;
+        double remainingRate = (double) remainingQuantity / totalQuantity * 100;
 
         // 잔여율 20% 미만이면 스킵
         if (remainingRate < 20) {
@@ -88,11 +86,11 @@ public class StockEventConsumer {
         }
 
         hotDealCommandService.createAndActivate(
-                itemId, title, price, discountRate, availableQuantity,
+                itemId, title, price, discountRate, remainingQuantity, 1,
                 LocalDateTime.now(), LocalDateTime.now().plusDays(1),
                 "재고 임계값 이벤트 — 잔여율 " + String.format("%.1f", remainingRate) + "%");
 
-        log.info("Hot deal created from stock threshold: itemId={}, remainingRate={:.1f}%",
-                itemId, remainingRate);
+        log.info("Hot deal created from stock threshold: itemId={}, remainingRate={}%",
+                itemId, String.format("%.1f", remainingRate));
     }
 }

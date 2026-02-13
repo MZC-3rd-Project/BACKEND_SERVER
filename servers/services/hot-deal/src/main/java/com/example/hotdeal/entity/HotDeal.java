@@ -51,6 +51,9 @@ public class HotDeal extends BaseEntity {
     @Column(name = "max_quantity", nullable = false)
     private Integer maxQuantity;
 
+    @Column(name = "max_per_user", nullable = false)
+    private Integer maxPerUser;
+
     @Column(name = "sold_quantity", nullable = false)
     private Integer soldQuantity;
 
@@ -59,7 +62,7 @@ public class HotDeal extends BaseEntity {
     private HotDealStatus status;
 
     public static HotDeal create(Long itemId, String title, Long originalPrice,
-                                  Integer discountRate, Integer maxQuantity,
+                                  Integer discountRate, Integer maxQuantity, Integer maxPerUser,
                                   LocalDateTime startAt, LocalDateTime endAt) {
         HotDeal hotDeal = new HotDeal();
         hotDeal.itemId = itemId;
@@ -68,6 +71,7 @@ public class HotDeal extends BaseEntity {
         hotDeal.discountRate = discountRate;
         hotDeal.discountedPrice = originalPrice * (100 - discountRate) / 100;
         hotDeal.maxQuantity = maxQuantity;
+        hotDeal.maxPerUser = maxPerUser != null ? maxPerUser : 1;
         hotDeal.soldQuantity = 0;
         hotDeal.startAt = startAt;
         hotDeal.endAt = endAt;

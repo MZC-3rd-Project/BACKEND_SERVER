@@ -44,10 +44,9 @@ public class HotDealSelectionScheduler {
             int selectedCount = 0;
 
             for (JsonNode item : items) {
-                Long itemId = item.path("itemId").asLong();
+                Long itemId = item.path("id").asLong();
                 String title = item.path("title").asText();
                 Long price = item.path("price").asLong();
-                Long stockItemId = item.path("stockItemId").asLong();
 
                 // 이미 핫딜로 등록된 상품인지 확인
                 boolean exists = hotDealRepository.existsByItemIdAndStatusIn(
@@ -56,8 +55,13 @@ public class HotDealSelectionScheduler {
                     continue;
                 }
 
-                // 재고 정보 조회
-                JsonNode stockInfo = stockClient.getStockInfo(stockItemId);
+                // 재고 정보 조회 (itemId 기반)
+                JsonNode stockSummary = stockClient.getStockInfoByItemId(itemId);
+                JsonNode stocks = stockSummary.path("stocks");
+                if (!stocks.isArray() || stocks.isEmpty()) {
+                    continue;
+                }
+                JsonNode stockInfo = stocks.get(0);
                 int totalQuantity = stockInfo.path("totalQuantity").asInt();
                 int availableQuantity = stockInfo.path("availableQuantity").asInt();
 
@@ -77,13 +81,13 @@ public class HotDealSelectionScheduler {
 
                 // 핫딜 생성 및 활성화
                 hotDealCommandService.createAndActivate(
-                        itemId, title, price, discountRate, availableQuantity,
+                        itemId, title, price, discountRate, availableQuantity, 1,
                         LocalDateTime.now(), LocalDateTime.now().plusDays(3),
                         "자동 선정 — 잔여율 " + String.format("%.1f", remainingRate) + "%");
 
                 selectedCount++;
-                log.info("Hot deal selected: itemId={}, title={}, remainingRate={:.1f}%, discountRate={}%",
-                        itemId, title, remainingRate, discountRate);
+                log.info("Hot deal selected: itemId={}, title={}, remainingRate={}%, discountRate={}%",
+                        itemId, title, String.format("%.1f", remainingRate), discountRate);
             }
 
             log.info("Hot deal selection completed: {} deals created", selectedCount);
