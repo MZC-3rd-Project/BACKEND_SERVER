@@ -28,7 +28,7 @@ public class FundingEventConsumer {
     private final EventPublisher eventPublisher;
     private final IdempotentConsumerService idempotentConsumerService;
 
-    @KafkaListener(topics = "funding-events", groupId = "product-service-group")
+    @KafkaListener(topics = "funding-events", groupId = "${spring.kafka.consumer.group-id}")
     @Transactional
     public void consume(String message) {
         try {
@@ -41,7 +41,7 @@ public class FundingEventConsumer {
 
             idempotentConsumerService.executeIdempotent(event.getEventId(), "FUNDING_EVENT", () -> {
                 switch (event.getEventType()) {
-                    case "FUNDING_COMPLETED" -> handleFundingCompleted(event);
+                    case "FUNDING_SUCCEEDED" -> handleFundingSucceeded(event);
                     case "FUNDING_FAILED" -> handleFundingFailed(event);
                     default -> log.warn("[FundingConsumer] Unknown event type: {}", event.getEventType());
                 }
@@ -53,13 +53,13 @@ public class FundingEventConsumer {
         }
     }
 
-    private void handleFundingCompleted(FundingEventMessage event) {
+    private void handleFundingSucceeded(FundingEventMessage event) {
         if (event.getItemId() == null) {
-            log.error("[FundingConsumer] FUNDING_COMPLETED: itemId가 null입니다");
+            log.error("[FundingConsumer] FUNDING_SUCCEEDED: itemId가 null입니다");
             return;
         }
         changeItemStatus(event.getItemId(), ItemStatus.FUNDED, "펀딩 성공");
-        log.info("[FundingConsumer] FUNDING_COMPLETED -> FUNDED for item #{}", event.getItemId());
+        log.info("[FundingConsumer] FUNDING_SUCCEEDED -> FUNDED for item #{}", event.getItemId());
     }
 
     private void handleFundingFailed(FundingEventMessage event) {

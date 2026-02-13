@@ -70,8 +70,8 @@ public class Item extends BaseEntity {
         if (title != null) this.title = title;
         if (description != null) this.description = description;
         if (price != null) this.price = price;
-        this.categoryId = categoryId;
-        this.thumbnailUrl = thumbnailUrl;
+        if (categoryId != null) this.categoryId = categoryId;
+        if (thumbnailUrl != null) this.thumbnailUrl = thumbnailUrl;
     }
 
     public void changeStatus(ItemStatus newStatus) {
@@ -91,5 +91,12 @@ public class Item extends BaseEntity {
 
     public boolean isEditable() {
         return this.status == ItemStatus.DRAFT;
+    }
+
+    public boolean isDeletable() {
+        return switch (this.status) {
+            case FUNDING, FUNDED, ON_SALE, HOT_DEAL -> false;
+            default -> true;
+        };
     }
 }

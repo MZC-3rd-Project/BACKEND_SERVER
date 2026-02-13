@@ -74,6 +74,9 @@ public class PerformanceCommandService {
     public PerformanceDetailResponse update(Long itemId, PerformanceUpdateRequest request, Long sellerId) {
         Item item = getItem(itemId);
         item.validateOwnership(sellerId);
+        if (!item.isEditable()) {
+            throw new BusinessException(ProductErrorCode.ITEM_NOT_EDITABLE);
+        }
 
         item.update(request.getTitle(), request.getDescription(), request.getPrice(),
                 request.getCategoryId(), request.getThumbnailUrl());
@@ -112,6 +115,9 @@ public class PerformanceCommandService {
     public void delete(Long itemId, Long sellerId) {
         Item item = getItem(itemId);
         item.validateOwnership(sellerId);
+        if (!item.isDeletable()) {
+            throw new BusinessException(ProductErrorCode.ITEM_NOT_DELETABLE);
+        }
         item.softDelete();
 
         Performance performance = performanceRepository.findByItemId(itemId).orElse(null);

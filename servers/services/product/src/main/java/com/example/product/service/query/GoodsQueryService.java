@@ -6,6 +6,7 @@ import com.example.core.pagination.CursorUtils;
 import com.example.product.dto.goods.response.GoodsDetailResponse;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.goods.ItemGoodsLink;
+import com.example.product.entity.item.ItemStatus;
 import com.example.product.entity.goods.ItemOption;
 import com.example.product.entity.item.ItemType;
 import com.example.product.entity.goods.ShippingInfo;
@@ -43,13 +44,16 @@ public class GoodsQueryService {
         return GoodsDetailResponse.of(item, options, shippingInfo, linkedIds);
     }
 
+    private static final List<ItemStatus> VISIBLE_STATUSES = List.of(
+            ItemStatus.FUNDING, ItemStatus.FUNDED, ItemStatus.ON_SALE, ItemStatus.HOT_DEAL);
+
     public CursorResponse<GoodsDetailResponse> findGoodsList(String cursor, int size) {
         Long cursorId = CursorUtils.decodeLong(cursor);
         PageRequest pageable = PageRequest.of(0, size + 1);
 
         List<Item> items = cursorId == null
-                ? itemRepository.findByItemTypeOrderByIdDesc(ItemType.GOODS, pageable)
-                : itemRepository.findByItemTypeAndIdLessThan(ItemType.GOODS, cursorId, pageable);
+                ? itemRepository.findByItemTypeAndStatusIn(ItemType.GOODS, VISIBLE_STATUSES, pageable)
+                : itemRepository.findByItemTypeAndStatusInAndIdLessThan(ItemType.GOODS, VISIBLE_STATUSES, cursorId, pageable);
 
         boolean hasNext = items.size() > size;
         List<Item> pageItems = hasNext ? items.subList(0, size) : items;
