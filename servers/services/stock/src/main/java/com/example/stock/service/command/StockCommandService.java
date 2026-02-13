@@ -113,8 +113,6 @@ public class StockCommandService {
                 stockItem.getId(), ChangeType.CONFIRM, reservation.getQuantity(),
                 "예약 확정", reservation.getId()));
 
-        publishStockEvents(stockItem, reservation.getQuantity());
-
         return ReservationResponse.from(reservation);
     }
 
@@ -129,8 +127,6 @@ public class StockCommandService {
         stockHistoryRepository.save(StockHistory.create(
                 stockItem.getId(), ChangeType.CONFIRM, reservation.getQuantity(),
                 "예약 확정 (결제 완료)", reservation.getId()));
-
-        publishStockEvents(stockItem, reservation.getQuantity());
 
         return ReservationResponse.from(reservation);
     }
@@ -180,7 +176,13 @@ public class StockCommandService {
         return StockResponse.from(stockItem);
     }
 
-    public void expireReservation(StockReservation reservation) {
+    @DistributedLock(key = "'stock:reservation:' + #reservationId", waitTime = 3)
+    public void expireReservationById(Long reservationId) {
+        StockReservation reservation = stockReservationRepository.findById(reservationId).orElse(null);
+        if (reservation == null || reservation.getStatus() != ReservationStatus.RESERVED || !reservation.isExpired()) {
+            return;
+        }
+
         reservation.expire();
 
         StockItem stockItem = stockItemRepository.findByIdWithLock(reservation.getStockItemId())
