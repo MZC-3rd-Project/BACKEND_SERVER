@@ -57,23 +57,11 @@ public class ParticipationCommandService {
     }
 
     public void refund(Long participationId, Long userId) {
-        FundingParticipation participation = participationRepository.findById(participationId)
-                .orElseThrow(() -> new BusinessException(FundingErrorCode.PARTICIPATION_NOT_FOUND));
-
-        FundingCampaign campaign = campaignRepository.findById(participation.getCampaignId())
-                .orElseThrow(() -> new BusinessException(FundingErrorCode.CAMPAIGN_NOT_FOUND));
-
-        if (!campaign.isActive()) {
-            throw new BusinessException(FundingErrorCode.CAMPAIGN_NOT_ACTIVE);
-        }
-
-        if (participation.getReservationId() != null) {
-            stockClient.cancelReservation(participation.getReservationId());
-        }
-        transactionTemplate.executeWithoutResult(status -> refundInTransaction(participationId, userId));
+        Long reservationId = transactionTemplate.execute(status -> refundInTransaction(participationId, userId));
+        cancelReservationAfterCommit(participationId, reservationId);
     }
 
-    private void refundInTransaction(Long participationId, Long userId) {
+    private Long refundInTransaction(Long participationId, Long userId) {
         FundingParticipation participation = participationRepository.findById(participationId)
                 .orElseThrow(() -> new BusinessException(FundingErrorCode.PARTICIPATION_NOT_FOUND));
 
@@ -97,6 +85,22 @@ public class ParticipationCommandService {
                 ),
                 EventMetadata.of("FundingCampaign", String.valueOf(campaign.getId()))
         );
+
+        return participation.getReservationId();
+    }
+
+    private void cancelReservationAfterCommit(Long participationId, Long reservationId) {
+        if (reservationId == null) {
+            return;
+        }
+
+        try {
+            stockClient.cancelReservation(reservationId);
+        } catch (Exception e) {
+            // Local refund has been committed. Keep it and alert for stock reconciliation.
+            log.error("Participation refunded but stock reservation cancel failed: participationId={}, reservationId={}",
+                    participationId, reservationId, e);
+        }
     }
 
     private ParticipationResponse participateAmountBased(Long campaignId,
