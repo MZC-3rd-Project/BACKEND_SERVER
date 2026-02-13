@@ -21,8 +21,18 @@ public interface FundingCampaignRepository extends JpaRepository<FundingCampaign
 
     @Modifying
     @Query("UPDATE FundingCampaign c SET c.currentAmount = c.currentAmount + :amount, " +
-            "c.currentQuantity = c.currentQuantity + :quantity WHERE c.id = :id")
-    int incrementParticipation(@Param("id") Long id, @Param("amount") Long amount, @Param("quantity") int quantity);
+            "c.currentQuantity = c.currentQuantity + :quantity " +
+            "WHERE c.id = :id " +
+            "AND c.status = :status " +
+            "AND c.startAt <= :now " +
+            "AND c.endAt > :now " +
+            "AND (c.goalAmount IS NULL OR c.currentAmount + :amount <= c.goalAmount) " +
+            "AND (c.goalQuantity IS NULL OR c.currentQuantity + :quantity <= c.goalQuantity)")
+    int incrementParticipationIfAvailable(@Param("id") Long id,
+                                          @Param("amount") Long amount,
+                                          @Param("quantity") int quantity,
+                                          @Param("status") FundingStatus status,
+                                          @Param("now") LocalDateTime now);
 
     @Modifying
     @Query("UPDATE FundingCampaign c SET c.currentAmount = c.currentAmount - :amount, " +
