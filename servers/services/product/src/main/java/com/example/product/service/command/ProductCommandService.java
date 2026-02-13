@@ -95,6 +95,9 @@ public class ProductCommandService {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
         item.validateOwnership(sellerId);
+        if (!item.isDeletable()) {
+            throw new BusinessException(ProductErrorCode.ITEM_NOT_DELETABLE);
+        }
         item.softDelete();
 
         itemOptionRepository.softDeleteAllByItemId(itemId);

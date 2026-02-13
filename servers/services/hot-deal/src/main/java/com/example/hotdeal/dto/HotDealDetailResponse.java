@@ -2,12 +2,17 @@ package com.example.hotdeal.dto;
 
 import com.example.core.id.jackson.SnowflakeId;
 import com.example.hotdeal.entity.HotDeal;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 @Builder
 public class HotDealDetailResponse {
 
@@ -18,6 +23,7 @@ public class HotDealDetailResponse {
     private Integer discountRate;
     private Long discountedPrice;
     private Integer maxQuantity;
+    private Integer maxPerUser;
     private Integer soldQuantity;
     private Integer remainingQuantity;
     private Double progressRate;
@@ -39,6 +45,7 @@ public class HotDealDetailResponse {
                 .discountRate(h.getDiscountRate())
                 .discountedPrice(h.getDiscountedPrice())
                 .maxQuantity(h.getMaxQuantity())
+                .maxPerUser(h.getMaxPerUser())
                 .soldQuantity(h.getSoldQuantity())
                 .remainingQuantity(h.getRemainingQuantity())
                 .progressRate(Math.round(progress * 10.0) / 10.0)

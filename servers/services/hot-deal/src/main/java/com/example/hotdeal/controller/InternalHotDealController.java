@@ -30,6 +30,7 @@ public class InternalHotDealController {
                 request.getOriginalPrice(),
                 request.getDiscountRate(),
                 request.getMaxQuantity(),
+                request.getMaxPerUser() != null ? request.getMaxPerUser() : 1,
                 request.getStartAt() != null ? request.getStartAt() : LocalDateTime.now(),
                 request.getEndAt() != null ? request.getEndAt() : LocalDateTime.now().plusHours(1),
                 "수동 생성");
@@ -44,6 +45,7 @@ public class InternalHotDealController {
         private Long originalPrice;
         private Integer discountRate;
         private Integer maxQuantity;
+        private Integer maxPerUser;
         private LocalDateTime startAt;
         private LocalDateTime endAt;
     }

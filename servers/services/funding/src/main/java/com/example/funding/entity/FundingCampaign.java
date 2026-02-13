@@ -105,7 +105,10 @@ public class FundingCampaign extends BaseEntity {
     }
 
     public boolean isActive() {
-        return this.status == FundingStatus.ACTIVE;
+        LocalDateTime now = LocalDateTime.now();
+        return this.status == FundingStatus.ACTIVE
+                && !now.isBefore(this.startAt)
+                && now.isBefore(this.endAt);
     }
 
     public boolean isExpired() {
@@ -120,7 +123,7 @@ public class FundingCampaign extends BaseEntity {
 
     public void update(Long goalAmount, Integer goalQuantity, Long minAmount,
                        LocalDateTime startAt, LocalDateTime endAt) {
-        if (!isActive()) {
+        if (this.status != FundingStatus.ACTIVE || isExpired()) {
             throw new BusinessException(FundingErrorCode.CAMPAIGN_NOT_EDITABLE);
         }
         this.goalAmount = goalAmount;

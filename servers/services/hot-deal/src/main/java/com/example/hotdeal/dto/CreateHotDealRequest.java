@@ -24,6 +24,9 @@ public class CreateHotDealRequest {
     @Min(value = 1, message = "최대 수량은 1 이상이어야 합니다")
     private Integer maxQuantity;
 
+    @Min(value = 1, message = "1인당 최대 구매 수량은 1 이상이어야 합니다")
+    private Integer maxPerUser;
+
     private LocalDateTime startAt;
 
     private LocalDateTime endAt;

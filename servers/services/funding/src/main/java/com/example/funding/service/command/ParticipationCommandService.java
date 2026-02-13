@@ -2,6 +2,7 @@ package com.example.funding.service.command;
 
 import com.example.core.exception.BusinessException;
 import com.example.core.id.Snowflake;
+import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;
 import com.example.funding.client.StockClient;
 import com.example.funding.dto.participation.request.ParticipateRequest;
@@ -18,12 +19,11 @@ import com.example.funding.service.CampaignCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class ParticipationCommandService {
 
     private final FundingCampaignRepository campaignRepository;
@@ -32,6 +32,7 @@ public class ParticipationCommandService {
     private final CampaignCacheService campaignCacheService;
     private final EventPublisher eventPublisher;
     private final Snowflake snowflake;
+    private final TransactionTemplate transactionTemplate;
 
     public ParticipationResponse participate(Long campaignId, ParticipateRequest request, Long userId) {
         FundingCampaign campaign = campaignRepository.findById(campaignId)
@@ -48,9 +49,10 @@ public class ParticipationCommandService {
         Long orderId = snowflake.nextId();
 
         if (campaign.getFundingType() == FundingType.AMOUNT_BASED) {
-            return participateAmountBased(campaign, request, userId, orderId);
+            return transactionTemplate.execute(status ->
+                    participateAmountBased(campaignId, request, userId, orderId));
         } else {
-            return participateQuantityBased(campaign, request, userId, orderId);
+            return participateQuantityBased(campaign, campaignId, request, userId, orderId);
         }
     }
 
@@ -65,24 +67,43 @@ public class ParticipationCommandService {
             throw new BusinessException(FundingErrorCode.CAMPAIGN_NOT_ACTIVE);
         }
 
-        // Stock 예약 취소 (QUANTITY_BASED만)
         if (participation.getReservationId() != null) {
             stockClient.cancelReservation(participation.getReservationId());
         }
+        transactionTemplate.executeWithoutResult(status -> refundInTransaction(participationId, userId));
+    }
+
+    private void refundInTransaction(Long participationId, Long userId) {
+        FundingParticipation participation = participationRepository.findById(participationId)
+                .orElseThrow(() -> new BusinessException(FundingErrorCode.PARTICIPATION_NOT_FOUND));
+
+        FundingCampaign campaign = campaignRepository.findById(participation.getCampaignId())
+                .orElseThrow(() -> new BusinessException(FundingErrorCode.CAMPAIGN_NOT_FOUND));
+
+        if (!campaign.isActive()) {
+            throw new BusinessException(FundingErrorCode.CAMPAIGN_NOT_ACTIVE);
+        }
 
         participation.refund();
-        campaign.removeParticipation(participation.getAmount(), participation.getQuantity());
+        campaignRepository.decrementParticipation(campaign.getId(),
+                participation.getAmount(), participation.getQuantity());
         campaignCacheService.decrementProgress(campaign.getId(),
                 participation.getAmount(), participation.getQuantity());
 
-        eventPublisher.publish(new FundingRefundedEvent(
-                campaign.getId(), participation.getId(), participation.getOrderId(),
-                userId, participation.getAmount()));
+        eventPublisher.publish(
+                new FundingRefundedEvent(
+                        campaign.getId(), participation.getId(), participation.getOrderId(),
+                        userId, participation.getAmount()
+                ),
+                EventMetadata.of("FundingCampaign", String.valueOf(campaign.getId()))
+        );
     }
 
-    private ParticipationResponse participateAmountBased(FundingCampaign campaign,
+    private ParticipationResponse participateAmountBased(Long campaignId,
                                                           ParticipateRequest request, Long userId, Long orderId) {
-        // 최소 금액 검증
+        FundingCampaign campaign = campaignRepository.findById(campaignId)
+                .orElseThrow(() -> new BusinessException(FundingErrorCode.CAMPAIGN_NOT_FOUND));
+
         if (campaign.getMinAmount() != null && request.getAmount() < campaign.getMinAmount()) {
             throw new BusinessException(FundingErrorCode.BELOW_MIN_AMOUNT);
         }
@@ -93,40 +114,74 @@ public class ParticipationCommandService {
         );
 
         participationRepository.save(participation);
-        campaign.addParticipation(request.getAmount(), 1);
+        int updated = campaignRepository.incrementParticipation(campaign.getId(), request.getAmount(), 1);
+        if (updated == 0) {
+            throw new BusinessException(FundingErrorCode.CAMPAIGN_NOT_ACTIVE);
+        }
         campaignCacheService.incrementProgress(campaign.getId(), request.getAmount(), 1);
 
-        eventPublisher.publish(new FundingParticipatedEvent(
-                campaign.getId(), participation.getId(), orderId,
-                userId, request.getAmount(), 1, campaign.getFundingType().name()));
+        eventPublisher.publish(
+                new FundingParticipatedEvent(
+                        campaign.getId(), participation.getId(), orderId,
+                        userId, request.getAmount(), 1, campaign.getFundingType().name()
+                ),
+                EventMetadata.of("FundingCampaign", String.valueOf(campaign.getId()))
+        );
 
         return ParticipationResponse.from(participation);
     }
 
-    private ParticipationResponse participateQuantityBased(FundingCampaign campaign,
+    private ParticipationResponse participateQuantityBased(FundingCampaign campaign, Long campaignId,
                                                             ParticipateRequest request, Long userId, Long orderId) {
         int quantity = request.getQuantity() != null ? request.getQuantity() : 1;
         Long referenceId = request.getSeatGradeId() != null
                 ? request.getSeatGradeId()
                 : request.getItemOptionId();
 
-        // Stock TCC Reserve
+        // HTTP calls OUTSIDE transaction
         Long stockItemId = stockClient.findStockItemId(campaign.getItemId(), referenceId);
         Long reservationId = stockClient.reserveStock(stockItemId, userId, quantity, orderId);
 
-        FundingParticipation participation = FundingParticipation.create(
-                campaign.getId(), userId, request.getAmount(),
-                quantity, request.getSeatGradeId(), request.getItemOptionId(), orderId, reservationId
-        );
+        try {
+            // DB operations INSIDE transaction
+            return transactionTemplate.execute(status -> {
+                FundingCampaign c = campaignRepository.findByIdWithLock(campaignId)
+                        .orElseThrow(() -> new BusinessException(FundingErrorCode.CAMPAIGN_NOT_FOUND));
 
-        participationRepository.save(participation);
-        campaign.addParticipation(request.getAmount(), quantity);
-        campaignCacheService.incrementProgress(campaign.getId(), request.getAmount(), quantity);
+                if (!c.isActive()) {
+                    throw new BusinessException(FundingErrorCode.CAMPAIGN_NOT_ACTIVE);
+                }
+                if (c.getGoalQuantity() != null && c.getCurrentQuantity() + quantity > c.getGoalQuantity()) {
+                    throw new BusinessException(FundingErrorCode.GOAL_QUANTITY_EXCEEDED);
+                }
 
-        eventPublisher.publish(new FundingParticipatedEvent(
-                campaign.getId(), participation.getId(), orderId,
-                userId, request.getAmount(), quantity, campaign.getFundingType().name()));
+                FundingParticipation participation = FundingParticipation.create(
+                        c.getId(), userId, request.getAmount(),
+                        quantity, request.getSeatGradeId(), request.getItemOptionId(), orderId, reservationId
+                );
 
-        return ParticipationResponse.from(participation);
+                participationRepository.save(participation);
+                c.addParticipation(request.getAmount(), quantity);
+                campaignCacheService.incrementProgress(c.getId(), request.getAmount(), quantity);
+
+                eventPublisher.publish(
+                        new FundingParticipatedEvent(
+                                c.getId(), participation.getId(), orderId,
+                                userId, request.getAmount(), quantity, c.getFundingType().name()
+                        ),
+                        EventMetadata.of("FundingCampaign", String.valueOf(c.getId()))
+                );
+
+                return ParticipationResponse.from(participation);
+            });
+        } catch (RuntimeException e) {
+            try {
+                stockClient.cancelReservation(reservationId);
+            } catch (Exception cancelError) {
+                log.error("Failed to cancel stock reservation after participation rollback: reservationId={}",
+                        reservationId, cancelError);
+            }
+            throw e;
+        }
     }
 }

@@ -1,16 +1,22 @@
 package com.example.funding.service.command;
 
 import com.example.core.exception.BusinessException;
+import com.example.funding.client.StockClient;
 import com.example.funding.dto.campaign.request.CampaignCreateRequest;
 import com.example.funding.dto.campaign.request.CampaignUpdateRequest;
 import com.example.funding.dto.campaign.response.CampaignResponse;
 import com.example.funding.entity.FundingCampaign;
+import com.example.funding.entity.FundingParticipation;
 import com.example.funding.entity.FundingStatus;
 import com.example.funding.entity.FundingStatusHistory;
 import com.example.funding.entity.FundingType;
 import com.example.funding.event.FundingCreatedEvent;
+import com.example.funding.event.FundingFailedEvent;
+import com.example.funding.event.FundingRefundedEvent;
+import com.example.funding.entity.ParticipationStatus;
 import com.example.funding.exception.FundingErrorCode;
 import com.example.funding.repository.FundingCampaignRepository;
+import com.example.funding.repository.FundingParticipationRepository;
 import com.example.funding.repository.FundingStatusHistoryRepository;
 import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;
@@ -19,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -26,7 +33,9 @@ import java.time.LocalDateTime;
 public class CampaignCommandService {
 
     private final FundingCampaignRepository campaignRepository;
+    private final FundingParticipationRepository participationRepository;
     private final FundingStatusHistoryRepository statusHistoryRepository;
+    private final StockClient stockClient;
     private final EventPublisher eventPublisher;
 
     public CampaignResponse create(CampaignCreateRequest request, Long sellerId) {
@@ -84,11 +93,39 @@ public class CampaignCommandService {
         FundingCampaign campaign = findCampaign(campaignId);
         campaign.validateOwnership(sellerId);
 
+        List<FundingParticipation> pendingParticipations =
+                participationRepository.findByCampaignIdAndStatus(campaignId, ParticipationStatus.PENDING);
+
+        for (FundingParticipation participation : pendingParticipations) {
+            if (participation.getReservationId() != null) {
+                stockClient.cancelReservation(participation.getReservationId());
+            }
+            participation.refund();
+            campaign.removeParticipation(participation.getAmount(), participation.getQuantity());
+
+            eventPublisher.publish(
+                    new FundingRefundedEvent(
+                            campaign.getId(), participation.getId(), participation.getOrderId(),
+                            participation.getUserId(), participation.getAmount()
+                    ),
+                    EventMetadata.of("FundingCampaign", String.valueOf(campaign.getId()))
+            );
+        }
+
         FundingStatus previousStatus = campaign.getStatus();
         campaign.changeStatus(FundingStatus.CANCELLED);
 
         statusHistoryRepository.save(
                 FundingStatusHistory.create(campaignId, previousStatus, FundingStatus.CANCELLED, reason)
+        );
+
+        eventPublisher.publish(
+                new FundingFailedEvent(
+                        campaign.getId(), campaign.getItemId(), campaign.getSellerId(),
+                        campaign.getFundingType().name(), campaign.getGoalAmount(),
+                        campaign.getCurrentAmount(), campaign.getCurrentQuantity()
+                ),
+                EventMetadata.of("FundingCampaign", String.valueOf(campaign.getId()))
         );
     }
 

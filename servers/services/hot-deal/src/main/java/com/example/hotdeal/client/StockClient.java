@@ -42,4 +42,28 @@ public class StockClient {
             throw new BusinessException(HotDealErrorCode.STOCK_SERVICE_ERROR);
         }
     }
+
+    /**
+     * 아이템 ID 기반 재고 정보 조회
+     */
+    public JsonNode getStockInfoByItemId(Long itemId) {
+        try {
+            JsonNode response = webClient.get()
+                    .uri("/internal/v1/stock/items/{itemId}", itemId)
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block();
+
+            if (response == null || !response.path("success").asBoolean()) {
+                throw new BusinessException(HotDealErrorCode.STOCK_SERVICE_ERROR);
+            }
+
+            return response.path("data");
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Stock info lookup by itemId failed: itemId={}", itemId, e);
+            throw new BusinessException(HotDealErrorCode.STOCK_SERVICE_ERROR);
+        }
+    }
 }
