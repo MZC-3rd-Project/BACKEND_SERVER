@@ -14,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -28,29 +28,37 @@ public class FundingDeadlineScheduler {
     private final FundingStatusHistoryRepository statusHistoryRepository;
     private final CampaignCacheService campaignCacheService;
     private final EventPublisher eventPublisher;
+    private final TransactionTemplate transactionTemplate;
 
     @Scheduled(fixedDelay = 60000)
-    @Transactional
     public void judgeExpiredCampaigns() {
-        List<FundingCampaign> expired = campaignRepository
-                .findExpiredCampaigns(FundingStatus.ACTIVE, LocalDateTime.now());
+        List<Long> expiredCampaignIds = campaignRepository
+                .findExpiredCampaigns(FundingStatus.ACTIVE, LocalDateTime.now())
+                .stream()
+                .map(FundingCampaign::getId)
+                .toList();
 
-        if (expired.isEmpty()) {
+        if (expiredCampaignIds.isEmpty()) {
             return;
         }
 
-        log.info("만료된 펀딩 캠페인 {} 건 판정 시작", expired.size());
+        log.info("만료된 펀딩 캠페인 {} 건 판정 시작", expiredCampaignIds.size());
 
-        for (FundingCampaign campaign : expired) {
+        for (Long campaignId : expiredCampaignIds) {
             try {
-                judgeCampaign(campaign);
+                transactionTemplate.executeWithoutResult(status -> judgeCampaign(campaignId));
             } catch (Exception e) {
-                log.error("캠페인 판정 실패: campaignId={}", campaign.getId(), e);
+                log.error("캠페인 판정 실패: campaignId={}", campaignId, e);
             }
         }
     }
 
-    private void judgeCampaign(FundingCampaign campaign) {
+    private void judgeCampaign(Long campaignId) {
+        FundingCampaign campaign = campaignRepository.findById(campaignId).orElse(null);
+        if (campaign == null || campaign.getStatus() != FundingStatus.ACTIVE || !campaign.isExpired()) {
+            return;
+        }
+
         FundingStatus previousStatus = campaign.getStatus();
         FundingStatus newStatus;
         String reason;
