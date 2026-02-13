@@ -68,21 +68,11 @@ public class PurchaseCommandService {
     }
 
     public void cancel(Long purchaseId, Long userId) {
-        Purchase existingPurchase = purchaseRepository.findById(purchaseId)
-                .orElseThrow(() -> new BusinessException(SalesErrorCode.PURCHASE_NOT_FOUND));
-
-        if (!existingPurchase.getUserId().equals(userId)) {
-            throw new BusinessException(SalesErrorCode.PURCHASE_NOT_CANCELLABLE);
-        }
-
-        if (existingPurchase.getReservationId() != null) {
-            stockClient.cancelReservation(existingPurchase.getReservationId());
-        }
-
-        transactionTemplate.executeWithoutResult(status -> cancelInTransaction(purchaseId, userId));
+        Long reservationId = transactionTemplate.execute(status -> cancelInTransaction(purchaseId, userId));
+        cancelReservationAfterCommit(purchaseId, reservationId);
     }
 
-    private void cancelInTransaction(Long purchaseId, Long userId) {
+    private Long cancelInTransaction(Long purchaseId, Long userId) {
         Purchase purchase = purchaseRepository.findById(purchaseId)
                 .orElseThrow(() -> new BusinessException(SalesErrorCode.PURCHASE_NOT_FOUND));
 
@@ -99,5 +89,21 @@ public class PurchaseCommandService {
                 ),
                 EventMetadata.of("Purchase", String.valueOf(purchase.getId()))
         );
+
+        return purchase.getReservationId();
+    }
+
+    private void cancelReservationAfterCommit(Long purchaseId, Long reservationId) {
+        if (reservationId == null) {
+            return;
+        }
+
+        try {
+            stockClient.cancelReservation(reservationId);
+        } catch (Exception e) {
+            // Local cancellation has been committed. Keep it and alert for stock reconciliation.
+            log.error("Purchase cancelled but stock reservation cancel failed: purchaseId={}, reservationId={}",
+                    purchaseId, reservationId, e);
+        }
     }
 }
