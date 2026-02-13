@@ -6,11 +6,11 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.Semaphore;
 
 @Slf4j
 @Component
@@ -20,50 +20,125 @@ public class OutboxRelayScheduler {
 
     private static final int MAX_RETRIES = 5;
     private static final int BATCH_SIZE = 100;
+    private static final int MAX_IN_FLIGHT = 32;
+    private static final int MAX_ERROR_MESSAGE_LENGTH = 240;
 
     private final OutboxRepository outboxRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final TransactionTemplate transactionTemplate;
+    private final Semaphore inFlightLimiter = new Semaphore(MAX_IN_FLIGHT);
 
     @Scheduled(fixedDelay = 5000)
     public void relayPendingMessages() {
         LocalDateTime fiveSecondsAgo = LocalDateTime.now().minusSeconds(5);
-        List<OutboxMessage> pendingMessages =
-                fetchPendingMessages(fiveSecondsAgo);
-
-        for (OutboxMessage message : pendingMessages) {
-            processMessage(message);
-        }
-    }
-
-    @Transactional
-    public List<OutboxMessage> fetchPendingMessages(LocalDateTime before) {
-        return outboxRepository.findPendingMessagesForRelay(
-                OutboxStatus.PENDING.name(), before, BATCH_SIZE);
-    }
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void processMessage(OutboxMessage message) {
-        if (message.exceedsMaxRetries(MAX_RETRIES)) {
-            message.markAsFailed("Max retries exceeded");
-            outboxRepository.save(message);
-            log.error("Outbox message exceeded max retries: eventId={}", message.getEventId());
+        List<OutboxMessage> pendingMessages = fetchPendingMessages(fiveSecondsAgo);
+        if (pendingMessages == null || pendingMessages.isEmpty()) {
             return;
         }
 
+        for (OutboxMessage message : pendingMessages) {
+            if (!inFlightLimiter.tryAcquire()) {
+                log.debug("Relay in-flight limit reached: limit={}", MAX_IN_FLIGHT);
+                break;
+            }
+            relayMessageAsync(message);
+        }
+    }
+
+    public List<OutboxMessage> fetchPendingMessages(LocalDateTime before) {
+        return transactionTemplate.execute(status -> outboxRepository.findPendingMessagesForRelay(
+                OutboxStatus.PENDING.name(), before, BATCH_SIZE));
+    }
+
+    private void relayMessageAsync(OutboxMessage message) {
         try {
-            message.markAsSending();
-            outboxRepository.save(message);
+            if (!tryMarkAsSending(message.getId(), message.getEventId())) {
+                inFlightLimiter.release();
+                return;
+            }
 
             kafkaTemplate.send(message.getTopic(), message.getAggregateId(), message.getPayload())
-                    .get(); // blocking for relay
-            message.markAsPublished();
-            log.info("Relay publish success: eventId={}", message.getEventId());
+                    .whenComplete((result, ex) -> {
+                        try {
+                            if (ex == null) {
+                                markAsPublished(message.getId(), message.getEventId());
+                            } else {
+                                handlePublishFailure(message.getId(), message.getEventId(), ex);
+                            }
+                        } finally {
+                            inFlightLimiter.release();
+                        }
+                    });
         } catch (Exception e) {
-            message.revertToPending();
-            message.incrementRetryCount();
-            log.warn("Relay publish failed: eventId={}, retry={}, error={}",
-                    message.getEventId(), message.getRetryCount(), e.getMessage());
+            handlePublishFailure(message.getId(), message.getEventId(), e);
+            inFlightLimiter.release();
         }
-        outboxRepository.save(message);
+    }
+
+    private boolean tryMarkAsSending(Long messageId, String eventId) {
+        return Boolean.TRUE.equals(transactionTemplate.execute(status -> {
+            OutboxMessage current = outboxRepository.findById(messageId).orElse(null);
+            if (current == null) {
+                return false;
+            }
+
+            if (current.exceedsMaxRetries(MAX_RETRIES)) {
+                current.markAsFailed("Max retries exceeded");
+                outboxRepository.save(current);
+                log.error("Outbox message exceeded max retries: eventId={}", eventId);
+                return false;
+            }
+
+            boolean marked = outboxRepository.updateStatusById(messageId, OutboxStatus.PENDING, OutboxStatus.SENDING) > 0;
+            if (!marked) {
+                log.debug("Outbox message already being processed: eventId={}", eventId);
+            }
+            return marked;
+        }));
+    }
+
+    private void markAsPublished(Long messageId, String eventId) {
+        transactionTemplate.executeWithoutResult(status ->
+                outboxRepository.findById(messageId).ifPresent(message -> {
+                    message.markAsPublished();
+                    outboxRepository.save(message);
+                    log.info("Relay publish success: eventId={}", eventId);
+                })
+        );
+    }
+
+    private void handlePublishFailure(Long messageId, String eventId, Throwable throwable) {
+        String errorMessage = shrinkErrorMessage(throwable);
+
+        transactionTemplate.executeWithoutResult(status ->
+                outboxRepository.findById(messageId).ifPresent(message -> {
+                    if (message.getStatus() != OutboxStatus.SENDING) {
+                        return;
+                    }
+
+                    message.incrementRetryCount();
+                    if (message.exceedsMaxRetries(MAX_RETRIES)) {
+                        message.markAsFailed(errorMessage);
+                        log.error("Relay publish failed permanently: eventId={}, retry={}, error={}",
+                                eventId, message.getRetryCount(), errorMessage);
+                    } else {
+                        message.revertToPending();
+                        log.warn("Relay publish failed: eventId={}, retry={}, error={}",
+                                eventId, message.getRetryCount(), errorMessage);
+                    }
+                    outboxRepository.save(message);
+                })
+        );
+    }
+
+    private String shrinkErrorMessage(Throwable throwable) {
+        if (throwable == null || throwable.getMessage() == null || throwable.getMessage().isBlank()) {
+            return "Relay publish failed";
+        }
+        String message = throwable.getMessage();
+        if (message.length() <= MAX_ERROR_MESSAGE_LENGTH) {
+            return message;
+        }
+        return message.substring(0, MAX_ERROR_MESSAGE_LENGTH);
     }
 }
