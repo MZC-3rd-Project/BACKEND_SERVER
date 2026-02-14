@@ -20,6 +20,7 @@ public class StockCancelRetryService {
     private static final int MAX_RETRY_COUNT = 5;
     private static final long BASE_DELAY_SECONDS = 30;
     private static final long MAX_DELAY_SECONDS = 600;
+    private static final long PROCESSING_STALE_THRESHOLD_SECONDS = 120;
 
     private final StockCancelRetryRepository retryRepository;
     private final StockClient stockClient;
@@ -31,6 +32,8 @@ public class StockCancelRetryService {
     }
 
     public void processDueRetries() {
+        recoverStaleProcessingTasks();
+
         List<Long> retryIds = transactionTemplate.execute(status ->
                 retryRepository.findTop100ByStatusAndNextRetryAtLessThanEqualOrderByNextRetryAtAsc(
                                 StockCancelRetryStatus.PENDING, LocalDateTime.now())
@@ -46,6 +49,46 @@ public class StockCancelRetryService {
         for (Long retryId : retryIds) {
             processOneRetry(retryId);
         }
+    }
+
+    private void recoverStaleProcessingTasks() {
+        LocalDateTime staleBefore = LocalDateTime.now().minusSeconds(PROCESSING_STALE_THRESHOLD_SECONDS);
+        List<Long> staleIds = transactionTemplate.execute(status ->
+                retryRepository.findTop100ByStatusAndUpdatedAtLessThanEqualOrderByUpdatedAtAsc(
+                                StockCancelRetryStatus.PROCESSING, staleBefore)
+                        .stream()
+                        .map(StockCancelRetry::getId)
+                        .toList()
+        );
+
+        if (staleIds == null || staleIds.isEmpty()) {
+            return;
+        }
+
+        for (Long staleId : staleIds) {
+            recoverStaleProcessingTask(staleId);
+        }
+    }
+
+    private void recoverStaleProcessingTask(Long retryId) {
+        transactionTemplate.executeWithoutResult(status ->
+                retryRepository.findById(retryId).ifPresent(task -> {
+                    if (task.getStatus() != StockCancelRetryStatus.PROCESSING) {
+                        return;
+                    }
+
+                    int nextRetryCount = task.getRetryCount() + 1;
+                    if (nextRetryCount >= MAX_RETRY_COUNT) {
+                        task.markFailed("Recovered stale PROCESSING and exceeded max retries");
+                        log.error("Funding retry moved stale PROCESSING to FAILED: retryId={}, reservationId={}, retry={}",
+                                retryId, task.getReservationId(), task.getRetryCount());
+                    } else {
+                        task.scheduleNextRetry("Recovered stale PROCESSING task", computeDelaySeconds(nextRetryCount));
+                        log.warn("Funding retry recovered stale PROCESSING to PENDING: retryId={}, reservationId={}, retry={}",
+                                retryId, task.getReservationId(), task.getRetryCount());
+                    }
+                })
+        );
     }
 
     private void processOneRetry(Long retryId) {
