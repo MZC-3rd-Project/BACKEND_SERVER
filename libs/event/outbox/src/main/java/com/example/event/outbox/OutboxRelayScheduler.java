@@ -21,6 +21,7 @@ public class OutboxRelayScheduler {
     private static final int MAX_RETRIES = 5;
     private static final int BATCH_SIZE = 100;
     private static final int MAX_IN_FLIGHT = 32;
+    private static final long SENDING_STALE_THRESHOLD_SECONDS = 120;
     private static final int MAX_ERROR_MESSAGE_LENGTH = 240;
 
     private final OutboxRepository outboxRepository;
@@ -30,6 +31,8 @@ public class OutboxRelayScheduler {
 
     @Scheduled(fixedDelay = 5000)
     public void relayPendingMessages() {
+        recoverStaleSendingMessages();
+
         LocalDateTime fiveSecondsAgo = LocalDateTime.now().minusSeconds(5);
         List<OutboxMessage> pendingMessages = fetchPendingMessages(fiveSecondsAgo);
         if (pendingMessages == null || pendingMessages.isEmpty()) {
@@ -48,6 +51,47 @@ public class OutboxRelayScheduler {
     public List<OutboxMessage> fetchPendingMessages(LocalDateTime before) {
         return transactionTemplate.execute(status -> outboxRepository.findPendingMessagesForRelay(
                 OutboxStatus.PENDING.name(), before, BATCH_SIZE));
+    }
+
+    private void recoverStaleSendingMessages() {
+        LocalDateTime staleBefore = LocalDateTime.now().minusSeconds(SENDING_STALE_THRESHOLD_SECONDS);
+        List<Long> staleIds = transactionTemplate.execute(status ->
+                outboxRepository.findTop100ByStatusAndUpdatedAtLessThanEqualOrderByUpdatedAtAsc(
+                                OutboxStatus.SENDING, staleBefore)
+                        .stream()
+                        .map(OutboxMessage::getId)
+                        .toList()
+        );
+
+        if (staleIds == null || staleIds.isEmpty()) {
+            return;
+        }
+
+        for (Long staleId : staleIds) {
+            recoverStaleSendingMessage(staleId);
+        }
+    }
+
+    private void recoverStaleSendingMessage(Long messageId) {
+        transactionTemplate.executeWithoutResult(status ->
+                outboxRepository.findById(messageId).ifPresent(message -> {
+                    if (message.getStatus() != OutboxStatus.SENDING) {
+                        return;
+                    }
+
+                    message.incrementRetryCount();
+                    if (message.exceedsMaxRetries(MAX_RETRIES)) {
+                        message.markAsFailed("Recovered stale SENDING and exceeded max retries");
+                        log.error("Outbox stale SENDING moved to FAILED: eventId={}, retry={}",
+                                message.getEventId(), message.getRetryCount());
+                    } else {
+                        message.revertToPending();
+                        log.warn("Outbox stale SENDING recovered to PENDING: eventId={}, retry={}",
+                                message.getEventId(), message.getRetryCount());
+                    }
+                    outboxRepository.save(message);
+                })
+        );
     }
 
     private void relayMessageAsync(OutboxMessage message) {
@@ -100,6 +144,12 @@ public class OutboxRelayScheduler {
     private void markAsPublished(Long messageId, String eventId) {
         transactionTemplate.executeWithoutResult(status ->
                 outboxRepository.findById(messageId).ifPresent(message -> {
+                    if (message.getStatus() != OutboxStatus.SENDING) {
+                        log.debug("Skip publish ack for non-SENDING message: eventId={}, status={}",
+                                eventId, message.getStatus());
+                        return;
+                    }
+
                     message.markAsPublished();
                     outboxRepository.save(message);
                     log.info("Relay publish success: eventId={}", eventId);
