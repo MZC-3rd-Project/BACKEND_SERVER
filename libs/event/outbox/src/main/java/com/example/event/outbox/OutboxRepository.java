@@ -24,12 +24,16 @@ public interface OutboxRepository extends JpaRepository<OutboxMessage, Long> {
             @Param("limit") int limit);
 
     @Modifying
-    @Query("UPDATE OutboxMessage o SET o.status = :newStatus WHERE o.id = :id AND o.status = :currentStatus")
+    @Query("UPDATE OutboxMessage o SET o.status = :newStatus, o.updatedAt = CURRENT_TIMESTAMP " +
+            "WHERE o.id = :id AND o.status = :currentStatus")
     int updateStatusById(@Param("id") Long id,
                          @Param("currentStatus") OutboxStatus currentStatus,
                          @Param("newStatus") OutboxStatus newStatus);
 
     List<OutboxMessage> findByStatusOrderByCreatedAtAsc(OutboxStatus status);
+
+    List<OutboxMessage> findTop100ByStatusAndUpdatedAtLessThanEqualOrderByUpdatedAtAsc(
+            OutboxStatus status, LocalDateTime updatedAt);
 
     @Modifying
     @Query("DELETE FROM OutboxMessage o WHERE o.status = :status AND o.createdAt < :before")
