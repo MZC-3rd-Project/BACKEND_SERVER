@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 @Table(name = "outbox_messages",
         indexes = {
                 @Index(name = "idx_outbox_status_created", columnList = "status, createdAt"),
+                @Index(name = "idx_outbox_status_updated", columnList = "status, updatedAt"),
                 @Index(name = "idx_outbox_aggregate", columnList = "aggregateType, aggregateId"),
                 @Index(name = "idx_outbox_event_id", columnList = "eventId", unique = true)
         })

@@ -2,6 +2,7 @@ package com.example.event.outbox;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -21,13 +22,15 @@ public class OutboxRelayScheduler {
     private static final int MAX_RETRIES = 5;
     private static final int BATCH_SIZE = 100;
     private static final int MAX_IN_FLIGHT = 32;
-    private static final long SENDING_STALE_THRESHOLD_SECONDS = 120;
     private static final int MAX_ERROR_MESSAGE_LENGTH = 240;
 
     private final OutboxRepository outboxRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final TransactionTemplate transactionTemplate;
     private final Semaphore inFlightLimiter = new Semaphore(MAX_IN_FLIGHT);
+
+    @Value("${app.outbox.relay.sending-stale-threshold-seconds:120}")
+    private long sendingStaleThresholdSeconds;
 
     @Scheduled(fixedDelay = 5000)
     public void relayPendingMessages() {
@@ -54,7 +57,7 @@ public class OutboxRelayScheduler {
     }
 
     private void recoverStaleSendingMessages() {
-        LocalDateTime staleBefore = LocalDateTime.now().minusSeconds(SENDING_STALE_THRESHOLD_SECONDS);
+        LocalDateTime staleBefore = LocalDateTime.now().minusSeconds(sendingStaleThresholdSeconds);
         List<Long> staleIds = transactionTemplate.execute(status ->
                 outboxRepository.findTop100ByStatusAndUpdatedAtLessThanEqualOrderByUpdatedAtAsc(
                                 OutboxStatus.SENDING, staleBefore)
