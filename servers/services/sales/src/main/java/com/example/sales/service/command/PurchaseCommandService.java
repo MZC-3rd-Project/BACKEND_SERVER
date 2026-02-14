@@ -13,6 +13,7 @@ import com.example.sales.event.PurchaseCancelledEvent;
 import com.example.sales.event.PurchaseCreatedEvent;
 import com.example.sales.exception.SalesErrorCode;
 import com.example.sales.repository.PurchaseRepository;
+import com.example.sales.service.retry.StockCancelRetryService;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,7 @@ public class PurchaseCommandService {
     private final EventPublisher eventPublisher;
     private final Snowflake snowflake;
     private final TransactionTemplate transactionTemplate;
+    private final StockCancelRetryService stockCancelRetryService;
 
     public PurchaseResponse purchase(PurchaseRequest request, Long userId) {
         JsonNode itemData = productClient.findItem(request.getItemId());
@@ -104,6 +106,7 @@ public class PurchaseCommandService {
             // Local cancellation has been committed. Keep it and alert for stock reconciliation.
             log.error("Purchase cancelled but stock reservation cancel failed: purchaseId={}, reservationId={}",
                     purchaseId, reservationId, e);
+            stockCancelRetryService.enqueue(purchaseId, reservationId, e.getMessage());
         }
     }
 }
