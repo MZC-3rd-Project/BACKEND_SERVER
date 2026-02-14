@@ -6,6 +6,7 @@ import com.example.funding.entity.StockCancelRetryStatus;
 import com.example.funding.repository.StockCancelRetryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -20,11 +21,13 @@ public class StockCancelRetryService {
     private static final int MAX_RETRY_COUNT = 5;
     private static final long BASE_DELAY_SECONDS = 30;
     private static final long MAX_DELAY_SECONDS = 600;
-    private static final long PROCESSING_STALE_THRESHOLD_SECONDS = 120;
 
     private final StockCancelRetryRepository retryRepository;
     private final StockClient stockClient;
     private final TransactionTemplate transactionTemplate;
+
+    @Value("${app.stock-cancel-retry.processing-stale-threshold-seconds:120}")
+    private long processingStaleThresholdSeconds;
 
     public void enqueue(Long participationId, Long reservationId, String errorMessage) {
         transactionTemplate.executeWithoutResult(status ->
@@ -52,7 +55,7 @@ public class StockCancelRetryService {
     }
 
     private void recoverStaleProcessingTasks() {
-        LocalDateTime staleBefore = LocalDateTime.now().minusSeconds(PROCESSING_STALE_THRESHOLD_SECONDS);
+        LocalDateTime staleBefore = LocalDateTime.now().minusSeconds(processingStaleThresholdSeconds);
         List<Long> staleIds = transactionTemplate.execute(status ->
                 retryRepository.findTop100ByStatusAndUpdatedAtLessThanEqualOrderByUpdatedAtAsc(
                                 StockCancelRetryStatus.PROCESSING, staleBefore)
