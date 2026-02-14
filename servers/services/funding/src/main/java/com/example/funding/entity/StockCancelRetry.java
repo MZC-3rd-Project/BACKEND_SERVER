@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 @Table(name = "funding_stock_cancel_retries",
         indexes = {
                 @Index(name = "idx_funding_stock_cancel_retry_status_next", columnList = "status, nextRetryAt"),
+                @Index(name = "idx_funding_stock_cancel_retry_status_updated", columnList = "status, updatedAt"),
                 @Index(name = "idx_funding_stock_cancel_retry_participation", columnList = "participationId"),
                 @Index(name = "idx_funding_stock_cancel_retry_reservation", columnList = "reservationId")
         })

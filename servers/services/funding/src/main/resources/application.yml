@@ -49,6 +49,9 @@ app:
   service:
     stock-url: ${STOCK_SERVICE_URL:http://localhost:8085}
 
+  stock-cancel-retry:
+    processing-stale-threshold-seconds: ${STOCK_CANCEL_RETRY_PROCESSING_STALE_THRESHOLD_SECONDS:120}
+
   # ─── OpenAPI ──────────────────────────────────
   openapi:
     enabled: ${OPENAPI_ENABLED:true}
