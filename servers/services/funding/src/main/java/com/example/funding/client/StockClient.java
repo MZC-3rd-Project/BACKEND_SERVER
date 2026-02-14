@@ -66,10 +66,26 @@ public class StockClient {
                     .retrieve()
                     .bodyToMono(JsonNode.class)
                     .block();
+        } catch (WebClientResponseException e) {
+            if (isAlreadyReleasedReservation(e)) {
+                log.info("Reservation already released in stock service: reservationId={}, status={}",
+                        reservationId, e.getStatusCode().value());
+                return;
+            }
+            log.error("Stock cancel failed: reservationId={}, status={}", reservationId, e.getStatusCode().value(), e);
+            throw new BusinessException(FundingErrorCode.STOCK_SERVICE_ERROR);
         } catch (Exception e) {
             log.error("Stock cancel failed: reservationId={}", reservationId, e);
             throw new BusinessException(FundingErrorCode.STOCK_SERVICE_ERROR);
         }
+    }
+
+    private boolean isAlreadyReleasedReservation(WebClientResponseException e) {
+        if (!e.getStatusCode().is4xxClientError()) {
+            return false;
+        }
+        String body = e.getResponseBodyAsString();
+        return body.contains("STOCK-103") || body.contains("STOCK-104") || body.contains("STOCK-105");
     }
 
     public Long findStockItemId(Long itemId, Long referenceId) {

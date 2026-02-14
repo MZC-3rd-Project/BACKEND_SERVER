@@ -17,6 +17,7 @@ import com.example.funding.exception.FundingErrorCode;
 import com.example.funding.repository.FundingCampaignRepository;
 import com.example.funding.repository.FundingParticipationRepository;
 import com.example.funding.service.CampaignCacheService;
+import com.example.funding.service.retry.StockCancelRetryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,7 @@ public class ParticipationCommandService {
     private final EventPublisher eventPublisher;
     private final Snowflake snowflake;
     private final TransactionTemplate transactionTemplate;
+    private final StockCancelRetryService stockCancelRetryService;
 
     public ParticipationResponse participate(Long campaignId, ParticipateRequest request, Long userId) {
         FundingCampaign campaign = campaignRepository.findById(campaignId)
@@ -103,6 +105,7 @@ public class ParticipationCommandService {
             // Local refund has been committed. Keep it and alert for stock reconciliation.
             log.error("Participation refunded but stock reservation cancel failed: participationId={}, reservationId={}",
                     participationId, reservationId, e);
+            stockCancelRetryService.enqueue(participationId, reservationId, e.getMessage());
         }
     }
 
