@@ -16,10 +16,13 @@ public interface StockCancelRetryRepository extends JpaRepository<StockCancelRet
             StockCancelRetryStatus status, LocalDateTime now);
 
     @Modifying
-    @Query("UPDATE StockCancelRetry r SET r.status = :processing " +
+    @Query("UPDATE StockCancelRetry r SET r.status = :processing, r.updatedAt = CURRENT_TIMESTAMP " +
             "WHERE r.id = :id AND r.status = :pending AND r.nextRetryAt <= :now")
     int claimForProcessing(@Param("id") Long id,
                            @Param("pending") StockCancelRetryStatus pending,
                            @Param("processing") StockCancelRetryStatus processing,
                            @Param("now") LocalDateTime now);
+
+    List<StockCancelRetry> findTop100ByStatusAndUpdatedAtLessThanEqualOrderByUpdatedAtAsc(
+            StockCancelRetryStatus status, LocalDateTime updatedAt);
 }
