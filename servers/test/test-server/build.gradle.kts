@@ -15,9 +15,6 @@ dependencies {
     // Data
     implementation(project(":libs:data:entity"))
 
-    // Security
-    implementation(project(":libs:security:core"))
-
     // Config
     implementation(project(":libs:config:kafka"))
     implementation(project(":libs:config:redis"))
@@ -39,6 +36,9 @@ dependencies {
 
     // Validation
     implementation("org.springframework.boot:spring-boot-starter-validation")
+
+    // Security
+    implementation("org.springframework.boot:spring-boot-starter-security")
 
     // Actuator
     implementation("org.springframework.boot:spring-boot-starter-actuator")

@@ -5,10 +5,12 @@ include(":libs:core:exception")
 include(":libs:core:util")
 include(":libs:core:id")
 include(":libs:core:pagination")
+include(":libs:contracts:http")
 include(":libs:api:response")
 include(":libs:api:exception-handler")
 include(":libs:data:entity")
-include(":libs:security:core")
+include(":libs:security:context")
+include(":libs:security:crypto")
 
 // 설정 모듈
 include(":libs:config:kafka")

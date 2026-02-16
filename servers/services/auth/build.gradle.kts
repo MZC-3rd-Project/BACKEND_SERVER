@@ -8,7 +8,6 @@ dependencies {
     implementation(project(":libs:api:response"))
     implementation(project(":libs:api:exception-handler"))
     implementation(project(":libs:data:entity"))
-    implementation(project(":libs:security:core"))
 
     // JPA
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
