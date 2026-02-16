@@ -21,6 +21,7 @@ dependencies {
 
     // Spring Boot AOP (required for Resilience4j annotations)
     api("org.springframework.boot:spring-boot-starter-aop")
+    implementation("org.springframework.boot:spring-boot-autoconfigure")
 
     // Lombok
     compileOnly("org.projectlombok:lombok")

@@ -21,6 +21,7 @@ dependencies {
 
     // Core modules
     api(project(":libs:core:util"))
+    implementation("org.springframework.boot:spring-boot-autoconfigure")
 
     // Lombok
     compileOnly("org.projectlombok:lombok")

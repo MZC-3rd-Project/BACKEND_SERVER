@@ -26,6 +26,8 @@ dependencies {
 
     // Scheduling
     api("org.springframework.boot:spring-boot-starter")
+    implementation("org.springframework.boot:spring-boot-autoconfigure")
+    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 
     // Lombok
     compileOnly("org.projectlombok:lombok")

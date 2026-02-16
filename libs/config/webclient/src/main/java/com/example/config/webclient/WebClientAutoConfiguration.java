@@ -4,7 +4,6 @@ import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -19,13 +18,14 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @AutoConfiguration
-@RequiredArgsConstructor
 @EnableConfigurationProperties(WebClientProperties.class)
 public class WebClientAutoConfiguration {
 
     private final WebClientProperties properties;
-    private final WebClientLoggingFilter loggingFilter;
-    private final WebClientErrorHandler errorHandler;
+
+    public WebClientAutoConfiguration(WebClientProperties properties) {
+        this.properties = properties;
+    }
 
     @PostConstruct
     public void init() {
@@ -39,7 +39,22 @@ public class WebClientAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public WebClient.Builder webClientBuilder() {
+    public WebClientLoggingFilter webClientLoggingFilter() {
+        return new WebClientLoggingFilter();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public WebClientErrorHandler webClientErrorHandler() {
+        return new WebClientErrorHandler();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public WebClient.Builder webClientBuilder(
+            WebClientLoggingFilter loggingFilter,
+            WebClientErrorHandler errorHandler
+    ) {
         HttpClient httpClient = HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, properties.getConnectTimeout())
                 .responseTimeout(Duration.ofMillis(properties.getReadTimeout()))
