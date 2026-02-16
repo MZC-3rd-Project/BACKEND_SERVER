@@ -2,7 +2,6 @@ package com.example.config.resilience;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -12,7 +11,6 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
-@Component
 public class FallbackRegistry {
 
     private static final Duration DEFAULT_TTL = Duration.ofMinutes(5);
