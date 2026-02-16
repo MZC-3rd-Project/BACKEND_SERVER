@@ -19,6 +19,7 @@ dependencies {
     // Core exception module for error code references
     api(project(":libs:core:exception"))
     api(project(":libs:api:response"))
+    api(project(":libs:security:core"))
 
     // Lombok
     compileOnly("org.projectlombok:lombok")

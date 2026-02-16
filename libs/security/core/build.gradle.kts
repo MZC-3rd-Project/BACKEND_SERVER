@@ -5,6 +5,8 @@ plugins {
 }
 
 dependencies {
+    api(project(":libs:core:exception"))
+
     // Spring Security
     api("org.springframework.boot:spring-boot-starter-security")
 

@@ -1,12 +1,15 @@
 package com.example.security.core;
 
-public class HeaderSecurityException extends RuntimeException {
+import com.example.core.exception.CommonErrorCode;
+import com.example.core.exception.TechnicalException;
+
+public class HeaderSecurityException extends TechnicalException {
 
     public HeaderSecurityException(String message) {
-        super(message);
+        super(CommonErrorCode.UNAUTHORIZED, message);
     }
 
     public HeaderSecurityException(String message, Throwable cause) {
-        super(message, cause);
+        super(CommonErrorCode.UNAUTHORIZED, message, cause);
     }
 }

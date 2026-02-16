@@ -6,10 +6,10 @@ import org.springframework.context.ApplicationEvent;
 @Getter
 public class OutboxSavedEvent extends ApplicationEvent {
 
-    private final OutboxMessage outboxMessage;
+    private final Long messageId;
 
-    public OutboxSavedEvent(OutboxMessage outboxMessage) {
-        super(outboxMessage);
-        this.outboxMessage = outboxMessage;
+    public OutboxSavedEvent(Long messageId) {
+        super(messageId);
+        this.messageId = messageId;
     }
 }

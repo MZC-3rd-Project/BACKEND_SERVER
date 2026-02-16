@@ -20,7 +20,7 @@ public class ImmediatePublisher {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleOutboxSaved(OutboxSavedEvent event) {
-        Long messageId = event.getOutboxMessage().getId();
+        Long messageId = event.getMessageId();
         try {
             if (!tryMarkAsSending(messageId)) {
                 log.debug("Message already picked up by another publisher: id={}", messageId);

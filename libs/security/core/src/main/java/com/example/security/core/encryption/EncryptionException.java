@@ -1,12 +1,15 @@
 package com.example.security.core.encryption;
 
-public class EncryptionException extends RuntimeException {
+import com.example.core.exception.CommonErrorCode;
+import com.example.core.exception.TechnicalException;
+
+public class EncryptionException extends TechnicalException {
 
     public EncryptionException(String message) {
-        super(message);
+        super(CommonErrorCode.INTERNAL_ERROR, message);
     }
 
     public EncryptionException(String message, Throwable cause) {
-        super(message, cause);
+        super(CommonErrorCode.INTERNAL_ERROR, message, cause);
     }
 }

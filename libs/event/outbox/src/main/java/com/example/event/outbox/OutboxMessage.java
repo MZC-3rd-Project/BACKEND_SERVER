@@ -109,8 +109,4 @@ public class OutboxMessage extends BaseEntity {
         return this.retryCount >= maxRetries;
     }
 
-    @PostPersist
-    private void onPostPersist() {
-        DomainEventPublisher.publish(new OutboxSavedEvent(this));
-    }
 }
