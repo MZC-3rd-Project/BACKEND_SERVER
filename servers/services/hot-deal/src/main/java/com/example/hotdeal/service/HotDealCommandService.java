@@ -1,6 +1,6 @@
 package com.example.hotdeal.service;
 
-import com.example.config.redis.lock.DistributedLock;
+import com.example.config.lock.DistributedLock;
 import com.example.core.exception.BusinessException;
 import com.example.hotdeal.client.ProductClient;
 import com.example.hotdeal.dto.CreateHotDealRequest;

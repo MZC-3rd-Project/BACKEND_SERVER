@@ -13,12 +13,13 @@ tasks.jar {
 }
 
 dependencies {
-    // Redis
-    api("org.springframework.boot:spring-boot-starter-data-redis")
+    api(project(":libs:core:exception"))
 
-    // Jackson for JSON serialization
-    api("com.fasterxml.jackson.core:jackson-databind")
-    api("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
+    // AOP (for @DistributedLock)
+    implementation("org.springframework.boot:spring-boot-starter-aop")
+
+    // Auto-configuration
+    implementation("org.springframework.boot:spring-boot-autoconfigure")
 
     // Lombok
     compileOnly("org.projectlombok:lombok")

@@ -1,6 +1,6 @@
 package com.example.stock.service.command;
 
-import com.example.config.redis.lock.DistributedLock;
+import com.example.config.lock.DistributedLock;
 import com.example.core.exception.BusinessException;
 import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;

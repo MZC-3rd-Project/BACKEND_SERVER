@@ -1,4 +1,4 @@
-package com.example.config.redis.lock;
+package com.example.config.lock;
 
 import com.example.core.exception.CommonErrorCode;
 import com.example.core.exception.TechnicalException;
