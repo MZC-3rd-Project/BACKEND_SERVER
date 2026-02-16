@@ -1,12 +1,15 @@
 package com.example.config.redis.lock;
 
-public class DistributedLockException extends RuntimeException {
+import com.example.core.exception.CommonErrorCode;
+import com.example.core.exception.TechnicalException;
+
+public class DistributedLockException extends TechnicalException {
 
     public DistributedLockException(String message) {
-        super(message);
+        super(CommonErrorCode.SERVICE_UNAVAILABLE, message);
     }
 
     public DistributedLockException(String message, Throwable cause) {
-        super(message, cause);
+        super(CommonErrorCode.SERVICE_UNAVAILABLE, message, cause);
     }
 }

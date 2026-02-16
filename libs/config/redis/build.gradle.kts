@@ -13,6 +13,8 @@ tasks.jar {
 }
 
 dependencies {
+    api(project(":libs:core:exception"))
+
     // Redis
     api("org.springframework.boot:spring-boot-starter-data-redis")
 

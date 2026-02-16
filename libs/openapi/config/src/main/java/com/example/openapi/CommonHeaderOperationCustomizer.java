@@ -1,5 +1,6 @@
 package com.example.openapi;
 
+import com.example.security.core.SecurityConstants;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.parameters.Parameter;
@@ -14,14 +15,14 @@ public class CommonHeaderOperationCustomizer implements OperationCustomizer {
     public Operation customize(Operation operation, HandlerMethod handlerMethod) {
         operation.addParametersItem(new Parameter()
                 .in("header")
-                .name("X-User-Id")
+                .name(SecurityConstants.HEADER_USER_ID)
                 .description("인증된 사용자 ID (게이트웨이에서 자동 주입)")
                 .required(false)
                 .schema(new StringSchema()));
 
         operation.addParametersItem(new Parameter()
                 .in("header")
-                .name("X-User-Roles")
+                .name(SecurityConstants.HEADER_USER_ROLES)
                 .description("사용자 역할 (게이트웨이에서 자동 주입)")
                 .required(false)
                 .schema(new StringSchema()));
