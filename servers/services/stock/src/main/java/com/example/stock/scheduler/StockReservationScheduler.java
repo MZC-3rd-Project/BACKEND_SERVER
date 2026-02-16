@@ -1,6 +1,6 @@
 package com.example.stock.scheduler;
 
-import com.example.config.redis.lock.DistributedLock;
+import com.example.config.lock.DistributedLock;
 import com.example.stock.entity.ReservationStatus;
 import com.example.stock.repository.StockReservationRepository;
 import com.example.stock.service.command.StockCommandService;

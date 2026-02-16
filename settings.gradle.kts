@@ -12,6 +12,8 @@ include(":libs:security:core")
 
 // 설정 모듈
 include(":libs:config:kafka")
+include(":libs:config:lock")
+include(":libs:config:lock-redisson")
 include(":libs:config:redis")
 include(":libs:config:resilience")
 include(":libs:config:webclient")
