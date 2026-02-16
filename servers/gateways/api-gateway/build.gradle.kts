@@ -2,9 +2,6 @@ dependencies {
     // Spring Cloud Gateway
     implementation("org.springframework.cloud:spring-cloud-starter-gateway")
 
-    // Security module
-    implementation(project(":libs:security:core"))
-
     // Lombok
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
