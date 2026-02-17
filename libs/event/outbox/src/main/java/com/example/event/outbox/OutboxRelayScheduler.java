@@ -74,11 +74,22 @@ public class OutboxRelayScheduler {
         }
 
         for (Long staleId : staleIds) {
-            recoverStaleSendingMessage(staleId);
+            recoverStaleSendingMessage(staleId, staleBefore);
         }
     }
 
-    private void recoverStaleSendingMessage(Long messageId) {
+    private void recoverStaleSendingMessage(Long messageId, LocalDateTime staleBefore) {
+        boolean claimed = Boolean.TRUE.equals(transactionTemplate.execute(status ->
+                outboxRepository.claimStaleSendingMessage(
+                        messageId,
+                        OutboxStatus.SENDING,
+                        staleBefore,
+                        LocalDateTime.now()) > 0
+        ));
+        if (!claimed) {
+            return;
+        }
+
         transactionTemplate.executeWithoutResult(status ->
                 outboxRepository.findById(messageId).ifPresent(message -> {
                     if (message.getStatus() != OutboxStatus.SENDING) {
@@ -148,19 +159,18 @@ public class OutboxRelayScheduler {
     }
 
     private void markAsPublished(Long messageId, String eventId) {
-        transactionTemplate.executeWithoutResult(status ->
-                outboxRepository.findById(messageId).ifPresent(message -> {
-                    if (message.getStatus() != OutboxStatus.SENDING) {
-                        log.debug("Skip publish ack for non-SENDING message: eventId={}, status={}",
-                                eventId, message.getStatus());
-                        return;
-                    }
-
-                    message.markAsPublished();
-                    outboxRepository.save(message);
-                    log.info("Relay publish success: eventId={}", eventId);
-                })
+        Integer updated = transactionTemplate.execute(status ->
+                outboxRepository.markAsPublishedById(
+                        messageId,
+                        OutboxStatus.SENDING,
+                        OutboxStatus.PUBLISHED,
+                        LocalDateTime.now())
         );
+        if (updated != null && updated > 0) {
+            log.info("Relay publish success: eventId={}", eventId);
+            return;
+        }
+        log.debug("Skip publish ack for non-SENDING message: eventId={}", eventId);
     }
 
     private void handlePublishFailure(Long messageId, String eventId, Throwable throwable) {

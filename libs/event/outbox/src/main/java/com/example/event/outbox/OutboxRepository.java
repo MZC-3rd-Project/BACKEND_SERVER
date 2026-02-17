@@ -30,6 +30,22 @@ public interface OutboxRepository extends JpaRepository<OutboxMessage, Long> {
                          @Param("currentStatus") OutboxStatus currentStatus,
                          @Param("newStatus") OutboxStatus newStatus);
 
+    @Modifying
+    @Query("UPDATE OutboxMessage o SET o.status = :newStatus, o.publishedAt = :publishedAt, o.updatedAt = CURRENT_TIMESTAMP " +
+            "WHERE o.id = :id AND o.status = :currentStatus")
+    int markAsPublishedById(@Param("id") Long id,
+                            @Param("currentStatus") OutboxStatus currentStatus,
+                            @Param("newStatus") OutboxStatus newStatus,
+                            @Param("publishedAt") LocalDateTime publishedAt);
+
+    @Modifying
+    @Query("UPDATE OutboxMessage o SET o.updatedAt = :claimedAt " +
+            "WHERE o.id = :id AND o.status = :status AND o.updatedAt <= :staleBefore")
+    int claimStaleSendingMessage(@Param("id") Long id,
+                                 @Param("status") OutboxStatus status,
+                                 @Param("staleBefore") LocalDateTime staleBefore,
+                                 @Param("claimedAt") LocalDateTime claimedAt);
+
     List<OutboxMessage> findByStatusOrderByCreatedAtAsc(OutboxStatus status);
 
     List<OutboxMessage> findTop100ByStatusAndUpdatedAtLessThanEqualOrderByUpdatedAtAsc(

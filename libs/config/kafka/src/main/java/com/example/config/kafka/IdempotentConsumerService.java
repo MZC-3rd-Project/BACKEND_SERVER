@@ -22,15 +22,44 @@ public class IdempotentConsumerService {
 
     @Transactional
     public boolean markAsProcessing(String eventId, String eventType) {
-        if (processedEventRepository.existsByEventId(eventId)) {
-            log.debug("Event already processed or processing: {}", eventId);
-            return false;
+        Optional<ProcessedEvent> existing = processedEventRepository.findByEventId(eventId);
+        if (existing.isPresent()) {
+            ProcessedEvent.ProcessingStatus status = existing.get().getStatus();
+            if (status == ProcessedEvent.ProcessingStatus.PROCESSED
+                    || status == ProcessedEvent.ProcessingStatus.PROCESSING) {
+                log.debug("Event already processed or processing: {}", eventId);
+                return false;
+            }
+
+            if (status == ProcessedEvent.ProcessingStatus.FAILED) {
+                int updated = processedEventRepository.updateStatusIfCurrent(
+                        eventId,
+                        ProcessedEvent.ProcessingStatus.FAILED,
+                        ProcessedEvent.ProcessingStatus.PROCESSING
+                );
+                if (updated > 0) {
+                    log.info("Retrying previously failed event: {}", eventId);
+                    return true;
+                }
+                log.debug("Concurrent retry claim failed: {}", eventId);
+                return false;
+            }
         }
+
         try {
             processedEventRepository.save(ProcessedEvent.create(eventId, eventType));
             processedEventRepository.flush();
             return true;
         } catch (DataIntegrityViolationException e) {
+            int updated = processedEventRepository.updateStatusIfCurrent(
+                    eventId,
+                    ProcessedEvent.ProcessingStatus.FAILED,
+                    ProcessedEvent.ProcessingStatus.PROCESSING
+            );
+            if (updated > 0) {
+                log.info("Retrying previously failed event after duplicate insert race: {}", eventId);
+                return true;
+            }
             log.debug("Concurrent duplicate event detected: {}", eventId);
             return false;
         }

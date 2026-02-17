@@ -8,6 +8,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.time.LocalDateTime;
+
 @Slf4j
 @RequiredArgsConstructor
 public class ImmediatePublisher {
@@ -53,18 +55,17 @@ public class ImmediatePublisher {
     }
 
     @Transactional
-    public void markAsPublished(Long messageId) {
-        outboxRepository.findById(messageId).ifPresent(msg -> {
-            msg.markAsPublished();
-            outboxRepository.save(msg);
-        });
+    public boolean markAsPublished(Long messageId) {
+        return outboxRepository.markAsPublishedById(
+                messageId,
+                OutboxStatus.SENDING,
+                OutboxStatus.PUBLISHED,
+                LocalDateTime.now()
+        ) > 0;
     }
 
     @Transactional
-    public void revertToPending(Long messageId) {
-        outboxRepository.findById(messageId).ifPresent(msg -> {
-            msg.revertToPending();
-            outboxRepository.save(msg);
-        });
+    public boolean revertToPending(Long messageId) {
+        return outboxRepository.updateStatusById(messageId, OutboxStatus.SENDING, OutboxStatus.PENDING) > 0;
     }
 }
