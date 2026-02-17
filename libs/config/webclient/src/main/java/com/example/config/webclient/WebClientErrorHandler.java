@@ -2,15 +2,16 @@ package com.example.config.webclient;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
 import org.springframework.web.reactive.function.client.ExchangeFunction;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Mono;
 
+import java.nio.charset.StandardCharsets;
+
 @Slf4j
-@Component
 public class WebClientErrorHandler implements ExchangeFilterFunction {
 
     @Override
@@ -31,9 +32,12 @@ public class WebClientErrorHandler implements ExchangeFilterFunction {
                                             request.url().getPath(),
                                             statusCode.value());
                                     log.debug("WebClient error body: {}", truncatedBody);
-                                    return Mono.error(new WebClientException(
+                                    return Mono.error(WebClientResponseException.create(
                                             statusCode.value(),
-                                            body
+                                            statusCode.toString(),
+                                            response.headers().asHttpHeaders(),
+                                            body.getBytes(StandardCharsets.UTF_8),
+                                            StandardCharsets.UTF_8
                                     ));
                                 });
                     }

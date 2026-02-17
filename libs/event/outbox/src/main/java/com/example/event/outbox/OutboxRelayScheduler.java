@@ -1,12 +1,8 @@
 package com.example.event.outbox;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
@@ -14,37 +10,42 @@ import java.util.List;
 import java.util.concurrent.Semaphore;
 
 @Slf4j
-@Component
-@EnableScheduling
-@RequiredArgsConstructor
 public class OutboxRelayScheduler {
-
-    private static final int MAX_RETRIES = 5;
-    private static final int BATCH_SIZE = 100;
-    private static final int MAX_IN_FLIGHT = 32;
-    private static final int MAX_ERROR_MESSAGE_LENGTH = 240;
 
     private final OutboxRepository outboxRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
     private final TransactionTemplate transactionTemplate;
-    private final Semaphore inFlightLimiter = new Semaphore(MAX_IN_FLIGHT);
+    private final OutboxProperties outboxProperties;
+    private final Semaphore inFlightLimiter;
 
-    @Value("${app.outbox.relay.sending-stale-threshold-seconds:120}")
-    private long sendingStaleThresholdSeconds;
+    public OutboxRelayScheduler(
+            OutboxRepository outboxRepository,
+            KafkaTemplate<String, Object> kafkaTemplate,
+            TransactionTemplate transactionTemplate,
+            OutboxProperties outboxProperties
+    ) {
+        this.outboxRepository = outboxRepository;
+        this.kafkaTemplate = kafkaTemplate;
+        this.transactionTemplate = transactionTemplate;
+        this.outboxProperties = outboxProperties;
+        int maxInFlight = Math.max(1, outboxProperties.getRelay().getMaxInFlight());
+        this.inFlightLimiter = new Semaphore(maxInFlight);
+    }
 
-    @Scheduled(fixedDelay = 5000)
+    @Scheduled(fixedDelayString = "${app.outbox.relay.fixed-delay-ms:5000}")
     public void relayPendingMessages() {
         recoverStaleSendingMessages();
 
-        LocalDateTime fiveSecondsAgo = LocalDateTime.now().minusSeconds(5);
-        List<OutboxMessage> pendingMessages = fetchPendingMessages(fiveSecondsAgo);
+        long fetchBeforeSeconds = Math.max(1, outboxProperties.getRelay().getFetchBeforeSeconds());
+        LocalDateTime fetchBefore = LocalDateTime.now().minusSeconds(fetchBeforeSeconds);
+        List<OutboxMessage> pendingMessages = fetchPendingMessages(fetchBefore);
         if (pendingMessages == null || pendingMessages.isEmpty()) {
             return;
         }
 
         for (OutboxMessage message : pendingMessages) {
             if (!inFlightLimiter.tryAcquire()) {
-                log.debug("Relay in-flight limit reached: limit={}", MAX_IN_FLIGHT);
+                log.debug("Relay in-flight limit reached: limit={}", outboxProperties.getRelay().getMaxInFlight());
                 break;
             }
             relayMessageAsync(message);
@@ -52,12 +53,14 @@ public class OutboxRelayScheduler {
     }
 
     public List<OutboxMessage> fetchPendingMessages(LocalDateTime before) {
+        int batchSize = Math.max(1, outboxProperties.getRelay().getBatchSize());
         return transactionTemplate.execute(status -> outboxRepository.findPendingMessagesForRelay(
-                OutboxStatus.PENDING.name(), before, BATCH_SIZE));
+                OutboxStatus.PENDING.name(), before, batchSize));
     }
 
     private void recoverStaleSendingMessages() {
-        LocalDateTime staleBefore = LocalDateTime.now().minusSeconds(sendingStaleThresholdSeconds);
+        long staleThresholdSeconds = Math.max(1, outboxProperties.getRelay().getSendingStaleThresholdSeconds());
+        LocalDateTime staleBefore = LocalDateTime.now().minusSeconds(staleThresholdSeconds);
         List<Long> staleIds = transactionTemplate.execute(status ->
                 outboxRepository.findTop100ByStatusAndUpdatedAtLessThanEqualOrderByUpdatedAtAsc(
                                 OutboxStatus.SENDING, staleBefore)
@@ -71,11 +74,22 @@ public class OutboxRelayScheduler {
         }
 
         for (Long staleId : staleIds) {
-            recoverStaleSendingMessage(staleId);
+            recoverStaleSendingMessage(staleId, staleBefore);
         }
     }
 
-    private void recoverStaleSendingMessage(Long messageId) {
+    private void recoverStaleSendingMessage(Long messageId, LocalDateTime staleBefore) {
+        boolean claimed = Boolean.TRUE.equals(transactionTemplate.execute(status ->
+                outboxRepository.claimStaleSendingMessage(
+                        messageId,
+                        OutboxStatus.SENDING,
+                        staleBefore,
+                        LocalDateTime.now()) > 0
+        ));
+        if (!claimed) {
+            return;
+        }
+
         transactionTemplate.executeWithoutResult(status ->
                 outboxRepository.findById(messageId).ifPresent(message -> {
                     if (message.getStatus() != OutboxStatus.SENDING) {
@@ -83,7 +97,7 @@ public class OutboxRelayScheduler {
                     }
 
                     message.incrementRetryCount();
-                    if (message.exceedsMaxRetries(MAX_RETRIES)) {
+                    if (message.exceedsMaxRetries(outboxProperties.getRelay().getMaxRetries())) {
                         message.markAsFailed("Recovered stale SENDING and exceeded max retries");
                         log.error("Outbox stale SENDING moved to FAILED: eventId={}, retry={}",
                                 message.getEventId(), message.getRetryCount());
@@ -129,7 +143,7 @@ public class OutboxRelayScheduler {
                 return false;
             }
 
-            if (current.exceedsMaxRetries(MAX_RETRIES)) {
+            if (current.exceedsMaxRetries(outboxProperties.getRelay().getMaxRetries())) {
                 current.markAsFailed("Max retries exceeded");
                 outboxRepository.save(current);
                 log.error("Outbox message exceeded max retries: eventId={}", eventId);
@@ -145,19 +159,18 @@ public class OutboxRelayScheduler {
     }
 
     private void markAsPublished(Long messageId, String eventId) {
-        transactionTemplate.executeWithoutResult(status ->
-                outboxRepository.findById(messageId).ifPresent(message -> {
-                    if (message.getStatus() != OutboxStatus.SENDING) {
-                        log.debug("Skip publish ack for non-SENDING message: eventId={}, status={}",
-                                eventId, message.getStatus());
-                        return;
-                    }
-
-                    message.markAsPublished();
-                    outboxRepository.save(message);
-                    log.info("Relay publish success: eventId={}", eventId);
-                })
+        Integer updated = transactionTemplate.execute(status ->
+                outboxRepository.markAsPublishedById(
+                        messageId,
+                        OutboxStatus.SENDING,
+                        OutboxStatus.PUBLISHED,
+                        LocalDateTime.now())
         );
+        if (updated != null && updated > 0) {
+            log.info("Relay publish success: eventId={}", eventId);
+            return;
+        }
+        log.debug("Skip publish ack for non-SENDING message: eventId={}", eventId);
     }
 
     private void handlePublishFailure(Long messageId, String eventId, Throwable throwable) {
@@ -170,7 +183,7 @@ public class OutboxRelayScheduler {
                     }
 
                     message.incrementRetryCount();
-                    if (message.exceedsMaxRetries(MAX_RETRIES)) {
+                    if (message.exceedsMaxRetries(outboxProperties.getRelay().getMaxRetries())) {
                         message.markAsFailed(errorMessage);
                         log.error("Relay publish failed permanently: eventId={}, retry={}, error={}",
                                 eventId, message.getRetryCount(), errorMessage);
@@ -189,9 +202,10 @@ public class OutboxRelayScheduler {
             return "Relay publish failed";
         }
         String message = throwable.getMessage();
-        if (message.length() <= MAX_ERROR_MESSAGE_LENGTH) {
+        int maxLength = Math.max(32, outboxProperties.getRelay().getMaxErrorMessageLength());
+        if (message.length() <= maxLength) {
             return message;
         }
-        return message.substring(0, MAX_ERROR_MESSAGE_LENGTH);
+        return message.substring(0, maxLength);
     }
 }

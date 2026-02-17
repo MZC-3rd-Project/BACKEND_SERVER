@@ -63,8 +63,9 @@ public class ItemEventConsumer {
                 log.info("[ItemConsumer] 재고 자동 초기화 완료: itemId={}, type={}, refId={}, qty={}",
                         event.getItemId(), si.getType(), si.getReferenceId(), si.getTotalQuantity());
             } catch (Exception e) {
-                log.error("[ItemConsumer] 재고 초기화 실패: itemId={}, type={}, refId={}",
+                log.error("[ItemConsumer] 재고 초기화 실패(메시지 재처리를 위해 예외 전파): itemId={}, type={}, refId={}",
                         event.getItemId(), si.getType(), si.getReferenceId(), e);
+                throw e;
             }
         }
     }

@@ -54,7 +54,7 @@ public class FundingDeadlineScheduler {
     }
 
     private void judgeCampaign(Long campaignId) {
-        FundingCampaign campaign = campaignRepository.findById(campaignId).orElse(null);
+        FundingCampaign campaign = campaignRepository.findByIdWithLock(campaignId).orElse(null);
         if (campaign == null || campaign.getStatus() != FundingStatus.ACTIVE || !campaign.isExpired()) {
             return;
         }

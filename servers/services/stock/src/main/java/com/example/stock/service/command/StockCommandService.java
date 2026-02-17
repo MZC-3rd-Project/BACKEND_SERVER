@@ -1,6 +1,6 @@
 package com.example.stock.service.command;
 
-import com.example.config.redis.lock.DistributedLock;
+import com.example.config.lock.DistributedLock;
 import com.example.core.exception.BusinessException;
 import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;
@@ -102,8 +102,9 @@ public class StockCommandService {
     }
 
     // ─── TCC: Confirm ─────────────────────────
+    @DistributedLock(key = "'stock:reservation:' + #request.reservationId")
     public ReservationResponse confirmReservation(ConfirmReservationRequest request) {
-        StockReservation reservation = getReservation(request.getReservationId());
+        StockReservation reservation = getReservationWithLock(request.getReservationId());
         reservation.confirm();
 
         StockItem stockItem = getStockItemWithLock(reservation.getStockItemId());
@@ -117,8 +118,9 @@ public class StockCommandService {
     }
 
     // ─── TCC: Confirm (by ID — 이벤트 기반) ────
+    @DistributedLock(key = "'stock:reservation:' + #reservationId")
     public ReservationResponse confirmReservationById(Long reservationId) {
-        StockReservation reservation = getReservation(reservationId);
+        StockReservation reservation = getReservationWithLock(reservationId);
         reservation.confirm();
 
         StockItem stockItem = getStockItemWithLock(reservation.getStockItemId());
@@ -132,9 +134,9 @@ public class StockCommandService {
     }
 
     // ─── TCC: Cancel ──────────────────────────
-    @DistributedLock(key = "'stock:' + #reservationId", waitTime = 5)
+    @DistributedLock(key = "'stock:reservation:' + #reservationId", waitTime = 5)
     public ReservationResponse cancelReservation(Long reservationId) {
-        StockReservation reservation = getReservation(reservationId);
+        StockReservation reservation = getReservationWithLock(reservationId);
         reservation.cancel();
 
         StockItem stockItem = getStockItemWithLock(reservation.getStockItemId());
@@ -178,7 +180,7 @@ public class StockCommandService {
 
     @DistributedLock(key = "'stock:reservation:' + #reservationId", waitTime = 3)
     public void expireReservationById(Long reservationId) {
-        StockReservation reservation = stockReservationRepository.findById(reservationId).orElse(null);
+        StockReservation reservation = stockReservationRepository.findByIdWithLock(reservationId).orElse(null);
         if (reservation == null || reservation.getStatus() != ReservationStatus.RESERVED || !reservation.isExpired()) {
             return;
         }
@@ -219,8 +221,8 @@ public class StockCommandService {
                 .orElseThrow(() -> new BusinessException(StockErrorCode.STOCK_NOT_FOUND));
     }
 
-    private StockReservation getReservation(Long reservationId) {
-        return stockReservationRepository.findById(reservationId)
+    private StockReservation getReservationWithLock(Long reservationId) {
+        return stockReservationRepository.findByIdWithLock(reservationId)
                 .orElseThrow(() -> new BusinessException(StockErrorCode.RESERVATION_NOT_FOUND));
     }
 }

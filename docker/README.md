@@ -195,6 +195,22 @@ docker-compose down -v
 docker-compose up -d
 ```
 
+### Schema drift after entity changes
+
+If services start with existing Docker volumes and entity fields changed
+(for example `funding_participations.order_id` or `hot_deals.max_per_user`),
+run the schema repair script:
+
+```bash
+bash docker/scripts/apply-schema-repair.sh
+```
+
+If your PostgreSQL container name is different, pass it as the first argument:
+
+```bash
+bash docker/scripts/apply-schema-repair.sh <postgres-container-name>
+```
+
 ### Check service health
 
 ```bash
