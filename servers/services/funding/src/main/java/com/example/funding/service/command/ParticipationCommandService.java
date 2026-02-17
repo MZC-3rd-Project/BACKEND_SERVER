@@ -194,8 +194,19 @@ public class ParticipationCommandService {
             try {
                 stockClient.cancelReservation(reservationId);
             } catch (Exception cancelError) {
-                log.error("Failed to cancel stock reservation after participation rollback: reservationId={}",
-                        reservationId, cancelError);
+                log.error("Failed to cancel stock reservation after participation rollback: orderId={}, reservationId={}",
+                        orderId, reservationId, cancelError);
+                try {
+                    // No participation row can remain after rollback; use orderId as durable correlation key.
+                    stockCancelRetryService.enqueue(
+                            orderId,
+                            reservationId,
+                            "Rollback stock cancel failed: " + cancelError.getMessage()
+                    );
+                } catch (Exception enqueueError) {
+                    log.error("Failed to enqueue stock cancel retry after participation rollback: orderId={}, reservationId={}",
+                            orderId, reservationId, enqueueError);
+                }
             }
             throw e;
         }

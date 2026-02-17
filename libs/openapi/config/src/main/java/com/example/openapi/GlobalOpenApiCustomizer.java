@@ -8,9 +8,7 @@ import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import lombok.RequiredArgsConstructor;
 import org.springdoc.core.customizers.OpenApiCustomizer;
-import org.springframework.stereotype.Component;
 
-@Component
 @RequiredArgsConstructor
 public class GlobalOpenApiCustomizer implements OpenApiCustomizer {
 

@@ -17,9 +17,9 @@ dependencies {
     api("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.13")
 
     // Core exception module for error code references
-    api(project(":libs:core:exception"))
-    api(project(":libs:api:response"))
-    api(project(":libs:security:core"))
+    implementation(project(":libs:core:exception"))
+    implementation(project(":libs:api:response"))
+    implementation(project(":libs:contracts:http"))
 
     // Lombok
     compileOnly("org.projectlombok:lombok")

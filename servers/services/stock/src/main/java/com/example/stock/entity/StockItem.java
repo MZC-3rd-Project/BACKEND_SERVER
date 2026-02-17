@@ -76,10 +76,19 @@ public class StockItem extends BaseEntity {
     }
 
     public void confirmReservation(int quantity) {
+        if (quantity <= 0 || this.reservedQuantity < quantity) {
+            throw new BusinessException(StockErrorCode.INVALID_RESERVATION_STATUS);
+        }
         this.reservedQuantity -= quantity;
     }
 
     public void cancelReservation(int quantity) {
+        if (quantity <= 0 || this.reservedQuantity < quantity) {
+            throw new BusinessException(StockErrorCode.INVALID_RESERVATION_STATUS);
+        }
+        if ((long) this.availableQuantity + quantity > this.totalQuantity) {
+            throw new BusinessException(StockErrorCode.STOCK_OVERFLOW);
+        }
         this.reservedQuantity -= quantity;
         this.availableQuantity += quantity;
     }

@@ -1,9 +1,9 @@
 package com.example.config.redis;
 
 import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Import;
 
 @AutoConfiguration
-@ComponentScan(basePackages = "com.example.config.redis")
+@Import(RedisConfig.class)
 public class RedisAutoConfiguration {
 }

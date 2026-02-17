@@ -1,7 +1,6 @@
 package com.example.config.webclient;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
@@ -11,7 +10,6 @@ import reactor.core.publisher.Mono;
 import java.net.URI;
 
 @Slf4j
-@Component
 public class WebClientLoggingFilter implements ExchangeFilterFunction {
 
     @Override
