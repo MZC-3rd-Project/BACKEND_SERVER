@@ -38,6 +38,7 @@ include("servers:services:user")
 include("servers:services:product")
 include("servers:services:stock")
 include("servers:services:funding")
+include("servers:services:notification")
 include("servers:services:sales")
 include("servers:services:hot-deal")
 
