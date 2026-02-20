@@ -11,6 +11,8 @@ public interface ChatRoomParticipantRepository extends JpaRepository<ChatRoomPar
 
     Optional<ChatRoomParticipant> findByRoomIdAndUserId(Long roomId, Long userId);
 
+    List<ChatRoomParticipant> findByRoomIdOrderByIdAsc(Long roomId);
+
     List<ChatRoomParticipant> findByUserIdAndStatusOrderByRoomIdDesc(Long userId, ChatParticipantStatus status);
 
     List<ChatRoomParticipant> findByRoomIdAndStatusOrderByIdAsc(Long roomId, ChatParticipantStatus status);
