@@ -6,6 +6,7 @@ import com.example.chat.entity.message.ChatMessage;
 import com.example.chat.entity.message.ChatMessageType;
 import com.example.chat.entity.participant.ChatRoomParticipant;
 import com.example.chat.entity.room.ChatRoom;
+import com.example.chat.event.ChatMessageCreatedEvent;
 import com.example.chat.exception.ChatErrorCode;
 import com.example.chat.repository.ChatMessageRepository;
 import com.example.chat.repository.ChatRoomParticipantRepository;
@@ -14,7 +15,10 @@ import com.example.chat.service.content.ChatContentSanitizer;
 import com.example.chat.service.policy.ChatMessagePolicyService;
 import com.example.core.exception.BusinessException;
 import com.example.core.util.JsonUtils;
+import com.example.event.EventMetadata;
+import com.example.event.EventPublisher;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -28,6 +32,7 @@ public class ChatMessageCommandService {
     private final ChatMessageRepository chatMessageRepository;
     private final ChatContentSanitizer chatContentSanitizer;
     private final ChatMessagePolicyService chatMessagePolicyService;
+    private final EventPublisher eventPublisher;
 
     @Transactional
     public ChatMessageSendResponse sendMessage(Long roomId, CreateChatMessageRequest request, Long senderId) {
@@ -53,11 +58,15 @@ public class ChatMessageCommandService {
 
         chatMessagePolicyService.validateSendPermission(room, participant, senderId, messageType);
 
-        if (StringUtils.hasText(request.getClientMessageId())) {
+        String clientMessageId = StringUtils.hasText(request.getClientMessageId())
+                ? request.getClientMessageId()
+                : null;
+
+        if (clientMessageId != null) {
             ChatMessage existing = chatMessageRepository.findByRoomIdAndSenderIdAndClientMessageId(
                     roomId,
                     senderId,
-                    request.getClientMessageId()
+                    clientMessageId
             ).orElse(null);
             if (existing != null) {
                 return toResponse(existing, true);
@@ -65,17 +74,30 @@ public class ChatMessageCommandService {
         }
 
         String metadata = request.getMetadata() == null ? null : JsonUtils.toJson(request.getMetadata());
+        ChatMessage created;
+        try {
+            created = chatMessageRepository.save(ChatMessage.create(
+                    roomId,
+                    senderId,
+                    messageType,
+                    clientMessageId,
+                    request.getContent(),
+                    sanitizedContent,
+                    metadata
+            ));
+        } catch (DataIntegrityViolationException e) {
+            if (clientMessageId == null) {
+                throw e;
+            }
+            ChatMessage existing = chatMessageRepository.findByRoomIdAndSenderIdAndClientMessageId(
+                    roomId,
+                    senderId,
+                    clientMessageId
+            ).orElseThrow(() -> e);
+            return toResponse(existing, true);
+        }
 
-        ChatMessage created = chatMessageRepository.save(ChatMessage.create(
-                roomId,
-                senderId,
-                messageType,
-                request.getClientMessageId(),
-                request.getContent(),
-                sanitizedContent,
-                metadata
-        ));
-
+        publishMessageCreatedEvent(created);
         return toResponse(created, false);
     }
 
@@ -89,5 +111,19 @@ public class ChatMessageCommandService {
                 .createdAt(message.getCreatedAt())
                 .duplicated(duplicated)
                 .build();
+    }
+
+    private void publishMessageCreatedEvent(ChatMessage message) {
+        eventPublisher.publish(
+                new ChatMessageCreatedEvent(
+                        message.getRoomId(),
+                        message.getId(),
+                        message.getSenderId(),
+                        message.getMessageType(),
+                        message.getContentSanitized(),
+                        message.getCreatedAt()
+                ),
+                EventMetadata.of("ChatRoom", String.valueOf(message.getRoomId()))
+        );
     }
 }
