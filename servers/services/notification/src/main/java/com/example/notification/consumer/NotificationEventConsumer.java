@@ -7,6 +7,7 @@ import com.example.notification.dto.command.request.CreateNotificationRequest;
 import com.example.notification.entity.NotificationChannel;
 import com.example.notification.entity.NotificationType;
 import com.example.notification.service.command.NotificationCommandService;
+import com.example.notification.service.setting.NotificationSettingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -28,6 +29,7 @@ public class NotificationEventConsumer {
     private final IdempotentConsumerService idempotentConsumerService;
     private final NotificationCommandService notificationCommandService;
     private final ProductClient productClient;
+    private final NotificationSettingService notificationSettingService;
 
     @KafkaListener(topics = "funding-events", groupId = "${spring.kafka.consumer.group-id}")
     @Transactional
@@ -96,6 +98,24 @@ public class NotificationEventConsumer {
                 handleStockDepleted(event);
             } else {
                 log.debug("Ignore stock event type: {}", event.getEventType());
+            }
+            return null;
+        });
+    }
+
+    @KafkaListener(topics = "chat-notification-events", groupId = "${spring.kafka.consumer.group-id}")
+    @Transactional
+    public void consumeChat(String message) {
+        ChatNotificationEventMessage event = JsonUtils.fromJson(message, ChatNotificationEventMessage.class);
+        if (!isValid(event.getEventId(), event.getEventType(), "chat-notification-events")) {
+            return;
+        }
+
+        idempotentConsumerService.executeIdempotent(event.getEventId(), "CHAT_NOTIFICATION_EVENT", () -> {
+            if ("CHAT_NOTIFICATION_REQUESTED".equals(normalizeEventType(event.getEventType()))) {
+                handleChatNotificationRequested(event);
+            } else {
+                log.debug("Ignore chat notification event type: {}", event.getEventType());
             }
             return null;
         });
@@ -229,6 +249,45 @@ public class NotificationEventConsumer {
                 event.getEventId(),
                 "재고가 모두 소진되었습니다",
                 safeValue(resolved.title()) + " 상품의 재고가 모두 소진되었습니다.",
+                variables
+        );
+    }
+
+    private void handleChatNotificationRequested(ChatNotificationEventMessage event) {
+        if (event.getRecipientId() == null || event.getRoomId() == null) {
+            log.warn("Skip CHAT_NOTIFICATION_REQUESTED. recipientId={}, roomId={}",
+                    event.getRecipientId(), event.getRoomId());
+            return;
+        }
+
+        if (!notificationSettingService.shouldSendNotification(
+                event.getRecipientId(),
+                NotificationType.CHAT_MESSAGE,
+                NotificationChannel.IN_APP
+        )) {
+            log.debug("Skip CHAT_NOTIFICATION_REQUESTED by setting. recipientId={}, roomId={}",
+                    event.getRecipientId(), event.getRoomId());
+            return;
+        }
+
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put("roomId", event.getRoomId());
+        variables.put("roomType", event.getRoomType());
+        variables.put("messageId", event.getMessageId());
+        variables.put("senderId", event.getSenderId());
+        variables.put("messageType", event.getMessageType());
+        variables.put("preview", event.getPreview());
+
+        dispatchNotification(
+                event.getRecipientId(),
+                NotificationType.CHAT_MESSAGE,
+                "CHAT_ROOM",
+                event.getRoomId(),
+                event.getEventId(),
+                "새 채팅 메시지가 도착했어요",
+                normalizeText(event.getPreview()) != null
+                        ? event.getPreview()
+                        : "참여 중인 채팅방에 새 메시지가 도착했습니다.",
                 variables
         );
     }
