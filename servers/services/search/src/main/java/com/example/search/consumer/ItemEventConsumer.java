@@ -57,6 +57,7 @@ public class ItemEventConsumer {
             case "ITEM_CREATED" -> handleItemCreated(event);
             case "ITEM_UPDATED" -> handleItemUpdated(event);
             case "ITEM_STATUS_CHANGED" -> handleItemStatusChanged(event);
+            case "ITEM_DELETED" -> handleItemDeleted(event);
             default -> log.debug("[SearchItemConsumer] 처리하지 않는 이벤트 타입: {}", event.getEventType());
         }
     }
@@ -86,6 +87,11 @@ public class ItemEventConsumer {
             return;
         }
         searchIndexingService.updateItemStatus(event.getItemId(), event.getNewStatus());
+        searchResultCacheService.evictAll();
+    }
+
+    private void handleItemDeleted(ItemEventMessage event) {
+        searchIndexingService.deleteItem(event.getItemId());
         searchResultCacheService.evictAll();
     }
 

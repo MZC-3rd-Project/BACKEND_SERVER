@@ -82,4 +82,18 @@ class ElasticsearchIndexingServiceTest {
                     assertThat(businessException.getErrorCode()).isEqualTo(SearchErrorCode.SEARCH_INDEXING_FAILED);
                 });
     }
+
+    @Test
+    void deleteItem_sendsDeleteDocRequest() throws Exception {
+        when(restClient.performRequest(any(Request.class))).thenReturn(mock(Response.class));
+
+        indexingService.deleteItem(23L);
+
+        ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+        verify(restClient).performRequest(captor.capture());
+        Request request = captor.getValue();
+
+        assertThat(request.getMethod()).isEqualTo("DELETE");
+        assertThat(request.getEndpoint()).isEqualTo("/items/_doc/23");
+    }
 }
