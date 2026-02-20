@@ -1,12 +1,15 @@
 package com.example.chat.controller.ws;
 
+import com.example.chat.config.ChatRealtimeProperties;
 import com.example.chat.dto.command.request.ChatReadUpdateRequest;
 import com.example.chat.dto.command.request.CreateChatMessageRequest;
 import com.example.chat.dto.command.response.ChatMessageSendResponse;
 import com.example.chat.dto.command.response.ChatReadUpdateResponse;
+import com.example.chat.dto.query.response.ChatMessageItemResponse;
 import com.example.chat.service.command.ChatMessageCommandService;
 import com.example.chat.service.command.ChatReadCommandService;
 import com.example.chat.service.query.ChatRoomQueryService;
+import com.example.chat.service.realtime.ChatRoomRealtimePublisher;
 import com.example.chat.service.realtime.ChatWebSocketSessionRegistry;
 import com.example.core.exception.BusinessException;
 import com.example.core.util.JsonUtils;
@@ -33,6 +36,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final ChatRoomQueryService chatRoomQueryService;
     private final ChatMessageCommandService chatMessageCommandService;
     private final ChatReadCommandService chatReadCommandService;
+    private final ChatRoomRealtimePublisher chatRoomRealtimePublisher;
+    private final ChatRealtimeProperties chatRealtimeProperties;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -58,6 +63,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        sessionRegistry.touch(session);
         setWebSocketAuthContext(session, userId);
         try {
             ChatInboundFrame frame = JsonUtils.fromJson(message.getPayload(), ChatInboundFrame.class);
@@ -95,6 +101,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         sendFrame(session, ChatFrameType.SUBSCRIBED, Map.of(
                 "roomId", frame.getRoomId()
         ));
+
+        syncMissedMessages(session, userId, frame);
     }
 
     private void handleSendMessage(WebSocketSession session, Long userId, ChatInboundFrame frame) {
@@ -132,7 +140,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                     .type(ChatFrameType.ROOM_MESSAGE)
                     .payload(roomPayload)
                     .build());
-            sessionRegistry.broadcastToRoom(response.getRoomId(), serialized);
+            chatRoomRealtimePublisher.publishRoomMessage(response.getRoomId(), serialized);
         }
     }
 
@@ -173,6 +181,31 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 .payload(payload)
                 .build());
         sessionRegistry.sendToSession(session, serialized);
+    }
+
+    private void syncMissedMessages(WebSocketSession session, Long userId, ChatInboundFrame frame) {
+        if (frame.getLastReceivedMessageId() == null || frame.getLastReceivedMessageId() <= 0) {
+            return;
+        }
+
+        int replaySize = Math.max(1, chatRealtimeProperties.getReplayBatchSize());
+        List<ChatMessageItemResponse> missedMessages = chatRoomQueryService.findMessagesAfter(
+                frame.getRoomId(),
+                userId,
+                frame.getLastReceivedMessageId(),
+                replaySize
+        );
+
+        for (ChatMessageItemResponse missed : missedMessages) {
+            sendFrame(session, ChatFrameType.ROOM_MESSAGE, Map.of(
+                    "roomId", frame.getRoomId(),
+                    "messageId", missed.getMessageId(),
+                    "senderId", missed.getSenderId(),
+                    "messageType", missed.getMessageType(),
+                    "content", missed.getContent(),
+                    "createdAt", missed.getCreatedAt()
+            ));
+        }
     }
 
     @SuppressWarnings("unchecked")

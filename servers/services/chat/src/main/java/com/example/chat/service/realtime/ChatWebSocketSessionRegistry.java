@@ -6,7 +6,9 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,11 +21,13 @@ public class ChatWebSocketSessionRegistry {
     private final Map<String, Long> sessionUsers = new ConcurrentHashMap<>();
     private final Map<String, Set<Long>> sessionRooms = new ConcurrentHashMap<>();
     private final Map<Long, Set<String>> roomSessions = new ConcurrentHashMap<>();
+    private final Map<String, Long> sessionLastSeenAtMillis = new ConcurrentHashMap<>();
 
     public void register(WebSocketSession session, Long userId) {
         sessions.put(session.getId(), session);
         sessionUsers.put(session.getId(), userId);
         sessionRooms.put(session.getId(), ConcurrentHashMap.newKeySet());
+        sessionLastSeenAtMillis.put(session.getId(), System.currentTimeMillis());
     }
 
     public void unregister(WebSocketSession session) {
@@ -44,6 +48,7 @@ public class ChatWebSocketSessionRegistry {
 
         sessions.remove(sessionId);
         sessionUsers.remove(sessionId);
+        sessionLastSeenAtMillis.remove(sessionId);
     }
 
     public void subscribeRoom(WebSocketSession session, Long roomId) {
@@ -59,6 +64,24 @@ public class ChatWebSocketSessionRegistry {
 
     public Set<Long> getSubscribedRooms(WebSocketSession session) {
         return sessionRooms.getOrDefault(session.getId(), Collections.emptySet());
+    }
+
+    public void touch(WebSocketSession session) {
+        sessionLastSeenAtMillis.put(session.getId(), System.currentTimeMillis());
+    }
+
+    public List<WebSocketSession> findIdleSessions(Duration maxIdle) {
+        long thresholdMs = maxIdle.toMillis();
+        long now = System.currentTimeMillis();
+        return sessions.values().stream()
+                .filter(session -> {
+                    Long lastSeen = sessionLastSeenAtMillis.get(session.getId());
+                    if (lastSeen == null) {
+                        return false;
+                    }
+                    return now - lastSeen >= thresholdMs;
+                })
+                .toList();
     }
 
     public void sendToSession(WebSocketSession session, String payload) {
