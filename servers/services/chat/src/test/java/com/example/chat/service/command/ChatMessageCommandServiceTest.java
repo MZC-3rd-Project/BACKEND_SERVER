@@ -12,6 +12,7 @@ import com.example.chat.repository.ChatRoomParticipantRepository;
 import com.example.chat.repository.ChatRoomRepository;
 import com.example.chat.service.content.ChatContentSanitizer;
 import com.example.chat.service.policy.ChatMessagePolicyService;
+import com.example.event.EventPublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -47,6 +48,9 @@ class ChatMessageCommandServiceTest {
     @Mock
     private ChatMessagePolicyService chatMessagePolicyService;
 
+    @Mock
+    private EventPublisher eventPublisher;
+
     @InjectMocks
     private ChatMessageCommandService chatMessageCommandService;
 
@@ -78,6 +82,7 @@ class ChatMessageCommandServiceTest {
         assertThat(response.isDuplicated()).isTrue();
         assertThat(response.getMessageId()).isEqualTo(999L);
         verify(chatMessageRepository, never()).save(any(ChatMessage.class));
+        verify(eventPublisher, never()).publish(any(), any());
     }
 
     @Test
@@ -111,5 +116,6 @@ class ChatMessageCommandServiceTest {
         assertThat(response.getMessageId()).isEqualTo(1000L);
         assertThat(response.getContent()).isEqualTo("hello");
         verify(chatMessageRepository).save(any(ChatMessage.class));
+        verify(eventPublisher).publish(any(), any());
     }
 }
