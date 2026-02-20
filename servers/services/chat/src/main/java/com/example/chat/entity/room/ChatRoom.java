@@ -72,12 +72,13 @@ public class ChatRoom extends BaseEntity {
         return room;
     }
 
-    public static ChatRoom createFundingGroupRoom(String roomKey, Long campaignId, Long sellerId, String title) {
+    public static ChatRoom createFundingGroupRoom(String roomKey, Long campaignId, Long itemId, Long sellerId, String title) {
         ChatRoom room = new ChatRoom();
         room.roomKey = roomKey;
         room.roomType = ChatRoomType.FUNDING_GROUP;
         room.status = ChatRoomStatus.OPEN;
         room.campaignId = campaignId;
+        room.itemId = itemId;
         room.sellerId = sellerId;
         room.title = title;
         return room;
