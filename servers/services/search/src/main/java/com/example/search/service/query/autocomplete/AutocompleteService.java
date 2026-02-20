@@ -2,6 +2,7 @@ package com.example.search.service.query.autocomplete;
 
 import com.example.search.dto.autocomplete.request.AutocompleteRequest;
 import com.example.search.dto.autocomplete.response.AutocompleteResponse;
+import com.example.search.util.SearchKeywordNormalizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -12,7 +13,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 
 @Slf4j
@@ -36,7 +36,7 @@ public class AutocompleteService {
     }
 
     public AutocompleteResponse suggest(String q, int size) {
-        String normalized = normalizeKeyword(q);
+        String normalized = SearchKeywordNormalizer.normalize(q);
         if (!StringUtils.hasText(normalized)) {
             return AutocompleteResponse.builder().suggestions(List.of()).build();
         }
@@ -58,7 +58,7 @@ public class AutocompleteService {
     }
 
     public void recordKeyword(String keyword) {
-        String normalized = normalizeKeyword(keyword);
+        String normalized = SearchKeywordNormalizer.normalize(keyword);
         if (!StringUtils.hasText(normalized)) {
             return;
         }
@@ -93,14 +93,5 @@ public class AutocompleteService {
 
     private String prefixKey(String prefix) {
         return KEY_PREFIX + prefix;
-    }
-
-    private String normalizeKeyword(String raw) {
-        if (!StringUtils.hasText(raw)) {
-            return "";
-        }
-        return raw.trim()
-                .toLowerCase(Locale.ROOT)
-                .replaceAll("\\s+", " ");
     }
 }
