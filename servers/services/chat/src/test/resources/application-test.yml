@@ -16,6 +16,8 @@ spring:
 chat:
   security:
     gateway-auth-enabled: false
+  realtime:
+    redis-fanout-enabled: false
 
 app:
   outbox:

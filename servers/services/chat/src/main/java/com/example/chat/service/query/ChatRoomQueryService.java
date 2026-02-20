@@ -98,6 +98,33 @@ public class ChatRoomQueryService {
         return CursorResponse.of(content, nextCursor);
     }
 
+    public List<ChatMessageItemResponse> findMessagesAfter(Long roomId,
+                                                           Long userId,
+                                                           Long lastReceivedMessageId,
+                                                           int size) {
+        validateRoomAccess(roomId, userId);
+
+        if (lastReceivedMessageId == null || lastReceivedMessageId <= 0) {
+            return List.of();
+        }
+
+        List<ChatMessage> messages = chatMessageRepository.findByRoomIdAndIdGreaterThanOrderByIdAsc(
+                roomId,
+                lastReceivedMessageId,
+                PageRequest.of(0, Math.max(1, size))
+        );
+
+        return messages.stream()
+                .map(message -> ChatMessageItemResponse.builder()
+                        .messageId(message.getId())
+                        .senderId(message.getSenderId())
+                        .messageType(message.getMessageType())
+                        .content(message.getContentSanitized())
+                        .createdAt(message.getCreatedAt())
+                        .build())
+                .toList();
+    }
+
     public void validateRoomAccess(Long roomId, Long userId) {
         ChatRoomParticipant participant = chatRoomParticipantRepository.findByRoomIdAndUserId(roomId, userId)
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.FORBIDDEN_ROOM_ACCESS));

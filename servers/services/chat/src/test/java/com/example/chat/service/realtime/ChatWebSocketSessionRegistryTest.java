@@ -8,6 +8,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
+import java.time.Duration;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -62,5 +63,18 @@ class ChatWebSocketSessionRegistryTest {
         assertThat(captor.getValue().getPayload()).isEqualTo("payload");
 
         verify(session2, never()).sendMessage(any(TextMessage.class));
+    }
+
+    @Test
+    void touchAndFindIdleSessions_tracksHeartbeatTimestamp() {
+        ChatWebSocketSessionRegistry registry = new ChatWebSocketSessionRegistry();
+
+        when(session1.getId()).thenReturn("s1");
+        registry.register(session1, 10L);
+
+        assertThat(registry.findIdleSessions(Duration.ZERO)).contains(session1);
+
+        registry.touch(session1);
+        assertThat(registry.findIdleSessions(Duration.ofDays(1))).doesNotContain(session1);
     }
 }

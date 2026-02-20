@@ -18,6 +18,11 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
                                                              @Param("cursor") Long cursor,
                                                              Pageable pageable);
 
+    @Query("SELECT m FROM ChatMessage m WHERE m.roomId = :roomId AND m.id > :lastReceivedId ORDER BY m.id ASC")
+    List<ChatMessage> findByRoomIdAndIdGreaterThanOrderByIdAsc(@Param("roomId") Long roomId,
+                                                                @Param("lastReceivedId") Long lastReceivedId,
+                                                                Pageable pageable);
+
     Optional<ChatMessage> findByRoomIdAndSenderIdAndClientMessageId(Long roomId, Long senderId, String clientMessageId);
 
     long countByRoomId(Long roomId);

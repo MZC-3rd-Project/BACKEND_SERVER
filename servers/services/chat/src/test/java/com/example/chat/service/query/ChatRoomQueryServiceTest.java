@@ -116,4 +116,26 @@ class ChatRoomQueryServiceTest {
         assertThat(CursorUtils.decodeLong(response.getNextCursor())).isEqualTo(200L);
         assertThat(response.getItems().get(0).getMessageId()).isEqualTo(200L);
     }
+
+    @Test
+    void findMessagesAfter_returnsAscendingMissedMessages() {
+        ChatRoomParticipant participant = ChatRoomParticipant.create(100L, 10L, ChatParticipantRole.PARTICIPANT);
+        when(chatRoomParticipantRepository.findByRoomIdAndUserId(100L, 10L)).thenReturn(Optional.of(participant));
+
+        ChatMessage m1 = ChatMessage.create(100L, 20L, ChatMessageType.CHAT, "c1", "one", "one", null);
+        ReflectionTestUtils.setField(m1, "id", 101L);
+        ReflectionTestUtils.setField(m1, "createdAt", LocalDateTime.now());
+
+        ChatMessage m2 = ChatMessage.create(100L, 20L, ChatMessageType.CHAT, "c2", "two", "two", null);
+        ReflectionTestUtils.setField(m2, "id", 102L);
+        ReflectionTestUtils.setField(m2, "createdAt", LocalDateTime.now());
+
+        when(chatMessageRepository.findByRoomIdAndIdGreaterThanOrderByIdAsc(eq(100L), eq(100L), any(Pageable.class)))
+                .thenReturn(List.of(m1, m2));
+
+        List<ChatMessageItemResponse> missed = chatRoomQueryService.findMessagesAfter(100L, 10L, 100L, 100);
+
+        assertThat(missed).hasSize(2);
+        assertThat(missed).extracting(ChatMessageItemResponse::getMessageId).containsExactly(101L, 102L);
+    }
 }
