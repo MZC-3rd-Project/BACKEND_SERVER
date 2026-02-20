@@ -13,6 +13,7 @@ public enum SearchErrorCode implements DomainErrorCode {
     INVALID_SEARCH_PARAMETER("SEARCH-002", "검색 파라미터가 유효하지 않습니다.", HttpStatus.BAD_REQUEST),
     SEARCH_INDEX_TEMPLATE_ERROR("SEARCH-003", "검색 인덱스 템플릿 구성이 올바르지 않습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
     INDEX_MANAGEMENT_FAILED("SEARCH-004", "검색 인덱스 관리 작업에 실패했습니다.", HttpStatus.SERVICE_UNAVAILABLE),
+    SEARCH_INDEXING_FAILED("SEARCH-005", "검색 인덱싱 처리에 실패했습니다.", HttpStatus.SERVICE_UNAVAILABLE),
     UNAUTHORIZED_INTERNAL_API("SEARCH-901", "내부 API 접근 권한이 없습니다.", HttpStatus.UNAUTHORIZED);
 
     private final String code;

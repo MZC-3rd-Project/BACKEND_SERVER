@@ -16,6 +16,7 @@ class SearchIndexTemplateResolverTest {
         assertThat(template).contains("\"decompound_mode\": \"mixed\"");
         assertThat(template).contains("\"ko_synonym_filter\"");
         assertThat(template).contains("\"ko_stop_filter\"");
+        assertThat(template).contains("\"stock\"");
         assertThat(template).contains("아이폰, iphone, i-phone");
         assertThat(template).contains("그리고");
         assertThat(template).doesNotContain("__SYNONYMS__");
