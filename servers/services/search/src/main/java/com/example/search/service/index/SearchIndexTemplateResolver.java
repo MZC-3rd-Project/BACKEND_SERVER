@@ -19,8 +19,10 @@ public class SearchIndexTemplateResolver {
     private static final String ITEMS_TEMPLATE_RESOURCE = "classpath:elasticsearch/items-index-template.json";
     private static final String SYNONYM_RESOURCE = "classpath:elasticsearch/analysis/synonym.txt";
     private static final String STOPWORDS_RESOURCE = "classpath:elasticsearch/analysis/stopwords_ko.txt";
+    private static final String USERDICT_RESOURCE = "classpath:elasticsearch/analysis/userdict_ko.txt";
     private static final String SYNONYMS_PLACEHOLDER = "__SYNONYMS__";
     private static final String STOPWORDS_PLACEHOLDER = "__STOPWORDS__";
+    private static final String USERDICT_PLACEHOLDER = "__USERDICT__";
 
     private final ResourceLoader resourceLoader;
 
@@ -32,10 +34,12 @@ public class SearchIndexTemplateResolver {
         String template = readResourceAsString(ITEMS_TEMPLATE_RESOURCE);
         String synonyms = toJsonArray(readDictionaryLines(SYNONYM_RESOURCE));
         String stopwords = toJsonArray(readDictionaryLines(STOPWORDS_RESOURCE));
+        String userdict = toJsonArray(readDictionaryLines(USERDICT_RESOURCE));
 
         return template
                 .replace(SYNONYMS_PLACEHOLDER, synonyms)
-                .replace(STOPWORDS_PLACEHOLDER, stopwords);
+                .replace(STOPWORDS_PLACEHOLDER, stopwords)
+                .replace(USERDICT_PLACEHOLDER, userdict);
     }
 
     private List<String> readDictionaryLines(String resourcePath) {
