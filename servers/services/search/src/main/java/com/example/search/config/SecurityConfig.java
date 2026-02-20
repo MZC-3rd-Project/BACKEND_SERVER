@@ -9,7 +9,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 
 @Configuration
-@EnableConfigurationProperties(SearchSecurityProperties.class)
+@EnableConfigurationProperties({SearchSecurityProperties.class, SearchPopularProperties.class})
 public class SecurityConfig {
 
     @Bean

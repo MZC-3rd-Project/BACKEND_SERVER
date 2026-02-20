@@ -20,6 +20,8 @@ public class SearchRequest {
 
     private String category;
 
+    private String domainType;
+
     private List<String> status = new ArrayList<>();
 
     @Min(value = 0, message = "최소 가격은 0 이상이어야 합니다.")

@@ -87,6 +87,7 @@ public class SearchIndexingFailureService {
                 event.getItemId(),
                 event.getTitle(),
                 event.getItemType(),
+                event.getItemType(),
                 event.getPrice(),
                 event.getNewStatus(),
                 initialStock

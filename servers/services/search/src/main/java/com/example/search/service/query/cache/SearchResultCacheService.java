@@ -88,6 +88,7 @@ public class SearchResultCacheService {
         Map<String, Object> normalized = new LinkedHashMap<>();
         normalized.put("q", SearchKeywordNormalizer.normalize(request.getQ()));
         normalized.put("category", normalizeText(request.getCategory()));
+        normalized.put("domainType", normalizeText(request.getDomainType()));
         normalized.put("status", normalizeStatuses(request.getStatus()));
         normalized.put("minPrice", request.getMinPrice());
         normalized.put("maxPrice", request.getMaxPrice());

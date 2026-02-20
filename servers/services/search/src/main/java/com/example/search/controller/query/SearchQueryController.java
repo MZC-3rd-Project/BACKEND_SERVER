@@ -25,6 +25,7 @@ public class SearchQueryController implements SearchApi {
     public ApiResponse<CursorResponse<SearchItemResponse>> search(
             String q,
             String category,
+            String domainType,
             List<String> status,
             Long minPrice,
             Long maxPrice,
@@ -35,6 +36,7 @@ public class SearchQueryController implements SearchApi {
         SearchRequest request = new SearchRequest();
         request.setQ(q);
         request.setCategory(category);
+        request.setDomainType(domainType);
         request.setStatus(status);
         request.setMinPrice(minPrice);
         request.setMaxPrice(maxPrice);

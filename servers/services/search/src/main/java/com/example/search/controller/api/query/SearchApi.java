@@ -20,6 +20,7 @@ public interface SearchApi {
     ApiResponse<CursorResponse<SearchItemResponse>> search(
             @RequestParam String q,
             @RequestParam(required = false) String category,
+            @RequestParam(required = false) String domainType,
             @RequestParam(required = false, name = "status") List<String> status,
             @RequestParam(required = false) Long minPrice,
             @RequestParam(required = false) Long maxPrice,

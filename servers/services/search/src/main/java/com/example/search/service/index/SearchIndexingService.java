@@ -5,6 +5,7 @@ public interface SearchIndexingService {
     void indexItem(Long itemId,
                    String title,
                    String category,
+                   String domainType,
                    Long price,
                    String status,
                    Integer stock);
