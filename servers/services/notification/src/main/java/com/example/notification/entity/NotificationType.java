@@ -6,5 +6,6 @@ public enum NotificationType {
     PAYMENT,
     HOTDEAL,
     STOCK_DEPLETED,
+    CHAT_MESSAGE,
     GENERAL
 }
