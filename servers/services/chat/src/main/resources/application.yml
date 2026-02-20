@@ -52,6 +52,7 @@ chat:
     replay-batch-size: ${CHAT_REALTIME_REPLAY_BATCH_SIZE:100}
     heartbeat-timeout-seconds: ${CHAT_REALTIME_HEARTBEAT_TIMEOUT_SECONDS:60}
     heartbeat-check-interval-ms: ${CHAT_REALTIME_HEARTBEAT_CHECK_INTERVAL_MS:10000}
+    presence-ttl-seconds: ${CHAT_REALTIME_PRESENCE_TTL_SECONDS:120}
 
 # ─── Snowflake ID ────────────────────────────
 app:

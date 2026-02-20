@@ -9,6 +9,7 @@ import com.example.chat.dto.query.response.ChatMessageItemResponse;
 import com.example.chat.service.command.ChatMessageCommandService;
 import com.example.chat.service.command.ChatReadCommandService;
 import com.example.chat.service.query.ChatRoomQueryService;
+import com.example.chat.service.realtime.ChatPresenceService;
 import com.example.chat.service.realtime.ChatRoomRealtimePublisher;
 import com.example.chat.service.realtime.ChatWebSocketSessionRegistry;
 import com.example.core.exception.BusinessException;
@@ -38,6 +39,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     private final ChatReadCommandService chatReadCommandService;
     private final ChatRoomRealtimePublisher chatRoomRealtimePublisher;
     private final ChatRealtimeProperties chatRealtimeProperties;
+    private final ChatPresenceService chatPresenceService;
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
@@ -48,11 +50,14 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
 
         sessionRegistry.register(session, userId);
+        chatPresenceService.markConnected(userId);
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        Long userId = sessionRegistry.getUserId(session);
         sessionRegistry.unregister(session);
+        chatPresenceService.markDisconnected(userId);
     }
 
     @Override
@@ -64,6 +69,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         }
 
         sessionRegistry.touch(session);
+        chatPresenceService.markHeartbeat(userId);
         setWebSocketAuthContext(session, userId);
         try {
             ChatInboundFrame frame = JsonUtils.fromJson(message.getPayload(), ChatInboundFrame.class);

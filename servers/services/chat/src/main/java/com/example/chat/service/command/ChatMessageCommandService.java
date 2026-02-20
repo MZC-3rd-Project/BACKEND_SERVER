@@ -4,15 +4,18 @@ import com.example.chat.dto.command.request.CreateChatMessageRequest;
 import com.example.chat.dto.command.response.ChatMessageSendResponse;
 import com.example.chat.entity.message.ChatMessage;
 import com.example.chat.entity.message.ChatMessageType;
+import com.example.chat.entity.participant.ChatParticipantStatus;
 import com.example.chat.entity.participant.ChatRoomParticipant;
 import com.example.chat.entity.room.ChatRoom;
 import com.example.chat.event.ChatMessageCreatedEvent;
+import com.example.chat.event.ChatNotificationRequestedEvent;
 import com.example.chat.exception.ChatErrorCode;
 import com.example.chat.repository.ChatMessageRepository;
 import com.example.chat.repository.ChatRoomParticipantRepository;
 import com.example.chat.repository.ChatRoomRepository;
 import com.example.chat.service.content.ChatContentSanitizer;
 import com.example.chat.service.policy.ChatMessagePolicyService;
+import com.example.chat.service.realtime.ChatPresenceService;
 import com.example.core.exception.BusinessException;
 import com.example.core.util.JsonUtils;
 import com.example.event.EventMetadata;
@@ -32,6 +35,7 @@ public class ChatMessageCommandService {
     private final ChatMessageRepository chatMessageRepository;
     private final ChatContentSanitizer chatContentSanitizer;
     private final ChatMessagePolicyService chatMessagePolicyService;
+    private final ChatPresenceService chatPresenceService;
     private final EventPublisher eventPublisher;
 
     @Transactional
@@ -98,6 +102,7 @@ public class ChatMessageCommandService {
         }
 
         publishMessageCreatedEvent(created);
+        publishOfflineNotificationEvents(room, created);
         return toResponse(created, false);
     }
 
@@ -125,5 +130,45 @@ public class ChatMessageCommandService {
                 ),
                 EventMetadata.of("ChatRoom", String.valueOf(message.getRoomId()))
         );
+    }
+
+    private void publishOfflineNotificationEvents(ChatRoom room, ChatMessage message) {
+        String preview = buildPreview(message.getContentSanitized());
+
+        for (ChatRoomParticipant recipient : chatRoomParticipantRepository.findByRoomIdAndStatusOrderByIdAsc(
+                room.getId(),
+                ChatParticipantStatus.ACTIVE
+        )) {
+            if (recipient.getUserId().equals(message.getSenderId())) {
+                continue;
+            }
+            if (chatPresenceService.isOnline(recipient.getUserId())) {
+                continue;
+            }
+
+            eventPublisher.publish(
+                    new ChatNotificationRequestedEvent(
+                            recipient.getUserId(),
+                            room.getId(),
+                            room.getRoomType(),
+                            message.getId(),
+                            message.getSenderId(),
+                            message.getMessageType(),
+                            preview,
+                            message.getCreatedAt()
+                    ),
+                    EventMetadata.of("ChatRoom", String.valueOf(room.getId()))
+            );
+        }
+    }
+
+    private String buildPreview(String content) {
+        if (!StringUtils.hasText(content)) {
+            return null;
+        }
+        if (content.length() <= 100) {
+            return content;
+        }
+        return content.substring(0, 100);
     }
 }
