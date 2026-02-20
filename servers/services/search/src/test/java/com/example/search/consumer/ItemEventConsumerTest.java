@@ -98,6 +98,24 @@ class ItemEventConsumerTest {
     }
 
     @Test
+    void consume_routesItemDeletedToIndexingService() {
+        stubIdempotentExecution();
+
+        String message = """
+                {
+                  "eventId": "evt-item-4",
+                  "eventType": "ITEM_DELETED",
+                  "itemId": 101
+                }
+                """;
+
+        itemEventConsumer.consume(message);
+
+        verify(searchIndexingService).deleteItem(101L);
+        verify(searchResultCacheService).evictAll();
+    }
+
+    @Test
     void consume_ignoresInvalidEventWithoutIdempotentExecution() {
         String message = """
                 {
