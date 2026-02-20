@@ -3,12 +3,14 @@ package com.example.chat.service.command;
 import com.example.chat.client.ProductClient;
 import com.example.chat.dto.command.request.CreateInquiryRoomRequest;
 import com.example.chat.dto.command.response.ChatRoomCreateResponse;
+import com.example.chat.entity.audit.ChatAuditEventType;
 import com.example.chat.entity.participant.ChatParticipantRole;
 import com.example.chat.entity.participant.ChatRoomParticipant;
 import com.example.chat.entity.room.ChatRoom;
 import com.example.chat.exception.ChatErrorCode;
 import com.example.chat.repository.ChatRoomParticipantRepository;
 import com.example.chat.repository.ChatRoomRepository;
+import com.example.chat.service.audit.ChatAuditService;
 import com.example.core.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +30,7 @@ public class ChatRoomCommandService {
     private final ProductClient productClient;
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomParticipantRepository chatRoomParticipantRepository;
+    private final ChatAuditService chatAuditService;
 
     @Transactional
     public ChatRoomCreateResponse createInquiryRoom(CreateInquiryRoomRequest request, Long buyerId) {
@@ -61,6 +65,27 @@ public class ChatRoomCommandService {
             );
             chatRoomParticipantRepository.save(
                     ChatRoomParticipant.create(room.getId(), sellerId, ChatParticipantRole.SELLER_ADMIN)
+            );
+            chatAuditService.logEvent(
+                    buyerId,
+                    room.getId(),
+                    null,
+                    ChatAuditEventType.ROOM_CREATED,
+                    Map.of("roomKey", roomKey, "itemId", request.getItemId())
+            );
+            chatAuditService.logEvent(
+                    buyerId,
+                    room.getId(),
+                    buyerId,
+                    ChatAuditEventType.PARTICIPANT_ADDED,
+                    Map.of("role", ChatParticipantRole.PARTICIPANT.name())
+            );
+            chatAuditService.logEvent(
+                    sellerId,
+                    room.getId(),
+                    sellerId,
+                    ChatAuditEventType.PARTICIPANT_ADDED,
+                    Map.of("role", ChatParticipantRole.SELLER_ADMIN.name())
             );
             return toResponse(room);
         } catch (DataIntegrityViolationException e) {

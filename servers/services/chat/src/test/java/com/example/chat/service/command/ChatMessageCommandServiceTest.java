@@ -10,8 +10,10 @@ import com.example.chat.entity.room.ChatRoom;
 import com.example.chat.repository.ChatMessageRepository;
 import com.example.chat.repository.ChatRoomParticipantRepository;
 import com.example.chat.repository.ChatRoomRepository;
+import com.example.chat.service.audit.ChatAuditService;
 import com.example.chat.service.content.ChatContentSanitizer;
 import com.example.chat.service.policy.ChatMessagePolicyService;
+import com.example.chat.service.policy.ChatMessageRateLimitService;
 import com.example.chat.service.realtime.ChatPresenceService;
 import com.example.event.EventPublisher;
 import org.junit.jupiter.api.Test;
@@ -51,7 +53,13 @@ class ChatMessageCommandServiceTest {
     private ChatMessagePolicyService chatMessagePolicyService;
 
     @Mock
+    private ChatMessageRateLimitService chatMessageRateLimitService;
+
+    @Mock
     private ChatPresenceService chatPresenceService;
+
+    @Mock
+    private ChatAuditService chatAuditService;
 
     @Mock
     private EventPublisher eventPublisher;
@@ -87,6 +95,7 @@ class ChatMessageCommandServiceTest {
         assertThat(response.isDuplicated()).isTrue();
         assertThat(response.getMessageId()).isEqualTo(999L);
         verify(chatMessageRepository, never()).save(any(ChatMessage.class));
+        verify(chatMessageRateLimitService, never()).validateMessageSendRate(any());
         verify(eventPublisher, never()).publish(any(), any());
     }
 
@@ -123,7 +132,9 @@ class ChatMessageCommandServiceTest {
         assertThat(response.getMessageId()).isEqualTo(1000L);
         assertThat(response.getContent()).isEqualTo("hello");
         verify(chatMessageRepository).save(any(ChatMessage.class));
+        verify(chatMessageRateLimitService).validateMessageSendRate(2L);
         verify(eventPublisher, times(1)).publish(any(), any());
+        verify(chatAuditService).logEvent(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -156,6 +167,8 @@ class ChatMessageCommandServiceTest {
 
         chatMessageCommandService.sendMessage(100L, request, 2L);
 
+        verify(chatMessageRateLimitService).validateMessageSendRate(2L);
         verify(eventPublisher, times(2)).publish(any(), any());
+        verify(chatAuditService).logEvent(any(), any(), any(), any(), any());
     }
 }

@@ -4,6 +4,7 @@ import com.example.chat.dto.command.request.CreateChatMessageRequest;
 import com.example.chat.dto.command.response.ChatMessageSendResponse;
 import com.example.chat.entity.message.ChatMessage;
 import com.example.chat.entity.message.ChatMessageType;
+import com.example.chat.entity.audit.ChatAuditEventType;
 import com.example.chat.entity.participant.ChatParticipantStatus;
 import com.example.chat.entity.participant.ChatRoomParticipant;
 import com.example.chat.entity.room.ChatRoom;
@@ -13,8 +14,10 @@ import com.example.chat.exception.ChatErrorCode;
 import com.example.chat.repository.ChatMessageRepository;
 import com.example.chat.repository.ChatRoomParticipantRepository;
 import com.example.chat.repository.ChatRoomRepository;
+import com.example.chat.service.audit.ChatAuditService;
 import com.example.chat.service.content.ChatContentSanitizer;
 import com.example.chat.service.policy.ChatMessagePolicyService;
+import com.example.chat.service.policy.ChatMessageRateLimitService;
 import com.example.chat.service.realtime.ChatPresenceService;
 import com.example.core.exception.BusinessException;
 import com.example.core.util.JsonUtils;
@@ -26,6 +29,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 @Service
 @RequiredArgsConstructor
 public class ChatMessageCommandService {
@@ -35,7 +41,9 @@ public class ChatMessageCommandService {
     private final ChatMessageRepository chatMessageRepository;
     private final ChatContentSanitizer chatContentSanitizer;
     private final ChatMessagePolicyService chatMessagePolicyService;
+    private final ChatMessageRateLimitService chatMessageRateLimitService;
     private final ChatPresenceService chatPresenceService;
+    private final ChatAuditService chatAuditService;
     private final EventPublisher eventPublisher;
 
     @Transactional
@@ -77,6 +85,8 @@ public class ChatMessageCommandService {
             }
         }
 
+        chatMessageRateLimitService.validateMessageSendRate(senderId);
+
         String metadata = request.getMetadata() == null ? null : JsonUtils.toJson(request.getMetadata());
         ChatMessage created;
         try {
@@ -103,6 +113,7 @@ public class ChatMessageCommandService {
 
         publishMessageCreatedEvent(created);
         publishOfflineNotificationEvents(room, created);
+        auditMessageSent(room, created);
         return toResponse(created, false);
     }
 
@@ -170,5 +181,31 @@ public class ChatMessageCommandService {
             return content;
         }
         return content.substring(0, 100);
+    }
+
+    private void auditMessageSent(ChatRoom room, ChatMessage message) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("messageId", message.getId());
+        payload.put("senderId", message.getSenderId());
+        payload.put("messageType", message.getMessageType());
+        payload.put("preview", buildPreview(message.getContentSanitized()));
+
+        chatAuditService.logEvent(
+                message.getSenderId(),
+                room.getId(),
+                null,
+                ChatAuditEventType.MESSAGE_SENT,
+                payload
+        );
+
+        if (message.getMessageType() == ChatMessageType.NOTICE) {
+            chatAuditService.logEvent(
+                    message.getSenderId(),
+                    room.getId(),
+                    null,
+                    ChatAuditEventType.NOTICE_SENT,
+                    payload
+            );
+        }
     }
 }

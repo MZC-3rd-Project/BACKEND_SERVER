@@ -17,6 +17,7 @@ public enum ChatErrorCode implements DomainErrorCode {
     INVALID_MESSAGE_TYPE("CHAT-006", "유효하지 않은 메시지 타입입니다.", HttpStatus.BAD_REQUEST),
     INVALID_MESSAGE_CONTENT("CHAT-007", "유효하지 않은 메시지 내용입니다.", HttpStatus.BAD_REQUEST),
     PLATFORM_ADMIN_CHAT_NOT_ALLOWED("CHAT-008", "플랫폼 어드민은 일반 채팅을 전송할 수 없습니다.", HttpStatus.FORBIDDEN),
+    MESSAGE_RATE_LIMIT_EXCEEDED("CHAT-009", "메시지 전송 속도 제한을 초과했습니다.", HttpStatus.TOO_MANY_REQUESTS),
     INVALID_INQUIRY_REQUEST("CHAT-010", "문의방 생성 요청이 유효하지 않습니다.", HttpStatus.BAD_REQUEST),
 
     PRODUCT_SERVICE_ERROR("CHAT-201", "상품 서비스 호출에 실패했습니다.", HttpStatus.SERVICE_UNAVAILABLE);
