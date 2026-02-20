@@ -53,6 +53,13 @@ chat:
     heartbeat-timeout-seconds: ${CHAT_REALTIME_HEARTBEAT_TIMEOUT_SECONDS:60}
     heartbeat-check-interval-ms: ${CHAT_REALTIME_HEARTBEAT_CHECK_INTERVAL_MS:10000}
     presence-ttl-seconds: ${CHAT_REALTIME_PRESENCE_TTL_SECONDS:120}
+  rate-limit:
+    per-second: ${CHAT_RATE_LIMIT_PER_SECOND:8}
+    per-minute: ${CHAT_RATE_LIMIT_PER_MINUTE:100}
+    key-ttl-seconds: ${CHAT_RATE_LIMIT_KEY_TTL_SECONDS:120}
+  retention:
+    days: ${CHAT_RETENTION_DAYS:365}
+    cleanup-cron: ${CHAT_RETENTION_CLEANUP_CRON:0 15 4 * * *}
 
 # ─── Snowflake ID ────────────────────────────
 app:
