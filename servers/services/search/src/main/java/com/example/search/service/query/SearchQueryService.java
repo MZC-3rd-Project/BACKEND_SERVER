@@ -8,6 +8,7 @@ import com.example.search.dto.search.request.SearchRequest;
 import com.example.search.dto.search.response.SearchItemResponse;
 import com.example.search.exception.SearchErrorCode;
 import com.example.search.service.query.autocomplete.AutocompleteService;
+import com.example.search.service.query.popular.PopularSearchService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +36,7 @@ public class SearchQueryService {
     private final RestClient restClient;
     private final SearchCursorCodec cursorCodec;
     private final AutocompleteService autocompleteService;
+    private final PopularSearchService popularSearchService;
 
     public CursorResponse<SearchItemResponse> search(SearchRequest request) {
         validateRange(request.getMinPrice(), request.getMaxPrice());
@@ -62,6 +64,7 @@ public class SearchQueryService {
             String json = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
             CursorResponse<SearchItemResponse> result = parseSearchResponse(json, size);
             autocompleteService.recordKeyword(request.getQ());
+            popularSearchService.recordKeyword(request.getQ());
             return result;
         } catch (IOException e) {
             log.error("Search query failed. request={}", JsonUtils.toJson(body), e);

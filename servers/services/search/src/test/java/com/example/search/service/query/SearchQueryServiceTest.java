@@ -4,6 +4,7 @@ import com.example.core.pagination.CursorResponse;
 import com.example.search.dto.search.request.SearchRequest;
 import com.example.search.dto.search.response.SearchItemResponse;
 import com.example.search.service.query.autocomplete.AutocompleteService;
+import com.example.search.service.query.popular.PopularSearchService;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
@@ -32,11 +33,19 @@ class SearchQueryServiceTest {
     @Mock
     private AutocompleteService autocompleteService;
 
+    @Mock
+    private PopularSearchService popularSearchService;
+
     private SearchQueryService searchQueryService;
 
     @BeforeEach
     void setUp() {
-        searchQueryService = new SearchQueryService(restClient, new SearchCursorCodec(), autocompleteService);
+        searchQueryService = new SearchQueryService(
+                restClient,
+                new SearchCursorCodec(),
+                autocompleteService,
+                popularSearchService
+        );
     }
 
     @Test
@@ -87,6 +96,7 @@ class SearchQueryServiceTest {
         assertThat(result.getItems().get(0).getHighlightedTitle()).contains("<em>");
         assertThat(result.getNextCursor()).isNotBlank();
         verify(autocompleteService).recordKeyword("아이폰");
+        verify(popularSearchService).recordKeyword("아이폰");
 
         ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
         verify(restClient).performRequest(captor.capture());
