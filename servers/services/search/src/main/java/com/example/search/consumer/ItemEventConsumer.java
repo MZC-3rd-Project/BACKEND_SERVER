@@ -3,6 +3,7 @@ package com.example.search.consumer;
 import com.example.config.kafka.IdempotentConsumerService;
 import com.example.core.util.JsonUtils;
 import com.example.search.service.index.SearchIndexingService;
+import com.example.search.service.query.cache.SearchResultCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -21,6 +22,7 @@ public class ItemEventConsumer {
 
     private final IdempotentConsumerService idempotentConsumerService;
     private final SearchIndexingService searchIndexingService;
+    private final SearchResultCacheService searchResultCacheService;
 
     @KafkaListener(topics = "item-events", groupId = "${spring.kafka.consumer.group-id}")
     @Transactional
@@ -70,10 +72,12 @@ public class ItemEventConsumer {
                 event.getNewStatus(),
                 initialStock
         );
+        searchResultCacheService.evictAll();
     }
 
     private void handleItemUpdated(ItemEventMessage event) {
         searchIndexingService.updateItem(event.getItemId(), event.getTitle(), event.getPrice());
+        searchResultCacheService.evictAll();
     }
 
     private void handleItemStatusChanged(ItemEventMessage event) {
@@ -82,6 +86,7 @@ public class ItemEventConsumer {
             return;
         }
         searchIndexingService.updateItemStatus(event.getItemId(), event.getNewStatus());
+        searchResultCacheService.evictAll();
     }
 
     private Integer sumStock(List<ItemEventMessage.StockItemPayload> stockItems) {

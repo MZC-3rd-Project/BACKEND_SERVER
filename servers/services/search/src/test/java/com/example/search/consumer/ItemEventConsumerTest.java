@@ -2,6 +2,7 @@ package com.example.search.consumer;
 
 import com.example.config.kafka.IdempotentConsumerService;
 import com.example.search.service.index.SearchIndexingService;
+import com.example.search.service.query.cache.SearchResultCacheService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -25,6 +26,9 @@ class ItemEventConsumerTest {
 
     @Mock
     private SearchIndexingService searchIndexingService;
+
+    @Mock
+    private SearchResultCacheService searchResultCacheService;
 
     @InjectMocks
     private ItemEventConsumer itemEventConsumer;
@@ -50,6 +54,7 @@ class ItemEventConsumerTest {
         itemEventConsumer.consume(message);
 
         verify(searchIndexingService).indexItem(101L, "아이폰 케이스", "GOODS", null, null, 10);
+        verify(searchResultCacheService).evictAll();
     }
 
     @Test
@@ -69,6 +74,7 @@ class ItemEventConsumerTest {
         itemEventConsumer.consume(message);
 
         verify(searchIndexingService).updateItem(101L, "아이폰 케이스 2", 25000L);
+        verify(searchResultCacheService).evictAll();
     }
 
     @Test
@@ -88,6 +94,7 @@ class ItemEventConsumerTest {
         itemEventConsumer.consume(message);
 
         verify(searchIndexingService).updateItemStatus(101L, "SELLING");
+        verify(searchResultCacheService).evictAll();
     }
 
     @Test
@@ -103,6 +110,7 @@ class ItemEventConsumerTest {
 
         verify(idempotentConsumerService, never()).executeIdempotent(anyString(), anyString(), any());
         verify(searchIndexingService, never()).indexItem(any(), any(), any(), any(), any(), any());
+        verify(searchResultCacheService, never()).evictAll();
     }
 
     private void stubIdempotentExecution() {

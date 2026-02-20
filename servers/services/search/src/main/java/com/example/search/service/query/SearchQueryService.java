@@ -8,6 +8,7 @@ import com.example.search.dto.search.request.SearchRequest;
 import com.example.search.dto.search.response.SearchItemResponse;
 import com.example.search.exception.SearchErrorCode;
 import com.example.search.service.query.autocomplete.AutocompleteService;
+import com.example.search.service.query.cache.SearchResultCacheService;
 import com.example.search.service.query.popular.PopularSearchService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.RequiredArgsConstructor;
@@ -37,12 +38,24 @@ public class SearchQueryService {
     private final SearchCursorCodec cursorCodec;
     private final AutocompleteService autocompleteService;
     private final PopularSearchService popularSearchService;
+    private final SearchResultCacheService searchResultCacheService;
 
     public CursorResponse<SearchItemResponse> search(SearchRequest request) {
         validateRange(request.getMinPrice(), request.getMaxPrice());
 
         SearchSortType sortType = SearchSortType.from(request.getSort());
         int size = request.getSize() == null ? 20 : request.getSize();
+
+        String cachedJson = searchResultCacheService.get(request).orElse(null);
+        if (StringUtils.hasText(cachedJson)) {
+            try {
+                CursorResponse<SearchItemResponse> cachedResult = parseSearchResponse(cachedJson, size);
+                recordKeyword(request.getQ());
+                return cachedResult;
+            } catch (RuntimeException e) {
+                log.warn("Cached search result parsing failed. fallbackToLive=true", e);
+            }
+        }
 
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("track_total_hits", true);
@@ -63,14 +76,19 @@ public class SearchQueryService {
             Response response = restClient.performRequest(searchRequest);
             String json = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
             CursorResponse<SearchItemResponse> result = parseSearchResponse(json, size);
-            autocompleteService.recordKeyword(request.getQ());
-            popularSearchService.recordKeyword(request.getQ());
+            searchResultCacheService.put(request, json);
+            recordKeyword(request.getQ());
             return result;
         } catch (IOException e) {
             log.error("Search query failed. request={}", JsonUtils.toJson(body), e);
             throw new BusinessException(SearchErrorCode.SEARCH_TEMPORARILY_UNAVAILABLE,
                     "검색 요청 처리에 실패했습니다.", e);
         }
+    }
+
+    private void recordKeyword(String keyword) {
+        autocompleteService.recordKeyword(keyword);
+        popularSearchService.recordKeyword(keyword);
     }
 
     private Map<String, Object> buildQuery(SearchRequest request) {
