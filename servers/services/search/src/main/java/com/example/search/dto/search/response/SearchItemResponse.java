@@ -10,6 +10,7 @@ public class SearchItemResponse {
     private final Long itemId;
     private final String title;
     private final String category;
+    private final String domainType;
     private final Long price;
     private final String status;
     private final Integer stock;

@@ -22,6 +22,9 @@ spring:
 search:
   security:
     gateway-auth-enabled: false
+  metrics:
+    kafka-lag:
+      enabled: false
 
 app:
   outbox:

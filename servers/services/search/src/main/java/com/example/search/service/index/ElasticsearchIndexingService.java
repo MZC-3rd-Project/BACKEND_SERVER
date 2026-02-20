@@ -20,7 +20,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ElasticsearchIndexingService implements SearchIndexingService {
 
-    private static final String INDEX_NAME = ItemDocument.ITEMS_INDEX;
+    private static final String WRITE_ALIAS = ItemDocument.ITEMS_WRITE_ALIAS;
 
     private final RestClient restClient;
 
@@ -28,6 +28,7 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
     public void indexItem(Long itemId,
                           String title,
                           String category,
+                          String domainType,
                           Long price,
                           String status,
                           Integer stock) {
@@ -35,6 +36,7 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         document.put("itemId", itemId);
         putIfNotNull(document, "title", title);
         putIfNotNull(document, "category", category);
+        putIfNotNull(document, "domainType", domainType);
         putIfNotNull(document, "price", price);
         putIfNotNull(document, "status", status);
         putIfNotNull(document, "stock", stock);
@@ -110,11 +112,11 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
     }
 
     private String endpointForDoc(Long itemId) {
-        return "/" + INDEX_NAME + "/_doc/" + itemId;
+        return "/" + WRITE_ALIAS + "/_doc/" + itemId;
     }
 
     private String endpointForUpdate(Long itemId) {
-        return "/" + INDEX_NAME + "/_update/" + itemId;
+        return "/" + WRITE_ALIAS + "/_update/" + itemId;
     }
 
     private void putIfNotNull(Map<String, Object> target, String key, Object value) {

@@ -1,6 +1,7 @@
 package com.example.search.consumer;
 
 import com.example.config.kafka.IdempotentConsumerService;
+import com.example.search.service.metrics.SearchMetricsService;
 import com.example.search.service.index.SearchIndexingFailureService;
 import com.example.search.service.index.SearchIndexingService;
 import com.example.search.service.query.cache.SearchResultCacheService;
@@ -34,6 +35,9 @@ class ItemEventConsumerTest {
     @Mock
     private SearchIndexingFailureService searchIndexingFailureService;
 
+    @Mock
+    private SearchMetricsService searchMetricsService;
+
     @InjectMocks
     private ItemEventConsumer itemEventConsumer;
 
@@ -57,7 +61,7 @@ class ItemEventConsumerTest {
 
         itemEventConsumer.consume(message);
 
-        verify(searchIndexingService).indexItem(101L, "아이폰 케이스", "GOODS", null, null, 10);
+        verify(searchIndexingService).indexItem(101L, "아이폰 케이스", "GOODS", "GOODS", null, null, 10);
         verify(searchResultCacheService).evictAll();
     }
 
@@ -131,7 +135,7 @@ class ItemEventConsumerTest {
         itemEventConsumer.consume(message);
 
         verify(idempotentConsumerService, never()).executeIdempotent(anyString(), anyString(), any());
-        verify(searchIndexingService, never()).indexItem(any(), any(), any(), any(), any(), any());
+        verify(searchIndexingService, never()).indexItem(any(), any(), any(), any(), any(), any(), any());
         verify(searchResultCacheService, never()).evictAll();
     }
 

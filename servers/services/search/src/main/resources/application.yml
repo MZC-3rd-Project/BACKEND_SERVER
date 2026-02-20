@@ -48,6 +48,19 @@ search:
     gateway-auth-enabled: ${SEARCH_SECURITY_GATEWAY_AUTH_ENABLED:false}
     internal-auth-header: ${SEARCH_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}
     internal-auth-token: ${SEARCH_SECURITY_INTERNAL_AUTH_TOKEN:}
+  popular:
+    per-second-limit: ${SEARCH_POPULAR_PER_SECOND_LIMIT:8}
+    per-minute-limit: ${SEARCH_POPULAR_PER_MINUTE_LIMIT:100}
+    repeat-penalty-threshold: ${SEARCH_POPULAR_REPEAT_PENALTY_THRESHOLD:5}
+    repeat-reject-threshold: ${SEARCH_POPULAR_REPEAT_REJECT_THRESHOLD:20}
+    blocked-keywords: ${SEARCH_POPULAR_BLOCKED_KEYWORDS:}
+  metrics:
+    runbook-url: ${SEARCH_METRICS_RUNBOOK_URL:https://runbook.example/search}
+    alert:
+      search-latency-ms: ${SEARCH_METRICS_ALERT_SEARCH_LATENCY_MS:1500}
+    kafka-lag:
+      enabled: ${SEARCH_METRICS_KAFKA_LAG_ENABLED:true}
+      interval-ms: ${SEARCH_METRICS_KAFKA_LAG_INTERVAL_MS:30000}
 
 # ─── Snowflake ID ────────────────────────────
 app:

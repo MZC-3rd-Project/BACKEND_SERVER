@@ -3,6 +3,7 @@ package com.example.search.service.query;
 import com.example.core.pagination.CursorResponse;
 import com.example.search.dto.search.request.SearchRequest;
 import com.example.search.dto.search.response.SearchItemResponse;
+import com.example.search.service.metrics.SearchMetricsService;
 import com.example.search.service.query.autocomplete.AutocompleteService;
 import com.example.search.service.query.cache.SearchResultCacheService;
 import com.example.search.service.query.popular.PopularSearchService;
@@ -42,6 +43,9 @@ class SearchQueryServiceTest {
     @Mock
     private SearchResultCacheService searchResultCacheService;
 
+    @Mock
+    private SearchMetricsService searchMetricsService;
+
     private SearchQueryService searchQueryService;
 
     @BeforeEach
@@ -51,7 +55,8 @@ class SearchQueryServiceTest {
                 new SearchCursorCodec(),
                 autocompleteService,
                 popularSearchService,
-                searchResultCacheService
+                searchResultCacheService,
+                searchMetricsService
         );
     }
 
@@ -90,6 +95,7 @@ class SearchQueryServiceTest {
         SearchRequest request = new SearchRequest();
         request.setQ("아이폰");
         request.setCategory("GOODS");
+        request.setDomainType("GOODS");
         request.setStatus(java.util.List.of("SELLING"));
         request.setMinPrice(1000L);
         request.setMaxPrice(5000L);
@@ -113,12 +119,15 @@ class SearchQueryServiceTest {
         Request esRequest = captor.getValue();
 
         assertThat(esRequest.getMethod()).isEqualTo("POST");
-        assertThat(esRequest.getEndpoint()).isEqualTo("/items/_search");
+        assertThat(esRequest.getEndpoint()).isEqualTo("/items-read/_search");
 
         String body = EntityUtils.toString(esRequest.getEntity());
         assertThat(body).contains("\"multi_match\"");
         assertThat(body).contains("\"category\"");
+        assertThat(body).contains("\"domainType\"");
         assertThat(body).contains("\"range\"");
+        assertThat(body).contains("\"must_not\"");
+        assertThat(body).contains("\"fuzziness\"");
         assertThat(body).contains("\"highlight\"");
     }
 
@@ -160,5 +169,28 @@ class SearchQueryServiceTest {
         verify(searchResultCacheService, never()).put(any(SearchRequest.class), anyString());
         verify(autocompleteService).recordKeyword("아이폰");
         verify(popularSearchService).recordKeyword("아이폰");
+    }
+
+    @Test
+    void search_doesNotApplyFuzzinessForShortQuery() throws Exception {
+        String responseJson = """
+                {"hits":{"total":{"value":0,"relation":"eq"},"hits":[]}}
+                """;
+
+        Response response = mock(Response.class);
+        when(response.getEntity()).thenReturn(new StringEntity(responseJson, ContentType.APPLICATION_JSON));
+        when(restClient.performRequest(any(Request.class))).thenReturn(response);
+        when(searchResultCacheService.get(any())).thenReturn(java.util.Optional.empty());
+
+        SearchRequest request = new SearchRequest();
+        request.setQ("폰");
+        request.setSize(20);
+
+        searchQueryService.search(request);
+
+        ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+        verify(restClient).performRequest(captor.capture());
+        String body = EntityUtils.toString(captor.getValue().getEntity());
+        assertThat(body).doesNotContain("\"fuzziness\"");
     }
 }

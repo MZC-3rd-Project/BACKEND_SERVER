@@ -2,6 +2,7 @@ package com.example.search.consumer;
 
 import com.example.config.kafka.IdempotentConsumerService;
 import com.example.core.util.JsonUtils;
+import com.example.search.service.metrics.SearchMetricsService;
 import com.example.search.service.index.SearchIndexingService;
 import com.example.search.service.index.SearchIndexingFailureService;
 import com.example.search.service.query.cache.SearchResultCacheService;
@@ -25,6 +26,7 @@ public class ItemEventConsumer {
     private final SearchIndexingService searchIndexingService;
     private final SearchResultCacheService searchResultCacheService;
     private final SearchIndexingFailureService searchIndexingFailureService;
+    private final SearchMetricsService searchMetricsService;
 
     @KafkaListener(topics = "item-events", groupId = "${spring.kafka.consumer.group-id}")
     @Transactional
@@ -39,9 +41,11 @@ public class ItemEventConsumer {
 
             idempotentConsumerService.executeIdempotent(parsedEvent.getEventId(), IDEMPOTENT_EVENT_TYPE, () -> {
                 route(parsedEvent);
+                searchMetricsService.recordIndexingEvent(parsedEvent.getEventType(), true);
                 return null;
             });
         } catch (Exception e) {
+            searchMetricsService.recordIndexingEvent(event == null ? "UNKNOWN" : event.getEventType(), false);
             searchIndexingFailureService.recordItemEventFailure(event, message, e);
             log.error("[SearchItemConsumer] 이벤트 처리 실패. message={}", message, e);
             throw e;
@@ -73,6 +77,7 @@ public class ItemEventConsumer {
         searchIndexingService.indexItem(
                 event.getItemId(),
                 event.getTitle(),
+                event.getItemType(),
                 event.getItemType(),
                 event.getPrice(),
                 event.getNewStatus(),

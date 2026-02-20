@@ -7,9 +7,11 @@ import com.example.search.document.ItemDocument;
 import com.example.search.dto.search.request.SearchRequest;
 import com.example.search.dto.search.response.SearchItemResponse;
 import com.example.search.exception.SearchErrorCode;
+import com.example.search.service.metrics.SearchMetricsService;
 import com.example.search.service.query.autocomplete.AutocompleteService;
 import com.example.search.service.query.cache.SearchResultCacheService;
 import com.example.search.service.query.popular.PopularSearchService;
+import com.example.search.util.SearchLogMasker;
 import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,24 +25,32 @@ import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class SearchQueryService {
 
+    private static final Set<String> BLOCKED_EXPOSURE_STATUSES = Set.of(
+            "DELETED", "HIDDEN", "PRIVATE", "SOLD_OUT", "ENDED", "INACTIVE"
+    );
+
     private final RestClient restClient;
     private final SearchCursorCodec cursorCodec;
     private final AutocompleteService autocompleteService;
     private final PopularSearchService popularSearchService;
     private final SearchResultCacheService searchResultCacheService;
+    private final SearchMetricsService searchMetricsService;
 
     public CursorResponse<SearchItemResponse> search(SearchRequest request) {
+        long startNanos = System.nanoTime();
         validateRange(request.getMinPrice(), request.getMaxPrice());
 
         SearchSortType sortType = SearchSortType.from(request.getSort());
@@ -51,6 +61,7 @@ public class SearchQueryService {
             try {
                 CursorResponse<SearchItemResponse> cachedResult = parseSearchResponse(cachedJson, size);
                 recordKeyword(request.getQ());
+                searchMetricsService.recordSearchLatency(Duration.ofNanos(System.nanoTime() - startNanos), true, false);
                 return cachedResult;
             } catch (RuntimeException e) {
                 log.warn("Cached search result parsing failed. fallbackToLive=true", e);
@@ -69,7 +80,7 @@ public class SearchQueryService {
             body.put("search_after", searchAfter);
         }
 
-        Request searchRequest = new Request("POST", "/" + ItemDocument.ITEMS_INDEX + "/_search");
+        Request searchRequest = new Request("POST", "/" + ItemDocument.ITEMS_READ_ALIAS + "/_search");
         searchRequest.setJsonEntity(JsonUtils.toJson(body));
 
         try {
@@ -78,9 +89,17 @@ public class SearchQueryService {
             CursorResponse<SearchItemResponse> result = parseSearchResponse(json, size);
             searchResultCacheService.put(request, json);
             recordKeyword(request.getQ());
+            searchMetricsService.recordSearchLatency(Duration.ofNanos(System.nanoTime() - startNanos), true, false);
             return result;
         } catch (IOException e) {
-            log.error("Search query failed. request={}", JsonUtils.toJson(body), e);
+            boolean timeout = isTimeoutException(e);
+            searchMetricsService.recordSearchLatency(Duration.ofNanos(System.nanoTime() - startNanos), false, timeout);
+            log.error("Search query failed. qHash={}, sort={}, size={}, timeout={}",
+                    SearchLogMasker.keywordHash(request.getQ()),
+                    request.getSort(),
+                    size,
+                    timeout,
+                    e);
             throw new BusinessException(SearchErrorCode.SEARCH_TEMPORARILY_UNAVAILABLE,
                     "검색 요청 처리에 실패했습니다.", e);
         }
@@ -94,21 +113,33 @@ public class SearchQueryService {
     private Map<String, Object> buildQuery(SearchRequest request) {
         List<Object> must = new ArrayList<>();
         List<Object> filter = new ArrayList<>();
+        List<Object> mustNot = new ArrayList<>();
 
-        must.add(Map.of("multi_match", Map.of(
-                "query", request.getQ(),
-                "fields", List.of("title^3", "description"),
-                "type", "best_fields"
-        )));
+        Map<String, Object> multiMatch = new LinkedHashMap<>();
+        multiMatch.put("query", request.getQ());
+        multiMatch.put("fields", List.of("title^3", "description"));
+        multiMatch.put("type", "best_fields");
+        if (shouldApplyFuzziness(request.getQ())) {
+            multiMatch.put("fuzziness", "AUTO:3,6");
+            multiMatch.put("prefix_length", 1);
+            multiMatch.put("max_expansions", 20);
+        }
+        must.add(Map.of("multi_match", multiMatch));
 
         if (StringUtils.hasText(request.getCategory())) {
             filter.add(Map.of("term", Map.of("category", request.getCategory())));
+        }
+
+        if (StringUtils.hasText(request.getDomainType())) {
+            filter.add(Map.of("term", Map.of("domainType", request.getDomainType().trim().toUpperCase(Locale.ROOT))));
         }
 
         List<String> statuses = normalizeStatuses(request.getStatus());
         if (!statuses.isEmpty()) {
             filter.add(Map.of("terms", Map.of("status", statuses)));
         }
+
+        mustNot.add(Map.of("terms", Map.of("status", BLOCKED_EXPOSURE_STATUSES)));
 
         Map<String, Object> priceRange = new LinkedHashMap<>();
         if (request.getMinPrice() != null) {
@@ -125,6 +156,9 @@ public class SearchQueryService {
         bool.put("must", must);
         if (!filter.isEmpty()) {
             bool.put("filter", filter);
+        }
+        if (!mustNot.isEmpty()) {
+            bool.put("must_not", mustNot);
         }
 
         return Map.of("bool", bool);
@@ -188,6 +222,7 @@ public class SearchQueryService {
                 .itemId(asLong(source.get("itemId")))
                 .title(asString(source.get("title")))
                 .category(asString(source.get("category")))
+                .domainType(asString(source.get("domainType")))
                 .price(asLong(source.get("price")))
                 .status(asString(source.get("status")))
                 .stock(asInteger(source.get("stock")))
@@ -205,7 +240,16 @@ public class SearchQueryService {
         return statuses.stream()
                 .filter(StringUtils::hasText)
                 .map(value -> value.trim().toUpperCase(Locale.ROOT))
+                .filter(value -> !BLOCKED_EXPOSURE_STATUSES.contains(value))
                 .toList();
+    }
+
+    private boolean shouldApplyFuzziness(String query) {
+        if (!StringUtils.hasText(query)) {
+            return false;
+        }
+        int length = query.trim().length();
+        return length >= 3;
     }
 
     private void validateRange(Long minPrice, Long maxPrice) {
@@ -287,5 +331,16 @@ public class SearchQueryService {
 
     private String asString(Object value) {
         return value == null ? null : String.valueOf(value);
+    }
+
+    private boolean isTimeoutException(IOException e) {
+        if (e == null) {
+            return false;
+        }
+        if (e instanceof java.net.SocketTimeoutException) {
+            return true;
+        }
+        Throwable cause = e.getCause();
+        return cause instanceof java.net.SocketTimeoutException;
     }
 }

@@ -2,6 +2,7 @@ package com.example.search.service.query.autocomplete;
 
 import com.example.search.dto.autocomplete.request.AutocompleteRequest;
 import com.example.search.dto.autocomplete.response.AutocompleteResponse;
+import org.elasticsearch.client.RestClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -25,6 +26,9 @@ import static org.mockito.Mockito.when;
 class AutocompleteServiceTest {
 
     @Mock
+    private RestClient restClient;
+
+    @Mock
     private StringRedisTemplate stringRedisTemplate;
 
     @Mock
@@ -34,7 +38,7 @@ class AutocompleteServiceTest {
 
     @Test
     void recordKeyword_updatesPrefixKeysWithPopularity() {
-        autocompleteService = new AutocompleteService(stringRedisTemplate);
+        autocompleteService = new AutocompleteService(restClient, stringRedisTemplate);
         when(stringRedisTemplate.opsForZSet()).thenReturn(zSetOperations);
 
         autocompleteService.recordKeyword(" 아이폰 케이스 ");
@@ -47,7 +51,7 @@ class AutocompleteServiceTest {
 
     @Test
     void recordKeyword_ignoresBlankKeyword() {
-        autocompleteService = new AutocompleteService(stringRedisTemplate);
+        autocompleteService = new AutocompleteService(restClient, stringRedisTemplate);
 
         autocompleteService.recordKeyword("   ");
 
@@ -56,7 +60,7 @@ class AutocompleteServiceTest {
 
     @Test
     void suggest_returnsRankedSuggestions() {
-        autocompleteService = new AutocompleteService(stringRedisTemplate);
+        autocompleteService = new AutocompleteService(restClient, stringRedisTemplate);
         when(stringRedisTemplate.opsForZSet()).thenReturn(zSetOperations);
 
         Set<String> ranked = new LinkedHashSet<>();
@@ -71,7 +75,7 @@ class AutocompleteServiceTest {
 
     @Test
     void suggest_withRequestDto_returnsRankedSuggestions() {
-        autocompleteService = new AutocompleteService(stringRedisTemplate);
+        autocompleteService = new AutocompleteService(restClient, stringRedisTemplate);
         when(stringRedisTemplate.opsForZSet()).thenReturn(zSetOperations);
 
         Set<String> ranked = new LinkedHashSet<>();
@@ -89,7 +93,7 @@ class AutocompleteServiceTest {
 
     @Test
     void suggest_returnsEmptyWhenQueryBlank() {
-        autocompleteService = new AutocompleteService(stringRedisTemplate);
+        autocompleteService = new AutocompleteService(restClient, stringRedisTemplate);
 
         AutocompleteResponse response = autocompleteService.suggest("  ", 10);
 

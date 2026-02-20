@@ -21,6 +21,8 @@ import java.util.List;
 public class ItemDocument {
 
     public static final String ITEMS_INDEX = "items";
+    public static final String ITEMS_READ_ALIAS = "items-read";
+    public static final String ITEMS_WRITE_ALIAS = "items-write";
 
     @Id
     @Field(type = FieldType.Keyword)
@@ -34,6 +36,9 @@ public class ItemDocument {
 
     @Field(type = FieldType.Keyword)
     private String category;
+
+    @Field(type = FieldType.Keyword)
+    private String domainType;
 
     @Field(type = FieldType.Long)
     private Long price;
