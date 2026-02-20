@@ -69,12 +69,7 @@ public class ChatRoomQueryService {
     }
 
     public CursorResponse<ChatMessageItemResponse> findRoomMessages(Long roomId, Long userId, String cursor, int size) {
-        ChatRoomParticipant participant = chatRoomParticipantRepository.findByRoomIdAndUserId(roomId, userId)
-                .orElseThrow(() -> new BusinessException(ChatErrorCode.FORBIDDEN_ROOM_ACCESS));
-
-        if (!participant.isActive()) {
-            throw new BusinessException(ChatErrorCode.FORBIDDEN_ROOM_ACCESS);
-        }
+        validateRoomAccess(roomId, userId);
 
         Long cursorId = CursorUtils.decodeLong(cursor);
         PageRequest pageable = PageRequest.of(0, size + 1);
@@ -101,6 +96,14 @@ public class ChatRoomQueryService {
                 : null;
 
         return CursorResponse.of(content, nextCursor);
+    }
+
+    public void validateRoomAccess(Long roomId, Long userId) {
+        ChatRoomParticipant participant = chatRoomParticipantRepository.findByRoomIdAndUserId(roomId, userId)
+                .orElseThrow(() -> new BusinessException(ChatErrorCode.FORBIDDEN_ROOM_ACCESS));
+        if (!participant.isActive()) {
+            throw new BusinessException(ChatErrorCode.FORBIDDEN_ROOM_ACCESS);
+        }
     }
 
     private ChatRoomSummaryResponse toSummary(ChatRoomParticipant participant, ChatRoom room) {
