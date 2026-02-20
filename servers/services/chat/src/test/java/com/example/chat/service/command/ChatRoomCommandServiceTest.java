@@ -9,6 +9,7 @@ import com.example.chat.entity.room.ChatRoom;
 import com.example.chat.exception.ChatErrorCode;
 import com.example.chat.repository.ChatRoomParticipantRepository;
 import com.example.chat.repository.ChatRoomRepository;
+import com.example.chat.service.audit.ChatAuditService;
 import com.example.core.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +40,9 @@ class ChatRoomCommandServiceTest {
 
     @Mock
     private ChatRoomParticipantRepository chatRoomParticipantRepository;
+
+    @Mock
+    private ChatAuditService chatAuditService;
 
     @InjectMocks
     private ChatRoomCommandService chatRoomCommandService;
