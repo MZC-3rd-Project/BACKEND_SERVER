@@ -19,28 +19,31 @@ public class ChatMessagePolicyService {
                                        ChatRoomParticipant participant,
                                        Long senderId,
                                        ChatMessageType messageType) {
+        boolean platformAdmin = isPlatformAdmin();
+        if (platformAdmin) {
+            if (messageType != ChatMessageType.NOTICE) {
+                throw new BusinessException(ChatErrorCode.PLATFORM_ADMIN_CHAT_NOT_ALLOWED);
+            }
+            return;
+        }
+
         if (participant == null || !participant.isActive()) {
             throw new BusinessException(ChatErrorCode.FORBIDDEN_ROOM_ACCESS);
         }
 
-        boolean platformAdmin = isPlatformAdmin();
         boolean sellerAdmin = isSellerAdminOfRoom(room, participant, senderId);
-
-        if (platformAdmin && messageType == ChatMessageType.CHAT) {
-            throw new BusinessException(ChatErrorCode.PLATFORM_ADMIN_CHAT_NOT_ALLOWED);
-        }
 
         if (room.isReadOnly()) {
             if (messageType != ChatMessageType.NOTICE) {
                 throw new BusinessException(ChatErrorCode.ROOM_READ_ONLY);
             }
-            if (!platformAdmin && !sellerAdmin) {
+            if (!sellerAdmin) {
                 throw new BusinessException(ChatErrorCode.NOTICE_PERMISSION_DENIED);
             }
             return;
         }
 
-        if (messageType == ChatMessageType.NOTICE && !platformAdmin && !sellerAdmin) {
+        if (messageType == ChatMessageType.NOTICE && !sellerAdmin) {
             throw new BusinessException(ChatErrorCode.NOTICE_PERMISSION_DENIED);
         }
     }
