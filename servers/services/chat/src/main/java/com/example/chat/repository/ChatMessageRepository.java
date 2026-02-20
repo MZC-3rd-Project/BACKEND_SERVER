@@ -19,4 +19,10 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
                                                              Pageable pageable);
 
     Optional<ChatMessage> findByRoomIdAndSenderIdAndClientMessageId(Long roomId, Long senderId, String clientMessageId);
+
+    long countByRoomId(Long roomId);
+
+    long countByRoomIdAndIdGreaterThan(Long roomId, Long id);
+
+    boolean existsByRoomIdAndId(Long roomId, Long id);
 }
