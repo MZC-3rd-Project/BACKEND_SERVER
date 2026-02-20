@@ -14,4 +14,6 @@ public interface SearchIndexingService {
     void updateItemStatus(Long itemId, String status);
 
     void updateItemStock(Long itemId, Integer stock);
+
+    void deleteItem(Long itemId);
 }

@@ -70,6 +70,15 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         updatePartial(itemId, partial, "STOCK_DECREASED");
     }
 
+    @Override
+    public void deleteItem(Long itemId) {
+        if (itemId == null) {
+            return;
+        }
+        Request request = new Request("DELETE", endpointForDoc(itemId));
+        performRequest(request, itemId, "ITEM_DELETED");
+    }
+
     private void updatePartial(Long itemId, Map<String, Object> partial, String eventType) {
         if (itemId == null || partial.isEmpty()) {
             return;
