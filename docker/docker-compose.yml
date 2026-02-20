@@ -22,6 +22,28 @@ services:
     networks:
       - project03-network
 
+  # ─── MariaDB ──────────────────────────────────────────────
+  mariadb:
+    image: mariadb:11.4
+    container_name: project03-mariadb
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-mariadb}
+      MARIADB_DATABASE: ${MARIADB_DATABASE:-project03}
+      MARIADB_USER: ${MARIADB_USER:-project03}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:-project03}
+    ports:
+      - "${MARIADB_PORT:-3306}:3306"
+    volumes:
+      - mariadb-data:/var/lib/mysql
+      - ./init-scripts/mariadb:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p${MARIADB_ROOT_PASSWORD:-mariadb} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - project03-network
+
   # ─── Redis ────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
@@ -117,6 +139,7 @@ services:
 
 volumes:
   postgres-data:
+  mariadb-data:
   redis-data:
   zookeeper-data:
   kafka-data:
