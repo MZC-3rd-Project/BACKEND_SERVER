@@ -41,6 +41,9 @@ public class ItemDocument {
     @Field(type = FieldType.Keyword)
     private String status;
 
+    @Field(type = FieldType.Integer)
+    private Integer stock;
+
     @Field(type = FieldType.Keyword)
     private List<String> tags;
 
