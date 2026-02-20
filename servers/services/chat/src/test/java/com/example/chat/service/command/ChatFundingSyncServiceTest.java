@@ -9,6 +9,7 @@ import com.example.chat.entity.room.ChatRoomReadOnlyReason;
 import com.example.chat.entity.room.ChatRoomStatus;
 import com.example.chat.repository.ChatRoomParticipantRepository;
 import com.example.chat.repository.ChatRoomRepository;
+import com.example.chat.service.audit.ChatAuditService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -33,6 +34,9 @@ class ChatFundingSyncServiceTest {
 
     @Mock
     private ChatRoomParticipantRepository chatRoomParticipantRepository;
+
+    @Mock
+    private ChatAuditService chatAuditService;
 
     @InjectMocks
     private ChatFundingSyncService chatFundingSyncService;
