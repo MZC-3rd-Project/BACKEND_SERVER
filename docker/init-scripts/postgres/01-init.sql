@@ -12,6 +12,7 @@ CREATE DATABASE funding_db;
 CREATE DATABASE sales_db;
 CREATE DATABASE hotdeal_db;
 CREATE DATABASE notification_db;
+CREATE DATABASE chat_db;
 
 -- auth_db 초기 설정
 \c auth_db;
@@ -47,4 +48,8 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- notification_db 초기 설정
 \c notification_db;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- chat_db 초기 설정
+\c chat_db;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
