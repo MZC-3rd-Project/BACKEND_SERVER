@@ -46,6 +46,12 @@ chat:
     internal-auth-header: ${CHAT_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}
     internal-auth-token: ${CHAT_SECURITY_INTERNAL_AUTH_TOKEN:}
     user-id-header: ${CHAT_SECURITY_USER_ID_HEADER:X-User-Id}
+  realtime:
+    redis-topic: ${CHAT_REALTIME_REDIS_TOPIC:chat-room-events}
+    redis-fanout-enabled: ${CHAT_REALTIME_REDIS_FANOUT_ENABLED:true}
+    replay-batch-size: ${CHAT_REALTIME_REPLAY_BATCH_SIZE:100}
+    heartbeat-timeout-seconds: ${CHAT_REALTIME_HEARTBEAT_TIMEOUT_SECONDS:60}
+    heartbeat-check-interval-ms: ${CHAT_REALTIME_HEARTBEAT_CHECK_INTERVAL_MS:10000}
 
 # ─── Snowflake ID ────────────────────────────
 app:
