@@ -18,6 +18,7 @@ public class ChatWebSocketHeartbeatScheduler {
 
     private final ChatWebSocketSessionRegistry sessionRegistry;
     private final ChatRealtimeProperties chatRealtimeProperties;
+    private final ChatPresenceService chatPresenceService;
 
     @Scheduled(fixedDelayString = "${chat.realtime.heartbeat-check-interval-ms:10000}")
     public void closeIdleSessions() {
@@ -26,6 +27,7 @@ public class ChatWebSocketHeartbeatScheduler {
         List<WebSocketSession> idleSessions = sessionRegistry.findIdleSessions(maxIdle);
 
         for (WebSocketSession session : idleSessions) {
+            Long userId = sessionRegistry.getUserId(session);
             try {
                 if (session.isOpen()) {
                     session.close(CloseStatus.SESSION_NOT_RELIABLE);
@@ -34,6 +36,7 @@ public class ChatWebSocketHeartbeatScheduler {
                 log.debug("Failed to close idle websocket session. sessionId={}", session.getId(), e);
             } finally {
                 sessionRegistry.unregister(session);
+                chatPresenceService.markDisconnected(userId);
             }
         }
     }
