@@ -4,7 +4,8 @@
       "tokenizer": {
         "ko_nori_tokenizer": {
           "type": "nori_tokenizer",
-          "decompound_mode": "mixed"
+          "decompound_mode": "mixed",
+          "user_dictionary_rules": __USERDICT__
         }
       },
       "filter": {
