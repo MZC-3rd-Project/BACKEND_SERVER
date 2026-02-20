@@ -10,6 +10,7 @@ public class ChatRealtimeProperties {
     private int replayBatchSize = 100;
     private long heartbeatTimeoutSeconds = 60;
     private long heartbeatCheckIntervalMs = 10000;
+    private long presenceTtlSeconds = 120;
 
     public String getRedisTopic() {
         return redisTopic;
@@ -49,5 +50,13 @@ public class ChatRealtimeProperties {
 
     public void setHeartbeatCheckIntervalMs(long heartbeatCheckIntervalMs) {
         this.heartbeatCheckIntervalMs = heartbeatCheckIntervalMs;
+    }
+
+    public long getPresenceTtlSeconds() {
+        return presenceTtlSeconds;
+    }
+
+    public void setPresenceTtlSeconds(long presenceTtlSeconds) {
+        this.presenceTtlSeconds = presenceTtlSeconds;
     }
 }

@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     recipient_id BIGINT NOT NULL, -- user-service users.id (FK 미연결)
     actor_id BIGINT, -- user-service users.id (FK 미연결)
     type VARCHAR(40) NOT NULL
-        CHECK (type IN ('FUNDING_SUCCESS', 'FUNDING_FAIL', 'PAYMENT', 'HOTDEAL', 'STOCK_DEPLETED', 'GENERAL')),
+        CHECK (type IN ('FUNDING_SUCCESS', 'FUNDING_FAIL', 'PAYMENT', 'HOTDEAL', 'STOCK_DEPLETED', 'CHAT_MESSAGE', 'GENERAL')),
     channel VARCHAR(20) NOT NULL
         CHECK (channel IN ('IN_APP', 'EMAIL', 'SMS', 'KAKAO', 'PUSH')),
     title VARCHAR(200) NOT NULL,
@@ -78,7 +78,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_notification_deliveries_notification_channe
 CREATE TABLE IF NOT EXISTS notification_templates (
     id BIGINT PRIMARY KEY, -- Snowflake ID
     type VARCHAR(40) NOT NULL
-        CHECK (type IN ('FUNDING_SUCCESS', 'FUNDING_FAIL', 'PAYMENT', 'HOTDEAL', 'STOCK_DEPLETED', 'GENERAL')),
+        CHECK (type IN ('FUNDING_SUCCESS', 'FUNDING_FAIL', 'PAYMENT', 'HOTDEAL', 'STOCK_DEPLETED', 'CHAT_MESSAGE', 'GENERAL')),
     channel VARCHAR(20) NOT NULL
         CHECK (channel IN ('IN_APP', 'EMAIL', 'SMS', 'KAKAO', 'PUSH')),
     locale VARCHAR(10) NOT NULL,
@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS notification_settings (
     id BIGINT PRIMARY KEY, -- Snowflake ID
     user_id BIGINT NOT NULL, -- user-service users.id (FK 미연결)
     type VARCHAR(40) NOT NULL
-        CHECK (type IN ('FUNDING_SUCCESS', 'FUNDING_FAIL', 'PAYMENT', 'HOTDEAL', 'STOCK_DEPLETED', 'GENERAL')),
+        CHECK (type IN ('FUNDING_SUCCESS', 'FUNDING_FAIL', 'PAYMENT', 'HOTDEAL', 'STOCK_DEPLETED', 'CHAT_MESSAGE', 'GENERAL')),
     channel VARCHAR(20) NOT NULL
         CHECK (channel IN ('IN_APP', 'EMAIL', 'SMS', 'KAKAO', 'PUSH')),
     enabled BOOLEAN NOT NULL,
