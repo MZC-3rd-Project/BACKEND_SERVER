@@ -1,11 +1,11 @@
 package com.example.search.service.query;
 
 import com.example.core.exception.BusinessException;
+import com.example.core.pagination.CursorResponse;
 import com.example.core.util.JsonUtils;
 import com.example.search.document.ItemDocument;
 import com.example.search.dto.search.request.SearchRequest;
 import com.example.search.dto.search.response.SearchItemResponse;
-import com.example.search.dto.search.response.SearchResponse;
 import com.example.search.exception.SearchErrorCode;
 import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +34,7 @@ public class SearchQueryService {
     private final RestClient restClient;
     private final SearchCursorCodec cursorCodec;
 
-    public SearchResponse search(SearchRequest request) {
+    public CursorResponse<SearchItemResponse> search(SearchRequest request) {
         validateRange(request.getMinPrice(), request.getMaxPrice());
 
         SearchSortType sortType = SearchSortType.from(request.getSort());
@@ -134,7 +134,7 @@ public class SearchQueryService {
         ));
     }
 
-    private SearchResponse parseSearchResponse(String json, int size) {
+    private CursorResponse<SearchItemResponse> parseSearchResponse(String json, int size) {
         Map<String, Object> root = JsonUtils.fromJson(json, new TypeReference<>() {
         });
         Map<String, Object> hits = toMap(root.get("hits"));
@@ -152,11 +152,7 @@ public class SearchQueryService {
             nextCursor = cursorCodec.encode(lastSort);
         }
 
-        return SearchResponse.builder()
-                .items(items)
-                .nextCursor(nextCursor)
-                .total(total)
-                .build();
+        return CursorResponse.of(items, nextCursor, total);
     }
 
     private SearchItemResponse toSearchItem(Map<String, Object> hit) {
