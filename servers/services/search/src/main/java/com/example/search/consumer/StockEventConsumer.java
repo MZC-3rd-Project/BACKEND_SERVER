@@ -3,6 +3,7 @@ package com.example.search.consumer;
 import com.example.config.kafka.IdempotentConsumerService;
 import com.example.core.util.JsonUtils;
 import com.example.search.service.index.SearchIndexingService;
+import com.example.search.service.index.SearchIndexingFailureService;
 import com.example.search.service.query.cache.SearchResultCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,21 +23,25 @@ public class StockEventConsumer {
     private final IdempotentConsumerService idempotentConsumerService;
     private final SearchIndexingService searchIndexingService;
     private final SearchResultCacheService searchResultCacheService;
+    private final SearchIndexingFailureService searchIndexingFailureService;
 
     @KafkaListener(topics = "stock-events", groupId = "${spring.kafka.consumer.group-id}")
     @Transactional
     public void consume(String message) {
+        StockEventMessage event = null;
         try {
-            StockEventMessage event = JsonUtils.fromJson(message, StockEventMessage.class);
-            if (!isValid(event, message)) {
+            StockEventMessage parsedEvent = JsonUtils.fromJson(message, StockEventMessage.class);
+            event = parsedEvent;
+            if (!isValid(parsedEvent, message)) {
                 return;
             }
 
-            idempotentConsumerService.executeIdempotent(event.getEventId(), IDEMPOTENT_EVENT_TYPE, () -> {
-                route(event);
+            idempotentConsumerService.executeIdempotent(parsedEvent.getEventId(), IDEMPOTENT_EVENT_TYPE, () -> {
+                route(parsedEvent);
                 return null;
             });
         } catch (Exception e) {
+            searchIndexingFailureService.recordStockEventFailure(event, message, e);
             log.error("[SearchStockConsumer] 이벤트 처리 실패. message={}", message, e);
             throw e;
         }
