@@ -56,7 +56,7 @@ public class ChatMessageCommandService {
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.ROOM_NOT_FOUND));
 
         ChatRoomParticipant participant = chatRoomParticipantRepository.findByRoomIdAndUserId(roomId, senderId)
-                .orElseThrow(() -> new BusinessException(ChatErrorCode.FORBIDDEN_ROOM_ACCESS));
+                .orElse(null);
 
         ChatMessageType messageType = request.getMessageType();
         if (messageType == null) {

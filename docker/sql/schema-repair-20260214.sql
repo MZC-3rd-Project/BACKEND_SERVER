@@ -223,4 +223,73 @@ BEGIN
 END
 $$;
 
+\echo [schema-repair] notification_db: notification type checks
+\connect notification_db
+
+DO $$
+BEGIN
+    IF to_regclass('public.notifications') IS NULL THEN
+        RAISE NOTICE 'notifications table not found, skip';
+    ELSE
+        ALTER TABLE notifications
+            DROP CONSTRAINT IF EXISTS notifications_type_check;
+        ALTER TABLE notifications
+            ADD CONSTRAINT notifications_type_check
+                CHECK (type IN (
+                    'FUNDING_SUCCESS',
+                    'FUNDING_FAIL',
+                    'PAYMENT',
+                    'HOTDEAL',
+                    'STOCK_DEPLETED',
+                    'CHAT_MESSAGE',
+                    'GENERAL'
+                ));
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF to_regclass('public.notification_settings') IS NULL THEN
+        RAISE NOTICE 'notification_settings table not found, skip';
+    ELSE
+        ALTER TABLE notification_settings
+            DROP CONSTRAINT IF EXISTS notification_settings_type_check;
+        ALTER TABLE notification_settings
+            ADD CONSTRAINT notification_settings_type_check
+                CHECK (type IN (
+                    'FUNDING_SUCCESS',
+                    'FUNDING_FAIL',
+                    'PAYMENT',
+                    'HOTDEAL',
+                    'STOCK_DEPLETED',
+                    'CHAT_MESSAGE',
+                    'GENERAL'
+                ));
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF to_regclass('public.notification_templates') IS NULL THEN
+        RAISE NOTICE 'notification_templates table not found, skip';
+    ELSE
+        ALTER TABLE notification_templates
+            DROP CONSTRAINT IF EXISTS notification_templates_type_check;
+        ALTER TABLE notification_templates
+            ADD CONSTRAINT notification_templates_type_check
+                CHECK (type IN (
+                    'FUNDING_SUCCESS',
+                    'FUNDING_FAIL',
+                    'PAYMENT',
+                    'HOTDEAL',
+                    'STOCK_DEPLETED',
+                    'CHAT_MESSAGE',
+                    'GENERAL'
+                ));
+    END IF;
+END
+$$;
+
 \echo [schema-repair] completed
