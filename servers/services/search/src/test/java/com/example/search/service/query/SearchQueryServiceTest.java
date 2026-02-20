@@ -1,7 +1,8 @@
 package com.example.search.service.query;
 
+import com.example.core.pagination.CursorResponse;
 import com.example.search.dto.search.request.SearchRequest;
-import com.example.search.dto.search.response.SearchResponse;
+import com.example.search.dto.search.response.SearchItemResponse;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
@@ -74,9 +75,9 @@ class SearchQueryServiceTest {
         request.setSort("PRICE_ASC");
         request.setSize(1);
 
-        SearchResponse result = searchQueryService.search(request);
+        CursorResponse<SearchItemResponse> result = searchQueryService.search(request);
 
-        assertThat(result.getTotal()).isEqualTo(1L);
+        assertThat(result.getTotalCount()).isEqualTo(1L);
         assertThat(result.getItems()).hasSize(1);
         assertThat(result.getItems().get(0).getItemId()).isEqualTo(101L);
         assertThat(result.getItems().get(0).getHighlightedTitle()).contains("<em>");

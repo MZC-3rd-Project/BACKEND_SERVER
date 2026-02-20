@@ -1,6 +1,7 @@
 package com.example.search.controller.query;
 
-import com.example.search.dto.search.response.SearchResponse;
+import com.example.core.pagination.CursorResponse;
+import com.example.search.dto.search.response.SearchItemResponse;
 import com.example.search.service.query.SearchQueryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,11 +28,7 @@ class SearchQueryControllerTest {
 
     @Test
     void search_returnsSuccessResponse() throws Exception {
-        SearchResponse response = SearchResponse.builder()
-                .items(List.of())
-                .nextCursor(null)
-                .total(0L)
-                .build();
+        CursorResponse<SearchItemResponse> response = CursorResponse.of(List.of(), null, 0L);
         given(searchQueryService.search(any())).willReturn(response);
 
         mockMvc.perform(get("/api/v1/search")
@@ -39,6 +36,6 @@ class SearchQueryControllerTest {
                         .param("size", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data.total").value(0));
+                .andExpect(jsonPath("$.data.totalCount").value(0));
     }
 }
