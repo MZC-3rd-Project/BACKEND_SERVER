@@ -10,6 +10,8 @@ import com.example.chat.service.query.ChatRoomQueryService;
 import com.example.chat.service.realtime.ChatWebSocketSessionRegistry;
 import com.example.core.exception.BusinessException;
 import com.example.core.util.JsonUtils;
+import com.example.security.context.AuthContext;
+import com.example.security.context.AuthContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -19,6 +21,7 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -49,16 +52,17 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+        Long userId = sessionRegistry.getUserId(session);
+        if (userId == null || userId <= 0) {
+            sendError(session, "CHAT-WS-002", "user context is missing");
+            return;
+        }
+
+        setWebSocketAuthContext(session, userId);
         try {
             ChatInboundFrame frame = JsonUtils.fromJson(message.getPayload(), ChatInboundFrame.class);
             if (frame.getType() == null) {
                 sendError(session, "CHAT-WS-001", "frame type is required");
-                return;
-            }
-
-            Long userId = sessionRegistry.getUserId(session);
-            if (userId == null || userId <= 0) {
-                sendError(session, "CHAT-WS-002", "user context is missing");
                 return;
             }
 
@@ -74,6 +78,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
         } catch (Exception e) {
             log.warn("WebSocket frame handling failed. sessionId={}", session.getId(), e);
             sendError(session, "CHAT-WS-500", "internal server error");
+        } finally {
+            AuthContextHolder.clear();
         }
     }
 
@@ -167,5 +173,20 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
                 .payload(payload)
                 .build());
         sessionRegistry.sendToSession(session, serialized);
+    }
+
+    @SuppressWarnings("unchecked")
+    private void setWebSocketAuthContext(WebSocketSession session, Long userId) {
+        Object rolesAttr = session.getAttributes().get(ChatHandshakeInterceptor.ATTR_ROLES);
+        List<String> roles = rolesAttr instanceof List<?> raw
+                ? raw.stream().filter(String.class::isInstance).map(String.class::cast).toList()
+                : List.of();
+
+        AuthContextHolder.setContext(AuthContext.builder()
+                .userId(String.valueOf(userId))
+                .roles(roles)
+                .nonce("ws")
+                .timestamp(System.currentTimeMillis())
+                .build());
     }
 }

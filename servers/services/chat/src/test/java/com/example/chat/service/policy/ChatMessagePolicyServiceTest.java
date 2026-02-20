@@ -70,4 +70,21 @@ class ChatMessagePolicyServiceTest {
                 .extracting(ex -> ((BusinessException) ex).getErrorCode())
                 .isEqualTo(ChatErrorCode.PLATFORM_ADMIN_CHAT_NOT_ALLOWED);
     }
+
+    @Test
+    void validateSendPermission_allowsNoticeForPlatformAdminWithoutParticipant() {
+        AuthContextHolder.setContext(AuthContext.builder()
+                .userId("999")
+                .roles(List.of("ROLE_PLATFORM_ADMIN"))
+                .nonce("n")
+                .timestamp(System.currentTimeMillis())
+                .build());
+
+        ChatRoom room = ChatRoom.createFundingGroupRoom("funding:1", 1L, 2L, 10L, "room");
+        room.markReadOnly(ChatRoomReadOnlyReason.FUNDING_SUCCEEDED);
+
+        assertThatCode(() -> chatMessagePolicyService.validateSendPermission(
+                room, null, 999L, ChatMessageType.NOTICE
+        )).doesNotThrowAnyException();
+    }
 }
