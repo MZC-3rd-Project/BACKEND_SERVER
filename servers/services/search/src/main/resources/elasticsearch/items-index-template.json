@@ -1,0 +1,94 @@
+{
+  "settings": {
+    "analysis": {
+      "tokenizer": {
+        "ko_nori_tokenizer": {
+          "type": "nori_tokenizer",
+          "decompound_mode": "mixed"
+        }
+      },
+      "filter": {
+        "ko_stop_filter": {
+          "type": "stop",
+          "stopwords": __STOPWORDS__
+        },
+        "ko_synonym_filter": {
+          "type": "synonym_graph",
+          "synonyms": __SYNONYMS__
+        },
+        "autocomplete_edge_filter": {
+          "type": "edge_ngram",
+          "min_gram": 1,
+          "max_gram": 20
+        }
+      },
+      "analyzer": {
+        "ko_index_analyzer": {
+          "type": "custom",
+          "tokenizer": "ko_nori_tokenizer",
+          "filter": ["lowercase", "ko_stop_filter"]
+        },
+        "ko_search_analyzer": {
+          "type": "custom",
+          "tokenizer": "ko_nori_tokenizer",
+          "filter": ["lowercase", "ko_stop_filter", "ko_synonym_filter"]
+        },
+        "ko_autocomplete_index": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase", "autocomplete_edge_filter"]
+        },
+        "ko_autocomplete_search": {
+          "type": "custom",
+          "tokenizer": "standard",
+          "filter": ["lowercase"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "itemId": {
+        "type": "keyword"
+      },
+      "title": {
+        "type": "text",
+        "analyzer": "ko_index_analyzer",
+        "search_analyzer": "ko_search_analyzer",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
+          "autocomplete": {
+            "type": "text",
+            "analyzer": "ko_autocomplete_index",
+            "search_analyzer": "ko_autocomplete_search"
+          }
+        }
+      },
+      "description": {
+        "type": "text",
+        "analyzer": "ko_index_analyzer",
+        "search_analyzer": "ko_search_analyzer"
+      },
+      "category": {
+        "type": "keyword"
+      },
+      "price": {
+        "type": "long"
+      },
+      "status": {
+        "type": "keyword"
+      },
+      "tags": {
+        "type": "keyword"
+      },
+      "createdAt": {
+        "type": "date",
+        "format": "strict_date_optional_time||epoch_millis"
+      }
+    }
+  }
+}
