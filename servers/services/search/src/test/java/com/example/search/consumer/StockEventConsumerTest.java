@@ -1,6 +1,7 @@
 package com.example.search.consumer;
 
 import com.example.config.kafka.IdempotentConsumerService;
+import com.example.search.service.index.SearchIndexingFailureService;
 import com.example.search.service.index.SearchIndexingService;
 import com.example.search.service.query.cache.SearchResultCacheService;
 import org.junit.jupiter.api.Test;
@@ -29,6 +30,9 @@ class StockEventConsumerTest {
 
     @Mock
     private SearchResultCacheService searchResultCacheService;
+
+    @Mock
+    private SearchIndexingFailureService searchIndexingFailureService;
 
     @InjectMocks
     private StockEventConsumer stockEventConsumer;
