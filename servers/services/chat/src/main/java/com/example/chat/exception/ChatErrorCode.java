@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 public enum ChatErrorCode implements DomainErrorCode {
 
     ROOM_NOT_FOUND("CHAT-001", "채팅방을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    MESSAGE_NOT_FOUND("CHAT-002", "메시지를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     FORBIDDEN_ROOM_ACCESS("CHAT-003", "채팅방 접근 권한이 없습니다.", HttpStatus.FORBIDDEN),
     ROOM_READ_ONLY("CHAT-004", "읽기 전용 채팅방에서는 일반 메시지를 보낼 수 없습니다.", HttpStatus.BAD_REQUEST),
     NOTICE_PERMISSION_DENIED("CHAT-005", "공지 메시지 전송 권한이 없습니다.", HttpStatus.FORBIDDEN),
