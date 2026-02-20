@@ -9,13 +9,17 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
 public class ChatHandshakeInterceptor implements HandshakeInterceptor {
 
     public static final String ATTR_USER_ID = "chatUserId";
+    public static final String ATTR_ROLES = "chatRoles";
 
     @Override
     public boolean beforeHandshake(ServerHttpRequest request,
@@ -34,6 +38,7 @@ public class ChatHandshakeInterceptor implements HandshakeInterceptor {
                 return false;
             }
             attributes.put(ATTR_USER_ID, userId);
+            attributes.put(ATTR_ROLES, parseRoles(request.getHeaders().getFirst(HttpHeaderNames.USER_ROLES)));
             return true;
         } catch (NumberFormatException e) {
             log.warn("WebSocket handshake rejected. Invalid X-User-Id={}", userIdHeader);
@@ -47,5 +52,15 @@ public class ChatHandshakeInterceptor implements HandshakeInterceptor {
                                WebSocketHandler wsHandler,
                                Exception exception) {
         // no-op
+    }
+
+    private List<String> parseRoles(String rolesHeader) {
+        if (!StringUtils.hasText(rolesHeader)) {
+            return List.of();
+        }
+        return Arrays.stream(rolesHeader.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toList());
     }
 }
