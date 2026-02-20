@@ -4,6 +4,7 @@ import com.example.core.pagination.CursorResponse;
 import com.example.search.dto.search.request.SearchRequest;
 import com.example.search.dto.search.response.SearchItemResponse;
 import com.example.search.service.query.autocomplete.AutocompleteService;
+import com.example.search.service.query.cache.SearchResultCacheService;
 import com.example.search.service.query.popular.PopularSearchService;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
@@ -20,7 +21,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,6 +39,9 @@ class SearchQueryServiceTest {
     @Mock
     private PopularSearchService popularSearchService;
 
+    @Mock
+    private SearchResultCacheService searchResultCacheService;
+
     private SearchQueryService searchQueryService;
 
     @BeforeEach
@@ -44,7 +50,8 @@ class SearchQueryServiceTest {
                 restClient,
                 new SearchCursorCodec(),
                 autocompleteService,
-                popularSearchService
+                popularSearchService,
+                searchResultCacheService
         );
     }
 
@@ -78,6 +85,7 @@ class SearchQueryServiceTest {
         Response response = mock(Response.class);
         when(response.getEntity()).thenReturn(new StringEntity(responseJson, ContentType.APPLICATION_JSON));
         when(restClient.performRequest(any(Request.class))).thenReturn(response);
+        when(searchResultCacheService.get(any())).thenReturn(java.util.Optional.empty());
 
         SearchRequest request = new SearchRequest();
         request.setQ("아이폰");
@@ -95,6 +103,8 @@ class SearchQueryServiceTest {
         assertThat(result.getItems().get(0).getItemId()).isEqualTo(101L);
         assertThat(result.getItems().get(0).getHighlightedTitle()).contains("<em>");
         assertThat(result.getNextCursor()).isNotBlank();
+        verify(searchResultCacheService).get(any(SearchRequest.class));
+        verify(searchResultCacheService).put(any(SearchRequest.class), anyString());
         verify(autocompleteService).recordKeyword("아이폰");
         verify(popularSearchService).recordKeyword("아이폰");
 
@@ -110,5 +120,45 @@ class SearchQueryServiceTest {
         assertThat(body).contains("\"category\"");
         assertThat(body).contains("\"range\"");
         assertThat(body).contains("\"highlight\"");
+    }
+
+    @Test
+    void search_returnsCachedResultWhenCacheHit() throws Exception {
+        String cachedJson = """
+                {
+                  "hits": {
+                    "total": {"value": 1, "relation": "eq"},
+                    "hits": [
+                      {
+                        "_source": {
+                          "itemId": 101,
+                          "title": "아이폰 케이스",
+                          "category": "GOODS",
+                          "price": 3000,
+                          "status": "SELLING",
+                          "stock": 7
+                        },
+                        "_score": 1.23,
+                        "sort": [3000, 101]
+                      }
+                    ]
+                  }
+                }
+                """;
+
+        when(searchResultCacheService.get(any())).thenReturn(java.util.Optional.of(cachedJson));
+
+        SearchRequest request = new SearchRequest();
+        request.setQ("아이폰");
+        request.setSize(1);
+
+        CursorResponse<SearchItemResponse> result = searchQueryService.search(request);
+
+        assertThat(result.getItems()).hasSize(1);
+        assertThat(result.getItems().get(0).getItemId()).isEqualTo(101L);
+        verify(restClient, never()).performRequest(any(Request.class));
+        verify(searchResultCacheService, never()).put(any(SearchRequest.class), anyString());
+        verify(autocompleteService).recordKeyword("아이폰");
+        verify(popularSearchService).recordKeyword("아이폰");
     }
 }
