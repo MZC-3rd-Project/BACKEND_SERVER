@@ -129,7 +129,7 @@ PIDS+=("$!")
 
 wait_http_code_prefix "chat-service health" "http://127.0.0.1:${CHAT_PORT}/actuator/health" "200" 150
 
-echo "[INFO] starting api-gateway on port ${GW_PORT}"
+echo "[INFO] starting client-gateway on port ${GW_PORT}"
 (
   cd "$ROOT"
   env \
@@ -139,12 +139,12 @@ echo "[INFO] starting api-gateway on port ${GW_PORT}"
     APP_SECURITY_CONTEXT_MAX_AGE_MILLIS="$MAX_AGE" \
     APP_SERVICE_CHAT_URL="http://127.0.0.1:${CHAT_PORT}" \
     APP_SERVICE_CHAT_WS_URL="ws://127.0.0.1:${CHAT_PORT}" \
-    ./gradlew :servers:gateways:api-gateway:bootRun --no-daemon >"$LOG_DIR/gateway.log" 2>&1
+    ./gradlew :servers:gateways:client-gateway:bootRun --no-daemon >"$LOG_DIR/gateway.log" 2>&1
 ) &
 PIDS+=("$!")
 
-# api-gateway에는 actuator가 없어 보호된 chat 엔드포인트 401 응답으로 기동 상태를 확인한다.
-wait_http_code_prefix "api-gateway" "http://127.0.0.1:${GW_PORT}/api/v1/chat/rooms?size=1" "401" 150
+# client-gateway에는 actuator가 없어 보호된 chat 엔드포인트 401 응답으로 기동 상태를 확인한다.
+wait_http_code_prefix "client-gateway" "http://127.0.0.1:${GW_PORT}/api/v1/chat/rooms?size=1" "401" 150
 
 JWT_HEADER='{"alg":"none","typ":"JWT"}'
 JWT_PAYLOAD_OK='{"userId":777,"roles":["buyer","user"]}'

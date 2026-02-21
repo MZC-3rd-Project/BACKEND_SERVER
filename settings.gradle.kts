@@ -30,7 +30,7 @@ include(":libs:event:outbox")
 include(":libs:openapi:config")
 
 // 게이트웨이
-include("servers:gateways:api-gateway")
+include("servers:gateways:client-gateway")
 
 // 서비스
 include("servers:services:auth")
