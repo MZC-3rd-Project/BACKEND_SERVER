@@ -25,6 +25,8 @@ search:
   metrics:
     kafka-lag:
       enabled: false
+  reconciliation:
+    enabled: false
 
 app:
   outbox:
