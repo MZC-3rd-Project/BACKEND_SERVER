@@ -1,9 +1,38 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:18080}
 
 spring:
   application:
     name: api-gateway
+  autoconfigure:
+    exclude:
+      - com.example.security.context.SecurityContextAutoConfiguration
   cloud:
     gateway:
-      routes: []
+      server:
+        webflux:
+          routes:
+            - id: search-service
+              uri: ${app.service.search-url:http://localhost:8088}
+              predicates:
+                - Path=/api/v1/search/**
+            - id: chat-service-api
+              uri: ${app.service.chat-url:http://localhost:8093}
+              predicates:
+                - Path=/api/v1/chat/**
+            - id: chat-service-ws
+              uri: ${app.service.chat-ws-url:ws://localhost:8093}
+              predicates:
+                - Path=/ws/chat,/ws/chat/**
+
+gateway:
+  security:
+    internal-auth-header: ${GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}
+    internal-auth-token: ${GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
+    require-jwt-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_JWT_PATH_PREFIXES:/api/v1/chat,/ws/chat}
+
+app:
+  security:
+    context:
+      signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}
+      max-age-millis: ${APP_SECURITY_CONTEXT_MAX_AGE_MILLIS:300000}
