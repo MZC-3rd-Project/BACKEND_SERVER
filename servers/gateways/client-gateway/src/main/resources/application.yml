@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: api-gateway
+    name: client-gateway
   autoconfigure:
     exclude:
       - com.example.security.context.SecurityContextAutoConfiguration

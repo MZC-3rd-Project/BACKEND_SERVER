@@ -1,4 +1,4 @@
-# Module: `servers/gateways/api-gateway`
+# Module: `servers/gateways/client-gateway`
 
 ## 한눈에 보기
 - 역할: 외부 요청 진입점 게이트웨이 모듈입니다.
@@ -11,7 +11,7 @@
 
 ## 간단 예시
 ```text
-./gradlew :servers:gateways:api-gateway:bootRun
+./gradlew :servers:gateways:client-gateway:bootRun
 ```
 
 ## 로컬 E2E 검증
