@@ -73,6 +73,24 @@ class ElasticsearchIndexingServiceTest {
     }
 
     @Test
+    void updateItemStockVersioned_sendsScriptUpdateRequest() throws Exception {
+        when(restClient.performRequest(any(Request.class))).thenReturn(mock(Response.class));
+
+        indexingService.updateItemStockVersioned(15L, 9, 57L);
+
+        ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+        verify(restClient).performRequest(captor.capture());
+        Request request = captor.getValue();
+
+        assertThat(request.getMethod()).isEqualTo("POST");
+        assertThat(request.getEndpoint()).isEqualTo("/items-write/_update/15");
+        String json = EntityUtils.toString(request.getEntity());
+        assertThat(json).contains("\"script\"");
+        assertThat(json).contains("\"stockVersion\":57");
+        assertThat(json).contains("\"stock\":9");
+    }
+
+    @Test
     void updateItemStock_wrapsIOExceptionAsBusinessException() throws Exception {
         when(restClient.performRequest(any(Request.class))).thenThrow(new IOException("es-down"));
 
