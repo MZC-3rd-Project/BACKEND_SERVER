@@ -61,9 +61,15 @@ search:
     kafka-lag:
       enabled: ${SEARCH_METRICS_KAFKA_LAG_ENABLED:true}
       interval-ms: ${SEARCH_METRICS_KAFKA_LAG_INTERVAL_MS:30000}
+  reconciliation:
+    enabled: ${SEARCH_RECONCILIATION_ENABLED:false}
+    interval-ms: ${SEARCH_RECONCILIATION_INTERVAL_MS:300000}
+    sample-item-ids: ${SEARCH_RECONCILIATION_SAMPLE_ITEM_IDS:}
 
 # ─── Snowflake ID ────────────────────────────
 app:
+  service:
+    stock-url: ${STOCK_SERVICE_URL:http://localhost:8085}
   snowflake:
     datacenter-id: ${SNOWFLAKE_DATACENTER_ID:1}
     worker-id: ${SNOWFLAKE_WORKER_ID:11}

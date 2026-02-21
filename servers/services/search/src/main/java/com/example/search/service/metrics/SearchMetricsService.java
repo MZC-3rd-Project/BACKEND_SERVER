@@ -56,4 +56,9 @@ public class SearchMetricsService {
     public void updateKafkaLag(long lag) {
         kafkaLagMax.set(Math.max(lag, -1L));
     }
+
+    public void recordStockReconciliation(String result) {
+        String safeResult = (result == null || result.isBlank()) ? "unknown" : result;
+        meterRegistry.counter("search.reconciliation.checks", "result", safeResult).increment();
+    }
 }
