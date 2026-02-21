@@ -49,6 +49,9 @@ public class ItemDocument {
     @Field(type = FieldType.Integer)
     private Integer stock;
 
+    @Field(type = FieldType.Long)
+    private Long stockVersion;
+
     @Field(type = FieldType.Keyword)
     private List<String> tags;
 

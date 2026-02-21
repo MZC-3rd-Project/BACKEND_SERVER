@@ -7,6 +7,7 @@ import com.example.search.exception.SearchErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.elasticsearch.client.Request;
+import org.elasticsearch.client.ResponseException;
 import org.elasticsearch.client.RestClient;
 import org.springframework.stereotype.Service;
 
@@ -73,6 +74,35 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
     }
 
     @Override
+    public void updateItemStockVersioned(Long itemId, Integer stock, Long stockVersion) {
+        if (itemId == null || stock == null || stockVersion == null) {
+            return;
+        }
+
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("itemId", itemId);
+        params.put("stock", stock);
+        params.put("stockVersion", stockVersion);
+
+        Map<String, Object> script = new LinkedHashMap<>();
+        script.put("lang", "painless");
+        script.put("source",
+                "if (ctx._source.stockVersion == null || params.stockVersion > ctx._source.stockVersion) { " +
+                        "ctx._source.itemId = params.itemId; " +
+                        "ctx._source.stock = params.stock; " +
+                        "ctx._source.stockVersion = params.stockVersion; " +
+                        "} else { ctx.op = 'none'; }");
+        script.put("params", params);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("script", script);
+
+        Request request = new Request("POST", endpointForUpdate(itemId));
+        request.setJsonEntity(JsonUtils.toJson(body));
+        performRequestAllowMissing(request, itemId, "ITEM_AVAILABLE_STOCK_CHANGED");
+    }
+
+    @Override
     public void deleteItem(Long itemId) {
         if (itemId == null) {
             return;
@@ -103,6 +133,30 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
             log.debug("Search index updated. eventType={}, itemId={}", eventType, itemId);
         } catch (IOException e) {
             log.error("Search index request failed. eventType={}, itemId={}", eventType, itemId, e);
+            throw new BusinessException(
+                    SearchErrorCode.SEARCH_INDEXING_FAILED,
+                    "검색 인덱싱에 실패했습니다. itemId=" + itemId + ", eventType=" + eventType,
+                    e
+            );
+        }
+    }
+
+    private void performRequestAllowMissing(Request request, Long itemId, String eventType) {
+        try {
+            restClient.performRequest(request);
+            log.debug("Search index updated. eventType={}, itemId={}", eventType, itemId);
+        } catch (ResponseException e) {
+            int status = e.getResponse() == null ? -1 : e.getResponse().getStatusLine().getStatusCode();
+            if (status == 404) {
+                log.debug("Search document not found. skip stock sync. eventType={}, itemId={}", eventType, itemId);
+                return;
+            }
+            throw new BusinessException(
+                    SearchErrorCode.SEARCH_INDEXING_FAILED,
+                    "검색 인덱싱에 실패했습니다. itemId=" + itemId + ", eventType=" + eventType,
+                    e
+            );
+        } catch (IOException e) {
             throw new BusinessException(
                     SearchErrorCode.SEARCH_INDEXING_FAILED,
                     "검색 인덱싱에 실패했습니다. itemId=" + itemId + ", eventType=" + eventType,
