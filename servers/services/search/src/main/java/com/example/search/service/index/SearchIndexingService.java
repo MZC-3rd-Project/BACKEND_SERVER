@@ -16,5 +16,7 @@ public interface SearchIndexingService {
 
     void updateItemStock(Long itemId, Integer stock);
 
+    void updateItemStockVersioned(Long itemId, Integer stock, Long stockVersion);
+
     void deleteItem(Long itemId);
 }

@@ -62,18 +62,35 @@ public class StockEventConsumer {
     private void route(StockEventMessage event) {
         String normalizedType = normalizeEventType(event.getEventType());
         switch (normalizedType) {
-            case "STOCK_DECREASED" -> handleStockDecreased(event);
+            case "STOCK_DECREASED", "STOCK_INCREASED" -> handleLegacyStockChanged(event, normalizedType);
+            case "ITEM_AVAILABLE_STOCK_CHANGED" -> handleItemAvailableStockChanged(event);
             default -> log.debug("[SearchStockConsumer] 처리하지 않는 이벤트 타입: {}", event.getEventType());
         }
     }
 
-    private void handleStockDecreased(StockEventMessage event) {
-        if (event.getRemainingQuantity() == null) {
-            log.warn("[SearchStockConsumer] remainingQuantity 누락으로 재고 업데이트 스킵. itemId={}", event.getItemId());
+    private void handleLegacyStockChanged(StockEventMessage event, String eventType) {
+        Integer stock = event.resolveLegacyStockQuantity();
+        if (stock == null) {
+            log.warn("[SearchStockConsumer] legacy 재고 값 누락으로 업데이트 스킵. eventType={}, itemId={}",
+                    eventType, event.getItemId());
             return;
         }
 
-        searchIndexingService.updateItemStock(event.getItemId(), event.getRemainingQuantity());
+        searchIndexingService.updateItemStock(event.getItemId(), stock);
+        searchResultCacheService.evictAll();
+    }
+
+    private void handleItemAvailableStockChanged(StockEventMessage event) {
+        if (event.getAvailableStockTotal() == null || event.getStockVersion() == null) {
+            log.warn("[SearchStockConsumer] availableStockTotal/stockVersion 누락으로 스냅샷 업데이트 스킵. itemId={}",
+                    event.getItemId());
+            return;
+        }
+        searchIndexingService.updateItemStockVersioned(
+                event.getItemId(),
+                event.getAvailableStockTotal(),
+                event.getStockVersion()
+        );
         searchResultCacheService.evictAll();
     }
 

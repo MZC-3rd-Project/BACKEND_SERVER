@@ -22,4 +22,7 @@ public interface StockItemRepository extends JpaRepository<StockItem, Long> {
     List<StockItem> findByItemId(Long itemId);
 
     List<StockItem> findByItemIdAndStockItemType(Long itemId, StockItemType stockItemType);
+
+    @Query("SELECT COALESCE(SUM(s.availableQuantity), 0) FROM StockItem s WHERE s.itemId = :itemId")
+    Long sumAvailableQuantityByItemId(@Param("itemId") Long itemId);
 }
