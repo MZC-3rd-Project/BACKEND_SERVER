@@ -5,8 +5,6 @@ import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;
 import com.example.media.config.MediaCleanupProperties;
 import com.example.media.config.MediaS3Properties;
-import com.example.media.config.MediaUrlAccessType;
-import com.example.media.config.MediaUrlProperties;
 import com.example.media.dto.command.request.UploadConfirmRequest;
 import com.example.media.dto.command.request.UploadIntentRequest;
 import com.example.media.dto.command.response.UploadConfirmResponse;
@@ -20,6 +18,7 @@ import com.example.media.event.MediaConfirmedEvent;
 import com.example.media.exception.MediaErrorCode;
 import com.example.media.repository.MediaFileRepository;
 import com.example.media.repository.MediaLinkRepository;
+import com.example.media.service.query.MediaUrlPolicyService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -56,7 +55,7 @@ public class MediaCommandService {
     private final MediaLinkRepository mediaLinkRepository;
     private final MediaS3Properties mediaS3Properties;
     private final MediaCleanupProperties mediaCleanupProperties;
-    private final MediaUrlProperties mediaUrlProperties;
+    private final MediaUrlPolicyService mediaUrlPolicyService;
     private final S3Presigner s3Presigner;
     private final S3Client s3Client;
     private final EventPublisher eventPublisher;
@@ -294,7 +293,7 @@ public class MediaCommandService {
                         mediaLink != null ? mediaLink.getOwnerId() : null,
                         mediaLink != null ? mediaLink.getUsageType() : null,
                         mediaLink != null ? mediaLink.getSortOrder() : null,
-                        buildMediaUrl(mediaFile.getObjectKey())
+                        mediaUrlPolicyService.buildBaseUrl(mediaFile.getObjectKey())
                 ),
                 EventMetadata.of("MediaFile", String.valueOf(mediaFile.getId()))
         );
@@ -457,7 +456,7 @@ public class MediaCommandService {
     }
 
     private UploadConfirmResponse toConfirmResponse(MediaFile mediaFile, MediaLink mediaLink) {
-        MediaUrlContract urlContract = buildMediaUrlContract(
+        MediaUrlPolicyService.MediaUrlContract urlContract = mediaUrlPolicyService.resolve(
                 mediaFile.getObjectKey(),
                 mediaLink != null ? mediaLink.getUsageType() : null
         );
@@ -480,31 +479,6 @@ public class MediaCommandService {
                 .build();
     }
 
-    private String buildMediaUrl(String objectKey) {
-        if (!StringUtils.hasText(mediaS3Properties.getCloudfrontDomain())) {
-            return null;
-        }
-        String domain = mediaS3Properties.getCloudfrontDomain().trim();
-        if (domain.endsWith("/")) {
-            domain = domain.substring(0, domain.length() - 1);
-        }
-        return domain + "/" + objectKey;
-    }
-
-    private MediaUrlContract buildMediaUrlContract(String objectKey, MediaUsageType usageType) {
-        String baseUrl = buildMediaUrl(objectKey);
-        MediaUrlAccessType accessType = mediaUrlProperties.getAccessType();
-        Instant expiresAt = null;
-        if (accessType == MediaUrlAccessType.SIGNED_URL) {
-            expiresAt = Instant.now().plusSeconds(Math.max(1, mediaUrlProperties.getSignedUrlTtlSeconds()));
-        }
-        String cacheControl = usageType == MediaUsageType.THUMBNAIL
-                ? mediaUrlProperties.getThumbnailCacheControl()
-                : mediaUrlProperties.getDefaultCacheControl();
-
-        return new MediaUrlContract(baseUrl, accessType, expiresAt, cacheControl);
-    }
-
     private record MediaBinding(
             MediaOwnerType ownerType,
             Long ownerId,
@@ -517,14 +491,6 @@ public class MediaCommandService {
             int expiredCount,
             int deletedObjectCount,
             int deleteFailedCount
-    ) {
-    }
-
-    private record MediaUrlContract(
-            String url,
-            MediaUrlAccessType accessType,
-            Instant expiresAt,
-            String cacheControl
     ) {
     }
 }

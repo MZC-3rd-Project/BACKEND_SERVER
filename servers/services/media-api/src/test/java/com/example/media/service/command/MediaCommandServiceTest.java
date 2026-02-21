@@ -15,6 +15,7 @@ import com.example.media.entity.MediaUsageType;
 import com.example.media.exception.MediaErrorCode;
 import com.example.media.repository.MediaFileRepository;
 import com.example.media.repository.MediaLinkRepository;
+import com.example.media.service.query.MediaUrlPolicyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -62,6 +63,7 @@ class MediaCommandServiceTest {
     private MediaS3Properties mediaS3Properties;
     private MediaCleanupProperties mediaCleanupProperties;
     private MediaUrlProperties mediaUrlProperties;
+    private MediaUrlPolicyService mediaUrlPolicyService;
 
     private MediaCommandService mediaCommandService;
 
@@ -81,13 +83,14 @@ class MediaCommandServiceTest {
         mediaUrlProperties = new MediaUrlProperties();
         mediaUrlProperties.setAccessType(MediaUrlAccessType.PUBLIC);
         mediaUrlProperties.setSignedUrlTtlSeconds(300);
+        mediaUrlPolicyService = new MediaUrlPolicyService(mediaS3Properties, mediaUrlProperties);
 
         mediaCommandService = new MediaCommandService(
                 mediaFileRepository,
                 mediaLinkRepository,
                 mediaS3Properties,
                 mediaCleanupProperties,
-                mediaUrlProperties,
+                mediaUrlPolicyService,
                 s3Presigner,
                 s3Client,
                 eventPublisher
