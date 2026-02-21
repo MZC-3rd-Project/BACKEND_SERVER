@@ -38,3 +38,18 @@
 - 운영:
   - 초기엔 `false`로 두고 Lifecycle 정책을 주 정리 수단으로 운영
   - 필요 시 점진적으로 `true` 전환
+
+## 메트릭/알림 기준
+- `media.cleanup.duration`
+  - 스케줄러 1회 실행 시간
+- `media.cleanup.expired.total`
+  - 만료 전이 누적 건수
+- `media.cleanup.s3.delete.total{result=success|failure}`
+  - S3 삭제 성공/실패 누적 건수
+- `media.cleanup.alerts.total{type=delete_failure}`
+  - 삭제 실패 경고 누적 건수
+
+권장 알림:
+1. `media.cleanup.alerts.total`가 5분 동안 1 이상 증가하면 경고
+2. `media.cleanup.s3.delete.total{result=failure}` / `success` 비율이 10% 초과 시 경고
+3. `media.cleanup.duration` P95가 스케줄 간격의 50%를 초과하면 경고
