@@ -8,6 +8,7 @@ import com.example.stock.dto.request.*;
 import com.example.stock.dto.response.ReservationResponse;
 import com.example.stock.dto.response.StockResponse;
 import com.example.stock.entity.*;
+import com.example.stock.event.ItemAvailableStockChangedEvent;
 import com.example.stock.event.StockDecreasedEvent;
 import com.example.stock.event.StockDepletedEvent;
 import com.example.stock.event.StockIncreasedEvent;
@@ -16,9 +17,11 @@ import com.example.stock.exception.StockErrorCode;
 import com.example.stock.repository.StockHistoryRepository;
 import com.example.stock.repository.StockItemRepository;
 import com.example.stock.repository.StockReservationRepository;
+import com.example.stock.repository.StockSyncVersionRepository;
 import com.example.stock.service.StockCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +37,7 @@ public class StockCommandService {
     private final StockItemRepository stockItemRepository;
     private final StockReservationRepository stockReservationRepository;
     private final StockHistoryRepository stockHistoryRepository;
+    private final StockSyncVersionRepository stockSyncVersionRepository;
     private final StockCacheService stockCacheService;
     private final EventPublisher eventPublisher;
 
@@ -55,6 +59,7 @@ public class StockCommandService {
 
         // 이벤트 발행
         publishStockEvents(stockItem, request.getQuantity());
+        publishItemStockSnapshotEvent(stockItem.getItemId());
 
         return StockResponse.from(stockItem);
     }
@@ -73,6 +78,7 @@ public class StockCommandService {
         eventPublisher.publish(
                 new StockIncreasedEvent(stockItem.getId(), stockItem.getItemId(), request.getQuantity(), stockItem.getAvailableQuantity()),
                 EventMetadata.of("StockItem", String.valueOf(stockItem.getId())));
+        publishItemStockSnapshotEvent(stockItem.getItemId());
 
         return StockResponse.from(stockItem);
     }
@@ -97,6 +103,7 @@ public class StockCommandService {
                 "예약 생성 (userId=" + request.getUserId() + ")", reservation.getId()));
 
         stockCacheService.cacheStock(stockItem.getId(), stockItem.getAvailableQuantity());
+        publishItemStockSnapshotEvent(stockItem.getItemId());
 
         return ReservationResponse.from(reservation);
     }
@@ -147,6 +154,7 @@ public class StockCommandService {
                 "예약 취소", reservation.getId()));
 
         stockCacheService.cacheStock(stockItem.getId(), stockItem.getAvailableQuantity());
+        publishItemStockSnapshotEvent(stockItem.getItemId());
 
         return ReservationResponse.from(reservation);
     }
@@ -174,6 +182,7 @@ public class StockCommandService {
         }
 
         stockCacheService.cacheStock(stockItem.getId(), stockItem.getAvailableQuantity());
+        publishItemStockSnapshotEvent(stockItem.getItemId());
 
         return StockResponse.from(stockItem);
     }
@@ -196,6 +205,7 @@ public class StockCommandService {
             stockHistoryRepository.save(StockHistory.create(
                     stockItem.getId(), ChangeType.EXPIRE, reservation.getQuantity(),
                     "예약 만료 자동 복원", reservation.getId()));
+            publishItemStockSnapshotEvent(stockItem.getItemId());
         }
     }
 
@@ -214,6 +224,45 @@ public class StockCommandService {
                             stockItem.getAvailableQuantity(), stockItem.getTotalQuantity()),
                     EventMetadata.of("StockItem", String.valueOf(stockItem.getId())));
         }
+    }
+
+    private void publishItemStockSnapshotEvent(Long itemId) {
+        if (itemId == null) {
+            return;
+        }
+        long stockVersion = nextStockVersion(itemId);
+        int availableStockTotal = sumAvailableStockByItemId(itemId);
+        eventPublisher.publish(
+                new ItemAvailableStockChangedEvent(itemId, availableStockTotal, stockVersion),
+                EventMetadata.of("Item", String.valueOf(itemId))
+        );
+    }
+
+    private long nextStockVersion(Long itemId) {
+        for (int attempt = 0; attempt < 2; attempt++) {
+            StockSyncVersion syncVersion = stockSyncVersionRepository.findByItemIdWithLock(itemId)
+                    .orElse(null);
+            if (syncVersion != null) {
+                return syncVersion.incrementAndGet();
+            }
+            try {
+                stockSyncVersionRepository.saveAndFlush(StockSyncVersion.initialize(itemId));
+            } catch (DataIntegrityViolationException e) {
+                log.debug("Stock sync version row already exists. itemId={}", itemId);
+            }
+        }
+
+        StockSyncVersion syncVersion = stockSyncVersionRepository.findByItemIdWithLock(itemId)
+                .orElseGet(() -> stockSyncVersionRepository.saveAndFlush(StockSyncVersion.initialize(itemId)));
+        return syncVersion.incrementAndGet();
+    }
+
+    private int sumAvailableStockByItemId(Long itemId) {
+        Long total = stockItemRepository.sumAvailableQuantityByItemId(itemId);
+        if (total == null) {
+            return 0;
+        }
+        return Math.toIntExact(total);
     }
 
     private StockItem getStockItemWithLock(Long stockItemId) {
