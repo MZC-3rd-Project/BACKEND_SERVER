@@ -24,8 +24,11 @@ spring:
               uri: ${app.service.chat-ws-url:ws://localhost:8093}
               predicates:
                 - Path=/ws/chat,/ws/chat/**
-
 gateway:
+  auth:
+    enabled: ${GATEWAY_AUTH_ENABLED:false}
+    auth-service-url: ${app.service.auth-url:http://localhost:8081}
+    user-service-url: ${app.service.user-url:http://localhost:8082}
   security:
     internal-auth-header: ${GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}
     internal-auth-token: ${GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
