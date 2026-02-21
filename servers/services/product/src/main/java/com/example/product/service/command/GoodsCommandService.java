@@ -37,9 +37,10 @@ public class GoodsCommandService {
     private final EventPublisher eventPublisher;
 
     public GoodsDetailResponse createGoods(GoodsCreateRequest request, Long sellerId) {
+        // TODO: store-service 연동 후 sellerId-storeId 소유권 검증을 추가한다.
         Item item = Item.create(
                 request.getTitle(), request.getDescription(), request.getPrice(),
-                ItemType.GOODS, request.getCategoryId(), sellerId, request.getThumbnailUrl());
+                ItemType.GOODS, request.getCategoryId(), sellerId, request.getStoreId(), request.getThumbnailUrl());
         itemRepository.save(item);
 
         List<ItemOption> options = saveOptions(item.getId(), request.getOptions());
@@ -60,7 +61,15 @@ public class GoodsCommandService {
                 .toList();
 
         eventPublisher.publish(
-                new ItemCreatedEvent(item.getId(), item.getTitle(), item.getItemType().name(), item.getPrice(), sellerId, stockItems),
+                new ItemCreatedEvent(
+                        item.getId(),
+                        item.getTitle(),
+                        item.getItemType().name(),
+                        item.getPrice(),
+                        sellerId,
+                        request.getStoreId(),
+                        stockItems
+                ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
         return GoodsDetailResponse.of(item, options, shippingInfo, linkedIds);
