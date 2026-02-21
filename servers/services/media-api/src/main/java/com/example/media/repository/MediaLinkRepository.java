@@ -22,4 +22,6 @@ public interface MediaLinkRepository extends JpaRepository<MediaLink, Long> {
             Long ownerId,
             MediaUsageType usageType
     );
+
+    Optional<MediaLink> findTopByMediaIdOrderByCreatedAtDesc(Long mediaId);
 }
