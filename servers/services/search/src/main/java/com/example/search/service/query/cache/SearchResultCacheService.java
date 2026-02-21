@@ -88,11 +88,11 @@ public class SearchResultCacheService {
         Map<String, Object> normalized = new LinkedHashMap<>();
         normalized.put("q", SearchKeywordNormalizer.normalize(request.getQ()));
         normalized.put("category", normalizeText(request.getCategory()));
-        normalized.put("domainType", normalizeText(request.getDomainType()));
+        normalized.put("domainType", normalizeDomainType(request.getDomainType()));
         normalized.put("status", normalizeStatuses(request.getStatus()));
         normalized.put("minPrice", request.getMinPrice());
         normalized.put("maxPrice", request.getMaxPrice());
-        normalized.put("sort", normalizeText(request.getSort()));
+        normalized.put("sort", normalizeSort(request.getSort()));
         normalized.put("cursor", normalizeText(request.getCursor()));
         normalized.put("size", request.getSize());
 
@@ -105,6 +105,20 @@ public class SearchResultCacheService {
             return "";
         }
         return value.trim();
+    }
+
+    private String normalizeDomainType(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "";
+        }
+        return value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String normalizeSort(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "LATEST";
+        }
+        return value.trim().toUpperCase(Locale.ROOT);
     }
 
     private List<String> normalizeStatuses(List<String> statuses) {
