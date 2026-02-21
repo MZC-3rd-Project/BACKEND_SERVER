@@ -63,6 +63,10 @@ chat:
 
 # ─── Snowflake ID ────────────────────────────
 app:
+  security:
+    context:
+      signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}
+      max-age-millis: ${APP_SECURITY_CONTEXT_MAX_AGE_MILLIS:300000}
   snowflake:
     datacenter-id: ${SNOWFLAKE_DATACENTER_ID:1}
     worker-id: ${SNOWFLAKE_WORKER_ID:10}
