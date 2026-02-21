@@ -1,8 +1,10 @@
 package com.example.search.service.query;
 
+import com.example.core.exception.BusinessException;
 import com.example.core.pagination.CursorResponse;
 import com.example.search.dto.search.request.SearchRequest;
 import com.example.search.dto.search.response.SearchItemResponse;
+import com.example.search.exception.SearchErrorCode;
 import com.example.search.service.metrics.SearchMetricsService;
 import com.example.search.service.query.autocomplete.AutocompleteService;
 import com.example.search.service.query.cache.SearchResultCacheService;
@@ -20,6 +22,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -192,5 +195,35 @@ class SearchQueryServiceTest {
         verify(restClient).performRequest(captor.capture());
         String body = EntityUtils.toString(captor.getValue().getEntity());
         assertThat(body).doesNotContain("\"fuzziness\"");
+    }
+
+    @Test
+    void search_throwsWhenQueryBlank() throws Exception {
+        SearchRequest request = new SearchRequest();
+        request.setQ("   ");
+        request.setSize(20);
+
+        assertThatThrownBy(() -> searchQueryService.search(request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException businessException = (BusinessException) ex;
+                    assertThat(businessException.getErrorCode()).isEqualTo(SearchErrorCode.INVALID_SEARCH_PARAMETER);
+                });
+        verify(restClient, never()).performRequest(any(Request.class));
+    }
+
+    @Test
+    void search_throwsWhenSizeOutOfRange() throws Exception {
+        SearchRequest request = new SearchRequest();
+        request.setQ("아이폰");
+        request.setSize(101);
+
+        assertThatThrownBy(() -> searchQueryService.search(request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException businessException = (BusinessException) ex;
+                    assertThat(businessException.getErrorCode()).isEqualTo(SearchErrorCode.INVALID_SEARCH_PARAMETER);
+                });
+        verify(restClient, never()).performRequest(any(Request.class));
     }
 }

@@ -20,6 +20,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -100,6 +101,29 @@ class SearchResultCacheServiceTest {
 
         verify(stringRedisTemplate).delete(Set.of("search:cache:a", "search:cache:b"));
         verify(stringRedisTemplate).delete("search:cache:keys");
+    }
+
+    @Test
+    void put_normalizesSortAndDomainTypeForCacheKey() {
+        SearchRequest lowerCaseRequest = request("아이폰", List.of("SELLING"));
+        lowerCaseRequest.setSort("latest");
+        lowerCaseRequest.setDomainType("goods");
+
+        SearchRequest upperCaseRequest = request("아이폰", List.of("SELLING"));
+        upperCaseRequest.setSort("LATEST");
+        upperCaseRequest.setDomainType("GOODS");
+
+        when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(stringRedisTemplate.opsForSet()).thenReturn(setOperations);
+
+        searchResultCacheService.put(lowerCaseRequest, "{\"hits\":[]}");
+        searchResultCacheService.put(upperCaseRequest, "{\"hits\":[]}");
+
+        ArgumentCaptor<String> keyCaptor = ArgumentCaptor.forClass(String.class);
+        verify(valueOperations, times(2))
+                .set(keyCaptor.capture(), eq("{\"hits\":[]}"), eq(Duration.ofMinutes(5)));
+        assertThat(keyCaptor.getAllValues()).hasSize(2);
+        assertThat(keyCaptor.getAllValues().get(0)).isEqualTo(keyCaptor.getAllValues().get(1));
     }
 
     private SearchRequest request(String q, List<String> statuses) {

@@ -51,7 +51,7 @@ public class SearchQueryService {
 
     public CursorResponse<SearchItemResponse> search(SearchRequest request) {
         long startNanos = System.nanoTime();
-        validateRange(request.getMinPrice(), request.getMaxPrice());
+        validateSearchRequest(request);
 
         SearchSortType sortType = SearchSortType.from(request.getSort());
         int size = request.getSize() == null ? 20 : request.getSize();
@@ -257,6 +257,41 @@ public class SearchQueryService {
             throw new BusinessException(SearchErrorCode.INVALID_SEARCH_PARAMETER,
                     "minPrice는 maxPrice보다 클 수 없습니다.");
         }
+    }
+
+    private void validateSearchRequest(SearchRequest request) {
+        if (request == null) {
+            throw new BusinessException(SearchErrorCode.INVALID_SEARCH_PARAMETER, "검색 요청이 비어 있습니다.");
+        }
+        if (!StringUtils.hasText(request.getQ())) {
+            throw new BusinessException(SearchErrorCode.INVALID_SEARCH_PARAMETER, "검색어(q)는 필수입니다.");
+        }
+        request.setQ(request.getQ().trim());
+
+        if (StringUtils.hasText(request.getCategory())) {
+            request.setCategory(request.getCategory().trim());
+        }
+        if (StringUtils.hasText(request.getDomainType())) {
+            request.setDomainType(request.getDomainType().trim().toUpperCase(Locale.ROOT));
+        }
+        if (StringUtils.hasText(request.getSort())) {
+            request.setSort(request.getSort().trim().toUpperCase(Locale.ROOT));
+        }
+
+        if (request.getMinPrice() != null && request.getMinPrice() < 0) {
+            throw new BusinessException(SearchErrorCode.INVALID_SEARCH_PARAMETER, "최소 가격은 0 이상이어야 합니다.");
+        }
+        if (request.getMaxPrice() != null && request.getMaxPrice() < 0) {
+            throw new BusinessException(SearchErrorCode.INVALID_SEARCH_PARAMETER, "최대 가격은 0 이상이어야 합니다.");
+        }
+
+        int size = request.getSize() == null ? 20 : request.getSize();
+        if (size < 1 || size > 100) {
+            throw new BusinessException(SearchErrorCode.INVALID_SEARCH_PARAMETER, "size는 1 이상 100 이하여야 합니다.");
+        }
+        request.setSize(size);
+
+        validateRange(request.getMinPrice(), request.getMaxPrice());
     }
 
     private String firstHighlight(Map<String, Object> highlight, String key) {

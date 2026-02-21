@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -22,6 +23,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -42,31 +44,73 @@ public class IndexManagementService {
         int nextVersion = nextVersion(previousWriteIndex);
         String targetIndex = baseName + "-v" + nextVersion;
         boolean existed = previousWriteIndex != null;
+        boolean createdByRequest = false;
 
         try {
-            createIndex(targetIndex);
+            createdByRequest = createIndex(targetIndex);
             switchAliases(readAlias, writeAlias, previousWriteIndex, targetIndex);
             verifyWriteAlias(writeAlias, targetIndex);
 
-            return IndexRecreateResponse.builder()
-                    .indexName(targetIndex)
-                    .existed(existed)
-                    .recreated(true)
-                    .requestedAt(Instant.now())
-                    .build();
+            return successResponse(targetIndex, existed);
         } catch (Exception e) {
-            rollbackAliases(readAlias, writeAlias, previousWriteIndex, targetIndex);
-            deleteIndexQuietly(targetIndex);
+            if (isWriteAliasPointingTo(writeAlias, targetIndex)) {
+                log.warn("Alias already switched by concurrent request. base={}, target={}", baseName, targetIndex);
+                return successResponse(targetIndex, existed);
+            }
+
+            cleanupFailedTargetIndex(createdByRequest, readAlias, writeAlias, targetIndex);
             log.error("Failed to recreate search index with alias switch. base={}, target={}", baseName, targetIndex, e);
             throw new BusinessException(SearchErrorCode.INDEX_MANAGEMENT_FAILED,
                     "검색 인덱스 재생성(alias switch)에 실패했습니다: " + targetIndex, e);
         }
     }
 
-    private void createIndex(String indexName) throws IOException {
+    private IndexRecreateResponse successResponse(String targetIndex, boolean existed) {
+        return IndexRecreateResponse.builder()
+                .indexName(targetIndex)
+                .existed(existed)
+                .recreated(true)
+                .requestedAt(Instant.now())
+                .build();
+    }
+
+    private boolean createIndex(String indexName) throws IOException {
         Request request = new Request("PUT", "/" + indexName);
         request.setJsonEntity(templateResolver.resolveItemsIndexTemplate());
-        restClient.performRequest(request);
+        try {
+            restClient.performRequest(request);
+            return true;
+        } catch (ResponseException e) {
+            if (isIndexAlreadyExists(e)) {
+                log.warn("Target index already exists. concurrentRecreate=true, index={}", indexName);
+                return false;
+            }
+            throw e;
+        }
+    }
+
+    private boolean isIndexAlreadyExists(ResponseException e) {
+        if (e.getResponse() == null || e.getResponse().getStatusLine() == null) {
+            return false;
+        }
+        int statusCode = e.getResponse().getStatusLine().getStatusCode();
+        if (statusCode != 400 && statusCode != 409) {
+            return false;
+        }
+
+        String message = e.getMessage();
+        if (StringUtils.hasText(message) && message.contains("resource_already_exists_exception")) {
+            return true;
+        }
+        try {
+            String body = org.apache.http.util.EntityUtils.toString(
+                    e.getResponse().getEntity(),
+                    StandardCharsets.UTF_8
+            );
+            return StringUtils.hasText(body) && body.contains("resource_already_exists_exception");
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     private void switchAliases(String readAlias,
@@ -93,25 +137,19 @@ public class IndexManagementService {
         }
     }
 
-    private void rollbackAliases(String readAlias,
-                                 String writeAlias,
-                                 String previousWriteIndex,
-                                 String failedTargetIndex) {
-        try {
-            List<Map<String, Object>> rollbackActions = new ArrayList<>();
-            rollbackActions.add(removeAliasAction(failedTargetIndex, readAlias));
-            rollbackActions.add(removeAliasAction(failedTargetIndex, writeAlias));
-
-            if (StringUtils.hasText(previousWriteIndex)) {
-                rollbackActions.add(addAliasAction(previousWriteIndex, readAlias, false));
-                rollbackActions.add(addAliasAction(previousWriteIndex, writeAlias, true));
-            }
-            applyAliasActions(rollbackActions);
-            log.warn("Search alias rollback executed. previous={}, failedTarget={}", previousWriteIndex, failedTargetIndex);
-        } catch (Exception rollbackEx) {
-            log.error("Search alias rollback failed. previous={}, failedTarget={}",
-                    previousWriteIndex, failedTargetIndex, rollbackEx);
+    private void cleanupFailedTargetIndex(boolean createdByRequest,
+                                          String readAlias,
+                                          String writeAlias,
+                                          String targetIndex) {
+        if (!createdByRequest) {
+            return;
         }
+
+        if (isAliasBoundToIndexSafely(readAlias, targetIndex) || isAliasBoundToIndexSafely(writeAlias, targetIndex)) {
+            log.warn("Skip deleting failed target index because alias is still attached. target={}", targetIndex);
+            return;
+        }
+        deleteIndexQuietly(targetIndex);
     }
 
     private void deleteIndexQuietly(String indexName) {
@@ -144,34 +182,67 @@ public class IndexManagementService {
         return Map.of("remove", Map.of("index", index, "alias", alias));
     }
 
-    private Optional<String> resolveWriteAliasIndex(String writeAlias) {
+    private boolean isWriteAliasPointingTo(String writeAlias, String expectedIndex) {
         try {
-            Request request = new Request("GET", "/_alias/" + writeAlias);
+            return resolveWriteAliasIndex(writeAlias)
+                    .map(expectedIndex::equals)
+                    .orElse(false);
+        } catch (Exception ex) {
+            log.warn("Failed to verify write alias during recreate failure handling. alias={}", writeAlias, ex);
+            return false;
+        }
+    }
+
+    private boolean isAliasBoundToIndexSafely(String alias, String indexName) {
+        try {
+            Set<String> indices = resolveAliasIndices(alias);
+            return indices.contains(indexName);
+        } catch (Exception e) {
+            log.warn("Failed to resolve alias mapping. skipDeleteForSafety=true, alias={}, index={}",
+                    alias, indexName, e);
+            return true;
+        }
+    }
+
+    private Set<String> resolveAliasIndices(String alias) {
+        Map<String, Object> root = resolveAliasRoot(alias);
+        return root.keySet();
+    }
+
+    private Optional<String> resolveWriteAliasIndex(String writeAlias) {
+        Map<String, Object> root = resolveAliasRoot(writeAlias);
+        if (root.isEmpty()) {
+            return Optional.empty();
+        }
+        for (Map.Entry<String, Object> entry : root.entrySet()) {
+            String indexName = entry.getKey();
+            Map<String, Object> aliasesMap = toMap(toMap(entry.getValue()).get("aliases"));
+            Map<String, Object> writeAliasMeta = toMap(aliasesMap.get(writeAlias));
+            Object isWriteIndex = writeAliasMeta.get("is_write_index");
+            if (Boolean.TRUE.equals(isWriteIndex) || aliasesMap.size() == 1) {
+                return Optional.of(indexName);
+            }
+        }
+        return Optional.empty();
+    }
+
+    private Map<String, Object> resolveAliasRoot(String alias) {
+        try {
+            Request request = new Request("GET", "/_alias/" + alias);
             Response response = restClient.performRequest(request);
-            Map<String, Object> root = JsonUtils.fromJson(
-                    org.apache.http.util.EntityUtils.toString(response.getEntity()),
+            return JsonUtils.fromJson(
+                    org.apache.http.util.EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8),
                     new TypeReference<>() {
                     });
-
-            for (Map.Entry<String, Object> entry : root.entrySet()) {
-                String indexName = entry.getKey();
-                Map<String, Object> aliasesMap = toMap(toMap(entry.getValue()).get("aliases"));
-                Map<String, Object> writeAliasMeta = toMap(aliasesMap.get(writeAlias));
-                Object isWriteIndex = writeAliasMeta.get("is_write_index");
-                if (Boolean.TRUE.equals(isWriteIndex) || aliasesMap.size() == 1) {
-                    return Optional.of(indexName);
-                }
-            }
-            return Optional.empty();
         } catch (ResponseException e) {
             if (e.getResponse() != null && e.getResponse().getStatusLine().getStatusCode() == 404) {
-                return Optional.empty();
+                return Map.of();
             }
             throw new BusinessException(SearchErrorCode.INDEX_MANAGEMENT_FAILED,
-                    "write alias 조회에 실패했습니다. alias=" + writeAlias, e);
+                    "alias 조회에 실패했습니다. alias=" + alias, e);
         } catch (Exception e) {
             throw new BusinessException(SearchErrorCode.INDEX_MANAGEMENT_FAILED,
-                    "write alias 조회에 실패했습니다. alias=" + writeAlias, e);
+                    "alias 조회에 실패했습니다. alias=" + alias, e);
         }
     }
 
