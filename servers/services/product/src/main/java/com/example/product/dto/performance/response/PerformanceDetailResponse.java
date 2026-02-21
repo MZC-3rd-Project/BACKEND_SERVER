@@ -32,6 +32,9 @@ public class PerformanceDetailResponse {
     @SnowflakeId
     private Long sellerId;
 
+    @SnowflakeId
+    private Long storeId;
+
     private String venue;
     private LocalDate performanceDate;
     private LocalTime performanceTime;
@@ -55,6 +58,7 @@ public class PerformanceDetailResponse {
                 .thumbnailUrl(item.getThumbnailUrl())
                 .categoryId(item.getCategoryId())
                 .sellerId(item.getSellerId())
+                .storeId(item.getStoreId())
                 .venue(perf.getVenue())
                 .performanceDate(perf.getPerformanceDate())
                 .performanceTime(perf.getPerformanceTime())

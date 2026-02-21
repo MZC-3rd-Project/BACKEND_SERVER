@@ -21,6 +21,9 @@ public class ItemSummaryResponse {
     @SnowflakeId
     private Long sellerId;
 
+    @SnowflakeId
+    private Long storeId;
+
     public static ItemSummaryResponse from(Item entity) {
         return ItemSummaryResponse.builder()
                 .id(entity.getId())
@@ -30,6 +33,7 @@ public class ItemSummaryResponse {
                 .status(entity.getStatus().name())
                 .thumbnailUrl(entity.getThumbnailUrl())
                 .sellerId(entity.getSellerId())
+                .storeId(entity.getStoreId())
                 .build();
     }
 }

@@ -15,9 +15,10 @@ public class ItemCreatedEvent extends DomainEvent {
     private final String itemType;
     private final Long price;
     private final Long sellerId;
+    private final Long storeId;
     private final List<StockItemInfo> stockItems;
 
-    public ItemCreatedEvent(Long itemId, String title, String itemType, Long price, Long sellerId,
+    public ItemCreatedEvent(Long itemId, String title, String itemType, Long price, Long sellerId, Long storeId,
                             List<StockItemInfo> stockItems) {
         super("item-events");
         this.itemId = itemId;
@@ -25,6 +26,7 @@ public class ItemCreatedEvent extends DomainEvent {
         this.itemType = itemType;
         this.price = price;
         this.sellerId = sellerId;
+        this.storeId = storeId;
         this.stockItems = stockItems != null ? stockItems : List.of();
     }
 
@@ -41,6 +43,7 @@ public class ItemCreatedEvent extends DomainEvent {
         payload.put("itemType", itemType);
         payload.put("price", price);
         payload.put("sellerId", sellerId);
+        payload.put("storeId", storeId);
         payload.put("stockItems", stockItems.stream()
                 .map(si -> Map.of(
                         "type", si.getType(),

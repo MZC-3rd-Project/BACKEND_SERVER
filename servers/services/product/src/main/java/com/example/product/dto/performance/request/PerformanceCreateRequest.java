@@ -23,6 +23,10 @@ public class PerformanceCreateRequest {
     @Min(value = 0, message = "가격은 0 이상이어야 합니다")
     private Long price;
 
+    @NotNull(message = "가게 ID는 필수입니다")
+    @Positive(message = "가게 ID는 양수여야 합니다")
+    private Long storeId;
+
     private Long categoryId;
 
     private String thumbnailUrl;

@@ -34,9 +34,10 @@ public class PerformanceCommandService {
     private final EventPublisher eventPublisher;
 
     public PerformanceDetailResponse create(PerformanceCreateRequest request, Long sellerId) {
+        // TODO: store-service 연동 후 sellerId-storeId 소유권 검증을 추가한다.
         Item item = Item.create(
                 request.getTitle(), request.getDescription(), request.getPrice(),
-                ItemType.PERFORMANCE, request.getCategoryId(), sellerId, request.getThumbnailUrl());
+                ItemType.PERFORMANCE, request.getCategoryId(), sellerId, request.getStoreId(), request.getThumbnailUrl());
         itemRepository.save(item);
 
         Performance performance = Performance.create(
@@ -65,7 +66,15 @@ public class PerformanceCommandService {
                 .toList();
 
         eventPublisher.publish(
-                new ItemCreatedEvent(item.getId(), item.getTitle(), item.getItemType().name(), item.getPrice(), sellerId, stockItems),
+                new ItemCreatedEvent(
+                        item.getId(),
+                        item.getTitle(),
+                        item.getItemType().name(),
+                        item.getPrice(),
+                        sellerId,
+                        request.getStoreId(),
+                        stockItems
+                ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
         return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers);

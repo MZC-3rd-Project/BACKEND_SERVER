@@ -30,6 +30,9 @@ public class GoodsDetailResponse {
     @SnowflakeId
     private Long sellerId;
 
+    @SnowflakeId
+    private Long storeId;
+
     private List<ItemOptionResponse> options;
     private ShippingInfoResponse shippingInfo;
     private List<Long> linkedPerformanceItemIds;
@@ -49,6 +52,7 @@ public class GoodsDetailResponse {
                 .thumbnailUrl(item.getThumbnailUrl())
                 .categoryId(item.getCategoryId())
                 .sellerId(item.getSellerId())
+                .storeId(item.getStoreId())
                 .options(options.stream().map(ItemOptionResponse::from).toList())
                 .shippingInfo(shippingInfo != null ? ShippingInfoResponse.from(shippingInfo) : null)
                 .linkedPerformanceItemIds(linkedIds)

@@ -13,6 +13,26 @@ spring:
               uri: ${app.service.search-url:http://localhost:8088}
               predicates:
                 - Path=/api/v1/search/**
+            - id: product-service
+              uri: ${app.service.product-url:http://localhost:8084}
+              predicates:
+                - Path=/api/products/**,/api/goods/**,/api/performances/**,/api/categories/**,/api/items/**
+            - id: funding-service
+              uri: ${app.service.funding-url:http://localhost:8086}
+              predicates:
+                - Path=/api/campaigns/**
+            - id: sales-service
+              uri: ${app.service.sales-url:http://localhost:8087}
+              predicates:
+                - Path=/api/v1/sales/**
+            - id: hot-deal-service
+              uri: ${app.service.hot-deal-url:http://localhost:8089}
+              predicates:
+                - Path=/api/v1/hot-deals/**
+            - id: notification-service
+              uri: ${app.service.notification-url:http://localhost:8092}
+              predicates:
+                - Path=/api/v1/notifications/**
             - id: chat-service-api
               uri: ${app.service.chat-url:http://localhost:8093}
               predicates:
