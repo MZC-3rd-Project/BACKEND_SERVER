@@ -65,7 +65,7 @@ public class PerformanceCommandService {
                 .toList();
 
         eventPublisher.publish(
-                new ItemCreatedEvent(item.getId(), item.getTitle(), item.getItemType().name(), sellerId, stockItems),
+                new ItemCreatedEvent(item.getId(), item.getTitle(), item.getItemType().name(), item.getPrice(), sellerId, stockItems),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
         return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers);

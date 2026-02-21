@@ -52,6 +52,7 @@ class ItemEventConsumerTest {
                   "itemId": 101,
                   "title": "아이폰 케이스",
                   "itemType": "GOODS",
+                  "price": 25000,
                   "stockItems": [
                     {"type": "GOODS", "referenceId": 1, "totalQuantity": 3},
                     {"type": "GOODS", "referenceId": 2, "totalQuantity": 7}
@@ -61,7 +62,7 @@ class ItemEventConsumerTest {
 
         itemEventConsumer.consume(message);
 
-        verify(searchIndexingService).indexItem(101L, "아이폰 케이스", "GOODS", "GOODS", null, null, 10);
+        verify(searchIndexingService).indexItem(101L, "아이폰 케이스", "GOODS", "GOODS", 25000L, null, 10);
         verify(searchResultCacheService).evictAll();
     }
 
