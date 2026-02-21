@@ -2,7 +2,8 @@ package com.example.gateway.security;
 
 import com.example.contracts.http.HttpHeaderNames;
 import com.example.gateway.config.GatewaySecurityProperties;
-import com.example.security.context.HmacSigner;
+import com.example.security.signature.HmacSigner;
+import com.example.security.gateway.GatewayContextHeaderCodec;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -65,22 +66,22 @@ public class JwtHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
             return unauthorized(exchange, "GW-AUTH-003", "chat 경로는 Bearer 토큰이 필요합니다");
         }
 
-        SignedHeaderValues signedHeaders = null;
+        SignedContextHeader signedContextHeader = null;
         try {
             if (principal != null) {
-                signedHeaders = createSignedHeaders(principal);
+                signedContextHeader = createSignedContextHeader(principal);
             }
         } catch (IllegalArgumentException e) {
             return unauthorized(exchange, "GW-AUTH-004", "서명 헤더 생성에 실패했습니다");
         }
 
         GatewayJwtPrincipal finalPrincipal = principal;
-        SignedHeaderValues finalSignedHeaders = signedHeaders;
+        SignedContextHeader finalSignedContextHeader = signedContextHeader;
         ServerHttpRequest request = exchange.getRequest().mutate()
                 .headers(headers -> {
                     removeSensitiveHeaders(headers);
                     applyInternalAuthHeader(headers);
-                    applyPrincipalHeaders(headers, finalPrincipal, finalSignedHeaders);
+                    applyPrincipalHeaders(headers, finalPrincipal, finalSignedContextHeader);
                 })
                 .build();
 
@@ -123,7 +124,7 @@ public class JwtHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
         return token;
     }
 
-    private SignedHeaderValues createSignedHeaders(GatewayJwtPrincipal principal) {
+    private SignedContextHeader createSignedContextHeader(GatewayJwtPrincipal principal) {
         HmacSigner signer = hmacSignerProvider.getIfAvailable();
         if (signer == null) {
             return null;
@@ -133,9 +134,8 @@ public class JwtHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
         String roles = principal.rolesHeaderValue();
         String nonce = UUID.randomUUID().toString();
         long timestamp = System.currentTimeMillis();
-        String payload = HmacSigner.buildSignaturePayload(userId, roles, nonce, timestamp);
-        String signature = signer.sign(payload);
-        return new SignedHeaderValues(nonce, timestamp, signature);
+        String gatewayContext = GatewayContextHeaderCodec.encodeSigned(userId, roles, nonce, timestamp, signer);
+        return new SignedContextHeader(gatewayContext);
     }
 
     private void removeSensitiveHeaders(HttpHeaders headers) {
@@ -144,6 +144,7 @@ public class JwtHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
         headers.remove(HttpHeaderNames.NONCE);
         headers.remove(HttpHeaderNames.TIMESTAMP);
         headers.remove(HttpHeaderNames.SIGNATURE);
+        headers.remove(HttpHeaderNames.GATEWAY_CONTEXT);
         headers.remove(HttpHeaderNames.GATEWAY_AUTH);
     }
 
@@ -156,7 +157,7 @@ public class JwtHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
 
     private void applyPrincipalHeaders(HttpHeaders headers,
                                        GatewayJwtPrincipal principal,
-                                       SignedHeaderValues signedHeaders) {
+                                       SignedContextHeader signedContextHeader) {
         if (principal == null) {
             return;
         }
@@ -165,10 +166,8 @@ public class JwtHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
         String rolesHeader = principal.rolesHeaderValue();
         headers.set(HttpHeaderNames.USER_ROLES, rolesHeader);
 
-        if (signedHeaders != null) {
-            headers.set(HttpHeaderNames.NONCE, signedHeaders.nonce());
-            headers.set(HttpHeaderNames.TIMESTAMP, String.valueOf(signedHeaders.timestamp()));
-            headers.set(HttpHeaderNames.SIGNATURE, signedHeaders.signature());
+        if (signedContextHeader != null) {
+            headers.set(HttpHeaderNames.GATEWAY_CONTEXT, signedContextHeader.gatewayContext());
         }
     }
 
@@ -189,6 +188,6 @@ public class JwtHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
                 .wrap(body.getBytes(StandardCharsets.UTF_8))));
     }
 
-    private record SignedHeaderValues(String nonce, long timestamp, String signature) {
+    private record SignedContextHeader(String gatewayContext) {
     }
 }

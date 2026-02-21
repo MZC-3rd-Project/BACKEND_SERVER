@@ -41,6 +41,24 @@ spring:
 
 # ─── Snowflake ID ────────────────────────────
 app:
+  security:
+    context:
+      signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}
+      max-age-millis: ${APP_SECURITY_CONTEXT_MAX_AGE_MILLIS:300000}
+
+  gateway-security:
+    enabled: ${APP_GATEWAY_SECURITY_ENABLED:true}
+    gateway-auth-enabled: ${APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED:true}
+    internal-auth-header: ${APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}
+    internal-auth-token: ${APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
+    user-id-header: ${APP_GATEWAY_SECURITY_USER_ID_HEADER:X-User-Id}
+    optional-user-context-paths:
+      - /api/**
+    excluded-paths:
+      - /actuator/**
+      - /v3/api-docs/**
+      - /swagger-ui/**
+
   snowflake:
     datacenter-id: ${SNOWFLAKE_DATACENTER_ID:1}
     worker-id: ${SNOWFLAKE_WORKER_ID:4}

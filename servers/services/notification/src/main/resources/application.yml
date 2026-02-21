@@ -53,11 +53,6 @@ spring:
             enable: ${MAIL_SMTP_STARTTLS:false}
 
 notification:
-  security:
-    gateway-auth-enabled: ${NOTIFICATION_SECURITY_GATEWAY_AUTH_ENABLED:true}
-    internal-auth-header: ${NOTIFICATION_SECURITY_INTERNAL_AUTH_HEADER:X-Internal-Auth}
-    internal-auth-token: ${NOTIFICATION_SECURITY_INTERNAL_AUTH_TOKEN:}
-    user-id-header: ${NOTIFICATION_SECURITY_USER_ID_HEADER:X-User-Id}
   sse:
     topic: ${NOTIFICATION_SSE_TOPIC:sse-notifications}
     heartbeat-ms: ${NOTIFICATION_SSE_HEARTBEAT_MS:10000}
@@ -80,6 +75,25 @@ notification:
 
 # ─── Snowflake ID ────────────────────────────
 app:
+  security:
+    context:
+      signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}
+      max-age-millis: ${APP_SECURITY_CONTEXT_MAX_AGE_MILLIS:300000}
+
+  gateway-security:
+    enabled: ${APP_GATEWAY_SECURITY_ENABLED:true}
+    gateway-auth-enabled: ${APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED:${NOTIFICATION_SECURITY_GATEWAY_AUTH_ENABLED:true}}
+    internal-auth-header: ${APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:${NOTIFICATION_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}}
+    internal-auth-token: ${APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:${NOTIFICATION_SECURITY_INTERNAL_AUTH_TOKEN:}}
+    user-id-header: ${APP_GATEWAY_SECURITY_USER_ID_HEADER:${NOTIFICATION_SECURITY_USER_ID_HEADER:X-User-Id}}
+    required-paths:
+      - /api/v1/notifications
+      - /api/v1/notifications/**
+    excluded-paths:
+      - /actuator/**
+      - /v3/api-docs/**
+      - /swagger-ui/**
+
   snowflake:
     datacenter-id: ${SNOWFLAKE_DATACENTER_ID:1}
     worker-id: ${SNOWFLAKE_WORKER_ID:9}

@@ -2,7 +2,7 @@ package com.example.gateway.security;
 
 import com.example.contracts.http.HttpHeaderNames;
 import com.example.gateway.config.GatewaySecurityProperties;
-import com.example.security.context.HmacSigner;
+import com.example.security.signature.HmacSigner;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -68,6 +68,7 @@ class JwtHeaderRelayGlobalFilterTest {
         MockServerHttpRequest request = MockServerHttpRequest.get("/api/v1/search?q=airpods")
                 .header(HttpHeaderNames.USER_ID, "12345")
                 .header(HttpHeaderNames.USER_ROLES, "ADMIN")
+                .header(HttpHeaderNames.GATEWAY_CONTEXT, "spoofed")
                 .build();
         MockServerWebExchange exchange = MockServerWebExchange.from(request);
         CapturingChain chain = new CapturingChain();
@@ -78,10 +79,11 @@ class JwtHeaderRelayGlobalFilterTest {
         ServerHttpRequest forwardedRequest = chain.exchange.getRequest();
         assertThat(forwardedRequest.getHeaders().containsKey(HttpHeaderNames.USER_ID)).isFalse();
         assertThat(forwardedRequest.getHeaders().containsKey(HttpHeaderNames.USER_ROLES)).isFalse();
+        assertThat(forwardedRequest.getHeaders().containsKey(HttpHeaderNames.GATEWAY_CONTEXT)).isFalse();
     }
 
     @Test
-    void filter_addsSignedHeadersWhenSignerExists() {
+    void filter_addsGatewayContextHeaderWhenSignerExists() {
         JwtHeaderRelayGlobalFilter filter = createFilter("gw-internal-token", new HmacSigner("test-signing-key"));
         String jwt = buildJwt(Map.of("sub", "55", "scope", "chat:read"));
 
@@ -95,9 +97,10 @@ class JwtHeaderRelayGlobalFilterTest {
 
         assertThat(chain.called).isTrue();
         ServerHttpRequest forwardedRequest = chain.exchange.getRequest();
-        assertThat(forwardedRequest.getHeaders().getFirst(HttpHeaderNames.NONCE)).isNotBlank();
-        assertThat(forwardedRequest.getHeaders().getFirst(HttpHeaderNames.TIMESTAMP)).isNotBlank();
-        assertThat(forwardedRequest.getHeaders().getFirst(HttpHeaderNames.SIGNATURE)).isNotBlank();
+        assertThat(forwardedRequest.getHeaders().getFirst(HttpHeaderNames.GATEWAY_CONTEXT)).isNotBlank();
+        assertThat(forwardedRequest.getHeaders().containsKey(HttpHeaderNames.NONCE)).isFalse();
+        assertThat(forwardedRequest.getHeaders().containsKey(HttpHeaderNames.TIMESTAMP)).isFalse();
+        assertThat(forwardedRequest.getHeaders().containsKey(HttpHeaderNames.SIGNATURE)).isFalse();
     }
 
     @Test

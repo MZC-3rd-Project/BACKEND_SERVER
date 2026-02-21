@@ -27,7 +27,7 @@ dependencies {
     implementation(project(":libs:event:outbox"))
 
     // Security
-    implementation(project(":libs:security:context"))
+    implementation(project(":libs:security:security-starter"))
 
     // OpenAPI
     implementation(project(":libs:openapi:config"))
