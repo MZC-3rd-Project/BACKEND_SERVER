@@ -11,6 +11,8 @@ include(":libs:api:exception-handler")
 include(":libs:data:entity")
 include(":libs:security:context")
 include(":libs:security:crypto")
+include(":libs:security:security-starter")
+include(":libs:security:signature")
 
 // 설정 모듈
 include(":libs:config:kafka")

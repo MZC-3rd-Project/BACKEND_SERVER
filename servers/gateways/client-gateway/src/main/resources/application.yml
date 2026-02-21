@@ -4,9 +4,6 @@ server:
 spring:
   application:
     name: client-gateway
-  autoconfigure:
-    exclude:
-      - com.example.security.context.SecurityContextAutoConfiguration
   cloud:
     gateway:
       server:
@@ -39,3 +36,4 @@ app:
     context:
       signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}
       max-age-millis: ${APP_SECURITY_CONTEXT_MAX_AGE_MILLIS:300000}
+      parser-enabled: ${APP_SECURITY_CONTEXT_PARSER_ENABLED:false}

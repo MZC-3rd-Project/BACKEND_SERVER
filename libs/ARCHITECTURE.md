@@ -28,7 +28,7 @@
 
 ## 5. 우선 분리 후보
 1. Header contract 분리
-- 후보: `SecurityConstants` 중 헤더 키 상수를 `libs/contracts/http`로 이동
+- 완료: 헤더 키 상수는 `libs/contracts/http`로 일원화
 - 이유: `openapi`와 `security`가 같은 계약을 쓰지만 구현 관심사가 다름
 
 2. Security 내부 분리

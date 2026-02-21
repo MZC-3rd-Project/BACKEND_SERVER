@@ -10,7 +10,7 @@ dependencies {
 
     // Shared modules
     implementation(project(":libs:contracts:http"))
-    implementation(project(":libs:security:context"))
+    implementation(project(":libs:security:security-starter"))
 
     // Lombok
     compileOnly("org.projectlombok:lombok")

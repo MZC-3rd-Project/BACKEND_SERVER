@@ -15,6 +15,7 @@ class HttpHeaderNamesTest {
         assertThat(HttpHeaderNames.NONCE).isEqualTo("X-Nonce");
         assertThat(HttpHeaderNames.TIMESTAMP).isEqualTo("X-Timestamp");
         assertThat(HttpHeaderNames.SIGNATURE).isEqualTo("X-Signature");
+        assertThat(HttpHeaderNames.GATEWAY_CONTEXT).isEqualTo("X-Gateway-Context");
         assertThat(HttpHeaderNames.GATEWAY_AUTH).isEqualTo("X-Gateway-Auth");
     }
 
@@ -26,9 +27,10 @@ class HttpHeaderNamesTest {
                 HttpHeaderNames.NONCE,
                 HttpHeaderNames.TIMESTAMP,
                 HttpHeaderNames.SIGNATURE,
+                HttpHeaderNames.GATEWAY_CONTEXT,
                 HttpHeaderNames.GATEWAY_AUTH
         );
 
-        assertThat(headers).hasSize(6);
+        assertThat(headers).hasSize(7);
     }
 }
