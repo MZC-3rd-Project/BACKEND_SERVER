@@ -19,7 +19,8 @@ public enum MediaErrorCode implements DomainErrorCode {
     MEDIA_S3_OBJECT_NOT_FOUND("MEDIA-008", "S3 업로드 객체를 찾을 수 없습니다.", HttpStatus.BAD_REQUEST),
     MEDIA_S3_HEAD_FAILED("MEDIA-009", "S3 객체 검증 처리에 실패했습니다.", HttpStatus.SERVICE_UNAVAILABLE),
     INVALID_MEDIA_BINDING("MEDIA-010", "미디어 소유자/용도 바인딩 값이 유효하지 않습니다.", HttpStatus.BAD_REQUEST),
-    MEDIA_S3_METADATA_MISMATCH("MEDIA-011", "업로드 객체 메타데이터가 요청값과 일치하지 않습니다.", HttpStatus.BAD_REQUEST);
+    MEDIA_S3_METADATA_MISMATCH("MEDIA-011", "업로드 객체 메타데이터가 요청값과 일치하지 않습니다.", HttpStatus.BAD_REQUEST),
+    MEDIA_NOT_READY("MEDIA-012", "미디어가 조회 가능한 상태가 아닙니다.", HttpStatus.CONFLICT);
 
     private final String code;
     private final String message;
