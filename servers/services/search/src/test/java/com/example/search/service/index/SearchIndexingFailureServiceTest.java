@@ -98,6 +98,37 @@ class SearchIndexingFailureServiceTest {
         assertThat(response.getRetryCount()).isEqualTo(1);
     }
 
+    @Test
+    void retryFailure_replaysVersionedStockSnapshot() {
+        SearchIndexingFailure failure = SearchIndexingFailure.builder()
+                .eventId("evt-stock-57")
+                .eventType("ITEM_AVAILABLE_STOCK_CHANGED")
+                .itemId(101L)
+                .payload("""
+                        {
+                          "eventId": "evt-stock-57",
+                          "eventType": "ITEM_AVAILABLE_STOCK_CHANGED",
+                          "itemId": 101,
+                          "availableStockTotal": 12,
+                          "stockVersion": 57
+                        }
+                        """)
+                .retryCount(0)
+                .status(SearchIndexingFailureStatus.PENDING)
+                .failureReason("initial")
+                .build();
+
+        when(failureRepository.findById(2L)).thenReturn(Optional.of(failure));
+        when(failureRepository.save(any(SearchIndexingFailure.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        IndexingFailureRetryResponse response = searchIndexingFailureService.retryFailure(2L);
+
+        verify(searchIndexingService).updateItemStockVersioned(101L, 12, 57L);
+        verify(searchResultCacheService).evictAll();
+        assertThat(response.getStatus()).isEqualTo(SearchIndexingFailureStatus.RESOLVED);
+    }
+
     private void setField(Object target, String fieldName, Object value) {
         try {
             java.lang.reflect.Field field = target.getClass().getDeclaredField(fieldName);

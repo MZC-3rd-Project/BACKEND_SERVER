@@ -75,6 +75,8 @@ public class SearchIndexingFailureService {
             case "ITEM_STATUS_CHANGED" -> replayItemStatusChanged(payload);
             case "ITEM_DELETED" -> replayItemDeleted(payload);
             case "STOCK_DECREASED" -> replayStockDecreased(payload);
+            case "STOCK_INCREASED" -> replayStockIncreased(payload);
+            case "ITEM_AVAILABLE_STOCK_CHANGED" -> replayItemAvailableStockChanged(payload);
             default -> throw new BusinessException(SearchErrorCode.SEARCH_INDEXING_FAILED,
                     "지원하지 않는 재처리 이벤트 타입입니다. eventType=" + eventType);
         }
@@ -112,6 +114,20 @@ public class SearchIndexingFailureService {
     private void replayStockDecreased(String payload) {
         StockEventMessage event = JsonUtils.fromJson(payload, StockEventMessage.class);
         searchIndexingService.updateItemStock(event.getItemId(), event.getRemainingQuantity());
+    }
+
+    private void replayStockIncreased(String payload) {
+        StockEventMessage event = JsonUtils.fromJson(payload, StockEventMessage.class);
+        searchIndexingService.updateItemStock(event.getItemId(), event.resolveLegacyStockQuantity());
+    }
+
+    private void replayItemAvailableStockChanged(String payload) {
+        StockEventMessage event = JsonUtils.fromJson(payload, StockEventMessage.class);
+        searchIndexingService.updateItemStockVersioned(
+                event.getItemId(),
+                event.getAvailableStockTotal(),
+                event.getStockVersion()
+        );
     }
 
     private void recordFailure(String eventId, String eventType, Long itemId, String payload, Exception e) {
