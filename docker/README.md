@@ -6,12 +6,15 @@ This directory contains Docker Compose configuration for running the Project03 b
 
 | Service | Port | Description |
 |---------|------|-------------|
-| PostgreSQL | 5432 | Main database (auth_db, user_db, test_db) |
+| PostgreSQL | 5432 | Main database (service-specific DBs) |
+| MariaDB | 3306 | Chat persistence |
 | Redis | 6379 | Caching layer |
+| Elasticsearch | 23173 | Search index engine |
 | Kafka | 29092 | Event streaming (localhost access) |
 | Kafka | 9092 | Event streaming (inter-container) |
 | Zookeeper | 2181 | Kafka coordination |
 | Zipkin | 9411 | Distributed tracing UI |
+| MailHog | 1025 / 8025 | Local SMTP + UI |
 
 ## Quick Start
 
@@ -55,10 +58,18 @@ docker-compose down -v
 
 ## Database Setup
 
-The PostgreSQL init script automatically creates three databases:
-- `auth_db` - Authentication service database
-- `user_db` - User service database
-- `test_db` - Test server database
+The PostgreSQL init script automatically creates service databases:
+- `auth_db`
+- `user_db`
+- `test_db`
+- `product_db`
+- `stock_db`
+- `funding_db`
+- `sales_db`
+- `hotdeal_db`
+- `search_db`
+- `notification_db`
+- `chat_db`
 
 All databases have the `uuid-ossp` extension enabled.
 
@@ -169,6 +180,23 @@ cp .env.example .env
 
 Default values are suitable for local development.
 
+### Security signing key (Gateway HMAC headers)
+
+For Gateway -> service signed headers (`X-Nonce`, `X-Timestamp`, `X-Signature`), set a shared signing key:
+
+```bash
+openssl rand -base64 48 | tr -d '\n'
+```
+
+Set the generated value to:
+
+```bash
+APP_SECURITY_CONTEXT_SIGNING_KEY=<generated-base64-key>
+APP_SECURITY_CONTEXT_MAX_AGE_MILLIS=300000
+```
+
+Both Gateway and consumer services (for example Chat) must use the same key.
+
 ## Troubleshooting
 
 ### Services not starting
@@ -222,13 +250,18 @@ docker exec project03-redis redis-cli ping
 
 # Kafka
 docker exec project03-kafka kafka-topics --bootstrap-server localhost:9092 --list
+
+# Elasticsearch
+curl -fsS http://localhost:23173/_cluster/health
 ```
 
 ## Data Persistence
 
 Data is persisted in Docker volumes:
 - `postgres-data` - PostgreSQL data
+- `mariadb-data` - MariaDB data
 - `redis-data` - Redis data
+- `elasticsearch-data` - Elasticsearch index data
 - `kafka-data` - Kafka logs and data
 - `zookeeper-data` - Zookeeper data
 

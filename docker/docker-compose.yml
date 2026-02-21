@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ─── PostgreSQL ───────────────────────────────────────────
   postgres:
@@ -57,6 +55,30 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - project03-network
+
+  # ─── Elasticsearch ────────────────────────────
+  elasticsearch:
+    build:
+      context: ./elasticsearch
+    image: project03-elasticsearch:8.18.8-nori
+    container_name: project03-elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      xpack.security.enrollment.enabled: "false"
+      xpack.license.self_generated.type: basic
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "${ELASTICSEARCH_PORT:-23173}:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health | grep -E '\"status\":\"(green|yellow)\"' > /dev/null"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
     networks:
       - project03-network
 
@@ -141,6 +163,7 @@ volumes:
   postgres-data:
   mariadb-data:
   redis-data:
+  elasticsearch-data:
   zookeeper-data:
   kafka-data:
 
