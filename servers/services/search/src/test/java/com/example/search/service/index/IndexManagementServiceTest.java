@@ -74,7 +74,7 @@ class IndexManagementServiceTest {
     }
 
     @Test
-    void recreateItemsIndex_deletesCreatedTargetWhenAliasSwitchFails() throws Exception {
+    void recreateItemsIndex_keepsCreatedTargetWhenAliasSwitchFailsToAvoidConcurrentDataLoss() throws Exception {
         List<Request> requests = new ArrayList<>();
 
         when(restClient.performRequest(any(Request.class))).thenAnswer(invocation -> {
@@ -105,7 +105,7 @@ class IndexManagementServiceTest {
                     assertThat(businessException.getErrorCode()).isEqualTo(SearchErrorCode.INDEX_MANAGEMENT_FAILED);
                 });
 
-        assertThat(requests).anyMatch(request ->
+        assertThat(requests).noneMatch(request ->
                 "DELETE".equals(request.getMethod()) && "/items-v2".equals(request.getEndpoint()));
     }
 

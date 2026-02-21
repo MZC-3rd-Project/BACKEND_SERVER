@@ -13,6 +13,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -37,5 +38,26 @@ class SearchQueryControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.totalCount").value(0));
+    }
+
+    @Test
+    void search_returnsBadRequestWhenQueryIsBlank() throws Exception {
+        mockMvc.perform(get("/api/v1/search")
+                        .param("q", "  ")
+                        .param("size", "20"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(searchQueryService);
+    }
+
+    @Test
+    void search_returnsBadRequestWhenMinPriceIsNegative() throws Exception {
+        mockMvc.perform(get("/api/v1/search")
+                        .param("q", "아이폰")
+                        .param("minPrice", "-1")
+                        .param("size", "20"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(searchQueryService);
     }
 }

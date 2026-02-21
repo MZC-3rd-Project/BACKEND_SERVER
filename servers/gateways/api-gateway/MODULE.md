@@ -14,6 +14,24 @@
 ./gradlew :servers:gateways:api-gateway:bootRun
 ```
 
+## 로컬 E2E 검증
+```text
+./docker/scripts/gateway_jwt_header_verify.sh
+```
+- 기본 포트: Gateway `18173`, Chat `18093`
+- 환경 변수로 변경 가능: `GW_PORT`, `CHAT_PORT`, `LOG_DIR`
+
 ## 보안 헤더 서명
 - `APP_SECURITY_CONTEXT_SIGNING_KEY`를 설정하면 Gateway가 사용자 컨텍스트 헤더를 HMAC으로 서명해 전달합니다.
 - Chat 같은 소비 서비스도 같은 키를 사용해야 검증이 통과합니다.
+
+## BFF 인증 스켈레톤
+- `bff-auth` 프로필이 활성화될 때 OAuth2 BFF 보안체인/TokenRelay 라우팅이 켜집니다.
+- 예시: `SPRING_PROFILES_ACTIVE=bff-auth`
+- 활성화 시 라우팅:
+  - `/api/v1/auth/**` -> Auth Service
+  - `/api/v1/users/**`, `/api/users/**` -> User Service
+- 필수 설정:
+  - `GATEWAY_OAUTH2_ISSUER_URI`
+  - `GATEWAY_OAUTH2_CLIENT_ID`
+  - `GATEWAY_OAUTH2_CLIENT_SECRET`

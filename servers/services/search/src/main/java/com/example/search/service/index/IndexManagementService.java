@@ -24,6 +24,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
 @Service
@@ -34,9 +37,23 @@ public class IndexManagementService {
 
     private final RestClient restClient;
     private final SearchIndexTemplateResolver templateResolver;
+    private final ConcurrentMap<String, ReentrantLock> recreateLocks = new ConcurrentHashMap<>();
 
     public IndexRecreateResponse recreateItemsIndex(String requestedIndexName) {
         String baseName = normalizeIndexBaseName(requestedIndexName);
+        ReentrantLock lock = recreateLocks.computeIfAbsent(baseName, key -> new ReentrantLock());
+        lock.lock();
+        try {
+            return recreateItemsIndexSafely(baseName);
+        } finally {
+            lock.unlock();
+            if (!lock.hasQueuedThreads()) {
+                recreateLocks.remove(baseName, lock);
+            }
+        }
+    }
+
+    private IndexRecreateResponse recreateItemsIndexSafely(String baseName) {
         String readAlias = baseName + "-read";
         String writeAlias = baseName + "-write";
 
@@ -149,16 +166,11 @@ public class IndexManagementService {
             log.warn("Skip deleting failed target index because alias is still attached. target={}", targetIndex);
             return;
         }
-        deleteIndexQuietly(targetIndex);
-    }
 
-    private void deleteIndexQuietly(String indexName) {
-        try {
-            Request request = new Request("DELETE", "/" + indexName);
-            restClient.performRequest(request);
-        } catch (Exception deleteEx) {
-            log.warn("Failed to delete index after alias switch failure. index={}", indexName, deleteEx);
-        }
+        log.warn(
+                "Alias switch failed and orphan index might remain. autoDeleteSkipped=true, target={}",
+                targetIndex
+        );
     }
 
     private void applyAliasActions(List<Map<String, Object>> actions) throws IOException {
