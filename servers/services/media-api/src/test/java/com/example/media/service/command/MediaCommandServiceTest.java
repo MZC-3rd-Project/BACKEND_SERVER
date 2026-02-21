@@ -4,6 +4,8 @@ import com.example.core.exception.BusinessException;
 import com.example.event.EventPublisher;
 import com.example.media.config.MediaCleanupProperties;
 import com.example.media.config.MediaS3Properties;
+import com.example.media.config.MediaUrlAccessType;
+import com.example.media.config.MediaUrlProperties;
 import com.example.media.dto.command.request.UploadConfirmRequest;
 import com.example.media.dto.command.response.UploadConfirmResponse;
 import com.example.media.entity.MediaFile;
@@ -59,6 +61,7 @@ class MediaCommandServiceTest {
 
     private MediaS3Properties mediaS3Properties;
     private MediaCleanupProperties mediaCleanupProperties;
+    private MediaUrlProperties mediaUrlProperties;
 
     private MediaCommandService mediaCommandService;
 
@@ -75,11 +78,16 @@ class MediaCommandServiceTest {
         mediaCleanupProperties.setBatchSize(100);
         mediaCleanupProperties.setDeleteObjectEnabled(false);
 
+        mediaUrlProperties = new MediaUrlProperties();
+        mediaUrlProperties.setAccessType(MediaUrlAccessType.PUBLIC);
+        mediaUrlProperties.setSignedUrlTtlSeconds(300);
+
         mediaCommandService = new MediaCommandService(
                 mediaFileRepository,
                 mediaLinkRepository,
                 mediaS3Properties,
                 mediaCleanupProperties,
+                mediaUrlProperties,
                 s3Presigner,
                 s3Client,
                 eventPublisher
@@ -137,6 +145,9 @@ class MediaCommandServiceTest {
         assertThat(response.getUsageType()).isEqualTo("GALLERY");
         assertThat(response.getSortOrder()).isEqualTo(0);
         assertThat(response.getLinkId()).isNotNull();
+        assertThat(response.getUrlAccessType()).isEqualTo("PUBLIC");
+        assertThat(response.getUrlExpiresAt()).isNull();
+        assertThat(response.getCacheControl()).isEqualTo(mediaUrlProperties.getDefaultCacheControl());
         verify(eventPublisher).publish(any(), any());
     }
 
@@ -215,9 +226,49 @@ class MediaCommandServiceTest {
         UploadConfirmResponse response = mediaCommandService.confirmUpload(request, 100L);
 
         assertThat(response.getStatus()).isEqualTo("CONFIRMED");
+        assertThat(response.getUrlAccessType()).isEqualTo("PUBLIC");
         verify(s3Client, never()).headObject(any(HeadObjectRequest.class));
         verify(eventPublisher, never()).publish(any(), any());
         verify(mediaFileRepository, never()).save(any(MediaFile.class));
+    }
+
+    @Test
+    void confirmUpload_withSignedUrlPolicy_setsExpiration() {
+        mediaUrlProperties.setAccessType(MediaUrlAccessType.SIGNED_URL);
+        mediaUrlProperties.setSignedUrlTtlSeconds(60);
+
+        MediaFile mediaFile = MediaFile.createPending(
+                100L,
+                "sample-signed.jpg",
+                "team2-donmoa-media/raw/2026/01/01/sample-signed.jpg",
+                "team2-donmoa-media-raw",
+                "image/jpeg",
+                1024L,
+                null,
+                null,
+                null,
+                null,
+                "upload-token-signed",
+                LocalDateTime.now().plusMinutes(5)
+        );
+        ReflectionTestUtils.setField(mediaFile, "id", 51L);
+
+        UploadConfirmRequest request = new UploadConfirmRequest();
+        ReflectionTestUtils.setField(request, "mediaId", 51L);
+        ReflectionTestUtils.setField(request, "uploadToken", "upload-token-signed");
+
+        when(mediaFileRepository.findById(51L)).thenReturn(Optional.of(mediaFile));
+        when(s3Client.headObject(any(HeadObjectRequest.class))).thenReturn(HeadObjectResponse.builder()
+                .contentLength(1024L)
+                .contentType("image/jpeg")
+                .eTag("\"etag-signed\"")
+                .build());
+        when(mediaFileRepository.save(any(MediaFile.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        UploadConfirmResponse response = mediaCommandService.confirmUpload(request, 100L);
+
+        assertThat(response.getUrlAccessType()).isEqualTo("SIGNED_URL");
+        assertThat(response.getUrlExpiresAt()).isNotNull();
     }
 
     @Test

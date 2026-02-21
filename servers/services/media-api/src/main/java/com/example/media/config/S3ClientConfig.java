@@ -9,7 +9,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 @Configuration
-@EnableConfigurationProperties({MediaS3Properties.class, MediaCleanupProperties.class})
+@EnableConfigurationProperties({MediaS3Properties.class, MediaCleanupProperties.class, MediaUrlProperties.class})
 public class S3ClientConfig {
 
     @Bean
