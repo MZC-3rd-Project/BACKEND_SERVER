@@ -50,6 +50,11 @@ media:
     # true로 켜면 스케줄러가 EXPIRED 전이와 함께 S3 객체 삭제를 시도한다.
     # false면 상태 전이만 수행하고 객체 정리는 S3 Lifecycle 정책에 맡긴다.
     delete-object-enabled: ${MEDIA_CLEANUP_DELETE_OBJECT_ENABLED:false}
+  url:
+    access-type: ${MEDIA_URL_ACCESS_TYPE:PUBLIC}
+    signed-url-ttl-seconds: ${MEDIA_URL_SIGNED_URL_TTL_SECONDS:300}
+    default-cache-control: ${MEDIA_URL_DEFAULT_CACHE_CONTROL:public, max-age=604800, stale-while-revalidate=60}
+    thumbnail-cache-control: ${MEDIA_URL_THUMBNAIL_CACHE_CONTROL:public, max-age=31536000, immutable}
 
 app:
   security:

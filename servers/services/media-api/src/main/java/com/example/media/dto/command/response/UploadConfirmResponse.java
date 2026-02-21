@@ -3,6 +3,8 @@ package com.example.media.dto.command.response;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.Instant;
+
 @Getter
 @Builder
 public class UploadConfirmResponse {
@@ -14,6 +16,9 @@ public class UploadConfirmResponse {
     private String contentType;
     private String etag;
     private String mediaUrl;
+    private String urlAccessType;
+    private Instant urlExpiresAt;
+    private String cacheControl;
     private Long linkId;
     private String ownerType;
     private Long ownerId;
