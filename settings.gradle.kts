@@ -45,6 +45,8 @@ include("servers:services:funding")
 include("servers:services:notification")
 include("servers:services:sales")
 include("servers:services:hot-deal")
+include("servers:services:media-api")
+include("servers:services:media-worker")
 
 // 테스트 서버
 include("servers:test:test-server")
