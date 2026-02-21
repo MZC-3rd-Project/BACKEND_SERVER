@@ -63,6 +63,44 @@ class StockEventConsumerTest {
     }
 
     @Test
+    void consume_routesItemAvailableStockChangedToVersionedUpdate() {
+        stubIdempotentExecution();
+
+        String message = """
+                {
+                  "eventId": "evt-stock-2",
+                  "eventType": "ITEM_AVAILABLE_STOCK_CHANGED",
+                  "itemId": 101,
+                  "availableStockTotal": 11,
+                  "stockVersion": 57
+                }
+                """;
+
+        stockEventConsumer.consume(message);
+
+        verify(searchIndexingService).updateItemStockVersioned(101L, 11, 57L);
+        verify(searchResultCacheService).evictAll();
+    }
+
+    @Test
+    void consume_skipsVersionedUpdateWhenSnapshotFieldsMissing() {
+        stubIdempotentExecution();
+
+        String message = """
+                {
+                  "eventId": "evt-stock-3",
+                  "eventType": "ITEM_AVAILABLE_STOCK_CHANGED",
+                  "itemId": 101,
+                  "availableStockTotal": 11
+                }
+                """;
+
+        stockEventConsumer.consume(message);
+
+        verify(searchIndexingService, never()).updateItemStockVersioned(any(), any(), any());
+    }
+
+    @Test
     void consume_ignoresInvalidEventWithoutIdempotentExecution() {
         String message = """
                 {
@@ -75,6 +113,7 @@ class StockEventConsumerTest {
 
         verify(idempotentConsumerService, never()).executeIdempotent(anyString(), anyString(), any());
         verify(searchIndexingService, never()).updateItemStock(any(), any());
+        verify(searchIndexingService, never()).updateItemStockVersioned(any(), any(), any());
         verify(searchResultCacheService, never()).evictAll();
     }
 

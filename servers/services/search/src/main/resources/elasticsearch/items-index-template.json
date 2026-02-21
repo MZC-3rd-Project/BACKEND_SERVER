@@ -89,6 +89,9 @@
       "stock": {
         "type": "integer"
       },
+      "stockVersion": {
+        "type": "long"
+      },
       "tags": {
         "type": "keyword"
       },
