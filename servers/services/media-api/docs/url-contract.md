@@ -8,6 +8,10 @@
 - `urlExpiresAt`: `SIGNED_URL` 정책일 때 만료 시각(UTC), 그 외는 `null`
 - `cacheControl`: 추천 캐시 정책 문자열
 
+추가로 재조회/재발급 용도로 아래 API를 제공한다.
+- `GET /api/v1/media/{mediaId}/url`
+- 응답: `MediaUrlResponse` (동일 URL 계약 필드 포함)
+
 ## 정책 규칙
 
 ### 접근 정책
@@ -17,7 +21,7 @@
 
 ### 만료/재발급
 - `SIGNED_URL`일 때 `media.url.signed-url-ttl-seconds`로 만료 시각을 계산한다.
-- 만료 이후에는 재발급 API(추후 추가) 또는 재확정 조회 플로우로 URL을 갱신한다.
+- 만료 이후에는 `GET /api/v1/media/{mediaId}/url` 호출로 URL 정보를 재발급한다.
 
 ### 캐시
 - 썸네일: `media.url.thumbnail-cache-control`
@@ -29,5 +33,5 @@
 3. `urlAccessType=SIGNED_COOKIE`: 앱 세션/쿠키 만료를 우선 확인하고, 필요 시 재로그인 또는 쿠키 재발급을 수행한다.
 
 ## 참고
-- 현재 구현은 계약 필드와 정책 매핑을 제공한다.
+- 현재 구현은 계약 필드/정책 매핑과 재발급 조회 API를 제공한다.
 - CloudFront 서명 키 기반의 실제 Signed URL/쿠키 발급은 후속 태스크에서 연결한다.
