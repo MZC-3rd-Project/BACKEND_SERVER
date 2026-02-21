@@ -13,3 +13,7 @@
 ```text
 ./gradlew :servers:gateways:api-gateway:bootRun
 ```
+
+## 보안 헤더 서명
+- `APP_SECURITY_CONTEXT_SIGNING_KEY`를 설정하면 Gateway가 사용자 컨텍스트 헤더를 HMAC으로 서명해 전달합니다.
+- Chat 같은 소비 서비스도 같은 키를 사용해야 검증이 통과합니다.
