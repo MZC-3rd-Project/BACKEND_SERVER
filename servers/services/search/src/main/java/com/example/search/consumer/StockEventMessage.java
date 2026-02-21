@@ -14,4 +14,14 @@ public class StockEventMessage {
     private Long itemId;
     private Integer quantity;
     private Integer remainingQuantity;
+    private Integer currentQuantity;
+    private Integer availableStockTotal;
+    private Long stockVersion;
+
+    public Integer resolveLegacyStockQuantity() {
+        if (currentQuantity != null) {
+            return currentQuantity;
+        }
+        return remainingQuantity;
+    }
 }
