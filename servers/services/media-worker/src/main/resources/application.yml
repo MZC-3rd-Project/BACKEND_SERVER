@@ -1,0 +1,51 @@
+server:
+  port: ${SERVER_PORT:8095}
+
+spring:
+  application:
+    name: media-worker
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/media_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: ${JPA_SHOW_SQL:false}
+    open-in-view: false
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+
+media:
+  worker:
+    group-id: ${MEDIA_WORKER_GROUP_ID:media-worker-group}
+    confirmed-topic: ${MEDIA_CONFIRMED_TOPIC:media.confirmed}
+
+app:
+  security:
+    context:
+      signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}
+      max-age-millis: ${APP_SECURITY_CONTEXT_MAX_AGE_MILLIS:300000}
+
+  snowflake:
+    datacenter-id: ${SNOWFLAKE_DATACENTER_ID:1}
+    worker-id: ${SNOWFLAKE_WORKER_ID:11}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${ACTUATOR_ENDPOINTS:health,info,metrics,prometheus}
+  endpoint:
+    health:
+      show-details: always
