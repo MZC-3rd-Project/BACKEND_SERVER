@@ -5,6 +5,7 @@ import com.example.core.pagination.CursorResponse;
 import com.example.core.pagination.CursorUtils;
 import com.example.product.dto.performance.response.PerformanceDetailResponse;
 import com.example.product.dto.performance.response.PerformanceListResponse;
+import com.example.product.entity.image.ItemImage;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemStatus;
 import com.example.product.entity.item.ItemType;
@@ -31,6 +32,7 @@ public class PerformanceQueryService {
     private final PerformanceRepository performanceRepository;
     private final SeatGradeRepository seatGradeRepository;
     private final CastMemberRepository castMemberRepository;
+    private final ItemImageRepository itemImageRepository;
 
     private static final List<ItemStatus> VISIBLE_STATUSES = List.of(
             ItemStatus.FUNDING, ItemStatus.FUNDED, ItemStatus.ON_SALE, ItemStatus.HOT_DEAL);
@@ -42,7 +44,8 @@ public class PerformanceQueryService {
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.PERFORMANCE_NOT_FOUND));
         List<SeatGrade> seatGrades = seatGradeRepository.findByPerformanceIdOrderByPriceDesc(performance.getId());
         List<CastMember> castMembers = castMemberRepository.findByPerformanceId(performance.getId());
-        return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers);
+        List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
+        return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers, images);
     }
 
     public CursorResponse<PerformanceListResponse> findList(String cursor, int size) {
@@ -59,10 +62,17 @@ public class PerformanceQueryService {
         List<Long> itemIds = pageItems.stream().map(Item::getId).toList();
         Map<Long, Performance> perfMap = performanceRepository.findByItemIdIn(itemIds).stream()
                 .collect(Collectors.toMap(Performance::getItemId, p -> p));
+        Map<Long, List<ItemImage>> imageMap = itemImageRepository
+                .findByItemIdInOrderByItemIdAscSortOrderAsc(itemIds).stream()
+                .collect(Collectors.groupingBy(ItemImage::getItemId));
 
         List<PerformanceListResponse> content = pageItems.stream()
                 .filter(item -> perfMap.containsKey(item.getId()))
-                .map(item -> PerformanceListResponse.of(item, perfMap.get(item.getId())))
+                .map(item -> PerformanceListResponse.of(
+                        item,
+                        perfMap.get(item.getId()),
+                        imageMap.getOrDefault(item.getId(), List.of())
+                ))
                 .toList();
 
         String nextCursor = hasNext ? CursorUtils.encode(pageItems.get(pageItems.size() - 1).getId()) : null;

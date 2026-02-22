@@ -1,8 +1,10 @@
 package com.example.product.dto.performance.response;
 
 import com.example.core.id.jackson.SnowflakeId;
+import com.example.product.dto.image.response.ItemImagesResponse;
 import com.example.product.entity.performance.CastMember;
 import com.example.product.entity.item.Item;
+import com.example.product.entity.image.ItemImage;
 import com.example.product.entity.performance.Performance;
 import com.example.product.entity.performance.SeatGrade;
 import lombok.Builder;
@@ -24,7 +26,7 @@ public class PerformanceDetailResponse {
     private String description;
     private Long price;
     private String status;
-    private String thumbnailUrl;
+    private ItemImagesResponse images;
 
     @SnowflakeId
     private Long categoryId;
@@ -48,14 +50,15 @@ public class PerformanceDetailResponse {
 
     public static PerformanceDetailResponse of(Item item, Performance perf,
                                                List<SeatGrade> seatGrades,
-                                               List<CastMember> castMembers) {
+                                               List<CastMember> castMembers,
+                                               List<ItemImage> images) {
         return PerformanceDetailResponse.builder()
                 .id(item.getId())
                 .title(item.getTitle())
                 .description(item.getDescription())
                 .price(item.getPrice())
                 .status(item.getStatus().name())
-                .thumbnailUrl(item.getThumbnailUrl())
+                .images(ItemImagesResponse.from(images))
                 .categoryId(item.getCategoryId())
                 .sellerId(item.getSellerId())
                 .storeId(item.getStoreId())

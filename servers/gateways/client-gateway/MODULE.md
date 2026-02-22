@@ -14,6 +14,21 @@
 ./gradlew :servers:gateways:client-gateway:bootRun
 ```
 
+## BFF 오케스트레이션 (WebFlux)
+- `POST /bff/v1/products`
+  - 내부적으로 `POST /api/products` -> (선택) `POST /api/items/{itemId}/images` -> `GET /api/products/{itemId}` 순서로 호출합니다.
+- `PUT /bff/v1/products/{itemId}`
+  - 내부적으로 `PUT /api/products/{itemId}` 이후 이미지 연산(`add/delete/reorder`)을 순차 호출하고 마지막에 상세를 재조회합니다.
+- `POST /bff/v1/goods`, `PUT /bff/v1/goods/{itemId}`
+  - 굿즈 생성/수정 + 이미지 연산을 상품과 동일한 패턴으로 처리합니다.
+- `POST /bff/v1/performances`, `PUT /bff/v1/performances/{itemId}`
+  - 공연 생성/수정 + 이미지 연산을 동일 패턴으로 처리합니다.
+- `GET /bff/v1/items/{itemId}?type=PRODUCT|GOODS|PERFORMANCE`
+  - 타입 기반 단건 조회를 BFF에서 통합 제공합니다.
+- `GET /bff/v1/items?type=PRODUCT|GOODS|PERFORMANCE&cursor=&size=`
+  - 타입 기반 목록 조회를 BFF에서 통합 제공합니다.
+- 목적: 클라이언트가 상품+이미지 처리를 단일 BFF 호출 흐름으로 사용할 수 있게 통합.
+
 ## 로컬 E2E 검증
 ```text
 ./docker/scripts/gateway_jwt_header_verify.sh
@@ -24,6 +39,9 @@
 ## 보안 헤더 서명
 - `APP_SECURITY_CONTEXT_SIGNING_KEY`를 설정하면 Gateway가 사용자 컨텍스트 헤더를 HMAC으로 서명해 전달합니다.
 - Chat 같은 소비 서비스도 같은 키를 사용해야 검증이 통과합니다.
+- 미디어/비즈니스 쓰기 경로(`POST/PUT/PATCH/DELETE` on `/api/v1/media`, `/api/products`, `/api/goods`, `/api/performances`, `/api/items`, `/api/categories`, `/api/campaigns`, `/api/v1/sales`, `/api/v1/hot-deals`, `/api/v1/notifications`)는 JWT가 필수입니다.
+- BFF 쓰기 경로(`/bff/v1/**`)도 동일하게 JWT가 필수입니다.
+- 상품 조회(`GET`)는 익명 접근을 허용하되, 클라이언트가 보낸 `X-User-*`/`X-Gateway-*` 스푸핑 헤더는 Gateway가 제거합니다.
 
 ## BFF 인증 스켈레톤
 - `bff-auth` 프로필이 활성화될 때 OAuth2 BFF 보안체인/TokenRelay 라우팅이 켜집니다.

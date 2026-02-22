@@ -17,10 +17,21 @@ public interface MediaLinkRepository extends JpaRepository<MediaLink, Long> {
             MediaUsageType usageType
     );
 
+    Optional<MediaLink> findByOwnerTypeAndOwnerIdAndMediaId(
+            MediaOwnerType ownerType,
+            Long ownerId,
+            Long mediaId
+    );
+
     List<MediaLink> findByOwnerTypeAndOwnerIdAndUsageTypeOrderBySortOrderAscCreatedAtAsc(
             MediaOwnerType ownerType,
             Long ownerId,
             MediaUsageType usageType
+    );
+
+    List<MediaLink> findByOwnerTypeAndOwnerIdOrderByCreatedAtAsc(
+            MediaOwnerType ownerType,
+            Long ownerId
     );
 
     Optional<MediaLink> findTopByMediaIdOrderByCreatedAtDesc(Long mediaId);
