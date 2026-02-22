@@ -39,6 +39,9 @@ public enum ProductErrorCode implements DomainErrorCode {
 
     // Image
     IMAGE_NOT_FOUND("PRODUCT-601", "이미지를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
+    INVALID_MEDIA_REFERENCE("PRODUCT-602", "유효하지 않은 미디어 참조입니다", HttpStatus.BAD_REQUEST),
+    MEDIA_SERVICE_ERROR("PRODUCT-603", "미디어 서비스 호출에 실패했습니다", HttpStatus.BAD_GATEWAY),
+    INVALID_IMAGE_REORDER_REQUEST("PRODUCT-604", "이미지 순서 요청이 유효하지 않습니다", HttpStatus.BAD_REQUEST),
 
     // Authorization
     UNAUTHORIZED_ACCESS("PRODUCT-901", "해당 상품에 대한 권한이 없습니다", HttpStatus.FORBIDDEN);

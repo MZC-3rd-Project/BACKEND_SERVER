@@ -31,14 +31,27 @@ public class MediaUrlPolicyService {
     }
 
     public String buildBaseUrl(String objectKey) {
-        if (!StringUtils.hasText(mediaS3Properties.getCloudfrontDomain())) {
+        if (!StringUtils.hasText(objectKey)) {
             return null;
         }
-        String domain = mediaS3Properties.getCloudfrontDomain().trim();
-        if (domain.endsWith("/")) {
-            domain = domain.substring(0, domain.length() - 1);
+
+        if (StringUtils.hasText(mediaS3Properties.getCloudfrontDomain())) {
+            String domain = mediaS3Properties.getCloudfrontDomain().trim();
+            if (domain.endsWith("/")) {
+                domain = domain.substring(0, domain.length() - 1);
+            }
+            return domain + "/" + objectKey;
         }
-        return domain + "/" + objectKey;
+
+        if (!StringUtils.hasText(mediaS3Properties.getBucket())
+                || !StringUtils.hasText(mediaS3Properties.getRegion())) {
+            return null;
+        }
+        return "https://" + mediaS3Properties.getBucket().trim()
+                + ".s3."
+                + mediaS3Properties.getRegion().trim()
+                + ".amazonaws.com/"
+                + objectKey;
     }
 
     public record MediaUrlContract(

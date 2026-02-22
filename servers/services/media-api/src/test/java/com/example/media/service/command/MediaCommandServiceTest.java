@@ -6,11 +6,14 @@ import com.example.media.config.MediaCleanupProperties;
 import com.example.media.config.MediaS3Properties;
 import com.example.media.config.MediaUrlAccessType;
 import com.example.media.config.MediaUrlProperties;
+import com.example.media.dto.command.request.MediaLinksSyncRequest;
+import com.example.media.dto.command.request.MediaUsageSetRequest;
 import com.example.media.dto.command.request.UploadConfirmRequest;
 import com.example.media.dto.command.response.UploadConfirmResponse;
 import com.example.media.entity.MediaFile;
 import com.example.media.entity.MediaLink;
 import com.example.media.entity.MediaOwnerType;
+import com.example.media.entity.MediaStatus;
 import com.example.media.entity.MediaUsageType;
 import com.example.media.exception.MediaErrorCode;
 import com.example.media.repository.MediaFileRepository;
@@ -31,8 +34,11 @@ import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -306,5 +312,120 @@ class MediaCommandServiceTest {
         assertThat(result.deleteFailedCount()).isEqualTo(0);
         assertThat(mediaFile.getStatus().name()).isEqualTo("EXPIRED");
         verify(s3Client).deleteObject(any(DeleteObjectRequest.class));
+    }
+
+    @Test
+    void syncLinks_replacesLinksAtomically_andReturnsFinalSets() {
+        MediaLink link1 = MediaLink.create(1L, MediaOwnerType.ITEM, 200L, MediaUsageType.GALLERY, 0);
+        MediaLink link2 = MediaLink.create(2L, MediaOwnerType.ITEM, 200L, MediaUsageType.GALLERY, 1);
+        MediaLink link3 = MediaLink.create(3L, MediaOwnerType.ITEM, 200L, MediaUsageType.THUMBNAIL, 0);
+        ReflectionTestUtils.setField(link1, "id", 101L);
+        ReflectionTestUtils.setField(link2, "id", 102L);
+        ReflectionTestUtils.setField(link3, "id", 103L);
+        List<MediaLink> existingLinks = new ArrayList<>(List.of(link1, link2, link3));
+        List<MediaLink> syncedLinks = new ArrayList<>();
+
+        Map<Long, MediaFile> mediaFileMap = new HashMap<>();
+        mediaFileMap.put(1L, createConfirmedMediaFile(1L, 100L));
+        mediaFileMap.put(2L, createConfirmedMediaFile(2L, 100L));
+        mediaFileMap.put(3L, createConfirmedMediaFile(3L, 100L));
+        mediaFileMap.put(4L, createConfirmedMediaFile(4L, 100L));
+
+        when(mediaFileRepository.findAllById(any())).thenAnswer(invocation -> {
+            Iterable<Long> ids = invocation.getArgument(0);
+            List<Long> idList = new ArrayList<>();
+            ids.forEach(idList::add);
+            return idList.stream()
+                    .map(mediaFileMap::get)
+                    .filter(java.util.Objects::nonNull)
+                    .collect(Collectors.toList());
+        });
+        when(mediaLinkRepository.findByOwnerTypeAndOwnerIdOrderByCreatedAtAsc(MediaOwnerType.ITEM, 200L))
+                .thenAnswer(invocation -> syncedLinks.isEmpty() ? existingLinks : syncedLinks);
+        when(mediaLinkRepository.saveAll(anyList())).thenAnswer(invocation -> {
+            List<MediaLink> saved = invocation.getArgument(0);
+            long seq = 200L;
+            for (MediaLink link : saved) {
+                if (link.getId() == null) {
+                    ReflectionTestUtils.setField(link, "id", seq++);
+                }
+            }
+            syncedLinks.clear();
+            syncedLinks.addAll(saved.stream()
+                    .filter(link -> !link.isDeleted())
+                    .toList());
+            return saved;
+        });
+
+        MediaUsageSetRequest thumbnailSet = new MediaUsageSetRequest();
+        ReflectionTestUtils.setField(thumbnailSet, "usageType", "THUMBNAIL");
+        ReflectionTestUtils.setField(thumbnailSet, "mediaIds", List.of(3L));
+
+        MediaUsageSetRequest gallerySet = new MediaUsageSetRequest();
+        ReflectionTestUtils.setField(gallerySet, "usageType", "GALLERY");
+        ReflectionTestUtils.setField(gallerySet, "mediaIds", List.of(4L, 2L));
+
+        MediaLinksSyncRequest request = new MediaLinksSyncRequest();
+        ReflectionTestUtils.setField(request, "ownerType", "ITEM");
+        ReflectionTestUtils.setField(request, "ownerId", 200L);
+        ReflectionTestUtils.setField(request, "sets", List.of(thumbnailSet, gallerySet));
+
+        var response = mediaCommandService.syncLinks(request, 100L);
+
+        assertThat(response.getOwnerType()).isEqualTo("ITEM");
+        assertThat(response.getOwnerId()).isEqualTo(200L);
+        assertThat(response.getSets()).hasSize(2);
+        assertThat(response.getSets().stream()
+                .filter(set -> "THUMBNAIL".equals(set.getUsageType()))
+                .findFirst().orElseThrow().getMediaIds()).containsExactly(3L);
+        assertThat(response.getSets().stream()
+                .filter(set -> "GALLERY".equals(set.getUsageType()))
+                .findFirst().orElseThrow().getMediaIds()).containsExactly(4L, 2L);
+
+        assertThat(link1.isDeleted()).isTrue();
+        verify(mediaLinkRepository).saveAll(anyList());
+    }
+
+    @Test
+    void syncLinks_whenDuplicateMediaIdAcrossUsageSets_throwsInvalidSyncRequest() {
+        MediaUsageSetRequest thumbnailSet = new MediaUsageSetRequest();
+        ReflectionTestUtils.setField(thumbnailSet, "usageType", "THUMBNAIL");
+        ReflectionTestUtils.setField(thumbnailSet, "mediaIds", List.of(3L));
+
+        MediaUsageSetRequest gallerySet = new MediaUsageSetRequest();
+        ReflectionTestUtils.setField(gallerySet, "usageType", "GALLERY");
+        ReflectionTestUtils.setField(gallerySet, "mediaIds", List.of(3L, 4L));
+
+        MediaLinksSyncRequest request = new MediaLinksSyncRequest();
+        ReflectionTestUtils.setField(request, "ownerType", "ITEM");
+        ReflectionTestUtils.setField(request, "ownerId", 200L);
+        ReflectionTestUtils.setField(request, "sets", List.of(thumbnailSet, gallerySet));
+
+        assertThatThrownBy(() -> mediaCommandService.syncLinks(request, 100L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MediaErrorCode.INVALID_MEDIA_SYNC_REQUEST);
+    }
+
+    private MediaFile createConfirmedMediaFile(Long mediaId, Long uploaderId) {
+        MediaFile mediaFile = MediaFile.createPending(
+                uploaderId,
+                "sample-" + mediaId + ".jpg",
+                "team2-donmoa-media/raw/2026/02/22/sample-" + mediaId + ".jpg",
+                "team2-donmoa-media-raw",
+                "image/jpeg",
+                1024L,
+                null,
+                null,
+                null,
+                null,
+                "upload-token-" + mediaId,
+                LocalDateTime.now().plusMinutes(5)
+        );
+        ReflectionTestUtils.setField(mediaFile, "id", mediaId);
+        ReflectionTestUtils.setField(mediaFile, "status", MediaStatus.CONFIRMED);
+        ReflectionTestUtils.setField(mediaFile, "contentType", "image/jpeg");
+        ReflectionTestUtils.setField(mediaFile, "fileSize", 1024L);
+        return mediaFile;
     }
 }

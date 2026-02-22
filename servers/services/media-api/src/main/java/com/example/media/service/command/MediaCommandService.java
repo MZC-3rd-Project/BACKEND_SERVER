@@ -5,8 +5,12 @@ import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;
 import com.example.media.config.MediaCleanupProperties;
 import com.example.media.config.MediaS3Properties;
+import com.example.media.dto.command.request.MediaLinksSyncRequest;
+import com.example.media.dto.command.request.MediaUsageSetRequest;
 import com.example.media.dto.command.request.UploadConfirmRequest;
 import com.example.media.dto.command.request.UploadIntentRequest;
+import com.example.media.dto.command.response.MediaLinksSyncResponse;
+import com.example.media.dto.command.response.MediaUsageSetResponse;
 import com.example.media.dto.command.response.UploadConfirmResponse;
 import com.example.media.dto.command.response.UploadIntentResponse;
 import com.example.media.entity.MediaFile;
@@ -42,9 +46,18 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -164,6 +177,76 @@ public class MediaCommandService {
     }
 
     @Transactional
+    public MediaLinksSyncResponse syncLinks(MediaLinksSyncRequest request, Long userId) {
+        MediaOwnerType ownerType;
+        try {
+            ownerType = MediaOwnerType.fromNullable(request.getOwnerType());
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(MediaErrorCode.INVALID_MEDIA_BINDING, e);
+        }
+        if (ownerType == null || request.getOwnerId() == null) {
+            throw new BusinessException(MediaErrorCode.INVALID_MEDIA_BINDING);
+        }
+
+        Map<MediaUsageType, List<Long>> requestedUsageSets = normalizeRequestedUsageSets(request.getSets());
+        List<Long> requestedThumbnailIds = requestedUsageSets.getOrDefault(MediaUsageType.THUMBNAIL, List.of());
+        if (requestedThumbnailIds.size() > 1) {
+            throw new BusinessException(MediaErrorCode.INVALID_MEDIA_SYNC_REQUEST);
+        }
+
+        Set<Long> requestedMediaIds = requestedUsageSets.values().stream()
+                .flatMap(List::stream)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        validateRequestedMediaFiles(requestedMediaIds, userId);
+
+        List<MediaLink> ownerLinks = mediaLinkRepository.findByOwnerTypeAndOwnerIdOrderByCreatedAtAsc(
+                ownerType,
+                request.getOwnerId()
+        );
+        validateLinkOwnership(userId, ownerLinks);
+
+        Map<Long, MediaLink> existingByMediaId = ownerLinks.stream()
+                .collect(Collectors.toMap(MediaLink::getMediaId, Function.identity(), (left, right) -> left));
+        List<MediaLink> linksToSave = new ArrayList<>(ownerLinks);
+
+        for (MediaLink link : ownerLinks) {
+            if (!requestedMediaIds.contains(link.getMediaId())) {
+                link.softDelete();
+            }
+        }
+
+        for (Map.Entry<MediaUsageType, List<Long>> usageEntry : requestedUsageSets.entrySet()) {
+            MediaUsageType usageType = usageEntry.getKey();
+            List<Long> mediaIds = usageEntry.getValue();
+            for (int i = 0; i < mediaIds.size(); i++) {
+                Long mediaId = mediaIds.get(i);
+                MediaLink existing = existingByMediaId.get(mediaId);
+                if (existing == null || existing.isDeleted()) {
+                    MediaLink created = MediaLink.create(
+                            mediaId,
+                            ownerType,
+                            request.getOwnerId(),
+                            usageType,
+                            i
+                    );
+                    linksToSave.add(created);
+                    existingByMediaId.put(mediaId, created);
+                    continue;
+                }
+                existing.updateUsageType(usageType);
+                existing.updateSortOrder(i);
+            }
+        }
+
+        mediaLinkRepository.saveAll(linksToSave);
+        List<MediaLink> synced = mediaLinkRepository.findByOwnerTypeAndOwnerIdOrderByCreatedAtAsc(
+                ownerType,
+                request.getOwnerId()
+        );
+        return toSyncResponse(ownerType, request.getOwnerId(), synced);
+    }
+
+    @Transactional
     public ExpireResult expirePendingUploads() {
         LocalDateTime now = LocalDateTime.now();
         int batchSize = Math.max(1, mediaCleanupProperties.getBatchSize());
@@ -192,6 +275,78 @@ public class MediaCommandService {
     private void validateUploaderAccess(Long userId, MediaFile mediaFile) {
         if (userId != null && mediaFile.getUploaderId() != null && !mediaFile.isOwnedBy(userId)) {
             throw new BusinessException(MediaErrorCode.FORBIDDEN_MEDIA_ACCESS);
+        }
+    }
+
+    private void validateLinkOwnership(Long userId, List<MediaLink> links) {
+        if (userId == null || links.isEmpty()) {
+            return;
+        }
+        List<Long> mediaIds = links.stream().map(MediaLink::getMediaId).toList();
+        List<MediaFile> mediaFiles = mediaFileRepository.findAllById(mediaIds);
+        boolean unauthorized = mediaFiles.stream()
+                .anyMatch(mediaFile -> mediaFile.getUploaderId() != null && !mediaFile.isOwnedBy(userId));
+        if (unauthorized) {
+            throw new BusinessException(MediaErrorCode.FORBIDDEN_MEDIA_ACCESS);
+        }
+    }
+
+    private Map<MediaUsageType, List<Long>> normalizeRequestedUsageSets(List<MediaUsageSetRequest> sets) {
+        if (sets == null || sets.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<MediaUsageType, List<Long>> result = new LinkedHashMap<>();
+        Set<Long> globalSeenMediaIds = new HashSet<>();
+        for (MediaUsageSetRequest set : sets) {
+            if (set == null) {
+                throw new BusinessException(MediaErrorCode.INVALID_MEDIA_SYNC_REQUEST);
+            }
+
+            MediaUsageType usageType;
+            try {
+                usageType = MediaUsageType.fromNullable(set.getUsageType());
+            } catch (IllegalArgumentException e) {
+                throw new BusinessException(MediaErrorCode.INVALID_MEDIA_BINDING, e);
+            }
+            if (usageType == null || result.containsKey(usageType)) {
+                throw new BusinessException(MediaErrorCode.INVALID_MEDIA_SYNC_REQUEST);
+            }
+
+            List<Long> mediaIds = set.getMediaIds() != null ? set.getMediaIds() : List.of();
+            List<Long> normalizedMediaIds = new ArrayList<>(mediaIds.size());
+            Set<Long> localSeenMediaIds = new HashSet<>();
+            for (Long mediaId : mediaIds) {
+                if (mediaId == null || mediaId <= 0) {
+                    throw new BusinessException(MediaErrorCode.INVALID_MEDIA_SYNC_REQUEST);
+                }
+                if (!localSeenMediaIds.add(mediaId) || !globalSeenMediaIds.add(mediaId)) {
+                    throw new BusinessException(MediaErrorCode.INVALID_MEDIA_SYNC_REQUEST);
+                }
+                normalizedMediaIds.add(mediaId);
+            }
+            result.put(usageType, normalizedMediaIds);
+        }
+        return result;
+    }
+
+    private void validateRequestedMediaFiles(Set<Long> requestedMediaIds, Long userId) {
+        if (requestedMediaIds.isEmpty()) {
+            return;
+        }
+
+        List<MediaFile> mediaFiles = mediaFileRepository.findAllById(requestedMediaIds);
+        if (mediaFiles.size() != requestedMediaIds.size()) {
+            throw new BusinessException(MediaErrorCode.INVALID_MEDIA_SYNC_REQUEST);
+        }
+
+        for (MediaFile mediaFile : mediaFiles) {
+            if (!mediaFile.isAlreadyConfirmed()) {
+                throw new BusinessException(MediaErrorCode.MEDIA_NOT_READY);
+            }
+            if (userId != null && mediaFile.getUploaderId() != null && !mediaFile.isOwnedBy(userId)) {
+                throw new BusinessException(MediaErrorCode.FORBIDDEN_MEDIA_ACCESS);
+            }
         }
     }
 
@@ -476,6 +631,37 @@ public class MediaCommandService {
                 .ownerId(mediaLink != null ? mediaLink.getOwnerId() : null)
                 .usageType(mediaLink != null ? mediaLink.getUsageType().name() : null)
                 .sortOrder(mediaLink != null ? mediaLink.getSortOrder() : null)
+                .build();
+    }
+
+    private MediaLinksSyncResponse toSyncResponse(MediaOwnerType ownerType, Long ownerId, List<MediaLink> links) {
+        Map<MediaUsageType, List<MediaLink>> grouped = links.stream()
+                .collect(Collectors.groupingBy(MediaLink::getUsageType));
+
+        List<MediaUsageSetResponse> usageSets = new ArrayList<>();
+        for (MediaUsageType usageType : MediaUsageType.values()) {
+            List<MediaLink> usageLinks = grouped.get(usageType);
+            if (usageLinks == null || usageLinks.isEmpty()) {
+                continue;
+            }
+
+            List<Long> mediaIds = usageLinks.stream()
+                    .sorted(Comparator
+                            .comparing(MediaLink::getSortOrder, Comparator.nullsLast(Integer::compareTo))
+                            .thenComparing(MediaLink::getCreatedAt))
+                    .map(MediaLink::getMediaId)
+                    .toList();
+
+            usageSets.add(MediaUsageSetResponse.builder()
+                    .usageType(usageType.name())
+                    .mediaIds(mediaIds)
+                    .build());
+        }
+
+        return MediaLinksSyncResponse.builder()
+                .ownerType(ownerType.name())
+                .ownerId(ownerId)
+                .sets(usageSets)
                 .build();
     }
 
