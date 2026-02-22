@@ -4,6 +4,7 @@ import java.util.Locale;
 
 public enum MediaOwnerType {
     USER_PROFILE,
+    STORE,
     ITEM,
     POST,
     CHAT_MESSAGE,

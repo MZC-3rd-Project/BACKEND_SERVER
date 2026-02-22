@@ -23,6 +23,7 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -30,11 +31,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class JwtHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
 
-    private static final List<String> TARGET_PATH_PREFIXES = List.of(
-            "/api/v1/search",
-            "/api/v1/chat",
-            "/ws/chat"
-    );
+    private static final Set<String> WRITE_HTTP_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
+    private static final Set<String> REWRITE_BFF_TO_DOWNSTREAM_PATHS = Set.of("/bff/v1/items");
 
     private final JwtClaimParser jwtClaimParser;
     private final GatewaySecurityProperties securityProperties;
@@ -54,7 +52,10 @@ public class JwtHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
             return unauthorized(exchange, "GW-AUTH-001", e.getMessage());
         }
 
-        boolean jwtRequired = isJwtRequiredPath(path);
+        String method = exchange.getRequest().getMethod() != null
+                ? exchange.getRequest().getMethod().name()
+                : null;
+        boolean jwtRequired = isJwtRequiredPath(path, method);
         GatewayJwtPrincipal principal = null;
         if (StringUtils.hasText(bearerToken)) {
             try {
@@ -63,7 +64,7 @@ public class JwtHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
                 return unauthorized(exchange, "GW-AUTH-002", e.getMessage());
             }
         } else if (jwtRequired) {
-            return unauthorized(exchange, "GW-AUTH-003", "chat 경로는 Bearer 토큰이 필요합니다");
+            return unauthorized(exchange, "GW-AUTH-003", "요청 경로는 Bearer 토큰이 필요합니다");
         }
 
         SignedContextHeader signedContextHeader = null;
@@ -94,16 +95,41 @@ public class JwtHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
     }
 
     private boolean isTargetPath(String path) {
-        return TARGET_PATH_PREFIXES.stream().anyMatch(path::startsWith);
+        return matchesAnyPrefix(path, securityProperties.getRelayPathPrefixes());
     }
 
-    private boolean isJwtRequiredPath(String path) {
-        List<String> requiredPrefixes = securityProperties.getRequireJwtPathPrefixes();
-        if (requiredPrefixes == null || requiredPrefixes.isEmpty()) {
+    private boolean isJwtRequiredPath(String path, String method) {
+        String jwtMatchingPath = mapPathForJwtRequirement(path);
+        if (matchesAnyPrefix(jwtMatchingPath, securityProperties.getRequireJwtPathPrefixes())) {
+            return true;
+        }
+        return isWriteMethod(method) && matchesAnyPrefix(jwtMatchingPath, securityProperties.getRequireJwtWritePathPrefixes());
+    }
+
+    private boolean matchesAnyPrefix(String path, List<String> prefixes) {
+        if (!StringUtils.hasText(path) || prefixes == null || prefixes.isEmpty()) {
             return false;
         }
-        return requiredPrefixes.stream()
+        return prefixes.stream()
+                .filter(StringUtils::hasText)
                 .anyMatch(path::startsWith);
+    }
+
+    private boolean isWriteMethod(String method) {
+        if (!StringUtils.hasText(method)) {
+            return false;
+        }
+        return WRITE_HTTP_METHODS.contains(method.toUpperCase(Locale.ROOT));
+    }
+
+    private String mapPathForJwtRequirement(String path) {
+        if (!StringUtils.hasText(path)) {
+            return path;
+        }
+        if (REWRITE_BFF_TO_DOWNSTREAM_PATHS.contains(path)) {
+            return "/api/items";
+        }
+        return path;
     }
 
     private String resolveBearerToken(HttpHeaders headers) {

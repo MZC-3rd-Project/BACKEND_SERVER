@@ -63,6 +63,9 @@ app:
     datacenter-id: ${SNOWFLAKE_DATACENTER_ID:1}
     worker-id: ${SNOWFLAKE_WORKER_ID:4}
 
+  service:
+    media-url: ${MEDIA_SERVICE_URL:http://localhost:8094}
+
   # ─── OpenAPI ──────────────────────────────────
   openapi:
     enabled: ${OPENAPI_ENABLED:true}

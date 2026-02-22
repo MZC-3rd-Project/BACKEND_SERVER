@@ -67,4 +67,8 @@ public class MediaLink extends BaseEntity {
     public void updateSortOrder(int newSortOrder) {
         this.sortOrder = newSortOrder;
     }
+
+    public void updateUsageType(MediaUsageType newUsageType) {
+        this.usageType = newUsageType;
+    }
 }

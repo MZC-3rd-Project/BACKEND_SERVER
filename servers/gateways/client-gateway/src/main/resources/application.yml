@@ -13,6 +13,10 @@ spring:
               uri: ${app.service.search-url:http://localhost:8088}
               predicates:
                 - Path=/api/v1/search/**
+            - id: media-service
+              uri: ${app.service.media-url:http://localhost:8094}
+              predicates:
+                - Path=/api/v1/media/**
             - id: product-service
               uri: ${app.service.product-url:http://localhost:8084}
               predicates:
@@ -49,7 +53,9 @@ gateway:
   security:
     internal-auth-header: ${GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}
     internal-auth-token: ${GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
+    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/v1/search,/api/v1/media,/api/v1/chat,/ws/chat,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications}
     require-jwt-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_JWT_PATH_PREFIXES:/api/v1/chat,/ws/chat}
+    require-jwt-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_JWT_WRITE_PATH_PREFIXES:/bff/v1,/api/v1/media,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications}
 
 app:
   security:
