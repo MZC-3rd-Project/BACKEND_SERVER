@@ -10,6 +10,7 @@ import com.example.product.dto.goods.request.ShippingInfoRequest;
 import com.example.product.dto.goods.response.GoodsDetailResponse;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.goods.ItemOption;
+import com.example.product.entity.image.ItemImage;
 import com.example.product.entity.item.ItemType;
 import com.example.product.entity.goods.ShippingInfo;
 import com.example.product.event.ItemCreatedEvent;
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -34,14 +36,21 @@ public class ProductCommandService {
     private final ItemOptionRepository itemOptionRepository;
     private final ShippingInfoRepository shippingInfoRepository;
     private final ItemImageRepository itemImageRepository;
+    private final MediaReferenceService mediaReferenceService;
+    private final ItemMediaLinkSyncService itemMediaLinkSyncService;
     private final EventPublisher eventPublisher;
 
     public GoodsDetailResponse createProduct(ProductCreateRequest request, Long sellerId) {
         // TODO: store-service 연동 후 sellerId-storeId 소유권 검증을 추가한다.
+        String thumbnailUrl = mediaReferenceService.resolveMediaUrl(request.getThumbnailMediaId());
         Item item = Item.create(
                 request.getTitle(), request.getDescription(), request.getPrice(),
-                ItemType.PRODUCT, request.getCategoryId(), sellerId, request.getStoreId(), request.getThumbnailUrl());
+                ItemType.PRODUCT, request.getCategoryId(), sellerId, request.getStoreId(),
+                request.getThumbnailMediaId(), thumbnailUrl);
         itemRepository.save(item);
+        if (request.getThumbnailMediaId() != null) {
+            syncItemThumbnail(item.getId(), request.getThumbnailMediaId());
+        }
 
         List<ItemOption> options = saveOptions(item.getId(), request.getOptions());
 
@@ -67,7 +76,8 @@ public class ProductCommandService {
                 ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
-        return GoodsDetailResponse.of(item, options, shippingInfo, List.of());
+        List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(item.getId());
+        return GoodsDetailResponse.of(item, options, shippingInfo, List.of(), images);
     }
 
     public GoodsDetailResponse updateProduct(Long itemId, ProductUpdateRequest request, Long sellerId) {
@@ -78,8 +88,12 @@ public class ProductCommandService {
             throw new BusinessException(ProductErrorCode.ITEM_NOT_EDITABLE);
         }
 
+        String thumbnailUrl = mediaReferenceService.resolveMediaUrl(request.getThumbnailMediaId());
         item.update(request.getTitle(), request.getDescription(), request.getPrice(),
-                request.getCategoryId(), request.getThumbnailUrl());
+                request.getCategoryId(), request.getThumbnailMediaId(), thumbnailUrl);
+        if (request.getThumbnailMediaId() != null) {
+            syncItemThumbnail(item.getId(), request.getThumbnailMediaId());
+        }
 
         List<ItemOption> options = List.of();
         if (request.getOptions() != null) {
@@ -97,7 +111,8 @@ public class ProductCommandService {
                 new ItemUpdatedEvent(item.getId(), item.getTitle(), item.getPrice()),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
-        return GoodsDetailResponse.of(item, options, shippingInfo, List.of());
+        List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
+        return GoodsDetailResponse.of(item, options, shippingInfo, List.of(), images);
     }
 
     public void delete(Long itemId, Long sellerId) {
@@ -112,6 +127,8 @@ public class ProductCommandService {
         itemOptionRepository.softDeleteAllByItemId(itemId);
         shippingInfoRepository.softDeleteByItemId(itemId);
         itemImageRepository.softDeleteAllByItemId(itemId);
+        item.clearThumbnail();
+        itemMediaLinkSyncService.clearAfterCommit(itemId);
     }
 
     private List<ItemOption> saveOptions(Long itemId, List<ItemOptionRequest> requests) {
@@ -127,5 +144,17 @@ public class ProductCommandService {
         ShippingInfo si = ShippingInfo.create(itemId, request.getShippingFee(),
                 request.getFreeShippingThreshold(), request.getEstimatedDays(), request.getReturnPolicy());
         return shippingInfoRepository.save(si);
+    }
+
+    private void syncItemThumbnail(Long itemId, Long thumbnailMediaId) {
+        List<Long> galleryMediaIds = itemImageRepository.findByItemIdOrderBySortOrder(itemId).stream()
+                .map(ItemImage::getMediaId)
+                .filter(mediaId -> thumbnailMediaId == null || !thumbnailMediaId.equals(mediaId))
+                .filter(Objects::nonNull)
+                .toList();
+        if (thumbnailMediaId == null && galleryMediaIds.isEmpty()) {
+            return;
+        }
+        itemMediaLinkSyncService.syncAfterCommit(itemId, thumbnailMediaId, galleryMediaIds);
     }
 }

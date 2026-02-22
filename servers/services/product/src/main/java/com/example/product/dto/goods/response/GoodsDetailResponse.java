@@ -1,8 +1,10 @@
 package com.example.product.dto.goods.response;
 
 import com.example.core.id.jackson.SnowflakeId;
+import com.example.product.dto.image.response.ItemImagesResponse;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.goods.ItemOption;
+import com.example.product.entity.image.ItemImage;
 import com.example.product.entity.goods.ShippingInfo;
 import lombok.Builder;
 import lombok.Getter;
@@ -22,7 +24,7 @@ public class GoodsDetailResponse {
     private Long price;
     private String status;
     private String itemType;
-    private String thumbnailUrl;
+    private ItemImagesResponse images;
 
     @SnowflakeId
     private Long categoryId;
@@ -41,7 +43,10 @@ public class GoodsDetailResponse {
     private LocalDateTime updatedAt;
 
     public static GoodsDetailResponse of(Item item, List<ItemOption> options,
-                                         ShippingInfo shippingInfo, List<Long> linkedIds) {
+                                         ShippingInfo shippingInfo, List<Long> linkedIds,
+                                         List<ItemImage> images) {
+        ItemImagesResponse imageResponse = ItemImagesResponse.from(images);
+
         return GoodsDetailResponse.builder()
                 .id(item.getId())
                 .title(item.getTitle())
@@ -49,7 +54,7 @@ public class GoodsDetailResponse {
                 .price(item.getPrice())
                 .status(item.getStatus().name())
                 .itemType(item.getItemType().name())
-                .thumbnailUrl(item.getThumbnailUrl())
+                .images(imageResponse)
                 .categoryId(item.getCategoryId())
                 .sellerId(item.getSellerId())
                 .storeId(item.getStoreId())

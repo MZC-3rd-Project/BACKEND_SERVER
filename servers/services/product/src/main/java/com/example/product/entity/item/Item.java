@@ -53,11 +53,15 @@ public class Item extends BaseEntity {
     @Column(name = "store_id")
     private Long storeId;
 
+    @Column(name = "thumbnail_media_id")
+    private Long thumbnailMediaId;
+
     @Column(name = "thumbnail_url", length = 500)
     private String thumbnailUrl;
 
     public static Item create(String title, String description, Long price,
-                              ItemType itemType, Long categoryId, Long sellerId, Long storeId, String thumbnailUrl) {
+                              ItemType itemType, Long categoryId, Long sellerId, Long storeId,
+                              Long thumbnailMediaId, String thumbnailUrl) {
         Item item = new Item();
         item.title = title;
         item.description = description;
@@ -67,16 +71,29 @@ public class Item extends BaseEntity {
         item.categoryId = categoryId;
         item.sellerId = sellerId;
         item.storeId = storeId;
+        item.thumbnailMediaId = thumbnailMediaId;
         item.thumbnailUrl = thumbnailUrl;
         return item;
     }
 
-    public void update(String title, String description, Long price, Long categoryId, String thumbnailUrl) {
+    public void update(String title, String description, Long price, Long categoryId,
+                       Long thumbnailMediaId, String thumbnailUrl) {
         if (title != null) this.title = title;
         if (description != null) this.description = description;
         if (price != null) this.price = price;
         if (categoryId != null) this.categoryId = categoryId;
+        if (thumbnailMediaId != null) this.thumbnailMediaId = thumbnailMediaId;
         if (thumbnailUrl != null) this.thumbnailUrl = thumbnailUrl;
+    }
+
+    public void updateThumbnail(Long thumbnailMediaId, String thumbnailUrl) {
+        this.thumbnailMediaId = thumbnailMediaId;
+        this.thumbnailUrl = thumbnailUrl;
+    }
+
+    public void clearThumbnail() {
+        this.thumbnailMediaId = null;
+        this.thumbnailUrl = null;
     }
 
     public void changeStatus(ItemStatus newStatus) {

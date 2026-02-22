@@ -10,7 +10,10 @@ import java.util.List;
 
 public interface ItemImageRepository extends JpaRepository<ItemImage, Long> {
 
-    List<ItemImage> findByItemIdOrderBySortOrder(Long itemId);
+    @Query("SELECT i FROM ItemImage i WHERE i.itemId = :itemId ORDER BY i.sortOrder ASC, i.id ASC")
+    List<ItemImage> findByItemIdOrderBySortOrder(@Param("itemId") Long itemId);
+
+    List<ItemImage> findByItemIdInOrderByItemIdAscSortOrderAsc(List<Long> itemIds);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("UPDATE ItemImage i SET i.deletedAt = CURRENT_TIMESTAMP WHERE i.itemId = :itemId AND i.deletedAt IS NULL")

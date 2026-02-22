@@ -29,7 +29,8 @@ public class PerformanceCreateRequest {
 
     private Long categoryId;
 
-    private String thumbnailUrl;
+    @Positive(message = "썸네일 미디어 ID는 양수여야 합니다")
+    private Long thumbnailMediaId;
 
     @NotBlank(message = "공연장소는 필수입니다")
     private String venue;

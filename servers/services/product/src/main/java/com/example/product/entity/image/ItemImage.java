@@ -10,7 +10,11 @@ import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "item_images", indexes = {
-        @Index(name = "idx_item_images_item_id", columnList = "item_id")
+        @Index(name = "idx_item_images_item_id", columnList = "item_id"),
+        @Index(name = "idx_item_images_media_id", columnList = "media_id"),
+        @Index(name = "idx_item_images_item_sort_order", columnList = "item_id,sort_order")
+}, uniqueConstraints = {
+        @UniqueConstraint(name = "uk_item_images_item_media", columnNames = {"item_id", "media_id"})
 })
 @SQLRestriction("deleted_at IS NULL")
 @Getter
@@ -24,6 +28,9 @@ public class ItemImage extends BaseEntity {
     @Column(name = "item_id", nullable = false)
     private Long itemId;
 
+    @Column(name = "media_id")
+    private Long mediaId;
+
     @Column(name = "image_url", nullable = false, length = 500)
     private String imageUrl;
 
@@ -33,9 +40,10 @@ public class ItemImage extends BaseEntity {
     @Column(name = "is_thumbnail", nullable = false)
     private Boolean isThumbnail;
 
-    public static ItemImage create(Long itemId, String imageUrl, int sortOrder, boolean isThumbnail) {
+    public static ItemImage create(Long itemId, Long mediaId, String imageUrl, int sortOrder, boolean isThumbnail) {
         ItemImage img = new ItemImage();
         img.itemId = itemId;
+        img.mediaId = mediaId;
         img.imageUrl = imageUrl;
         img.sortOrder = sortOrder;
         img.isThumbnail = isThumbnail;

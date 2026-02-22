@@ -2,6 +2,7 @@ package com.example.product.dto.goods.request;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,7 +23,8 @@ public class ProductUpdateRequest {
 
     private Long categoryId;
 
-    private String thumbnailUrl;
+    @Positive(message = "썸네일 미디어 ID는 양수여야 합니다")
+    private Long thumbnailMediaId;
 
     @Valid
     private List<ItemOptionRequest> options;

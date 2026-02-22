@@ -1,0 +1,138 @@
+package com.example.product.service.command;
+
+import com.example.core.exception.BusinessException;
+import com.example.product.dto.image.request.ItemImageRequest;
+import com.example.product.dto.image.response.ItemImageResponse;
+import com.example.product.entity.image.ItemImage;
+import com.example.product.entity.item.Item;
+import com.example.product.entity.item.ItemType;
+import com.example.product.exception.ProductErrorCode;
+import com.example.product.repository.ItemImageRepository;
+import com.example.product.repository.ItemRepository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class ItemImageCommandServiceTest {
+
+    @Mock
+    private ItemImageRepository itemImageRepository;
+    @Mock
+    private ItemRepository itemRepository;
+    @Mock
+    private MediaReferenceService mediaReferenceService;
+    @Mock
+    private ItemMediaLinkSyncService itemMediaLinkSyncService;
+
+    @InjectMocks
+    private ItemImageCommandService itemImageCommandService;
+
+    @Test
+    void addImages_normalizesAndSchedulesSync() {
+        Long itemId = 1L;
+        Long sellerId = 10L;
+        Item item = createItem(itemId, sellerId);
+
+        ItemImageRequest first = new ItemImageRequest();
+        ReflectionTestUtils.setField(first, "mediaId", 101L);
+        ReflectionTestUtils.setField(first, "sortOrder", 5);
+        ReflectionTestUtils.setField(first, "isThumbnail", false);
+
+        ItemImageRequest second = new ItemImageRequest();
+        ReflectionTestUtils.setField(second, "mediaId", 102L);
+        ReflectionTestUtils.setField(second, "sortOrder", 0);
+        ReflectionTestUtils.setField(second, "isThumbnail", true);
+
+        ItemImage image1 = createImage(11L, itemId, 101L, "https://image/101", 5, false);
+        ItemImage image2 = createImage(12L, itemId, 102L, "https://image/102", 0, true);
+
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
+        when(mediaReferenceService.resolveMediaUrlMap(List.of(101L, 102L)))
+                .thenReturn(Map.of(101L, "https://image/101", 102L, "https://image/102"));
+        when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(List.of(image2, image1));
+        when(itemImageRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<ItemImageResponse> responses = itemImageCommandService.addImages(itemId, List.of(first, second), sellerId);
+
+        assertThat(responses).hasSize(2);
+        assertThat(responses.get(0).getMediaId()).isEqualTo(102L);
+        assertThat(responses.get(0).getSortOrder()).isEqualTo(0);
+        assertThat(responses.get(0).getIsThumbnail()).isTrue();
+        assertThat(responses.get(1).getMediaId()).isEqualTo(101L);
+        assertThat(responses.get(1).getSortOrder()).isEqualTo(1);
+        assertThat(responses.get(1).getIsThumbnail()).isFalse();
+        assertThat(item.getThumbnailMediaId()).isEqualTo(102L);
+
+        verify(itemMediaLinkSyncService).syncAfterCommit(itemId, 102L, List.of(101L));
+    }
+
+    @Test
+    void reorder_rejectsInvalidRequest() {
+        Long itemId = 1L;
+        Long sellerId = 10L;
+        Item item = createItem(itemId, sellerId);
+        ItemImage image1 = createImage(11L, itemId, 101L, "https://image/101", 0, true);
+        ItemImage image2 = createImage(12L, itemId, 102L, "https://image/102", 1, false);
+
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
+        when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(List.of(image1, image2));
+
+        assertThatThrownBy(() -> itemImageCommandService.reorder(itemId, List.of(image1.getId()), sellerId))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ProductErrorCode.INVALID_IMAGE_REORDER_REQUEST);
+    }
+
+    @Test
+    void deleteImage_whenLastImage_thenClearsThumbnailAndSync() {
+        Long itemId = 1L;
+        Long sellerId = 10L;
+        Item item = createItem(itemId, sellerId);
+        ItemImage image = createImage(11L, itemId, 101L, "https://image/101", 0, true);
+
+        when(itemImageRepository.findById(image.getId())).thenReturn(Optional.of(image));
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
+        when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(List.of());
+
+        itemImageCommandService.deleteImage(image.getId(), sellerId);
+
+        assertThat(item.getThumbnailMediaId()).isNull();
+        verify(itemMediaLinkSyncService).syncAfterCommit(itemId, null, List.of());
+    }
+
+    private Item createItem(Long id, Long sellerId) {
+        Item item = Item.create(
+                "item",
+                "desc",
+                1000L,
+                ItemType.PRODUCT,
+                null,
+                sellerId,
+                100L,
+                999L,
+                "https://thumbnail"
+        );
+        ReflectionTestUtils.setField(item, "id", id);
+        return item;
+    }
+
+    private ItemImage createImage(Long id, Long itemId, Long mediaId, String imageUrl, int sortOrder, boolean thumbnail) {
+        ItemImage image = ItemImage.create(itemId, mediaId, imageUrl, sortOrder, thumbnail);
+        ReflectionTestUtils.setField(image, "id", id);
+        return image;
+    }
+}

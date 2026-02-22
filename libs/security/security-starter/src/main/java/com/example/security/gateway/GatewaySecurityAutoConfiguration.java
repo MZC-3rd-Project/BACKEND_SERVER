@@ -10,12 +10,14 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplicat
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
-import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @AutoConfiguration
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
-@ConditionalOnClass(OncePerRequestFilter.class)
+@ConditionalOnClass(name = {
+        "jakarta.servlet.Filter",
+        "org.springframework.web.filter.OncePerRequestFilter"
+})
 @EnableConfigurationProperties(GatewaySecurityModuleProperties.class)
 public class GatewaySecurityAutoConfiguration {
 

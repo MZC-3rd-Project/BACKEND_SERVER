@@ -2,8 +2,10 @@ package com.example.media.controller.command;
 
 import com.example.api.response.ApiResponse;
 import com.example.media.controller.api.command.MediaCommandApi;
+import com.example.media.dto.command.request.MediaLinksSyncRequest;
 import com.example.media.dto.command.request.UploadConfirmRequest;
 import com.example.media.dto.command.request.UploadIntentRequest;
+import com.example.media.dto.command.response.MediaLinksSyncResponse;
 import com.example.media.dto.command.response.UploadConfirmResponse;
 import com.example.media.dto.command.response.UploadIntentResponse;
 import com.example.media.service.command.MediaCommandService;
@@ -26,5 +28,10 @@ public class MediaCommandController implements MediaCommandApi {
     @Override
     public ApiResponse<UploadConfirmResponse> confirmUpload(UploadConfirmRequest request, Long userId) {
         return ApiResponse.success(mediaCommandService.confirmUpload(request, userId));
+    }
+
+    @Override
+    public ApiResponse<MediaLinksSyncResponse> syncLinks(MediaLinksSyncRequest request, Long userId) {
+        return ApiResponse.success(mediaCommandService.syncLinks(request, userId));
     }
 }
