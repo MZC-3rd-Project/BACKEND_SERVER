@@ -5,6 +5,7 @@ import com.example.search.entity.SearchThumbnailEnrichmentStatus;
 import com.example.search.entity.SearchThumbnailEnrichmentTask;
 import com.example.search.repository.SearchThumbnailEnrichmentTaskRepository;
 import com.example.search.service.index.SearchIndexingService;
+import com.example.search.service.query.cache.SearchResultCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +28,7 @@ public class SearchThumbnailEnrichmentTaskService {
 
     private final SearchThumbnailEnrichmentTaskRepository taskRepository;
     private final SearchIndexingService searchIndexingService;
+    private final SearchResultCacheService searchResultCacheService;
     private final MediaBatchQueryClient mediaBatchQueryClient;
     private final TransactionTemplate transactionTemplate;
 
@@ -150,18 +152,24 @@ public class SearchThumbnailEnrichmentTaskService {
                     snapshot.mediaVersion()
             );
 
-            transactionTemplate.executeWithoutResult(status ->
-                    taskRepository.findById(snapshot.taskId()).ifPresent(current -> {
-                        if (!current.isProcessing()) {
-                            return;
-                        }
-                        if (!Objects.equals(current.getThumbnailMediaId(), snapshot.thumbnailMediaId())
-                                || !Objects.equals(current.getMediaVersion(), snapshot.mediaVersion())) {
-                            return;
-                        }
-                        current.markCompleted();
-                    })
+            Boolean completed = transactionTemplate.execute(status ->
+                    taskRepository.findById(snapshot.taskId())
+                            .map(current -> {
+                                if (!current.isProcessing()) {
+                                    return false;
+                                }
+                                if (!Objects.equals(current.getThumbnailMediaId(), snapshot.thumbnailMediaId())
+                                        || !Objects.equals(current.getMediaVersion(), snapshot.mediaVersion())) {
+                                    return false;
+                                }
+                                current.markCompleted();
+                                return true;
+                            })
+                            .orElse(false)
             );
+            if (Boolean.TRUE.equals(completed)) {
+                searchResultCacheService.evictAll();
+            }
         } catch (Exception e) {
             scheduleRetryOrFail(snapshot.taskId(), e.getMessage());
             log.warn("[SearchThumbnailEnricher] process failed. taskId={}, itemId={}, mediaId={}",

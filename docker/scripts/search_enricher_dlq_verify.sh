@@ -267,12 +267,34 @@ start_search() {
 }
 
 recreate_search_index() {
-  local raw body status
-  raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${SEARCH_PORT}/internal/v1/search/indexes/recreate?indexName=items")"
-  body="$(extract_http_body "$raw")"
-  status="$(extract_http_status "$raw")"
-  ensure_http_status "search index recreate status" "$status" "200" || return 1
-  ensure_json_success "search index recreate success" "$body" || return 1
+  local attempt max_attempts raw body status success code message
+  max_attempts=10
+
+  for attempt in $(seq 1 "$max_attempts"); do
+    raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${SEARCH_PORT}/internal/v1/search/indexes/recreate?indexName=items")"
+    body="$(extract_http_body "$raw")"
+    status="$(extract_http_status "$raw")"
+    success="$(echo "$body" | jq -r '.success // false' 2>/dev/null || true)"
+
+    if [[ "$status" == "200" && "$success" == "true" ]]; then
+      pass "search index recreate status"
+      pass "search index recreate success"
+      if [[ "$attempt" -gt 1 ]]; then
+        echo "[INFO] search index recreate succeeded after retry (attempt=${attempt})"
+      fi
+      return 0
+    fi
+
+    if [[ "$attempt" -lt "$max_attempts" ]]; then
+      echo "[WARN] search index recreate attempt ${attempt}/${max_attempts} failed (status=${status}), retrying..."
+      sleep 2
+    fi
+  done
+
+  code="$(echo "$body" | jq -r '.error.code // "UNKNOWN"' 2>/dev/null || true)"
+  message="$(echo "$body" | jq -r '.error.message // ""' 2>/dev/null || true)"
+  fail "search index recreate retry exhausted (status=${status}, code=${code}, message=${message})"
+  return 1
 }
 
 reset_data() {
