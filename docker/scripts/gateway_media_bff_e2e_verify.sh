@@ -26,6 +26,8 @@ PIDS=()
 PASSES=0
 FAILURES=0
 JWT_TOKEN=""
+MEDIA_API_PID=""
+RUN_EXTENDED_SCENARIOS="${RUN_EXTENDED_SCENARIOS:-true}"
 
 pass() {
   PASSES=$((PASSES + 1))
@@ -140,6 +142,68 @@ ensure_json_success() {
   message="$(echo "$body" | jq -r '.error.message // ""')"
   fail "$label (code=$code, message=$message)"
   return 1
+}
+
+ensure_json_failure() {
+  local label="$1"
+  local body="$2"
+  local success
+  success="$(echo "$body" | jq -r '.success // false')"
+  if [[ "$success" == "false" ]]; then
+    pass "$label"
+    return 0
+  fi
+  fail "$label (expected failure payload)"
+  return 1
+}
+
+ensure_http_status_prefix() {
+  local label="$1"
+  local actual="$2"
+  local prefix="$3"
+  if [[ "$actual" == "${prefix}"* ]]; then
+    pass "$label"
+  else
+    fail "$label (expected_prefix=${prefix}, actual=${actual})"
+  fi
+}
+
+ensure_error_code() {
+  local label="$1"
+  local body="$2"
+  local expected="$3"
+  local code
+  code="$(echo "$body" | jq -r '.error.code // empty')"
+  if [[ "$code" == "$expected" ]]; then
+    pass "$label"
+  else
+    fail "$label (expected=${expected}, actual=${code})"
+  fi
+}
+
+probe_gateway_item_list_availability() {
+  local label="$1"
+  local type="$2"
+  local attempts="$3"
+  local ok=0
+
+  for ((i = 1; i <= attempts; i++)); do
+    local raw body status success
+    raw="$(curl -sS -w '\n%{http_code}' "http://127.0.0.1:${GW_PORT}/bff/v1/items?type=${type}&size=20")"
+    body="$(extract_http_body "$raw")"
+    status="$(extract_http_status "$raw")"
+    success="$(echo "$body" | jq -r '.success // false')"
+    if [[ "$status" == "200" && "$success" == "true" ]]; then
+      ok=$((ok + 1))
+    fi
+    sleep 0.1
+  done
+
+  if [[ "$ok" == "$attempts" ]]; then
+    pass "$label"
+  else
+    fail "$label (ok=${ok}/${attempts})"
+  fi
 }
 
 b64url() {
@@ -324,6 +388,261 @@ verify_gateway_protection() {
   ensure_http_status "gateway bff write unauthorized" "$status" "401"
 }
 
+start_media_api() {
+  echo "[INFO] starting media-api"
+  (
+    cd "$ROOT"
+    env \
+      GRADLE_USER_HOME="$GRADLE_USER_HOME" \
+      SERVER_PORT="$MEDIA_PORT" \
+      AWS_PROFILE="$AWS_PROFILE_NAME" \
+      AWS_REGION="$AWS_REGION_NAME" \
+      APP_SECURITY_CONTEXT_SIGNING_KEY="$SIGNING_KEY" \
+      APP_SECURITY_CONTEXT_MAX_AGE_MILLIS="$MAX_AGE" \
+      APP_GATEWAY_SECURITY_ENABLED=true \
+      APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN="$INTERNAL_AUTH_TOKEN" \
+      MEDIA_S3_REGION="$AWS_REGION_NAME" \
+      MEDIA_S3_BUCKET="$MEDIA_BUCKET" \
+      MEDIA_S3_KEY_PREFIX="$MEDIA_PREFIX" \
+      MEDIA_CLOUDFRONT_DOMAIN="$MEDIA_DOMAIN" \
+      ./gradlew :servers:services:media-api:bootRun --no-daemon >>"$LOG_DIR/media-api.log" 2>&1
+  ) &
+  MEDIA_API_PID="$!"
+  PIDS+=("$MEDIA_API_PID")
+}
+
+stop_media_api() {
+  if [[ -z "$MEDIA_API_PID" ]]; then
+    return 0
+  fi
+  if kill -0 "$MEDIA_API_PID" 2>/dev/null; then
+    kill "$MEDIA_API_PID" 2>/dev/null || true
+    wait "$MEDIA_API_PID" 2>/dev/null || true
+  fi
+
+  local port_pids
+  port_pids="$(lsof -tiTCP:${MEDIA_PORT} -sTCP:LISTEN 2>/dev/null || true)"
+  if [[ -n "$port_pids" ]]; then
+    while IFS= read -r pid; do
+      [[ -z "$pid" ]] && continue
+      kill "$pid" 2>/dev/null || true
+      wait "$pid" 2>/dev/null || true
+    done <<< "$port_pids"
+  fi
+
+  local media_bootrun_pids
+  media_bootrun_pids="$(ps -ef | awk '/gradle-wrapper\.jar .*:servers:services:media-api:bootRun/ && !/awk/ {print $2}')"
+  if [[ -n "$media_bootrun_pids" ]]; then
+    while IFS= read -r pid; do
+      [[ -z "$pid" ]] && continue
+      kill "$pid" 2>/dev/null || true
+      wait "$pid" 2>/dev/null || true
+    done <<< "$media_bootrun_pids"
+  fi
+
+  MEDIA_API_PID=""
+}
+
+wait_media_unavailable() {
+  local label="$1"
+  for _ in {1..30}; do
+    local code
+    code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 2 "http://127.0.0.1:${MEDIA_PORT}/actuator/health" 2>/dev/null || true)"
+    if [[ "$code" == "000" || "$code" == "503" || "$code" == "502" || "$code" == "500" ]]; then
+      pass "$label"
+      return 0
+    fi
+    sleep 1
+  done
+  fail "$label (media-api still responds as healthy)"
+  return 1
+}
+
+wait_retry_sync_completed() {
+  local item_id="$1"
+  local timeout_seconds="$2"
+  local elapsed=0
+
+  while [[ "$elapsed" -lt "$timeout_seconds" ]]; do
+    local task_status
+    task_status="$(psql_query product_db "SELECT COALESCE(status, '') FROM item_media_link_sync_tasks WHERE item_id=${item_id};")"
+    if [[ "$task_status" == "COMPLETED" ]]; then
+      pass "retry task completed for item ${item_id}"
+      return 0
+    fi
+    sleep 2
+    elapsed=$((elapsed + 2))
+  done
+
+  local final_status
+  final_status="$(psql_query product_db "SELECT COALESCE(status, '') FROM item_media_link_sync_tasks WHERE item_id=${item_id};")"
+  fail "retry task completed for item ${item_id} (final_status=${final_status})"
+  return 1
+}
+
+run_extended_gateway_cases() {
+  local ts="$1"
+  local raw body status
+
+  echo "[INFO] running extended gateway/media resilience cases"
+
+  raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${GW_PORT}/bff/v1/products" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Token invalid-format" \
+    -d '{"item":{"title":"bad-auth"},"images":[]}' )"
+  body="$(extract_http_body "$raw")"
+  status="$(extract_http_status "$raw")"
+  ensure_http_status "bff malformed auth rejected status" "$status" "401"
+  ensure_json_failure "bff malformed auth rejected payload" "$body"
+  ensure_error_code "bff malformed auth error code" "$body" "GW-AUTH-001"
+
+  raw="$(curl -sS -w '\n%{http_code}' "http://127.0.0.1:${GW_PORT}/bff/v1/items?type=INVALID&size=20")"
+  body="$(extract_http_body "$raw")"
+  status="$(extract_http_status "$raw")"
+  ensure_http_status "bff invalid type rejected status" "$status" "400"
+  ensure_json_failure "bff invalid type rejected payload" "$body"
+  ensure_error_code "bff invalid type error code" "$body" "BFF-ITEM-400"
+
+  raw="$(curl -sS -w '\n%{http_code}' "http://127.0.0.1:${GW_PORT}/bff/v1/items?type=PRODUCT&size=101")"
+  body="$(extract_http_body "$raw")"
+  status="$(extract_http_status "$raw")"
+  ensure_http_status "bff invalid size rejected status" "$status" "400"
+  ensure_json_failure "bff invalid size rejected payload" "$body"
+  ensure_error_code "bff invalid size error code" "$body" "BFF-ITEM-400"
+
+  raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${GW_PORT}/api/v1/media/upload-intents" \
+    -H "Content-Type: application/json" \
+    -H "$(auth_header)" \
+    -d '{"fileName":"invalid-size.jpg","contentType":"image/jpeg","fileSize":0}')"
+  body="$(extract_http_body "$raw")"
+  status="$(extract_http_status "$raw")"
+  ensure_http_status "gateway media invalid fileSize rejected status" "$status" "400"
+  ensure_json_failure "gateway media invalid fileSize rejected payload" "$body"
+
+  local invalid_confirm_media_id invalid_confirm_upload_token invalid_confirm_presigned_url
+  local tmp_file file_size intent_raw intent_body intent_status put_status
+  tmp_file="$(mktemp)"
+  printf 'invalid-confirm-%s' "$ts" >"$tmp_file"
+  file_size="$(wc -c <"$tmp_file" | tr -d ' ')"
+  intent_raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${GW_PORT}/api/v1/media/upload-intents" \
+    -H "Content-Type: application/json" \
+    -H "$(auth_header)" \
+    -d "{\"fileName\":\"invalid-confirm.jpg\",\"contentType\":\"image/jpeg\",\"fileSize\":${file_size}}")"
+  intent_body="$(extract_http_body "$intent_raw")"
+  intent_status="$(extract_http_status "$intent_raw")"
+  ensure_http_status "invalid confirm setup upload-intent status" "$intent_status" "200"
+  ensure_json_success "invalid confirm setup upload-intent success" "$intent_body" || return 1
+  invalid_confirm_media_id="$(echo "$intent_body" | jq -r '.data.mediaId // empty')"
+  invalid_confirm_upload_token="$(echo "$intent_body" | jq -r '.data.uploadToken // empty')"
+  invalid_confirm_presigned_url="$(echo "$intent_body" | jq -r '.data.presignedUrl // empty')"
+  put_status="$(curl -sS -o /dev/null -w '%{http_code}' -X PUT "$invalid_confirm_presigned_url" \
+    -H "Content-Type: image/jpeg" \
+    --data-binary @"$tmp_file")"
+  if [[ "$put_status" == "200" || "$put_status" == "204" ]]; then
+    pass "invalid confirm setup presigned upload"
+  else
+    fail "invalid confirm setup presigned upload (status=${put_status})"
+  fi
+  raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${GW_PORT}/api/v1/media/confirm" \
+    -H "Content-Type: application/json" \
+    -H "$(auth_header)" \
+    -d "{\"mediaId\":${invalid_confirm_media_id},\"uploadToken\":\"${invalid_confirm_upload_token}x\"}")"
+  body="$(extract_http_body "$raw")"
+  status="$(extract_http_status "$raw")"
+  ensure_http_status "gateway media invalid upload token rejected status" "$status" "400"
+  ensure_json_failure "gateway media invalid upload token rejected payload" "$body"
+  ensure_error_code "gateway media invalid upload token error code" "$body" "MEDIA-004"
+  rm -f "$tmp_file"
+
+  probe_gateway_item_list_availability "gateway item list availability under normal condition" "PRODUCT" 15
+
+  local resilience_product_payload resilience_item_id
+  resilience_product_payload="$(cat <<JSON
+{"title":"GW Resilience Product ${ts}","description":"gateway resilience verify","price":18000,"storeId":${STORE_ID},"options":[{"optionName":"기본","additionalPrice":0,"stockQuantity":12}],"shippingInfo":{"shippingFee":3000,"freeShippingThreshold":30000,"estimatedDays":2,"returnPolicy":"7일 내 환불"}}
+JSON
+)"
+  resilience_item_id=""
+  bff_create_item products "$resilience_product_payload" "[]" resilience_item_id
+
+  local r1 r2 r3
+  r1=""
+  r2=""
+  r3=""
+  create_media_and_confirm_via_gateway r1 "resilience-m1"
+  create_media_and_confirm_via_gateway r2 "resilience-m2"
+  create_media_and_confirm_via_gateway r3 "resilience-m3"
+
+  local add_json
+  add_json="$(cat <<JSON
+[{"mediaId":${r1},"sortOrder":0,"isThumbnail":true},{"mediaId":${r2},"sortOrder":1,"isThumbnail":false},{"mediaId":${r3},"sortOrder":2,"isThumbnail":false}]
+JSON
+)"
+  bff_update_product "$resilience_item_id" "$add_json" "[]" "[]"
+  local before_reorder_detail thumb_id gallery1_id gallery2_id
+  before_reorder_detail="$(bff_get_item_detail PRODUCT "$resilience_item_id")"
+  ensure_json_success "resilience product detail before fault success" "$before_reorder_detail"
+  thumb_id="$(echo "$before_reorder_detail" | jq -r '.data.images.thumbnail.id // empty')"
+  gallery1_id="$(echo "$before_reorder_detail" | jq -r '.data.images.gallery[0].id // empty')"
+  gallery2_id="$(echo "$before_reorder_detail" | jq -r '.data.images.gallery[1].id // empty')"
+
+  stop_media_api
+  wait_media_unavailable "media-api unavailable after fault injection"
+
+  probe_gateway_item_list_availability "gateway item list availability while media down" "PRODUCT" 10
+
+  raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${GW_PORT}/api/v1/media/upload-intents" \
+    -H "Content-Type: application/json" \
+    -H "$(auth_header)" \
+    -d '{"fileName":"down.jpg","contentType":"image/jpeg","fileSize":3}' || true)"
+  body="$(extract_http_body "$raw")"
+  status="$(extract_http_status "$raw")"
+  ensure_http_status_prefix "gateway media write fails while media-api down status" "$status" "5"
+
+  local reorder_json
+  reorder_json="[${thumb_id},${gallery2_id},${gallery1_id}]"
+  bff_update_product "$resilience_item_id" "[]" "[]" "$reorder_json"
+
+  local retry_status
+  retry_status="$(psql_query product_db "SELECT COALESCE(status, '') FROM item_media_link_sync_tasks WHERE item_id=${resilience_item_id};")"
+  if [[ "$retry_status" == "PENDING" || "$retry_status" == "PROCESSING" ]]; then
+    pass "retry task created while media-api down (status=${retry_status})"
+  else
+    fail "retry task created while media-api down (status=${retry_status})"
+  fi
+
+  start_media_api
+  wait_health "media-api" "$MEDIA_PORT"
+  wait_retry_sync_completed "$resilience_item_id" 90
+
+  local sync_status active_links thumb_media gallery_csv expected_gallery_csv
+  sync_status="$(psql_query product_db "SELECT COALESCE(status, '') FROM item_media_link_sync_tasks WHERE item_id=${resilience_item_id};")"
+  active_links="$(psql_query media_db "SELECT count(*) FROM media_links WHERE owner_type='ITEM' AND owner_id=${resilience_item_id} AND deleted_at IS NULL;")"
+  thumb_media="$(psql_query media_db "SELECT COALESCE(MAX(media_id)::text, '') FROM media_links WHERE owner_type='ITEM' AND owner_id=${resilience_item_id} AND usage_type='THUMBNAIL' AND deleted_at IS NULL;")"
+  gallery_csv="$(psql_query media_db "SELECT COALESCE(string_agg(media_id::text, ',' ORDER BY sort_order), '') FROM media_links WHERE owner_type='ITEM' AND owner_id=${resilience_item_id} AND usage_type='GALLERY' AND deleted_at IS NULL;")"
+  expected_gallery_csv="${r3},${r2}"
+
+  if [[ "$sync_status" == "COMPLETED" ]]; then
+    pass "retry task final status completed"
+  else
+    fail "retry task final status completed (actual=${sync_status})"
+  fi
+  if [[ "$active_links" == "3" ]]; then
+    pass "media links restored after recovery"
+  else
+    fail "media links restored after recovery (actual=${active_links})"
+  fi
+  if [[ "$thumb_media" == "$r1" ]]; then
+    pass "thumbnail link preserved after recovery"
+  else
+    fail "thumbnail link preserved after recovery (actual=${thumb_media})"
+  fi
+  if [[ "$gallery_csv" == "$expected_gallery_csv" ]]; then
+    pass "gallery reorder reflected after recovery"
+  else
+    fail "gallery reorder reflected after recovery (actual=${gallery_csv}, expected=${expected_gallery_csv})"
+  fi
+}
+
 require_cmd curl
 require_cmd jq
 require_cmd docker
@@ -357,25 +676,7 @@ echo "[INFO] preparing infra"
 MEDIA_DOMAIN="$(resolve_media_domain)"
 echo "[INFO] media public domain: $MEDIA_DOMAIN"
 
-echo "[INFO] starting media-api"
-(
-  cd "$ROOT"
-  env \
-    GRADLE_USER_HOME="$GRADLE_USER_HOME" \
-    SERVER_PORT="$MEDIA_PORT" \
-    AWS_PROFILE="$AWS_PROFILE_NAME" \
-    AWS_REGION="$AWS_REGION_NAME" \
-    APP_SECURITY_CONTEXT_SIGNING_KEY="$SIGNING_KEY" \
-    APP_SECURITY_CONTEXT_MAX_AGE_MILLIS="$MAX_AGE" \
-    APP_GATEWAY_SECURITY_ENABLED=true \
-    APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN="$INTERNAL_AUTH_TOKEN" \
-    MEDIA_S3_REGION="$AWS_REGION_NAME" \
-    MEDIA_S3_BUCKET="$MEDIA_BUCKET" \
-    MEDIA_S3_KEY_PREFIX="$MEDIA_PREFIX" \
-    MEDIA_CLOUDFRONT_DOMAIN="$MEDIA_DOMAIN" \
-    ./gradlew :servers:services:media-api:bootRun --no-daemon >"$LOG_DIR/media-api.log" 2>&1
-) &
-PIDS+=("$!")
+start_media_api
 
 echo "[INFO] starting product-service"
 (
@@ -388,6 +689,10 @@ echo "[INFO] starting product-service"
     APP_GATEWAY_SECURITY_ENABLED=true \
     APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN="$INTERNAL_AUTH_TOKEN" \
     MEDIA_SERVICE_URL="http://127.0.0.1:${MEDIA_PORT}" \
+    APP_MEDIA_LINK_SYNC_RETRY_FIXED_DELAY_MS=2000 \
+    APP_MEDIA_LINK_SYNC_RETRY_BASE_DELAY_SECONDS=2 \
+    APP_MEDIA_LINK_SYNC_RETRY_MAX_DELAY_SECONDS=10 \
+    APP_MEDIA_LINK_SYNC_RETRY_STALE_SECONDS=20 \
     ./gradlew :servers:services:product:bootRun --no-daemon >"$LOG_DIR/product.log" 2>&1
 ) &
 PIDS+=("$!")
@@ -598,6 +903,10 @@ for t in PRODUCT GOODS PERFORMANCE; do
   ensure_http_status "bff item list(${t}) status" "$status" "200"
   ensure_json_success "bff item list(${t}) success" "$body"
 done
+
+if [[ "$RUN_EXTENDED_SCENARIOS" == "true" ]]; then
+  run_extended_gateway_cases "$ts"
+fi
 
 echo "[INFO] result passes=${PASSES} failures=${FAILURES}"
 if [[ "$FAILURES" -gt 0 ]]; then
