@@ -40,6 +40,8 @@ include("servers:services:stock")
 include("servers:services:funding")
 include("servers:services:sales")
 include("servers:services:hot-deal")
+include("servers:services:profile")
+
 
 // 테스트 서버
 include("servers:test:test-server")
