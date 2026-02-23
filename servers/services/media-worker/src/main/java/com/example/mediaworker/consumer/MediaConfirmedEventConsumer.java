@@ -2,6 +2,10 @@ package com.example.mediaworker.consumer;
 
 import com.example.core.util.JsonUtils;
 import com.example.mediaworker.dto.MediaEventMessage;
+import com.example.mediaworker.entity.MediaDerivativeProfile;
+import com.example.mediaworker.entity.MediaDerivativeTask;
+import com.example.mediaworker.service.MediaDerivativeTaskService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
@@ -9,7 +13,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class MediaConfirmedEventConsumer {
+
+    private static final long DEFAULT_MEDIA_VERSION = 1L;
+
+    private final MediaDerivativeTaskService mediaDerivativeTaskService;
 
     @KafkaListener(topics = "${media.worker.confirmed-topic:media.confirmed}", groupId = "${media.worker.group-id:media-worker-group}")
     @Transactional
@@ -20,10 +29,18 @@ public class MediaConfirmedEventConsumer {
                 log.warn("[MediaWorker] invalid event payload. payload={}", payload);
                 return;
             }
-            // TODO(#654, #656): 후속 워커 분리 시 ownerType 별 변환 파이프라인으로 라우팅한다.
-            log.info(
-                    "[MediaWorker] confirmed event received. mediaId={}, ownerType={}, ownerId={}, usageType={}, objectKey={}",
+            MediaDerivativeTask task = mediaDerivativeTaskService.enqueuePending(
                     event.getMediaId(),
+                    normalizeMediaVersion(event.getMediaVersion()),
+                    MediaDerivativeProfile.THUMBNAIL_WEBP,
+                    event.getEventId()
+            );
+            log.info(
+                    "[MediaWorker] confirmed event accepted. taskId={}, mediaId={}, profile={}, version={}, ownerType={}, ownerId={}, usageType={}, objectKey={}",
+                    task.getId(),
+                    task.getMediaId(),
+                    task.getDerivativeProfile(),
+                    task.getMediaVersion(),
                     event.getOwnerType(),
                     event.getOwnerId(),
                     event.getUsageType(),
@@ -40,5 +57,12 @@ public class MediaConfirmedEventConsumer {
                 && event.getEventId() != null
                 && event.getEventType() != null
                 && event.getMediaId() != null;
+    }
+
+    private long normalizeMediaVersion(Long mediaVersion) {
+        if (mediaVersion == null || mediaVersion < DEFAULT_MEDIA_VERSION) {
+            return DEFAULT_MEDIA_VERSION;
+        }
+        return mediaVersion;
     }
 }
