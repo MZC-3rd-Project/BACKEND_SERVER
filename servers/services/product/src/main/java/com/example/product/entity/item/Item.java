@@ -53,11 +53,12 @@ public class Item extends BaseEntity {
     @Column(name = "store_id")
     private Long storeId;
 
-    @Column(name = "thumbnail_url", length = 500)
-    private String thumbnailUrl;
+    @Column(name = "thumbnail_media_id")
+    private Long thumbnailMediaId;
 
     public static Item create(String title, String description, Long price,
-                              ItemType itemType, Long categoryId, Long sellerId, Long storeId, String thumbnailUrl) {
+                              ItemType itemType, Long categoryId, Long sellerId, Long storeId,
+                              Long thumbnailMediaId) {
         Item item = new Item();
         item.title = title;
         item.description = description;
@@ -67,16 +68,25 @@ public class Item extends BaseEntity {
         item.categoryId = categoryId;
         item.sellerId = sellerId;
         item.storeId = storeId;
-        item.thumbnailUrl = thumbnailUrl;
+        item.thumbnailMediaId = thumbnailMediaId;
         return item;
     }
 
-    public void update(String title, String description, Long price, Long categoryId, String thumbnailUrl) {
+    public void update(String title, String description, Long price, Long categoryId,
+                       Long thumbnailMediaId) {
         if (title != null) this.title = title;
         if (description != null) this.description = description;
         if (price != null) this.price = price;
         if (categoryId != null) this.categoryId = categoryId;
-        if (thumbnailUrl != null) this.thumbnailUrl = thumbnailUrl;
+        if (thumbnailMediaId != null) this.thumbnailMediaId = thumbnailMediaId;
+    }
+
+    public void updateThumbnail(Long thumbnailMediaId) {
+        this.thumbnailMediaId = thumbnailMediaId;
+    }
+
+    public void clearThumbnail() {
+        this.thumbnailMediaId = null;
     }
 
     public void changeStatus(ItemStatus newStatus) {

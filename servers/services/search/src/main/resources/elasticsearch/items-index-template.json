@@ -89,6 +89,16 @@
       "stock": {
         "type": "integer"
       },
+      "thumbnailMediaId": {
+        "type": "long"
+      },
+      "thumbnailUrlSnapshot": {
+        "type": "keyword",
+        "index": false
+      },
+      "mediaVersion": {
+        "type": "long"
+      },
       "stockVersion": {
         "type": "long"
       },

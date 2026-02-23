@@ -14,6 +14,8 @@ public class SearchItemResponse {
     private final Long price;
     private final String status;
     private final Integer stock;
+    private final Long thumbnailMediaId;
+    private final String thumbnailUrl;
 
     private final Double score;
     private final String highlightedTitle;

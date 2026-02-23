@@ -10,6 +10,7 @@ import com.example.product.dto.goods.request.ShippingInfoRequest;
 import com.example.product.dto.goods.response.GoodsDetailResponse;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.goods.ItemOption;
+import com.example.product.entity.image.ItemImage;
 import com.example.product.entity.item.ItemType;
 import com.example.product.entity.goods.ShippingInfo;
 import com.example.product.event.ItemCreatedEvent;
@@ -24,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -34,14 +36,21 @@ public class ProductCommandService {
     private final ItemOptionRepository itemOptionRepository;
     private final ShippingInfoRepository shippingInfoRepository;
     private final ItemImageRepository itemImageRepository;
+    private final MediaReferenceService mediaReferenceService;
+    private final ItemMediaLinkSyncService itemMediaLinkSyncService;
     private final EventPublisher eventPublisher;
 
     public GoodsDetailResponse createProduct(ProductCreateRequest request, Long sellerId) {
         // TODO: store-service 연동 후 sellerId-storeId 소유권 검증을 추가한다.
+        mediaReferenceService.resolveMediaUrl(request.getThumbnailMediaId());
         Item item = Item.create(
                 request.getTitle(), request.getDescription(), request.getPrice(),
-                ItemType.PRODUCT, request.getCategoryId(), sellerId, request.getStoreId(), request.getThumbnailUrl());
+                ItemType.PRODUCT, request.getCategoryId(), sellerId, request.getStoreId(),
+                request.getThumbnailMediaId());
         itemRepository.save(item);
+        if (request.getThumbnailMediaId() != null) {
+            syncItemThumbnail(item.getId(), request.getThumbnailMediaId());
+        }
 
         List<ItemOption> options = saveOptions(item.getId(), request.getOptions());
 
@@ -61,25 +70,46 @@ public class ProductCommandService {
                         item.getTitle(),
                         item.getItemType().name(),
                         item.getPrice(),
+                        item.getThumbnailMediaId(),
+                        System.currentTimeMillis(),
+                        item.getStatus().name(),
                         sellerId,
                         request.getStoreId(),
                         stockItems
                 ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
-        return GoodsDetailResponse.of(item, options, shippingInfo, List.of());
+        List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(item.getId());
+        return GoodsDetailResponse.of(item, options, shippingInfo, List.of(), images);
     }
 
     public GoodsDetailResponse updateProduct(Long itemId, ProductUpdateRequest request, Long sellerId) {
-        Item item = itemRepository.findById(itemId)
+        Item item = itemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
         item.validateOwnership(sellerId);
         if (!item.isEditable()) {
             throw new BusinessException(ProductErrorCode.ITEM_NOT_EDITABLE);
         }
 
-        item.update(request.getTitle(), request.getDescription(), request.getPrice(),
-                request.getCategoryId(), request.getThumbnailUrl());
+        boolean clearThumbnail = Boolean.TRUE.equals(request.getClearThumbnail());
+        Long thumbnailMediaId = request.getThumbnailMediaId();
+        if (clearThumbnail && thumbnailMediaId != null) {
+            throw new BusinessException(ProductErrorCode.INVALID_THUMBNAIL_UPDATE_REQUEST);
+        }
+
+        if (clearThumbnail) {
+            item.update(request.getTitle(), request.getDescription(), request.getPrice(),
+                    request.getCategoryId(), null);
+            item.clearThumbnail();
+            syncItemThumbnail(item.getId(), null, true);
+        } else {
+            mediaReferenceService.resolveMediaUrl(thumbnailMediaId);
+            item.update(request.getTitle(), request.getDescription(), request.getPrice(),
+                    request.getCategoryId(), thumbnailMediaId);
+            if (thumbnailMediaId != null) {
+                syncItemThumbnail(item.getId(), thumbnailMediaId);
+            }
+        }
 
         List<ItemOption> options = List.of();
         if (request.getOptions() != null) {
@@ -94,14 +124,21 @@ public class ProductCommandService {
         }
 
         eventPublisher.publish(
-                new ItemUpdatedEvent(item.getId(), item.getTitle(), item.getPrice()),
+                new ItemUpdatedEvent(
+                        item.getId(),
+                        item.getTitle(),
+                        item.getPrice(),
+                        item.getThumbnailMediaId(),
+                        System.currentTimeMillis()
+                ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
-        return GoodsDetailResponse.of(item, options, shippingInfo, List.of());
+        List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
+        return GoodsDetailResponse.of(item, options, shippingInfo, List.of(), images);
     }
 
     public void delete(Long itemId, Long sellerId) {
-        Item item = itemRepository.findById(itemId)
+        Item item = itemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
         item.validateOwnership(sellerId);
         if (!item.isDeletable()) {
@@ -112,6 +149,8 @@ public class ProductCommandService {
         itemOptionRepository.softDeleteAllByItemId(itemId);
         shippingInfoRepository.softDeleteByItemId(itemId);
         itemImageRepository.softDeleteAllByItemId(itemId);
+        item.clearThumbnail();
+        itemMediaLinkSyncService.clearAfterCommit(itemId);
     }
 
     private List<ItemOption> saveOptions(Long itemId, List<ItemOptionRequest> requests) {
@@ -127,5 +166,24 @@ public class ProductCommandService {
         ShippingInfo si = ShippingInfo.create(itemId, request.getShippingFee(),
                 request.getFreeShippingThreshold(), request.getEstimatedDays(), request.getReturnPolicy());
         return shippingInfoRepository.save(si);
+    }
+
+    private void syncItemThumbnail(Long itemId, Long thumbnailMediaId) {
+        syncItemThumbnail(itemId, thumbnailMediaId, false);
+    }
+
+    private void syncItemThumbnail(Long itemId, Long thumbnailMediaId, boolean forceClearWhenEmpty) {
+        List<Long> galleryMediaIds = itemImageRepository.findByItemIdOrderBySortOrder(itemId).stream()
+                .map(ItemImage::getMediaId)
+                .filter(mediaId -> thumbnailMediaId == null || !thumbnailMediaId.equals(mediaId))
+                .filter(Objects::nonNull)
+                .toList();
+        if (thumbnailMediaId == null && galleryMediaIds.isEmpty()) {
+            if (forceClearWhenEmpty) {
+                itemMediaLinkSyncService.clearAfterCommit(itemId);
+            }
+            return;
+        }
+        itemMediaLinkSyncService.syncAfterCommit(itemId, thumbnailMediaId, galleryMediaIds);
     }
 }

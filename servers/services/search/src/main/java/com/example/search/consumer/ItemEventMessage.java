@@ -16,6 +16,9 @@ public class ItemEventMessage {
     private String title;
     private String itemType;
     private Long price;
+    private Long thumbnailMediaId;
+    private Long mediaVersion;
+    private String status;
 
     private String previousStatus;
     private String newStatus;

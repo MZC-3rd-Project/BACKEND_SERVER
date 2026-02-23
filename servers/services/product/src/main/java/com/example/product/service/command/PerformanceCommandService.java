@@ -8,6 +8,7 @@ import com.example.product.dto.performance.request.PerformanceUpdateRequest;
 import com.example.product.dto.performance.response.PerformanceDetailResponse;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemType;
+import com.example.product.entity.image.ItemImage;
 import com.example.product.entity.performance.CastMember;
 import com.example.product.entity.performance.Performance;
 import com.example.product.entity.performance.SeatGrade;
@@ -20,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -31,14 +33,21 @@ public class PerformanceCommandService {
     private final SeatGradeRepository seatGradeRepository;
     private final CastMemberRepository castMemberRepository;
     private final ItemImageRepository itemImageRepository;
+    private final MediaReferenceService mediaReferenceService;
+    private final ItemMediaLinkSyncService itemMediaLinkSyncService;
     private final EventPublisher eventPublisher;
 
     public PerformanceDetailResponse create(PerformanceCreateRequest request, Long sellerId) {
         // TODO: store-service 연동 후 sellerId-storeId 소유권 검증을 추가한다.
+        mediaReferenceService.resolveMediaUrl(request.getThumbnailMediaId());
         Item item = Item.create(
                 request.getTitle(), request.getDescription(), request.getPrice(),
-                ItemType.PERFORMANCE, request.getCategoryId(), sellerId, request.getStoreId(), request.getThumbnailUrl());
+                ItemType.PERFORMANCE, request.getCategoryId(), sellerId, request.getStoreId(),
+                request.getThumbnailMediaId());
         itemRepository.save(item);
+        if (request.getThumbnailMediaId() != null) {
+            syncItemThumbnail(item.getId(), request.getThumbnailMediaId());
+        }
 
         Performance performance = Performance.create(
                 item.getId(), request.getVenue(), request.getPerformanceDate(),
@@ -71,13 +80,17 @@ public class PerformanceCommandService {
                         item.getTitle(),
                         item.getItemType().name(),
                         item.getPrice(),
+                        item.getThumbnailMediaId(),
+                        System.currentTimeMillis(),
+                        item.getStatus().name(),
                         sellerId,
                         request.getStoreId(),
                         stockItems
                 ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
-        return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers);
+        List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(item.getId());
+        return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers, images);
     }
 
     public PerformanceDetailResponse update(Long itemId, PerformanceUpdateRequest request, Long sellerId) {
@@ -87,8 +100,25 @@ public class PerformanceCommandService {
             throw new BusinessException(ProductErrorCode.ITEM_NOT_EDITABLE);
         }
 
-        item.update(request.getTitle(), request.getDescription(), request.getPrice(),
-                request.getCategoryId(), request.getThumbnailUrl());
+        boolean clearThumbnail = Boolean.TRUE.equals(request.getClearThumbnail());
+        Long thumbnailMediaId = request.getThumbnailMediaId();
+        if (clearThumbnail && thumbnailMediaId != null) {
+            throw new BusinessException(ProductErrorCode.INVALID_THUMBNAIL_UPDATE_REQUEST);
+        }
+
+        if (clearThumbnail) {
+            item.update(request.getTitle(), request.getDescription(), request.getPrice(),
+                    request.getCategoryId(), null);
+            item.clearThumbnail();
+            syncItemThumbnail(item.getId(), null, true);
+        } else {
+            mediaReferenceService.resolveMediaUrl(thumbnailMediaId);
+            item.update(request.getTitle(), request.getDescription(), request.getPrice(),
+                    request.getCategoryId(), thumbnailMediaId);
+            if (thumbnailMediaId != null) {
+                syncItemThumbnail(item.getId(), thumbnailMediaId);
+            }
+        }
 
         Performance performance = getPerformance(itemId);
         performance.update(request.getVenue(), request.getPerformanceDate(),
@@ -113,12 +143,19 @@ public class PerformanceCommandService {
         }
 
         eventPublisher.publish(
-                new ItemUpdatedEvent(item.getId(), item.getTitle(), item.getPrice()),
+                new ItemUpdatedEvent(
+                        item.getId(),
+                        item.getTitle(),
+                        item.getPrice(),
+                        item.getThumbnailMediaId(),
+                        System.currentTimeMillis()
+                ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
         List<SeatGrade> seatGrades = seatGradeRepository.findByPerformanceIdOrderByPriceDesc(performance.getId());
         List<CastMember> castMembers = castMemberRepository.findByPerformanceId(performance.getId());
-        return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers);
+        List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
+        return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers, images);
     }
 
     public void delete(Long itemId, Long sellerId) {
@@ -136,16 +173,37 @@ public class PerformanceCommandService {
             performanceRepository.softDeleteByItemId(itemId);
         }
         itemImageRepository.softDeleteAllByItemId(itemId);
+        item.clearThumbnail();
+        itemMediaLinkSyncService.clearAfterCommit(itemId);
     }
 
     private Item getItem(Long itemId) {
-        return itemRepository.findById(itemId)
+        return itemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
     }
 
     private Performance getPerformance(Long itemId) {
         return performanceRepository.findByItemId(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.PERFORMANCE_NOT_FOUND));
+    }
+
+    private void syncItemThumbnail(Long itemId, Long thumbnailMediaId) {
+        syncItemThumbnail(itemId, thumbnailMediaId, false);
+    }
+
+    private void syncItemThumbnail(Long itemId, Long thumbnailMediaId, boolean forceClearWhenEmpty) {
+        List<Long> galleryMediaIds = itemImageRepository.findByItemIdOrderBySortOrder(itemId).stream()
+                .map(ItemImage::getMediaId)
+                .filter(mediaId -> thumbnailMediaId == null || !thumbnailMediaId.equals(mediaId))
+                .filter(Objects::nonNull)
+                .toList();
+        if (thumbnailMediaId == null && galleryMediaIds.isEmpty()) {
+            if (forceClearWhenEmpty) {
+                itemMediaLinkSyncService.clearAfterCommit(itemId);
+            }
+            return;
+        }
+        itemMediaLinkSyncService.syncAfterCommit(itemId, thumbnailMediaId, galleryMediaIds);
     }
 
 }
