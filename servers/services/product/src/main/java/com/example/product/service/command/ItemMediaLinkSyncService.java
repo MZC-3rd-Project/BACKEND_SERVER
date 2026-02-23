@@ -14,6 +14,7 @@ import java.util.List;
 public class ItemMediaLinkSyncService {
 
     private final MediaReferenceService mediaReferenceService;
+    private final ItemMediaLinkSyncRetryService retryService;
 
     public void syncAfterCommit(Long itemId, Long thumbnailMediaId, List<Long> galleryMediaIds) {
         if (itemId == null || itemId <= 0) {
@@ -37,11 +38,14 @@ public class ItemMediaLinkSyncService {
     }
 
     private void executeSync(Long itemId, Long thumbnailMediaId, List<Long> galleryMediaIds) {
+        List<Long> safeGalleryMediaIds = galleryMediaIds == null ? List.of() : galleryMediaIds;
         try {
-            mediaReferenceService.syncItemMediaLinks(itemId, thumbnailMediaId, galleryMediaIds);
+            mediaReferenceService.syncItemMediaLinks(itemId, thumbnailMediaId, safeGalleryMediaIds);
+            retryService.markCompleted(itemId, thumbnailMediaId, safeGalleryMediaIds);
         } catch (Exception e) {
             log.error("Item media link sync failed after commit: itemId={}, thumbnailMediaId={}, gallerySize={}",
-                    itemId, thumbnailMediaId, galleryMediaIds == null ? 0 : galleryMediaIds.size(), e);
+                    itemId, thumbnailMediaId, safeGalleryMediaIds.size(), e);
+            retryService.enqueue(itemId, thumbnailMediaId, safeGalleryMediaIds, e.getMessage());
         }
     }
 }

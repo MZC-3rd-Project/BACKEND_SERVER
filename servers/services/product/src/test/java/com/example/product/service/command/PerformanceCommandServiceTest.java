@@ -54,7 +54,7 @@ class PerformanceCommandServiceTest {
         Item item = createItem(itemId, sellerId);
         Performance performance = createPerformance(100L, itemId);
 
-        when(itemRepository.findById(itemId)).thenReturn(Optional.of(item));
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
         when(performanceRepository.findByItemId(itemId)).thenReturn(Optional.of(performance));
 
         performanceCommandService.delete(itemId, sellerId);

@@ -36,7 +36,7 @@ public class PerformanceListResponse {
                 .title(item.getTitle())
                 .price(item.getPrice())
                 .status(item.getStatus().name())
-                .images(ItemImagesResponse.from(images))
+                .images(ItemImagesResponse.from(images, item.getThumbnailMediaId()))
                 .venue(perf.getVenue())
                 .performanceDate(perf.getPerformanceDate())
                 .performanceTime(perf.getPerformanceTime())

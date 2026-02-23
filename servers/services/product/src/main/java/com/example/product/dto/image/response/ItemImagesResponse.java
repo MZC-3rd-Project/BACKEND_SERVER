@@ -16,6 +16,10 @@ public class ItemImagesResponse {
     private List<ItemImageResponse> gallery;
 
     public static ItemImagesResponse from(List<ItemImage> images) {
+        return from(images, null);
+    }
+
+    public static ItemImagesResponse from(List<ItemImage> images, Long preferredThumbnailMediaId) {
         if (images == null || images.isEmpty()) {
             return ItemImagesResponse.builder()
                     .thumbnail(null)
@@ -29,26 +33,27 @@ public class ItemImagesResponse {
                         .thenComparing(ItemImage::getId, Comparator.nullsLast(Long::compareTo)))
                 .toList();
 
-        ItemImageResponse thumbnail = sorted.stream()
-                .filter(image -> Boolean.TRUE.equals(image.getIsThumbnail()))
+        ItemImage selectedThumbnail = sorted.stream()
+                .filter(image -> preferredThumbnailMediaId != null && Objects.equals(preferredThumbnailMediaId, image.getMediaId()))
                 .findFirst()
-                .map(ItemImageResponse::from)
                 .orElse(null);
+        if (selectedThumbnail == null) {
+            selectedThumbnail = sorted.stream()
+                    .filter(image -> Boolean.TRUE.equals(image.getIsThumbnail()))
+                    .findFirst()
+                    .orElse(null);
+        }
+        if (selectedThumbnail == null && !sorted.isEmpty()) {
+            selectedThumbnail = sorted.get(0);
+        }
+
+        ItemImageResponse thumbnail = selectedThumbnail != null ? ItemImageResponse.from(selectedThumbnail) : null;
+        Long selectedThumbnailId = selectedThumbnail != null ? selectedThumbnail.getId() : null;
 
         List<ItemImageResponse> gallery = sorted.stream()
-                .filter(image -> !Boolean.TRUE.equals(image.getIsThumbnail()))
+                .filter(image -> selectedThumbnailId == null || !Objects.equals(image.getId(), selectedThumbnailId))
                 .map(ItemImageResponse::from)
                 .toList();
-
-        if (thumbnail == null && !sorted.isEmpty()) {
-            ItemImage first = sorted.get(0);
-            thumbnail = ItemImageResponse.from(first);
-            Long fallbackThumbnailId = first.getId();
-            gallery = sorted.stream()
-                    .filter(image -> !Objects.equals(image.getId(), fallbackThumbnailId))
-                    .map(ItemImageResponse::from)
-                    .toList();
-        }
 
         return ItemImagesResponse.builder()
                 .thumbnail(thumbnail)

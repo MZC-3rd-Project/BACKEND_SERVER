@@ -50,7 +50,7 @@ class GoodsCommandServiceTest {
         Long sellerId = 10L;
         Item item = createItem(itemId, sellerId);
 
-        when(itemRepository.findById(itemId)).thenReturn(Optional.of(item));
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
 
         goodsCommandService.delete(itemId, sellerId);
 
