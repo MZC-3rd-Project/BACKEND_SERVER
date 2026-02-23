@@ -58,7 +58,7 @@ public class PerformanceDetailResponse {
                 .description(item.getDescription())
                 .price(item.getPrice())
                 .status(item.getStatus().name())
-                .images(ItemImagesResponse.from(images))
+                .images(ItemImagesResponse.from(images, item.getThumbnailMediaId()))
                 .categoryId(item.getCategoryId())
                 .sellerId(item.getSellerId())
                 .storeId(item.getStoreId())

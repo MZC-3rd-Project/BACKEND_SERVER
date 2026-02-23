@@ -81,7 +81,7 @@ public class ProductCommandService {
     }
 
     public GoodsDetailResponse updateProduct(Long itemId, ProductUpdateRequest request, Long sellerId) {
-        Item item = itemRepository.findById(itemId)
+        Item item = itemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
         item.validateOwnership(sellerId);
         if (!item.isEditable()) {
@@ -116,7 +116,7 @@ public class ProductCommandService {
     }
 
     public void delete(Long itemId, Long sellerId) {
-        Item item = itemRepository.findById(itemId)
+        Item item = itemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
         item.validateOwnership(sellerId);
         if (!item.isDeletable()) {

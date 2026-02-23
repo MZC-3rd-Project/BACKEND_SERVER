@@ -45,7 +45,7 @@ public class GoodsDetailResponse {
     public static GoodsDetailResponse of(Item item, List<ItemOption> options,
                                          ShippingInfo shippingInfo, List<Long> linkedIds,
                                          List<ItemImage> images) {
-        ItemImagesResponse imageResponse = ItemImagesResponse.from(images);
+        ItemImagesResponse imageResponse = ItemImagesResponse.from(images, item.getThumbnailMediaId());
 
         return GoodsDetailResponse.builder()
                 .id(item.getId())

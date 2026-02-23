@@ -35,7 +35,7 @@ public class ItemSummaryResponse {
                 .price(entity.getPrice())
                 .itemType(entity.getItemType().name())
                 .status(entity.getStatus().name())
-                .images(ItemImagesResponse.from(images))
+                .images(ItemImagesResponse.from(images, entity.getThumbnailMediaId()))
                 .sellerId(entity.getSellerId())
                 .storeId(entity.getStoreId())
                 .build();

@@ -156,7 +156,7 @@ public class PerformanceCommandService {
     }
 
     private Item getItem(Long itemId) {
-        return itemRepository.findById(itemId)
+        return itemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
     }
 
