@@ -25,6 +25,7 @@ GRADLE_USER_HOME="${GRADLE_USER_HOME:-/tmp/.gradle-codex}"
 PIDS=()
 PASSES=0
 FAILURES=0
+WARNINGS=0
 JWT_TOKEN=""
 MEDIA_API_PID=""
 RUN_EXTENDED_SCENARIOS="${RUN_EXTENDED_SCENARIOS:-true}"
@@ -37,6 +38,11 @@ pass() {
 fail() {
   FAILURES=$((FAILURES + 1))
   echo "[FAIL] $1"
+}
+
+warn() {
+  WARNINGS=$((WARNINGS + 1))
+  echo "[WARN] $1"
 }
 
 cleanup() {
@@ -351,6 +357,18 @@ bff_update_product() {
   ensure_json_success "bff update product(${item_id}) success" "$body" || return 1
 }
 
+bff_update_product_raw() {
+  local item_id="$1"
+  local add_images_json="$2"
+  local delete_ids_json="$3"
+  local reorder_ids_json="$4"
+
+  curl -sS -w '\n%{http_code}' -X PUT "http://127.0.0.1:${GW_PORT}/bff/v1/products/${item_id}" \
+    -H "Content-Type: application/json" \
+    -H "$(auth_header)" \
+    -d "{\"item\":{},\"addImages\":${add_images_json},\"deleteImageIds\":${delete_ids_json},\"reorderImageIds\":${reorder_ids_json}}"
+}
+
 bff_get_item_detail() {
   local type="$1"
   local item_id="$2"
@@ -480,11 +498,153 @@ wait_retry_sync_completed() {
   return 1
 }
 
+check_image_schema_guardrails() {
+  local has_item_media_unique has_item_sort_unique
+  has_item_media_unique="$(psql_query product_db "SELECT count(*) FROM pg_constraint WHERE conname='uk_item_images_item_media';")"
+  has_item_sort_unique="$(psql_query product_db "SELECT count(*) FROM pg_indexes WHERE schemaname='public' AND tablename='item_images' AND indexdef ILIKE 'CREATE UNIQUE INDEX%' AND indexdef LIKE '%(item_id, sort_order)%';")"
+
+  if [[ "$has_item_media_unique" -ge 1 ]]; then
+    pass "schema guardrail: item_images has unique(item_id, media_id)"
+  else
+    fail "schema guardrail: missing unique(item_id, media_id)"
+  fi
+
+  if [[ "$has_item_sort_unique" -ge 1 ]]; then
+    pass "schema guardrail: item_images has unique(item_id, sort_order)"
+  else
+    warn "schema gap: item_images unique(item_id, sort_order) missing"
+  fi
+}
+
+run_concurrent_product_update_case() {
+  local ts="$1"
+  local concurrent_item_id=""
+  local product_payload
+  product_payload="$(cat <<JSON
+{"title":"GW Concurrent Product ${ts}","description":"gateway concurrent update verify","price":19000,"storeId":${STORE_ID},"options":[{"optionName":"기본","additionalPrice":0,"stockQuantity":15}],"shippingInfo":{"shippingFee":3000,"freeShippingThreshold":30000,"estimatedDays":2,"returnPolicy":"7일 내 환불"}}
+JSON
+)"
+  bff_create_item products "$product_payload" "[]" concurrent_item_id
+
+  local c1 c2 c3
+  c1=""
+  c2=""
+  c3=""
+  create_media_and_confirm_via_gateway c1 "concurrent-m1"
+  create_media_and_confirm_via_gateway c2 "concurrent-m2"
+  create_media_and_confirm_via_gateway c3 "concurrent-m3"
+
+  local add_json
+  add_json="$(cat <<JSON
+[{"mediaId":${c1},"sortOrder":0,"isThumbnail":true},{"mediaId":${c2},"sortOrder":1,"isThumbnail":false},{"mediaId":${c3},"sortOrder":2,"isThumbnail":false}]
+JSON
+)"
+  bff_update_product "$concurrent_item_id" "$add_json" "[]" "[]"
+
+  local before_detail thumb_id gallery1_id gallery2_id
+  before_detail="$(bff_get_item_detail PRODUCT "$concurrent_item_id")"
+  ensure_json_success "concurrent baseline detail success" "$before_detail"
+  thumb_id="$(echo "$before_detail" | jq -r '.data.images.thumbnail.id // empty')"
+  gallery1_id="$(echo "$before_detail" | jq -r '.data.images.gallery[0].id // empty')"
+  gallery2_id="$(echo "$before_detail" | jq -r '.data.images.gallery[1].id // empty')"
+  if [[ -z "$thumb_id" || -z "$gallery1_id" || -z "$gallery2_id" ]]; then
+    fail "concurrent baseline precondition missing image ids"
+    return 1
+  fi
+
+  local reorder_a_json reorder_b_json
+  reorder_a_json="[${thumb_id},${gallery2_id},${gallery1_id}]"
+  reorder_b_json="[${thumb_id},${gallery1_id},${gallery2_id}]"
+
+  local tmp_a tmp_b raw_a raw_b body_a body_b status_a status_b
+  tmp_a="$(mktemp)"
+  tmp_b="$(mktemp)"
+
+  (bff_update_product_raw "$concurrent_item_id" "[]" "[]" "$reorder_a_json" >"$tmp_a") &
+  local pid_a=$!
+  (bff_update_product_raw "$concurrent_item_id" "[]" "[]" "$reorder_b_json" >"$tmp_b") &
+  local pid_b=$!
+  wait "$pid_a" || true
+  wait "$pid_b" || true
+
+  raw_a="$(cat "$tmp_a")"
+  raw_b="$(cat "$tmp_b")"
+  rm -f "$tmp_a" "$tmp_b"
+  body_a="$(extract_http_body "$raw_a")"
+  body_b="$(extract_http_body "$raw_b")"
+  status_a="$(extract_http_status "$raw_a")"
+  status_b="$(extract_http_status "$raw_b")"
+
+  ensure_http_status "concurrent update request A status" "$status_a" "200"
+  ensure_json_success "concurrent update request A success" "$body_a"
+  ensure_http_status "concurrent update request B status" "$status_b" "200"
+  ensure_json_success "concurrent update request B success" "$body_b"
+
+  local after_detail thumb_media gallery_csv expected_a expected_b
+  after_detail="$(bff_get_item_detail PRODUCT "$concurrent_item_id")"
+  ensure_json_success "concurrent final detail success" "$after_detail"
+  thumb_media="$(echo "$after_detail" | jq -r '.data.images.thumbnail.mediaId // empty')"
+  gallery_csv="$(echo "$after_detail" | jq -r '(.data.images.gallery // []) | map(.mediaId|tostring) | join(",")')"
+  expected_a="${c3},${c2}"
+  expected_b="${c2},${c3}"
+
+  if [[ "$thumb_media" == "$c1" ]]; then
+    pass "concurrent final thumbnail invariant preserved"
+  else
+    fail "concurrent final thumbnail invariant preserved (actual=${thumb_media})"
+  fi
+  if [[ "$gallery_csv" == "$expected_a" || "$gallery_csv" == "$expected_b" ]]; then
+    pass "concurrent final gallery order is one of winning writes"
+  else
+    fail "concurrent final gallery order is one of winning writes (actual=${gallery_csv})"
+  fi
+
+  local active_images duplicate_sort_orders thumbnail_count media_link_count media_gallery_dup_sort media_thumbnail_count
+  active_images="$(psql_query product_db "SELECT count(*) FROM item_images WHERE item_id=${concurrent_item_id} AND deleted_at IS NULL;")"
+  duplicate_sort_orders="$(psql_query product_db "SELECT count(*) FROM (SELECT sort_order FROM item_images WHERE item_id=${concurrent_item_id} AND deleted_at IS NULL GROUP BY sort_order HAVING count(*) > 1) t;")"
+  thumbnail_count="$(psql_query product_db "SELECT count(*) FROM item_images WHERE item_id=${concurrent_item_id} AND deleted_at IS NULL AND is_thumbnail = true;")"
+  media_link_count="$(psql_query media_db "SELECT count(*) FROM media_links WHERE owner_type='ITEM' AND owner_id=${concurrent_item_id} AND deleted_at IS NULL;")"
+  media_gallery_dup_sort="$(psql_query media_db "SELECT count(*) FROM (SELECT sort_order FROM media_links WHERE owner_type='ITEM' AND owner_id=${concurrent_item_id} AND usage_type='GALLERY' AND deleted_at IS NULL GROUP BY sort_order HAVING count(*) > 1) t;")"
+  media_thumbnail_count="$(psql_query media_db "SELECT count(*) FROM media_links WHERE owner_type='ITEM' AND owner_id=${concurrent_item_id} AND usage_type='THUMBNAIL' AND deleted_at IS NULL;")"
+
+  if [[ "$active_images" == "3" ]]; then
+    pass "concurrent db invariant: active item_images count is 3"
+  else
+    fail "concurrent db invariant: active item_images count is 3 (actual=${active_images})"
+  fi
+  if [[ "$duplicate_sort_orders" == "0" ]]; then
+    pass "concurrent db invariant: no duplicate item sort_order"
+  else
+    fail "concurrent db invariant: no duplicate item sort_order (actual=${duplicate_sort_orders})"
+  fi
+  if [[ "$thumbnail_count" == "1" ]]; then
+    pass "concurrent db invariant: single thumbnail flag"
+  else
+    fail "concurrent db invariant: single thumbnail flag (actual=${thumbnail_count})"
+  fi
+  if [[ "$media_link_count" == "3" ]]; then
+    pass "concurrent db invariant: active media_links count is 3"
+  else
+    fail "concurrent db invariant: active media_links count is 3 (actual=${media_link_count})"
+  fi
+  if [[ "$media_gallery_dup_sort" == "0" ]]; then
+    pass "concurrent db invariant: media gallery sort_order unique"
+  else
+    fail "concurrent db invariant: media gallery sort_order unique (actual=${media_gallery_dup_sort})"
+  fi
+  if [[ "$media_thumbnail_count" == "1" ]]; then
+    pass "concurrent db invariant: single media thumbnail link"
+  else
+    fail "concurrent db invariant: single media thumbnail link (actual=${media_thumbnail_count})"
+  fi
+}
+
 run_extended_gateway_cases() {
   local ts="$1"
   local raw body status
 
   echo "[INFO] running extended gateway/media resilience cases"
+  check_image_schema_guardrails
 
   raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${GW_PORT}/bff/v1/products" \
     -H "Content-Type: application/json" \
@@ -555,6 +715,7 @@ run_extended_gateway_cases() {
   rm -f "$tmp_file"
 
   probe_gateway_item_list_availability "gateway item list availability under normal condition" "PRODUCT" 15
+  run_concurrent_product_update_case "$ts"
 
   local resilience_product_payload resilience_item_id
   resilience_product_payload="$(cat <<JSON
@@ -908,7 +1069,7 @@ if [[ "$RUN_EXTENDED_SCENARIOS" == "true" ]]; then
   run_extended_gateway_cases "$ts"
 fi
 
-echo "[INFO] result passes=${PASSES} failures=${FAILURES}"
+echo "[INFO] result passes=${PASSES} failures=${FAILURES} warnings=${WARNINGS}"
 if [[ "$FAILURES" -gt 0 ]]; then
   exit 1
 fi
