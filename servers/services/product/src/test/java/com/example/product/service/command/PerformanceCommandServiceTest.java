@@ -76,8 +76,7 @@ class PerformanceCommandServiceTest {
                 null,
                 sellerId,
                 100L,
-                777L,
-                "https://thumbnail"
+                777L
         );
         ReflectionTestUtils.setField(item, "id", id);
         return item;

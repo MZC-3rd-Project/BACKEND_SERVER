@@ -35,4 +35,6 @@ public interface MediaLinkRepository extends JpaRepository<MediaLink, Long> {
     );
 
     Optional<MediaLink> findTopByMediaIdOrderByCreatedAtDesc(Long mediaId);
+
+    List<MediaLink> findByMediaIdInOrderByMediaIdAscCreatedAtDesc(List<Long> mediaIds);
 }

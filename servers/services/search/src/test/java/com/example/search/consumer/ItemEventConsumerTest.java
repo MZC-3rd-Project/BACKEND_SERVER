@@ -5,6 +5,7 @@ import com.example.search.service.metrics.SearchMetricsService;
 import com.example.search.service.index.SearchIndexingFailureService;
 import com.example.search.service.index.SearchIndexingService;
 import com.example.search.service.query.cache.SearchResultCacheService;
+import com.example.search.service.thumbnail.SearchThumbnailEnrichmentTaskService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -15,7 +16,10 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -37,6 +41,9 @@ class ItemEventConsumerTest {
 
     @Mock
     private SearchMetricsService searchMetricsService;
+
+    @Mock
+    private SearchThumbnailEnrichmentTaskService thumbnailEnrichmentTaskService;
 
     @InjectMocks
     private ItemEventConsumer itemEventConsumer;
@@ -62,7 +69,17 @@ class ItemEventConsumerTest {
 
         itemEventConsumer.consume(message);
 
-        verify(searchIndexingService).indexItem(101L, "아이폰 케이스", "GOODS", "GOODS", 25000L, null, 10);
+        verify(searchIndexingService).indexItem(
+                eq(101L),
+                eq("아이폰 케이스"),
+                eq("GOODS"),
+                eq("GOODS"),
+                eq(25000L),
+                eq("DRAFT"),
+                eq(10),
+                isNull(),
+                anyLong()
+        );
         verify(searchResultCacheService).evictAll();
     }
 
@@ -82,7 +99,13 @@ class ItemEventConsumerTest {
 
         itemEventConsumer.consume(message);
 
-        verify(searchIndexingService).updateItem(101L, "아이폰 케이스 2", 25000L);
+        verify(searchIndexingService).updateItem(
+                eq(101L),
+                eq("아이폰 케이스 2"),
+                eq(25000L),
+                isNull(),
+                anyLong()
+        );
         verify(searchResultCacheService).evictAll();
     }
 
@@ -136,7 +159,7 @@ class ItemEventConsumerTest {
         itemEventConsumer.consume(message);
 
         verify(idempotentConsumerService, never()).executeIdempotent(anyString(), anyString(), any());
-        verify(searchIndexingService, never()).indexItem(any(), any(), any(), any(), any(), any(), any());
+        verify(searchIndexingService, never()).indexItem(any(), any(), any(), any(), any(), any(), any(), any(), any());
         verify(searchResultCacheService, never()).evictAll();
     }
 

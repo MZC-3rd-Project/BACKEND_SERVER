@@ -7,10 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -25,19 +23,17 @@ public class MediaReferenceService {
         return mediaClient.getMediaUrl(mediaId);
     }
 
-    public Map<Long, String> resolveMediaUrlMap(Collection<Long> mediaIds) {
+    public void validateMediaReferences(Collection<Long> mediaIds) {
         if (mediaIds == null || mediaIds.isEmpty()) {
-            return Map.of();
+            return;
         }
-        Map<Long, String> result = new LinkedHashMap<>();
         LinkedHashSet<Long> uniqueIds = new LinkedHashSet<>(mediaIds);
         for (Long mediaId : uniqueIds) {
             if (mediaId == null) {
                 throw new BusinessException(ProductErrorCode.INVALID_MEDIA_REFERENCE);
             }
-            result.put(mediaId, resolveMediaUrl(mediaId));
+            resolveMediaUrl(mediaId);
         }
-        return result;
     }
 
     public void syncItemMediaLinks(Long itemId, Long thumbnailMediaId, List<Long> galleryMediaIds) {

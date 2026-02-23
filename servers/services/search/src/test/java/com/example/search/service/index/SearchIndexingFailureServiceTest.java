@@ -6,6 +6,7 @@ import com.example.search.entity.SearchIndexingFailure;
 import com.example.search.entity.SearchIndexingFailureStatus;
 import com.example.search.repository.SearchIndexingFailureRepository;
 import com.example.search.service.query.cache.SearchResultCacheService;
+import com.example.search.service.thumbnail.SearchThumbnailEnrichmentTaskService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,7 +18,9 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -33,6 +36,9 @@ class SearchIndexingFailureServiceTest {
     @Mock
     private SearchResultCacheService searchResultCacheService;
 
+    @Mock
+    private SearchThumbnailEnrichmentTaskService thumbnailEnrichmentTaskService;
+
     private SearchIndexingFailureService searchIndexingFailureService;
 
     @BeforeEach
@@ -40,7 +46,8 @@ class SearchIndexingFailureServiceTest {
         searchIndexingFailureService = new SearchIndexingFailureService(
                 failureRepository,
                 searchIndexingService,
-                searchResultCacheService
+                searchResultCacheService,
+                thumbnailEnrichmentTaskService
         );
     }
 
@@ -92,7 +99,13 @@ class SearchIndexingFailureServiceTest {
 
         IndexingFailureRetryResponse response = searchIndexingFailureService.retryFailure(1L);
 
-        verify(searchIndexingService).updateItem(101L, "아이폰 케이스 2", 25000L);
+        verify(searchIndexingService).updateItem(
+                eq(101L),
+                eq("아이폰 케이스 2"),
+                eq(25000L),
+                isNull(),
+                anyLong()
+        );
         verify(searchResultCacheService).evictAll();
         assertThat(response.getStatus()).isEqualTo(SearchIndexingFailureStatus.RESOLVED);
         assertThat(response.getRetryCount()).isEqualTo(1);

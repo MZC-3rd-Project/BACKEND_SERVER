@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -140,5 +141,54 @@ class MediaQueryServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(MediaErrorCode.MEDIA_NOT_READY);
+    }
+
+    @Test
+    void getMediaUrls_returnsOnlyAccessibleReadyMedia() {
+        MediaFile confirmed = MediaFile.createPending(
+                100L,
+                "ready.jpg",
+                "team2-donmoa-media/raw/2026/01/01/ready.jpg",
+                "team2-donmoa-media-raw",
+                "image/jpeg",
+                1024L,
+                null,
+                null,
+                null,
+                null,
+                "upload-token-ready",
+                LocalDateTime.now().plusMinutes(1)
+        );
+        ReflectionTestUtils.setField(confirmed, "id", 201L);
+        confirmed.confirm(1024L, "image/jpeg", "etag-ready", LocalDateTime.now());
+
+        MediaFile pending = MediaFile.createPending(
+                100L,
+                "pending.jpg",
+                "team2-donmoa-media/raw/2026/01/01/pending.jpg",
+                "team2-donmoa-media-raw",
+                "image/jpeg",
+                512L,
+                null,
+                null,
+                null,
+                null,
+                "upload-token-pending",
+                LocalDateTime.now().plusMinutes(1)
+        );
+        ReflectionTestUtils.setField(pending, "id", 202L);
+
+        MediaLink link = MediaLink.create(201L, MediaOwnerType.ITEM, 333L, MediaUsageType.THUMBNAIL, 0);
+
+        when(mediaFileRepository.findAllById(List.of(201L, 202L, 999L)))
+                .thenReturn(List.of(confirmed, pending));
+        when(mediaLinkRepository.findByMediaIdInOrderByMediaIdAscCreatedAtDesc(List.of(201L, 202L, 999L)))
+                .thenReturn(List.of(link));
+
+        List<MediaUrlResponse> responses = mediaQueryService.getMediaUrls(List.of(201L, 202L, 999L), 100L);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).getMediaId()).isEqualTo(201L);
+        assertThat(responses.get(0).getMediaUrl()).contains("cloudfront.net");
     }
 }

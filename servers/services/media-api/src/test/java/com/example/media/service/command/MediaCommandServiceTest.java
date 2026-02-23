@@ -104,7 +104,7 @@ class MediaCommandServiceTest {
     }
 
     @Test
-    void confirmUpload_withRequestedBinding_createsLinkAndPublishesEvent() {
+    void confirmUpload_withRequestedBinding_doesNotMutateLinksAndPublishesEvent() {
         MediaFile mediaFile = MediaFile.createPending(
                 100L,
                 "sample.jpg",
@@ -132,32 +132,21 @@ class MediaCommandServiceTest {
                 .eTag("\"etag-1\"")
                 .build());
         when(mediaFileRepository.save(any(MediaFile.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(mediaLinkRepository.findByOwnerTypeAndOwnerIdAndUsageTypeOrderBySortOrderAscCreatedAtAsc(
-                MediaOwnerType.ITEM, 200L, MediaUsageType.GALLERY
-        )).thenReturn(new ArrayList<>());
-        when(mediaLinkRepository.saveAll(anyList())).thenAnswer(invocation -> {
-            List<MediaLink> links = invocation.getArgument(0);
-            long seq = 10L;
-            for (MediaLink link : links) {
-                if (link.getId() == null) {
-                    ReflectionTestUtils.setField(link, "id", seq++);
-                }
-            }
-            return links;
-        });
+        when(mediaLinkRepository.findTopByMediaIdOrderByCreatedAtDesc(1L)).thenReturn(Optional.empty());
 
         UploadConfirmResponse response = mediaCommandService.confirmUpload(request, 100L);
 
         assertThat(response.getStatus()).isEqualTo("CONFIRMED");
-        assertThat(response.getOwnerType()).isEqualTo("ITEM");
-        assertThat(response.getOwnerId()).isEqualTo(200L);
-        assertThat(response.getUsageType()).isEqualTo("GALLERY");
-        assertThat(response.getSortOrder()).isEqualTo(0);
-        assertThat(response.getLinkId()).isNotNull();
+        assertThat(response.getOwnerType()).isNull();
+        assertThat(response.getOwnerId()).isNull();
+        assertThat(response.getUsageType()).isNull();
+        assertThat(response.getSortOrder()).isNull();
+        assertThat(response.getLinkId()).isNull();
         assertThat(response.getUrlAccessType()).isEqualTo("PUBLIC");
         assertThat(response.getUrlExpiresAt()).isNull();
         assertThat(response.getCacheControl()).isEqualTo(mediaUrlProperties.getDefaultCacheControl());
         verify(eventPublisher).publish(any(), any());
+        verify(mediaLinkRepository, never()).saveAll(anyList());
     }
 
     @Test
@@ -227,10 +216,7 @@ class MediaCommandServiceTest {
         ReflectionTestUtils.setField(request, "sortOrder", 0);
 
         when(mediaFileRepository.findById(31L)).thenReturn(Optional.of(mediaFile));
-        when(mediaLinkRepository.findByOwnerTypeAndOwnerIdAndUsageTypeOrderBySortOrderAscCreatedAtAsc(
-                MediaOwnerType.ITEM, 200L, MediaUsageType.THUMBNAIL
-        )).thenReturn(new ArrayList<>());
-        when(mediaLinkRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(mediaLinkRepository.findTopByMediaIdOrderByCreatedAtDesc(31L)).thenReturn(Optional.empty());
 
         UploadConfirmResponse response = mediaCommandService.confirmUpload(request, 100L);
 
@@ -239,6 +225,7 @@ class MediaCommandServiceTest {
         verify(s3Client, never()).headObject(any(HeadObjectRequest.class));
         verify(eventPublisher, never()).publish(any(), any());
         verify(mediaFileRepository, never()).save(any(MediaFile.class));
+        verify(mediaLinkRepository, never()).saveAll(anyList());
     }
 
     @Test
@@ -322,8 +309,7 @@ class MediaCommandServiceTest {
         ReflectionTestUtils.setField(link1, "id", 101L);
         ReflectionTestUtils.setField(link2, "id", 102L);
         ReflectionTestUtils.setField(link3, "id", 103L);
-        List<MediaLink> existingLinks = new ArrayList<>(List.of(link1, link2, link3));
-        List<MediaLink> syncedLinks = new ArrayList<>();
+        List<MediaLink> storedLinks = new ArrayList<>(List.of(link1, link2, link3));
 
         Map<Long, MediaFile> mediaFileMap = new HashMap<>();
         mediaFileMap.put(1L, createConfirmedMediaFile(1L, 100L));
@@ -341,7 +327,9 @@ class MediaCommandServiceTest {
                     .collect(Collectors.toList());
         });
         when(mediaLinkRepository.findByOwnerTypeAndOwnerIdOrderByCreatedAtAsc(MediaOwnerType.ITEM, 200L))
-                .thenAnswer(invocation -> syncedLinks.isEmpty() ? existingLinks : syncedLinks);
+                .thenAnswer(invocation -> storedLinks.stream()
+                        .filter(link -> !link.isDeleted())
+                        .toList());
         when(mediaLinkRepository.saveAll(anyList())).thenAnswer(invocation -> {
             List<MediaLink> saved = invocation.getArgument(0);
             long seq = 200L;
@@ -349,11 +337,10 @@ class MediaCommandServiceTest {
                 if (link.getId() == null) {
                     ReflectionTestUtils.setField(link, "id", seq++);
                 }
+                if (storedLinks.stream().noneMatch(existing -> existing.getId() != null && existing.getId().equals(link.getId()))) {
+                    storedLinks.add(link);
+                }
             }
-            syncedLinks.clear();
-            syncedLinks.addAll(saved.stream()
-                    .filter(link -> !link.isDeleted())
-                    .toList());
             return saved;
         });
 

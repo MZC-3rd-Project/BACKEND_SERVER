@@ -226,6 +226,8 @@ public class SearchQueryService {
                 .price(asLong(source.get("price")))
                 .status(asString(source.get("status")))
                 .stock(asInteger(source.get("stock")))
+                .thumbnailMediaId(asLong(source.get("thumbnailMediaId")))
+                .thumbnailUrl(asString(source.get("thumbnailUrlSnapshot")))
                 .score(asDouble(hit.get("_score")))
                 .highlightedTitle(firstHighlight(highlight, "title"))
                 .highlightedDescription(firstHighlight(highlight, "description"))

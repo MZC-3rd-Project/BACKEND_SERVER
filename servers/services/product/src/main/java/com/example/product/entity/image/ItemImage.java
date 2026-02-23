@@ -31,20 +31,16 @@ public class ItemImage extends BaseEntity {
     @Column(name = "media_id")
     private Long mediaId;
 
-    @Column(name = "image_url", nullable = false, length = 500)
-    private String imageUrl;
-
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;
 
     @Column(name = "is_thumbnail", nullable = false)
     private Boolean isThumbnail;
 
-    public static ItemImage create(Long itemId, Long mediaId, String imageUrl, int sortOrder, boolean isThumbnail) {
+    public static ItemImage create(Long itemId, Long mediaId, int sortOrder, boolean isThumbnail) {
         ItemImage img = new ItemImage();
         img.itemId = itemId;
         img.mediaId = mediaId;
-        img.imageUrl = imageUrl;
         img.sortOrder = sortOrder;
         img.isThumbnail = isThumbnail;
         return img;

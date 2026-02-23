@@ -1,6 +1,7 @@
 package com.example.product.service.command;
 
 import com.example.core.exception.BusinessException;
+import com.example.event.EventPublisher;
 import com.example.product.dto.image.request.ItemImageRequest;
 import com.example.product.dto.image.response.ItemImageResponse;
 import com.example.product.entity.image.ItemImage;
@@ -17,7 +18,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,6 +37,8 @@ class ItemImageCommandServiceTest {
     private MediaReferenceService mediaReferenceService;
     @Mock
     private ItemMediaLinkSyncService itemMediaLinkSyncService;
+    @Mock
+    private EventPublisher eventPublisher;
 
     @InjectMocks
     private ItemImageCommandService itemImageCommandService;
@@ -57,12 +59,10 @@ class ItemImageCommandServiceTest {
         ReflectionTestUtils.setField(second, "sortOrder", 0);
         ReflectionTestUtils.setField(second, "isThumbnail", true);
 
-        ItemImage image1 = createImage(11L, itemId, 101L, "https://image/101", 5, false);
-        ItemImage image2 = createImage(12L, itemId, 102L, "https://image/102", 0, true);
+        ItemImage image1 = createImage(11L, itemId, 101L, 5, false);
+        ItemImage image2 = createImage(12L, itemId, 102L, 0, true);
 
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
-        when(mediaReferenceService.resolveMediaUrlMap(List.of(101L, 102L)))
-                .thenReturn(Map.of(101L, "https://image/101", 102L, "https://image/102"));
         when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(List.of(image2, image1));
         when(itemImageRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -77,7 +77,9 @@ class ItemImageCommandServiceTest {
         assertThat(responses.get(1).getIsThumbnail()).isFalse();
         assertThat(item.getThumbnailMediaId()).isEqualTo(102L);
 
+        verify(mediaReferenceService).validateMediaReferences(List.of(101L, 102L));
         verify(itemMediaLinkSyncService).syncAfterCommit(itemId, 102L, List.of(101L));
+        verify(eventPublisher).publish(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -92,8 +94,8 @@ class ItemImageCommandServiceTest {
         ReflectionTestUtils.setField(request, "isThumbnail", true);
 
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
-        when(mediaReferenceService.resolveMediaUrlMap(List.of(101L)))
-                .thenThrow(new BusinessException(ProductErrorCode.INVALID_MEDIA_REFERENCE));
+        org.mockito.Mockito.doThrow(new BusinessException(ProductErrorCode.INVALID_MEDIA_REFERENCE))
+                .when(mediaReferenceService).validateMediaReferences(List.of(101L));
 
         assertThatThrownBy(() -> itemImageCommandService.addImages(itemId, List.of(request), sellerId))
                 .isInstanceOf(BusinessException.class)
@@ -109,8 +111,8 @@ class ItemImageCommandServiceTest {
         Long itemId = 1L;
         Long sellerId = 10L;
         Item item = createItem(itemId, sellerId);
-        ItemImage image1 = createImage(11L, itemId, 101L, "https://image/101", 0, true);
-        ItemImage image2 = createImage(12L, itemId, 102L, "https://image/102", 1, false);
+        ItemImage image1 = createImage(11L, itemId, 101L, 0, true);
+        ItemImage image2 = createImage(12L, itemId, 102L, 1, false);
 
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
         when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(List.of(image1, image2));
@@ -126,8 +128,8 @@ class ItemImageCommandServiceTest {
         Long itemId = 1L;
         Long sellerId = 10L;
         Item item = createItem(itemId, sellerId);
-        ItemImage thumbnail = createImage(11L, itemId, 101L, "https://image/101", 0, true);
-        ItemImage gallery = createImage(12L, itemId, 102L, "https://image/102", 1, false);
+        ItemImage thumbnail = createImage(11L, itemId, 101L, 0, true);
+        ItemImage gallery = createImage(12L, itemId, 102L, 1, false);
 
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
         when(itemImageRepository.findByItemIdOrderBySortOrder(itemId))
@@ -142,6 +144,7 @@ class ItemImageCommandServiceTest {
         assertThat(responses.get(1).getMediaId()).isEqualTo(101L);
         assertThat(responses.get(1).getSortOrder()).isEqualTo(1);
         verify(itemMediaLinkSyncService).syncAfterCommit(itemId, 101L, List.of(102L));
+        verify(eventPublisher).publish(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -149,7 +152,7 @@ class ItemImageCommandServiceTest {
         Long itemId = 1L;
         Long sellerId = 10L;
         Item item = createItem(itemId, sellerId);
-        ItemImage image = createImage(11L, itemId, 101L, "https://image/101", 0, true);
+        ItemImage image = createImage(11L, itemId, 101L, 0, true);
 
         when(itemImageRepository.findById(image.getId())).thenReturn(Optional.of(image));
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
@@ -159,6 +162,7 @@ class ItemImageCommandServiceTest {
 
         assertThat(item.getThumbnailMediaId()).isNull();
         verify(itemMediaLinkSyncService).syncAfterCommit(itemId, null, List.of());
+        verify(eventPublisher).publish(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
     @Test
@@ -166,8 +170,8 @@ class ItemImageCommandServiceTest {
         Long itemId = 2L;
         Long sellerId = 10L;
         Item item = createItem(itemId, sellerId);
-        ItemImage deletedThumbnail = createImage(21L, itemId, 201L, "https://image/201", 0, true);
-        ItemImage remaining = createImage(22L, itemId, 202L, "https://image/202", 1, false);
+        ItemImage deletedThumbnail = createImage(21L, itemId, 201L, 0, true);
+        ItemImage remaining = createImage(22L, itemId, 202L, 1, false);
 
         when(itemImageRepository.findById(deletedThumbnail.getId())).thenReturn(Optional.of(deletedThumbnail));
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
@@ -177,6 +181,7 @@ class ItemImageCommandServiceTest {
 
         assertThat(item.getThumbnailMediaId()).isEqualTo(202L);
         verify(itemMediaLinkSyncService).syncAfterCommit(itemId, 202L, List.of());
+        verify(eventPublisher).publish(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
     private Item createItem(Long id, Long sellerId) {
@@ -188,15 +193,14 @@ class ItemImageCommandServiceTest {
                 null,
                 sellerId,
                 100L,
-                999L,
-                "https://thumbnail"
+                999L
         );
         ReflectionTestUtils.setField(item, "id", id);
         return item;
     }
 
-    private ItemImage createImage(Long id, Long itemId, Long mediaId, String imageUrl, int sortOrder, boolean thumbnail) {
-        ItemImage image = ItemImage.create(itemId, mediaId, imageUrl, sortOrder, thumbnail);
+    private ItemImage createImage(Long id, Long itemId, Long mediaId, int sortOrder, boolean thumbnail) {
+        ItemImage image = ItemImage.create(itemId, mediaId, sortOrder, thumbnail);
         ReflectionTestUtils.setField(image, "id", id);
         return image;
     }
