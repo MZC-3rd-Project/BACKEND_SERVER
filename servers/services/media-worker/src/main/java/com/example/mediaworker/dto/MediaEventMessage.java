@@ -22,4 +22,5 @@ public class MediaEventMessage {
     private String usageType;
     private Integer sortOrder;
     private String mediaUrl;
+    private Long mediaVersion;
 }

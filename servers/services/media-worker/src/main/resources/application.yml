@@ -27,9 +27,27 @@ spring:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
 
 media:
+  s3:
+    region: ${MEDIA_S3_REGION:ap-northeast-2}
+    bucket: ${MEDIA_S3_BUCKET:team2-donmoa-media-raw}
+    key-prefix: ${MEDIA_S3_KEY_PREFIX:team2-donmoa-media}
+    cloudfront-domain: ${MEDIA_CLOUDFRONT_DOMAIN:}
   worker:
     group-id: ${MEDIA_WORKER_GROUP_ID:media-worker-group}
     confirmed-topic: ${MEDIA_CONFIRMED_TOPIC:media.confirmed}
+    derivative:
+      enabled: ${MEDIA_WORKER_DERIVATIVE_ENABLED:true}
+      thumbnail-max-width: ${MEDIA_WORKER_DERIVATIVE_THUMBNAIL_MAX_WIDTH:640}
+      thumbnail-max-height: ${MEDIA_WORKER_DERIVATIVE_THUMBNAIL_MAX_HEIGHT:640}
+      webp-quality: ${MEDIA_WORKER_DERIVATIVE_WEBP_QUALITY:0.82}
+    tasks:
+      batch-size: ${MEDIA_WORKER_TASK_BATCH_SIZE:20}
+      max-retry-count: ${MEDIA_WORKER_TASK_MAX_RETRY_COUNT:5}
+      dispatch-fixed-delay-ms: ${MEDIA_WORKER_TASK_DISPATCH_FIXED_DELAY_MS:3000}
+      stale-recovery-fixed-delay-ms: ${MEDIA_WORKER_TASK_STALE_RECOVERY_FIXED_DELAY_MS:30000}
+      stale-processing-seconds: ${MEDIA_WORKER_TASK_STALE_PROCESSING_SECONDS:180}
+      retry-initial-delay-seconds: ${MEDIA_WORKER_TASK_RETRY_INITIAL_DELAY_SECONDS:5}
+      retry-max-delay-seconds: ${MEDIA_WORKER_TASK_RETRY_MAX_DELAY_SECONDS:300}
 
 app:
   security:
