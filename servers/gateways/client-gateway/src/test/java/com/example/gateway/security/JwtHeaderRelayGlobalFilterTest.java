@@ -27,6 +27,36 @@ class JwtHeaderRelayGlobalFilterTest {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final List<String> JWT_REQUIRED_PATHS = List.of("/api/v1/chat", "/ws/chat");
+    private static final List<String> JWT_WRITE_REQUIRED_PATHS =
+            List.of(
+                    "/bff/v1",
+                    "/api/v1/media",
+                    "/api/products",
+                    "/api/goods",
+                    "/api/performances",
+                    "/api/items",
+                    "/api/categories",
+                    "/api/campaigns",
+                    "/api/v1/sales",
+                    "/api/v1/hot-deals",
+                    "/api/v1/notifications"
+            );
+    private static final List<String> RELAY_PATHS = List.of(
+            "/bff/v1",
+            "/api/v1/search",
+            "/api/v1/media",
+            "/api/v1/chat",
+            "/ws/chat",
+            "/api/products",
+            "/api/goods",
+            "/api/performances",
+            "/api/items",
+            "/api/categories",
+            "/api/campaigns",
+            "/api/v1/sales",
+            "/api/v1/hot-deals",
+            "/api/v1/notifications"
+    );
 
     @Test
     void filter_setsUserHeadersAndInternalAuthForChatRequest() {
@@ -121,10 +151,98 @@ class JwtHeaderRelayGlobalFilterTest {
         assertThat(forwardedRequest.getHeaders().getFirst(HttpHeaderNames.USER_ROLES)).isEqualTo("USER");
     }
 
+    @Test
+    void filter_returns401WhenProductWriteRequestHasNoJwt() {
+        JwtHeaderRelayGlobalFilter filter = createFilter("gw-internal-token", null);
+        MockServerHttpRequest request = MockServerHttpRequest.post("/api/products")
+                .header(HttpHeaderNames.USER_ID, "777")
+                .build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+        CapturingChain chain = new CapturingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertThat(chain.called).isFalse();
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void filter_returns401WhenMediaWriteRequestHasNoJwt() {
+        JwtHeaderRelayGlobalFilter filter = createFilter("gw-internal-token", null);
+        MockServerHttpRequest request = MockServerHttpRequest.post("/api/v1/media/upload-intents")
+                .header(HttpHeaderNames.USER_ID, "777")
+                .build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+        CapturingChain chain = new CapturingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertThat(chain.called).isFalse();
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void filter_returns401WhenBffWriteRequestHasNoJwt() {
+        JwtHeaderRelayGlobalFilter filter = createFilter("gw-internal-token", null);
+        MockServerHttpRequest request = MockServerHttpRequest.post("/bff/v1/products")
+                .header(HttpHeaderNames.USER_ID, "777")
+                .build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+        CapturingChain chain = new CapturingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertThat(chain.called).isFalse();
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void filter_allowsBffItemListReadWithoutJwtAndRemovesSpoofedHeaders() {
+        JwtHeaderRelayGlobalFilter filter = createFilter("gw-internal-token", null);
+        MockServerHttpRequest request = MockServerHttpRequest.get("/bff/v1/items")
+                .queryParam("type", "PRODUCT")
+                .header(HttpHeaderNames.USER_ID, "777")
+                .header(HttpHeaderNames.USER_ROLES, "ADMIN")
+                .build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+        CapturingChain chain = new CapturingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertThat(chain.called).isTrue();
+        ServerHttpRequest forwardedRequest = chain.exchange.getRequest();
+        assertThat(forwardedRequest.getHeaders().containsKey(HttpHeaderNames.USER_ID)).isFalse();
+        assertThat(forwardedRequest.getHeaders().containsKey(HttpHeaderNames.USER_ROLES)).isFalse();
+        assertThat(forwardedRequest.getHeaders().getFirst(HttpHeaderNames.GATEWAY_AUTH)).isEqualTo("gw-internal-token");
+    }
+
+    @Test
+    void filter_allowsProductReadWithoutJwtAndRemovesSpoofedHeaders() {
+        JwtHeaderRelayGlobalFilter filter = createFilter("gw-internal-token", null);
+        MockServerHttpRequest request = MockServerHttpRequest.get("/api/products/101")
+                .header(HttpHeaderNames.USER_ID, "777")
+                .header(HttpHeaderNames.USER_ROLES, "ADMIN")
+                .header(HttpHeaderNames.GATEWAY_CONTEXT, "spoofed")
+                .build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+        CapturingChain chain = new CapturingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertThat(chain.called).isTrue();
+        ServerHttpRequest forwardedRequest = chain.exchange.getRequest();
+        assertThat(forwardedRequest.getHeaders().containsKey(HttpHeaderNames.USER_ID)).isFalse();
+        assertThat(forwardedRequest.getHeaders().containsKey(HttpHeaderNames.USER_ROLES)).isFalse();
+        assertThat(forwardedRequest.getHeaders().containsKey(HttpHeaderNames.GATEWAY_CONTEXT)).isFalse();
+        assertThat(forwardedRequest.getHeaders().getFirst(HttpHeaderNames.GATEWAY_AUTH)).isEqualTo("gw-internal-token");
+    }
+
     private JwtHeaderRelayGlobalFilter createFilter(String internalToken, HmacSigner signer) {
         GatewaySecurityProperties properties = new GatewaySecurityProperties();
         properties.setInternalAuthToken(internalToken);
+        properties.setRelayPathPrefixes(RELAY_PATHS);
         properties.setRequireJwtPathPrefixes(JWT_REQUIRED_PATHS);
+        properties.setRequireJwtWritePathPrefixes(JWT_WRITE_REQUIRED_PATHS);
 
         StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
         if (signer != null) {

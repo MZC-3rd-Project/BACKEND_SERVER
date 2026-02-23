@@ -230,7 +230,7 @@ psql_exec notification_db "TRUNCATE TABLE notification_deliveries, notifications
 pass "test data reset"
 
 # seed product items for inquiry room + campaigns
-psql_exec product_db "INSERT INTO items (id, title, description, price, item_type, status, category_id, seller_id, thumbnail_url, created_at, updated_at, deleted_at) VALUES (910001, 'E2E 문의 상품', 'chat inquiry e2e', 10000, 'PRODUCT', 'ON_SALE', NULL, 3001, NULL, NOW(), NOW(), NULL), (910002, 'E2E 펀딩 상품', 'chat funding e2e', 15000, 'PRODUCT', 'ON_SALE', NULL, 3001, NULL, NOW(), NOW(), NULL);"
+psql_exec product_db "INSERT INTO items (id, title, description, price, item_type, status, category_id, seller_id, created_at, updated_at, deleted_at) VALUES (910001, 'E2E 문의 상품', 'chat inquiry e2e', 10000, 'PRODUCT', 'ON_SALE', NULL, 3001, NOW(), NOW(), NULL), (910002, 'E2E 펀딩 상품', 'chat funding e2e', 15000, 'PRODUCT', 'ON_SALE', NULL, 3001, NOW(), NOW(), NULL);"
 pass "seeded product items"
 
 PRODUCT_INTERNAL=$(curl -sS "http://127.0.0.1:8084/internal/v1/items/910001")

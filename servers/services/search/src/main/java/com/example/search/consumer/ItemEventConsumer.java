@@ -5,6 +5,7 @@ import com.example.core.util.JsonUtils;
 import com.example.search.service.metrics.SearchMetricsService;
 import com.example.search.service.index.SearchIndexingService;
 import com.example.search.service.index.SearchIndexingFailureService;
+import com.example.search.service.thumbnail.SearchThumbnailEnrichmentTaskService;
 import com.example.search.service.query.cache.SearchResultCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,12 +22,14 @@ import java.util.Locale;
 public class ItemEventConsumer {
 
     private static final String IDEMPOTENT_EVENT_TYPE = "ITEM_EVENT";
+    private static final String DEFAULT_ITEM_STATUS = "DRAFT";
 
     private final IdempotentConsumerService idempotentConsumerService;
     private final SearchIndexingService searchIndexingService;
     private final SearchResultCacheService searchResultCacheService;
     private final SearchIndexingFailureService searchIndexingFailureService;
     private final SearchMetricsService searchMetricsService;
+    private final SearchThumbnailEnrichmentTaskService thumbnailEnrichmentTaskService;
 
     @KafkaListener(topics = "item-events", groupId = "${spring.kafka.consumer.group-id}")
     @Transactional
@@ -73,6 +76,8 @@ public class ItemEventConsumer {
 
     private void handleItemCreated(ItemEventMessage event) {
         Integer initialStock = sumStock(event.getStockItems());
+        String initialStatus = resolveInitialStatus(event);
+        Long mediaVersion = resolveMediaVersion(event);
 
         searchIndexingService.indexItem(
                 event.getItemId(),
@@ -80,14 +85,25 @@ public class ItemEventConsumer {
                 event.getItemType(),
                 event.getItemType(),
                 event.getPrice(),
-                event.getNewStatus(),
-                initialStock
+                initialStatus,
+                initialStock,
+                event.getThumbnailMediaId(),
+                mediaVersion
         );
+        scheduleThumbnailEnrichment(event.getItemId(), event.getThumbnailMediaId(), mediaVersion);
         searchResultCacheService.evictAll();
     }
 
     private void handleItemUpdated(ItemEventMessage event) {
-        searchIndexingService.updateItem(event.getItemId(), event.getTitle(), event.getPrice());
+        Long mediaVersion = resolveMediaVersion(event);
+        searchIndexingService.updateItem(
+                event.getItemId(),
+                event.getTitle(),
+                event.getPrice(),
+                event.getThumbnailMediaId(),
+                mediaVersion
+        );
+        scheduleThumbnailEnrichment(event.getItemId(), event.getThumbnailMediaId(), mediaVersion);
         searchResultCacheService.evictAll();
     }
 
@@ -102,6 +118,7 @@ public class ItemEventConsumer {
 
     private void handleItemDeleted(ItemEventMessage event) {
         searchIndexingService.deleteItem(event.getItemId());
+        thumbnailEnrichmentTaskService.removeTask(event.getItemId());
         searchResultCacheService.evictAll();
     }
 
@@ -117,5 +134,36 @@ public class ItemEventConsumer {
 
     private String normalizeEventType(String eventType) {
         return eventType == null ? "" : eventType.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String resolveInitialStatus(ItemEventMessage event) {
+        if (event == null) {
+            return DEFAULT_ITEM_STATUS;
+        }
+        if (event.getStatus() != null) {
+            return event.getStatus();
+        }
+        if (event.getNewStatus() != null) {
+            return event.getNewStatus();
+        }
+        return DEFAULT_ITEM_STATUS;
+    }
+
+    private void scheduleThumbnailEnrichment(Long itemId, Long thumbnailMediaId, Long mediaVersion) {
+        if (itemId == null) {
+            return;
+        }
+        if (thumbnailMediaId == null || mediaVersion == null) {
+            thumbnailEnrichmentTaskService.removeTask(itemId);
+            return;
+        }
+        thumbnailEnrichmentTaskService.enqueue(itemId, thumbnailMediaId, mediaVersion);
+    }
+
+    private Long resolveMediaVersion(ItemEventMessage event) {
+        if (event != null && event.getMediaVersion() != null && event.getMediaVersion() > 0) {
+            return event.getMediaVersion();
+        }
+        return System.currentTimeMillis();
     }
 }

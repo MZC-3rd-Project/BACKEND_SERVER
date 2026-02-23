@@ -10,6 +10,7 @@ import org.elasticsearch.client.Request;
 import org.elasticsearch.client.ResponseException;
 import org.elasticsearch.client.RestClient;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.time.Instant;
@@ -32,7 +33,9 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
                           String domainType,
                           Long price,
                           String status,
-                          Integer stock) {
+                          Integer stock,
+                          Long thumbnailMediaId,
+                          Long mediaVersion) {
         Map<String, Object> document = new LinkedHashMap<>();
         document.put("itemId", itemId);
         putIfNotNull(document, "title", title);
@@ -41,6 +44,8 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         putIfNotNull(document, "price", price);
         putIfNotNull(document, "status", status);
         putIfNotNull(document, "stock", stock);
+        putIfNotNull(document, "thumbnailMediaId", thumbnailMediaId);
+        putIfNotNull(document, "mediaVersion", mediaVersion);
         document.put("createdAt", Instant.now().toString());
 
         Request request = new Request("PUT", endpointForDoc(itemId));
@@ -49,12 +54,50 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
     }
 
     @Override
-    public void updateItem(Long itemId, String title, Long price) {
-        Map<String, Object> partial = new LinkedHashMap<>();
-        putIfNotNull(partial, "title", title);
-        putIfNotNull(partial, "price", price);
+    public void updateItem(Long itemId, String title, Long price, Long thumbnailMediaId, Long mediaVersion) {
+        if (itemId == null) {
+            return;
+        }
 
-        updatePartial(itemId, partial, "ITEM_UPDATED");
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("itemId", itemId);
+        params.put("title", title);
+        params.put("price", price);
+        params.put("thumbnailMediaId", thumbnailMediaId);
+        params.put("mediaVersion", mediaVersion);
+
+        Map<String, Object> script = new LinkedHashMap<>();
+        script.put("lang", "painless");
+        script.put("source",
+                "ctx._source.itemId = params.itemId; " +
+                        "if (params.title != null) { ctx._source.title = params.title; } " +
+                        "if (params.price != null) { ctx._source.price = params.price; } " +
+                        "boolean thumbnailChanged = " +
+                        "(ctx._source.thumbnailMediaId == null && params.thumbnailMediaId != null) || " +
+                        "(ctx._source.thumbnailMediaId != null && !ctx._source.thumbnailMediaId.equals(params.thumbnailMediaId)); " +
+                        "if (thumbnailChanged) { " +
+                        "ctx._source.thumbnailMediaId = params.thumbnailMediaId; " +
+                        "ctx._source.thumbnailUrlSnapshot = null; " +
+                        "if (params.mediaVersion != null) { ctx._source.mediaVersion = params.mediaVersion; } " +
+                        "}");
+        script.put("params", params);
+
+        Map<String, Object> upsert = new LinkedHashMap<>();
+        upsert.put("itemId", itemId);
+        putIfNotNull(upsert, "title", title);
+        putIfNotNull(upsert, "price", price);
+        putIfNotNull(upsert, "thumbnailMediaId", thumbnailMediaId);
+        putIfNotNull(upsert, "mediaVersion", mediaVersion);
+        upsert.put("createdAt", Instant.now().toString());
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("script", script);
+        body.put("scripted_upsert", true);
+        body.put("upsert", upsert);
+
+        Request request = new Request("POST", endpointForUpdate(itemId));
+        request.setJsonEntity(JsonUtils.toJson(body));
+        performRequest(request, itemId, "ITEM_UPDATED");
     }
 
     @Override
@@ -100,6 +143,37 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         Request request = new Request("POST", endpointForUpdate(itemId));
         request.setJsonEntity(JsonUtils.toJson(body));
         performRequestAllowMissing(request, itemId, "ITEM_AVAILABLE_STOCK_CHANGED");
+    }
+
+    @Override
+    public void updateThumbnailSnapshot(Long itemId, Long thumbnailMediaId, String thumbnailUrlSnapshot, Long mediaVersion) {
+        if (itemId == null || thumbnailMediaId == null || mediaVersion == null || !StringUtils.hasText(thumbnailUrlSnapshot)) {
+            return;
+        }
+
+        Map<String, Object> params = new LinkedHashMap<>();
+        params.put("thumbnailMediaId", thumbnailMediaId);
+        params.put("thumbnailUrlSnapshot", thumbnailUrlSnapshot);
+        params.put("mediaVersion", mediaVersion);
+
+        Map<String, Object> script = new LinkedHashMap<>();
+        script.put("lang", "painless");
+        script.put("source",
+                "boolean sameMedia = ctx._source.thumbnailMediaId != null && " +
+                        "ctx._source.thumbnailMediaId.equals(params.thumbnailMediaId); " +
+                        "boolean sameVersion = ctx._source.mediaVersion != null && " +
+                        "ctx._source.mediaVersion.equals(params.mediaVersion); " +
+                        "if (sameMedia && sameVersion) { " +
+                        "ctx._source.thumbnailUrlSnapshot = params.thumbnailUrlSnapshot; " +
+                        "} else { ctx.op = 'none'; }");
+        script.put("params", params);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("script", script);
+
+        Request request = new Request("POST", endpointForUpdate(itemId));
+        request.setJsonEntity(JsonUtils.toJson(body));
+        performRequestAllowMissing(request, itemId, "THUMBNAIL_URL_ENRICHED");
     }
 
     @Override

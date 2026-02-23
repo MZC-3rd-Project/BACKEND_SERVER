@@ -63,6 +63,16 @@ app:
     datacenter-id: ${SNOWFLAKE_DATACENTER_ID:1}
     worker-id: ${SNOWFLAKE_WORKER_ID:4}
 
+  service:
+    media-url: ${MEDIA_SERVICE_URL:http://localhost:8094}
+
+  media-link-sync-retry:
+    fixed-delay-ms: ${APP_MEDIA_LINK_SYNC_RETRY_FIXED_DELAY_MS:30000}
+    processing-stale-threshold-seconds: ${APP_MEDIA_LINK_SYNC_RETRY_STALE_SECONDS:120}
+    max-retry-count: ${APP_MEDIA_LINK_SYNC_RETRY_MAX_RETRY_COUNT:7}
+    base-delay-seconds: ${APP_MEDIA_LINK_SYNC_RETRY_BASE_DELAY_SECONDS:30}
+    max-delay-seconds: ${APP_MEDIA_LINK_SYNC_RETRY_MAX_DELAY_SECONDS:600}
+
   # ─── OpenAPI ──────────────────────────────────
   openapi:
     enabled: ${OPENAPI_ENABLED:true}

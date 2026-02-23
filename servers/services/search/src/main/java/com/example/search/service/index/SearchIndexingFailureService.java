@@ -10,6 +10,7 @@ import com.example.search.entity.SearchIndexingFailureStatus;
 import com.example.search.exception.SearchErrorCode;
 import com.example.search.repository.SearchIndexingFailureRepository;
 import com.example.search.service.query.cache.SearchResultCacheService;
+import com.example.search.service.thumbnail.SearchThumbnailEnrichmentTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,9 +26,12 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class SearchIndexingFailureService {
 
+    private static final String DEFAULT_ITEM_STATUS = "DRAFT";
+
     private final SearchIndexingFailureRepository failureRepository;
     private final SearchIndexingService searchIndexingService;
     private final SearchResultCacheService searchResultCacheService;
+    private final SearchThumbnailEnrichmentTaskService thumbnailEnrichmentTaskService;
 
     @Transactional
     public void recordItemEventFailure(ItemEventMessage event, String rawMessage, Exception e) {
@@ -85,20 +89,32 @@ public class SearchIndexingFailureService {
     private void replayItemCreated(String payload) {
         ItemEventMessage event = JsonUtils.fromJson(payload, ItemEventMessage.class);
         Integer initialStock = sumStock(event.getStockItems());
+        Long mediaVersion = resolveMediaVersion(event);
         searchIndexingService.indexItem(
                 event.getItemId(),
                 event.getTitle(),
                 event.getItemType(),
                 event.getItemType(),
                 event.getPrice(),
-                event.getNewStatus(),
-                initialStock
+                resolveInitialStatus(event),
+                initialStock,
+                event.getThumbnailMediaId(),
+                mediaVersion
         );
+        scheduleThumbnailEnrichment(event.getItemId(), event.getThumbnailMediaId(), mediaVersion);
     }
 
     private void replayItemUpdated(String payload) {
         ItemEventMessage event = JsonUtils.fromJson(payload, ItemEventMessage.class);
-        searchIndexingService.updateItem(event.getItemId(), event.getTitle(), event.getPrice());
+        Long mediaVersion = resolveMediaVersion(event);
+        searchIndexingService.updateItem(
+                event.getItemId(),
+                event.getTitle(),
+                event.getPrice(),
+                event.getThumbnailMediaId(),
+                mediaVersion
+        );
+        scheduleThumbnailEnrichment(event.getItemId(), event.getThumbnailMediaId(), mediaVersion);
     }
 
     private void replayItemStatusChanged(String payload) {
@@ -109,6 +125,7 @@ public class SearchIndexingFailureService {
     private void replayItemDeleted(String payload) {
         ItemEventMessage event = JsonUtils.fromJson(payload, ItemEventMessage.class);
         searchIndexingService.deleteItem(event.getItemId());
+        thumbnailEnrichmentTaskService.removeTask(event.getItemId());
     }
 
     private void replayStockDecreased(String payload) {
@@ -181,5 +198,36 @@ public class SearchIndexingFailureService {
             return "unknown";
         }
         return e.getMessage();
+    }
+
+    private String resolveInitialStatus(ItemEventMessage event) {
+        if (event == null) {
+            return DEFAULT_ITEM_STATUS;
+        }
+        if (StringUtils.hasText(event.getStatus())) {
+            return event.getStatus();
+        }
+        if (StringUtils.hasText(event.getNewStatus())) {
+            return event.getNewStatus();
+        }
+        return DEFAULT_ITEM_STATUS;
+    }
+
+    private void scheduleThumbnailEnrichment(Long itemId, Long thumbnailMediaId, Long mediaVersion) {
+        if (itemId == null) {
+            return;
+        }
+        if (thumbnailMediaId == null || mediaVersion == null) {
+            thumbnailEnrichmentTaskService.removeTask(itemId);
+            return;
+        }
+        thumbnailEnrichmentTaskService.enqueue(itemId, thumbnailMediaId, mediaVersion);
+    }
+
+    private Long resolveMediaVersion(ItemEventMessage event) {
+        if (event != null && event.getMediaVersion() != null && event.getMediaVersion() > 0) {
+            return event.getMediaVersion();
+        }
+        return System.currentTimeMillis();
     }
 }

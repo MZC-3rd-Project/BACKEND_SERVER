@@ -12,14 +12,16 @@ public class ItemImageResponse {
     @SnowflakeId
     private Long id;
 
-    private String imageUrl;
+    @SnowflakeId
+    private Long mediaId;
+
     private Integer sortOrder;
     private Boolean isThumbnail;
 
     public static ItemImageResponse from(ItemImage entity) {
         return ItemImageResponse.builder()
                 .id(entity.getId())
-                .imageUrl(entity.getImageUrl())
+                .mediaId(entity.getMediaId())
                 .sortOrder(entity.getSortOrder())
                 .isThumbnail(entity.getIsThumbnail())
                 .build();

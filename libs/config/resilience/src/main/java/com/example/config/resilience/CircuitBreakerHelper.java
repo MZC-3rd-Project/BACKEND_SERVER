@@ -7,6 +7,7 @@ import io.github.resilience4j.retry.RetryRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.concurrent.Callable;
 import java.util.function.Supplier;
 
 @Slf4j
@@ -38,12 +39,38 @@ public class CircuitBreakerHelper {
         return Retry.decorateSupplier(retry, supplier).get();
     }
 
+    public <T> T executeWithRetry(String name, Callable<T> callable) {
+        Retry retry = retryRegistry.retry(name);
+        Callable<T> decorated = Retry.decorateCallable(retry, callable);
+        try {
+            return decorated.call();
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public <T> T executeWithCircuitBreakerAndRetry(String name, Supplier<T> supplier) {
         CircuitBreaker cb = circuitBreakerRegistry.circuitBreaker(name);
         Retry retry = retryRegistry.retry(name);
         Supplier<T> decorated = Retry.decorateSupplier(retry,
                 CircuitBreaker.decorateSupplier(cb, supplier));
         return decorated.get();
+    }
+
+    public <T> T executeWithCircuitBreakerAndRetry(String name, Callable<T> callable) {
+        CircuitBreaker cb = circuitBreakerRegistry.circuitBreaker(name);
+        Retry retry = retryRegistry.retry(name);
+        Callable<T> decorated = Retry.decorateCallable(retry,
+                CircuitBreaker.decorateCallable(cb, callable));
+        try {
+            return decorated.call();
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public <T> T executeWithCircuitBreakerAndRetry(String name, Supplier<T> supplier, Supplier<T> fallback) {
