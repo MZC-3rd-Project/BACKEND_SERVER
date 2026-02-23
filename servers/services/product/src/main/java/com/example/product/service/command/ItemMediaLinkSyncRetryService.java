@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
@@ -33,6 +35,7 @@ public class ItemMediaLinkSyncRetryService {
     @Value("${app.media-link-sync-retry.max-delay-seconds:600}")
     private long maxDelaySeconds;
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void enqueue(Long itemId, Long thumbnailMediaId, List<Long> galleryMediaIds, String errorMessage) {
         if (itemId == null || itemId <= 0) {
             return;
@@ -48,6 +51,7 @@ public class ItemMediaLinkSyncRetryService {
         });
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markCompleted(Long itemId, Long thumbnailMediaId, List<Long> galleryMediaIds) {
         if (itemId == null || itemId <= 0) {
             return;
