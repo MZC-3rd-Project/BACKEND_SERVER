@@ -39,7 +39,7 @@ class ElasticsearchIndexingServiceTest {
     void indexItem_sendsPutDocRequest() throws Exception {
         when(restClient.performRequest(any(Request.class))).thenReturn(mock(Response.class));
 
-        indexingService.indexItem(10L, "테스트 상품", "GOODS", "GOODS", 10000L, "SELLING", 20);
+        indexingService.indexItem(10L, "테스트 상품", "GOODS", "GOODS", 10000L, "SELLING", 20, 501L, 1234L);
 
         ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
         verify(restClient).performRequest(captor.capture());
@@ -53,6 +53,26 @@ class ElasticsearchIndexingServiceTest {
         assertThat(json).contains("\"category\":\"GOODS\"");
         assertThat(json).contains("\"domainType\":\"GOODS\"");
         assertThat(json).contains("\"stock\":20");
+        assertThat(json).contains("\"thumbnailMediaId\":501");
+        assertThat(json).contains("\"mediaVersion\":1234");
+    }
+
+    @Test
+    void updateItem_sendsScriptedUpsertRequest() throws Exception {
+        when(restClient.performRequest(any(Request.class))).thenReturn(mock(Response.class));
+
+        indexingService.updateItem(15L, "업데이트 상품", 14000L, 999L, 222L);
+
+        ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+        verify(restClient).performRequest(captor.capture());
+        Request request = captor.getValue();
+
+        assertThat(request.getMethod()).isEqualTo("POST");
+        assertThat(request.getEndpoint()).isEqualTo("/items-write/_update/15");
+        String json = EntityUtils.toString(request.getEntity());
+        assertThat(json).contains("\"scripted_upsert\":true");
+        assertThat(json).contains("\"thumbnailMediaId\":999");
+        assertThat(json).contains("\"mediaVersion\":222");
     }
 
     @Test

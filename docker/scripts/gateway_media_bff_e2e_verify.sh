@@ -603,9 +603,17 @@ JSON
   active_images="$(psql_query product_db "SELECT count(*) FROM item_images WHERE item_id=${concurrent_item_id} AND deleted_at IS NULL;")"
   duplicate_sort_orders="$(psql_query product_db "SELECT count(*) FROM (SELECT sort_order FROM item_images WHERE item_id=${concurrent_item_id} AND deleted_at IS NULL GROUP BY sort_order HAVING count(*) > 1) t;")"
   thumbnail_count="$(psql_query product_db "SELECT count(*) FROM item_images WHERE item_id=${concurrent_item_id} AND deleted_at IS NULL AND is_thumbnail = true;")"
-  media_link_count="$(psql_query media_db "SELECT count(*) FROM media_links WHERE owner_type='ITEM' AND owner_id=${concurrent_item_id} AND deleted_at IS NULL;")"
+  local sync_wait_seconds=0
+  while [[ "$sync_wait_seconds" -lt 20 ]]; do
+    media_link_count="$(psql_query media_db "SELECT count(*) FROM media_links WHERE owner_type='ITEM' AND owner_id=${concurrent_item_id} AND deleted_at IS NULL;")"
+    media_thumbnail_count="$(psql_query media_db "SELECT count(*) FROM media_links WHERE owner_type='ITEM' AND owner_id=${concurrent_item_id} AND usage_type='THUMBNAIL' AND deleted_at IS NULL;")"
+    if [[ "$media_link_count" == "3" && "$media_thumbnail_count" == "1" ]]; then
+      break
+    fi
+    sleep 1
+    sync_wait_seconds=$((sync_wait_seconds + 1))
+  done
   media_gallery_dup_sort="$(psql_query media_db "SELECT count(*) FROM (SELECT sort_order FROM media_links WHERE owner_type='ITEM' AND owner_id=${concurrent_item_id} AND usage_type='GALLERY' AND deleted_at IS NULL GROUP BY sort_order HAVING count(*) > 1) t;")"
-  media_thumbnail_count="$(psql_query media_db "SELECT count(*) FROM media_links WHERE owner_type='ITEM' AND owner_id=${concurrent_item_id} AND usage_type='THUMBNAIL' AND deleted_at IS NULL;")"
 
   if [[ "$active_images" == "3" ]]; then
     pass "concurrent db invariant: active item_images count is 3"
@@ -879,7 +887,7 @@ wait_gateway_ready
 
 echo "[INFO] resetting test data"
 psql_exec media_db "TRUNCATE TABLE media_links, media_files, processed_events, dead_letter_messages, outbox_messages RESTART IDENTITY CASCADE;"
-psql_exec product_db "TRUNCATE TABLE item_images, item_goods_links, item_options, shipping_infos, cast_members, seat_grades, performances, item_status_histories, items, processed_events, dead_letter_messages, outbox_messages RESTART IDENTITY CASCADE;"
+psql_exec product_db "TRUNCATE TABLE item_images, item_goods_links, item_options, shipping_infos, cast_members, seat_grades, performances, item_status_histories, item_media_link_sync_tasks, items, processed_events, dead_letter_messages, outbox_messages RESTART IDENTITY CASCADE;"
 pass "reset media/product test data"
 
 verify_gateway_protection

@@ -14,17 +14,25 @@ public class ItemCreatedEvent extends DomainEvent {
     private final String title;
     private final String itemType;
     private final Long price;
+    private final Long thumbnailMediaId;
+    private final Long mediaVersion;
+    private final String status;
     private final Long sellerId;
     private final Long storeId;
     private final List<StockItemInfo> stockItems;
 
-    public ItemCreatedEvent(Long itemId, String title, String itemType, Long price, Long sellerId, Long storeId,
+    public ItemCreatedEvent(Long itemId, String title, String itemType, Long price, Long thumbnailMediaId,
+                            Long mediaVersion, String status,
+                            Long sellerId, Long storeId,
                             List<StockItemInfo> stockItems) {
         super("item-events");
         this.itemId = itemId;
         this.title = title;
         this.itemType = itemType;
         this.price = price;
+        this.thumbnailMediaId = thumbnailMediaId;
+        this.mediaVersion = mediaVersion;
+        this.status = status;
         this.sellerId = sellerId;
         this.storeId = storeId;
         this.stockItems = stockItems != null ? stockItems : List.of();
@@ -42,6 +50,9 @@ public class ItemCreatedEvent extends DomainEvent {
         payload.put("title", title);
         payload.put("itemType", itemType);
         payload.put("price", price);
+        payload.put("thumbnailMediaId", thumbnailMediaId);
+        payload.put("mediaVersion", mediaVersion);
+        payload.put("status", status);
         payload.put("sellerId", sellerId);
         payload.put("storeId", storeId);
         payload.put("stockItems", stockItems.stream()

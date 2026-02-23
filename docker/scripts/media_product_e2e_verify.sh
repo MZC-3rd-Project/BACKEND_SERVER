@@ -537,7 +537,7 @@ wait_health "product-service" "$PRODUCT_PORT"
 
 echo "[INFO] resetting test data"
 psql_exec media_db "TRUNCATE TABLE media_links, media_files, processed_events, dead_letter_messages, outbox_messages RESTART IDENTITY CASCADE;"
-psql_exec product_db "TRUNCATE TABLE item_images, item_goods_links, item_options, shipping_infos, cast_members, seat_grades, performances, item_status_histories, items, processed_events, dead_letter_messages, outbox_messages RESTART IDENTITY CASCADE;"
+psql_exec product_db "TRUNCATE TABLE item_images, item_goods_links, item_options, shipping_infos, cast_members, seat_grades, performances, item_status_histories, item_media_link_sync_tasks, items, processed_events, dead_letter_messages, outbox_messages RESTART IDENTITY CASCADE;"
 pass "reset media/product test data"
 
 product_item_id=""

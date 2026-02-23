@@ -50,7 +50,7 @@ class ItemImagesResponseTest {
     }
 
     private ItemImage createImage(Long id, Long itemId, Long mediaId, int sortOrder, boolean thumbnail) {
-        ItemImage image = ItemImage.create(itemId, mediaId, "https://image/" + mediaId, sortOrder, thumbnail);
+        ItemImage image = ItemImage.create(itemId, mediaId, sortOrder, thumbnail);
         ReflectionTestUtils.setField(image, "id", id);
         return image;
     }

@@ -103,7 +103,7 @@ class ProductCommandServiceTest {
         ReflectionTestUtils.setField(request, "title", "updated");
         ReflectionTestUtils.setField(request, "thumbnailMediaId", 888L);
 
-        ItemImage image = ItemImage.create(itemId, 999L, "https://image/999", 0, false);
+        ItemImage image = ItemImage.create(itemId, 999L, 0, false);
         ReflectionTestUtils.setField(image, "id", 5000L);
 
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
@@ -137,6 +137,43 @@ class ProductCommandServiceTest {
     }
 
     @Test
+    void updateProduct_withClearThumbnail_clearsAndSchedulesSync() {
+        Long itemId = 1L;
+        Long sellerId = 10L;
+        Item item = createItem(itemId, sellerId);
+        ProductUpdateRequest request = new ProductUpdateRequest();
+        ReflectionTestUtils.setField(request, "clearThumbnail", true);
+
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
+        when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(java.util.List.of());
+
+        productCommandService.updateProduct(itemId, request, sellerId);
+
+        assertThat(item.getThumbnailMediaId()).isNull();
+        verify(itemMediaLinkSyncService).clearAfterCommit(itemId);
+        verify(mediaReferenceService, org.mockito.Mockito.never()).resolveMediaUrl(any());
+    }
+
+    @Test
+    void updateProduct_whenThumbnailAndClearBothProvided_throwsValidationError() {
+        Long itemId = 1L;
+        Long sellerId = 10L;
+        Item item = createItem(itemId, sellerId);
+        ProductUpdateRequest request = new ProductUpdateRequest();
+        ReflectionTestUtils.setField(request, "thumbnailMediaId", 700L);
+        ReflectionTestUtils.setField(request, "clearThumbnail", true);
+
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
+
+        assertThatThrownBy(() -> productCommandService.updateProduct(itemId, request, sellerId))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ProductErrorCode.INVALID_THUMBNAIL_UPDATE_REQUEST);
+
+        verifyNoInteractions(itemMediaLinkSyncService);
+    }
+
+    @Test
     void delete_clearsItemMediaLinks() {
         Long itemId = 1L;
         Long sellerId = 10L;
@@ -162,8 +199,7 @@ class ProductCommandServiceTest {
                 null,
                 sellerId,
                 100L,
-                999L,
-                "https://thumbnail"
+                999L
         );
         ReflectionTestUtils.setField(item, "id", id);
         return item;

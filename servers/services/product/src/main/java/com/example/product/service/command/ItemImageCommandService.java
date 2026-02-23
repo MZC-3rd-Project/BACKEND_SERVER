@@ -1,10 +1,13 @@
 package com.example.product.service.command;
 
 import com.example.core.exception.BusinessException;
+import com.example.event.EventMetadata;
+import com.example.event.EventPublisher;
 import com.example.product.dto.image.request.ItemImageRequest;
 import com.example.product.dto.image.response.ItemImageResponse;
 import com.example.product.entity.image.ItemImage;
 import com.example.product.entity.item.Item;
+import com.example.product.event.ItemUpdatedEvent;
 import com.example.product.exception.ProductErrorCode;
 import com.example.product.repository.ItemImageRepository;
 import com.example.product.repository.ItemRepository;
@@ -30,6 +33,7 @@ public class ItemImageCommandService {
     private final ItemRepository itemRepository;
     private final MediaReferenceService mediaReferenceService;
     private final ItemMediaLinkSyncService itemMediaLinkSyncService;
+    private final EventPublisher eventPublisher;
 
     public List<ItemImageResponse> addImages(Long itemId, List<ItemImageRequest> requests, Long userId) {
         Item item = validateOwnership(itemId, userId);
@@ -38,14 +42,12 @@ public class ItemImageCommandService {
         }
 
         validateDuplicateMediaIds(requests);
-        Map<Long, String> mediaUrlMap = mediaReferenceService.resolveMediaUrlMap(
-                requests.stream().map(ItemImageRequest::getMediaId).toList()
-        );
+        mediaReferenceService.validateMediaReferences(
+                requests.stream().map(ItemImageRequest::getMediaId).toList());
         itemImageRepository.saveAll(requests.stream()
                 .map(req -> ItemImage.create(
                         itemId,
                         req.getMediaId(),
-                        mediaUrlMap.get(req.getMediaId()),
                         req.getSortOrder(),
                         req.isThumbnail()
                 ))
@@ -53,6 +55,7 @@ public class ItemImageCommandService {
 
         List<ItemImage> normalized = normalizeImages(item);
         syncItemMediaLinks(item.getId(), normalized);
+        publishItemUpdated(item);
         return normalized.stream()
                 .map(ItemImageResponse::from).toList();
     }
@@ -64,6 +67,7 @@ public class ItemImageCommandService {
         image.softDelete();
         List<ItemImage> normalized = normalizeImages(item);
         syncItemMediaLinks(item.getId(), normalized);
+        publishItemUpdated(item);
     }
 
     public List<ItemImageResponse> reorder(Long itemId, List<Long> imageIds, Long userId) {
@@ -72,6 +76,19 @@ public class ItemImageCommandService {
         validateReorderRequest(images, imageIds);
         Map<Long, ItemImage> imageById = images.stream()
                 .collect(Collectors.toMap(ItemImage::getId, Function.identity()));
+
+        // Keep the unique(item_id, sort_order) constraint stable during reordering.
+        // We first move all rows to a temporary disjoint range and flush, then write final order.
+        int temporaryOrderBase = imageIds.size() + 10_000;
+        for (int i = 0; i < imageIds.size(); i++) {
+            Long targetId = imageIds.get(i);
+            ItemImage image = imageById.get(targetId);
+            if (image == null) {
+                throw new BusinessException(ProductErrorCode.INVALID_IMAGE_REORDER_REQUEST);
+            }
+            image.updateSortOrder(temporaryOrderBase + i);
+        }
+        itemImageRepository.flush();
 
         for (int i = 0; i < imageIds.size(); i++) {
             Long targetId = imageIds.get(i);
@@ -84,6 +101,7 @@ public class ItemImageCommandService {
 
         List<ItemImage> normalized = normalizeImages(item);
         syncItemMediaLinks(item.getId(), normalized);
+        publishItemUpdated(item);
         return normalized.stream()
                 .map(ItemImageResponse::from).toList();
     }
@@ -120,7 +138,7 @@ public class ItemImageCommandService {
         for (ItemImage image : sorted) {
             image.setThumbnail(image.getId().equals(thumbnail.getId()));
         }
-        item.updateThumbnail(thumbnail.getMediaId(), thumbnail.getImageUrl());
+        item.updateThumbnail(thumbnail.getMediaId());
 
         return sorted;
     }
@@ -158,5 +176,18 @@ public class ItemImageCommandService {
         if (uniqueIds.size() != imageIds.size()) {
             throw new BusinessException(ProductErrorCode.INVALID_IMAGE_REORDER_REQUEST);
         }
+    }
+
+    private void publishItemUpdated(Item item) {
+        eventPublisher.publish(
+                new ItemUpdatedEvent(
+                        item.getId(),
+                        item.getTitle(),
+                        item.getPrice(),
+                        item.getThumbnailMediaId(),
+                        System.currentTimeMillis()
+                ),
+                EventMetadata.of("Item", String.valueOf(item.getId()))
+        );
     }
 }

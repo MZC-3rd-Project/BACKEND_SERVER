@@ -50,6 +50,15 @@ public class ItemDocument {
     private Integer stock;
 
     @Field(type = FieldType.Long)
+    private Long thumbnailMediaId;
+
+    @Field(type = FieldType.Keyword, index = false)
+    private String thumbnailUrlSnapshot;
+
+    @Field(type = FieldType.Long)
+    private Long mediaVersion;
+
+    @Field(type = FieldType.Long)
     private Long stockVersion;
 
     @Field(type = FieldType.Keyword)

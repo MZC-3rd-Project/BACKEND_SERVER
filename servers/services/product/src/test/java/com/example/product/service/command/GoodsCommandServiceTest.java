@@ -71,8 +71,7 @@ class GoodsCommandServiceTest {
                 null,
                 sellerId,
                 100L,
-                888L,
-                "https://thumbnail"
+                888L
         );
         ReflectionTestUtils.setField(item, "id", id);
         return item;

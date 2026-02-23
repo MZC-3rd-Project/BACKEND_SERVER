@@ -15,7 +15,6 @@ public class ItemImageResponse {
     @SnowflakeId
     private Long mediaId;
 
-    private String imageUrl;
     private Integer sortOrder;
     private Boolean isThumbnail;
 
@@ -23,7 +22,6 @@ public class ItemImageResponse {
         return ItemImageResponse.builder()
                 .id(entity.getId())
                 .mediaId(entity.getMediaId())
-                .imageUrl(entity.getImageUrl())
                 .sortOrder(entity.getSortOrder())
                 .isThumbnail(entity.getIsThumbnail())
                 .build();

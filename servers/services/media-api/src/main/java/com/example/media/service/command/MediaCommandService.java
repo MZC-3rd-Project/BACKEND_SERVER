@@ -138,9 +138,9 @@ public class MediaCommandService {
         MediaBinding effectiveBinding = requestBinding != null ? requestBinding : resolveRequestedBinding(mediaFile);
 
         if (mediaFile.isAlreadyConfirmed()) {
-            MediaLink existingOrNewLink = upsertMediaLink(mediaFile, effectiveBinding);
+            MediaLink existingLink = findLatestMediaLink(mediaFile.getId());
             log.info("[MediaConfirm] idempotent confirm hit. mediaId={}, status={}", mediaFile.getId(), mediaFile.getStatus());
-            return toConfirmResponse(mediaFile, existingOrNewLink);
+            return toConfirmResponse(mediaFile, existingLink);
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -162,16 +162,16 @@ public class MediaCommandService {
         );
 
         MediaFile saved = mediaFileRepository.save(mediaFile);
-        MediaLink mediaLink = upsertMediaLink(saved, effectiveBinding);
-        publishConfirmedEvent(saved, mediaLink);
+        MediaLink mediaLink = findLatestMediaLink(saved.getId());
+        publishConfirmedEvent(saved, mediaLink, effectiveBinding);
         log.info(
                 "[MediaConfirm] confirm success. mediaId={}, objectKey={}, fileSize={}, ownerType={}, ownerId={}, usageType={}",
                 saved.getId(),
                 saved.getObjectKey(),
                 saved.getFileSize(),
-                mediaLink != null ? mediaLink.getOwnerType() : null,
-                mediaLink != null ? mediaLink.getOwnerId() : null,
-                mediaLink != null ? mediaLink.getUsageType() : null
+                mediaLink != null ? mediaLink.getOwnerType() : effectiveBinding != null ? effectiveBinding.ownerType() : null,
+                mediaLink != null ? mediaLink.getOwnerId() : effectiveBinding != null ? effectiveBinding.ownerId() : null,
+                mediaLink != null ? mediaLink.getUsageType() : effectiveBinding != null ? effectiveBinding.usageType() : null
         );
         return toConfirmResponse(saved, mediaLink);
     }
@@ -207,13 +207,28 @@ public class MediaCommandService {
 
         Map<Long, MediaLink> existingByMediaId = ownerLinks.stream()
                 .collect(Collectors.toMap(MediaLink::getMediaId, Function.identity(), (left, right) -> left));
-        List<MediaLink> linksToSave = new ArrayList<>(ownerLinks);
+        List<MediaLink> retainedLinks = new ArrayList<>();
 
         for (MediaLink link : ownerLinks) {
             if (!requestedMediaIds.contains(link.getMediaId())) {
                 link.softDelete();
+                continue;
+            }
+            retainedLinks.add(link);
+        }
+
+        if (!retainedLinks.isEmpty()) {
+            // Keep partial unique indexes stable while rebinding usage/sort.
+            int temporaryOrderBase = retainedLinks.size() + 10_000;
+            for (int i = 0; i < retainedLinks.size(); i++) {
+                MediaLink retained = retainedLinks.get(i);
+                retained.updateUsageType(MediaUsageType.ATTACHMENT);
+                retained.updateSortOrder(temporaryOrderBase + i);
             }
         }
+        mediaLinkRepository.flush();
+
+        List<MediaLink> linksToCreate = new ArrayList<>();
 
         for (Map.Entry<MediaUsageType, List<Long>> usageEntry : requestedUsageSets.entrySet()) {
             MediaUsageType usageType = usageEntry.getKey();
@@ -229,7 +244,7 @@ public class MediaCommandService {
                             usageType,
                             i
                     );
-                    linksToSave.add(created);
+                    linksToCreate.add(created);
                     existingByMediaId.put(mediaId, created);
                     continue;
                 }
@@ -238,7 +253,9 @@ public class MediaCommandService {
             }
         }
 
-        mediaLinkRepository.saveAll(linksToSave);
+        if (!linksToCreate.isEmpty()) {
+            mediaLinkRepository.saveAll(linksToCreate);
+        }
         List<MediaLink> synced = mediaLinkRepository.findByOwnerTypeAndOwnerIdOrderByCreatedAtAsc(
                 ownerType,
                 request.getOwnerId()
@@ -395,46 +412,16 @@ public class MediaCommandService {
         }
     }
 
-    private MediaLink upsertMediaLink(MediaFile mediaFile, MediaBinding binding) {
-        if (binding == null) {
-            return null;
-        }
-        List<MediaLink> links = mediaLinkRepository.findByOwnerTypeAndOwnerIdAndUsageTypeOrderBySortOrderAscCreatedAtAsc(
-                binding.ownerType(),
-                binding.ownerId(),
-                binding.usageType()
-        );
+    private void publishConfirmedEvent(MediaFile mediaFile, MediaLink mediaLink, MediaBinding fallbackBinding) {
+        MediaOwnerType ownerType = mediaLink != null ? mediaLink.getOwnerType()
+                : fallbackBinding != null ? fallbackBinding.ownerType() : null;
+        Long ownerId = mediaLink != null ? mediaLink.getOwnerId()
+                : fallbackBinding != null ? fallbackBinding.ownerId() : null;
+        MediaUsageType usageType = mediaLink != null ? mediaLink.getUsageType()
+                : fallbackBinding != null ? fallbackBinding.usageType() : null;
+        Integer sortOrder = mediaLink != null ? mediaLink.getSortOrder()
+                : fallbackBinding != null ? fallbackBinding.sortOrder() : null;
 
-        MediaLink target = links.stream()
-                .filter(link -> link.matchesMedia(mediaFile.getId()))
-                .findFirst()
-                .orElse(null);
-
-        if (target == null) {
-            target = MediaLink.create(
-                    mediaFile.getId(),
-                    binding.ownerType(),
-                    binding.ownerId(),
-                    binding.usageType(),
-                    links.size()
-            );
-            links.add(target);
-        }
-
-        if (binding.sortOrder() != null) {
-            links.remove(target);
-            int targetIndex = Math.max(0, Math.min(binding.sortOrder(), links.size()));
-            links.add(targetIndex, target);
-        }
-
-        for (int i = 0; i < links.size(); i++) {
-            links.get(i).updateSortOrder(i);
-        }
-        mediaLinkRepository.saveAll(links);
-        return target;
-    }
-
-    private void publishConfirmedEvent(MediaFile mediaFile, MediaLink mediaLink) {
         eventPublisher.publish(
                 new MediaConfirmedEvent(
                         mediaFile.getId(),
@@ -444,14 +431,21 @@ public class MediaCommandService {
                         mediaFile.getContentType(),
                         mediaFile.getFileSize(),
                         mediaFile.getEtag(),
-                        mediaLink != null ? mediaLink.getOwnerType() : null,
-                        mediaLink != null ? mediaLink.getOwnerId() : null,
-                        mediaLink != null ? mediaLink.getUsageType() : null,
-                        mediaLink != null ? mediaLink.getSortOrder() : null,
+                        ownerType,
+                        ownerId,
+                        usageType,
+                        sortOrder,
                         mediaUrlPolicyService.buildBaseUrl(mediaFile.getObjectKey())
                 ),
                 EventMetadata.of("MediaFile", String.valueOf(mediaFile.getId()))
         );
+    }
+
+    private MediaLink findLatestMediaLink(Long mediaId) {
+        if (mediaId == null) {
+            return null;
+        }
+        return mediaLinkRepository.findTopByMediaIdOrderByCreatedAtDesc(mediaId).orElse(null);
     }
 
     private HeadObjectResponse readS3HeadObject(MediaFile mediaFile) {

@@ -42,11 +42,11 @@ public class GoodsCommandService {
 
     public GoodsDetailResponse createGoods(GoodsCreateRequest request, Long sellerId) {
         // TODO: store-service 연동 후 sellerId-storeId 소유권 검증을 추가한다.
-        String thumbnailUrl = mediaReferenceService.resolveMediaUrl(request.getThumbnailMediaId());
+        mediaReferenceService.resolveMediaUrl(request.getThumbnailMediaId());
         Item item = Item.create(
                 request.getTitle(), request.getDescription(), request.getPrice(),
                 ItemType.GOODS, request.getCategoryId(), sellerId, request.getStoreId(),
-                request.getThumbnailMediaId(), thumbnailUrl);
+                request.getThumbnailMediaId());
         itemRepository.save(item);
         if (request.getThumbnailMediaId() != null) {
             syncItemThumbnail(item.getId(), request.getThumbnailMediaId());
@@ -75,6 +75,9 @@ public class GoodsCommandService {
                         item.getTitle(),
                         item.getItemType().name(),
                         item.getPrice(),
+                        item.getThumbnailMediaId(),
+                        System.currentTimeMillis(),
+                        item.getStatus().name(),
                         sellerId,
                         request.getStoreId(),
                         stockItems
@@ -93,11 +96,24 @@ public class GoodsCommandService {
             throw new BusinessException(ProductErrorCode.ITEM_NOT_EDITABLE);
         }
 
-        String thumbnailUrl = mediaReferenceService.resolveMediaUrl(request.getThumbnailMediaId());
-        item.update(request.getTitle(), request.getDescription(), request.getPrice(),
-                request.getCategoryId(), request.getThumbnailMediaId(), thumbnailUrl);
-        if (request.getThumbnailMediaId() != null) {
-            syncItemThumbnail(item.getId(), request.getThumbnailMediaId());
+        boolean clearThumbnail = Boolean.TRUE.equals(request.getClearThumbnail());
+        Long thumbnailMediaId = request.getThumbnailMediaId();
+        if (clearThumbnail && thumbnailMediaId != null) {
+            throw new BusinessException(ProductErrorCode.INVALID_THUMBNAIL_UPDATE_REQUEST);
+        }
+
+        if (clearThumbnail) {
+            item.update(request.getTitle(), request.getDescription(), request.getPrice(),
+                    request.getCategoryId(), null);
+            item.clearThumbnail();
+            syncItemThumbnail(item.getId(), null, true);
+        } else {
+            mediaReferenceService.resolveMediaUrl(thumbnailMediaId);
+            item.update(request.getTitle(), request.getDescription(), request.getPrice(),
+                    request.getCategoryId(), thumbnailMediaId);
+            if (thumbnailMediaId != null) {
+                syncItemThumbnail(item.getId(), thumbnailMediaId);
+            }
         }
 
         // 옵션 교체
@@ -122,7 +138,13 @@ public class GoodsCommandService {
         }
 
         eventPublisher.publish(
-                new ItemUpdatedEvent(item.getId(), item.getTitle(), item.getPrice()),
+                new ItemUpdatedEvent(
+                        item.getId(),
+                        item.getTitle(),
+                        item.getPrice(),
+                        item.getThumbnailMediaId(),
+                        System.currentTimeMillis()
+                ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
@@ -182,12 +204,19 @@ public class GoodsCommandService {
     }
 
     private void syncItemThumbnail(Long itemId, Long thumbnailMediaId) {
+        syncItemThumbnail(itemId, thumbnailMediaId, false);
+    }
+
+    private void syncItemThumbnail(Long itemId, Long thumbnailMediaId, boolean forceClearWhenEmpty) {
         List<Long> galleryMediaIds = itemImageRepository.findByItemIdOrderBySortOrder(itemId).stream()
                 .map(ItemImage::getMediaId)
                 .filter(mediaId -> thumbnailMediaId == null || !thumbnailMediaId.equals(mediaId))
                 .filter(Objects::nonNull)
                 .toList();
         if (thumbnailMediaId == null && galleryMediaIds.isEmpty()) {
+            if (forceClearWhenEmpty) {
+                itemMediaLinkSyncService.clearAfterCommit(itemId);
+            }
             return;
         }
         itemMediaLinkSyncService.syncAfterCommit(itemId, thumbnailMediaId, galleryMediaIds);
