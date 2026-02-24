@@ -12,6 +12,7 @@ import java.util.Map;
 public class MediaConfirmedEvent extends DomainEvent {
 
     private static final int SCHEMA_VERSION = 1;
+    private static final long DEFAULT_MEDIA_VERSION = 1L;
 
     private final Long mediaId;
     private final Long uploaderId;
@@ -25,6 +26,7 @@ public class MediaConfirmedEvent extends DomainEvent {
     private final MediaUsageType usageType;
     private final Integer sortOrder;
     private final String mediaUrl;
+    private final Long mediaVersion;
 
     public MediaConfirmedEvent(Long mediaId,
                                Long uploaderId,
@@ -51,6 +53,7 @@ public class MediaConfirmedEvent extends DomainEvent {
         this.usageType = usageType;
         this.sortOrder = sortOrder;
         this.mediaUrl = mediaUrl;
+        this.mediaVersion = DEFAULT_MEDIA_VERSION;
     }
 
     @Override
@@ -74,6 +77,7 @@ public class MediaConfirmedEvent extends DomainEvent {
         payload.put("usageType", usageType != null ? usageType.name() : null);
         payload.put("sortOrder", sortOrder);
         payload.put("mediaUrl", mediaUrl);
+        payload.put("mediaVersion", mediaVersion);
         return payload;
     }
 }
