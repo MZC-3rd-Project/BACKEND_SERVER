@@ -2,7 +2,7 @@ package com.example.hotdeal.service;
 
 import com.example.config.lock.DistributedLock;
 import com.example.core.exception.BusinessException;
-import com.example.hotdeal.client.ProductClient;
+import com.example.hotdeal.client.ProductClientFacade;
 import com.example.hotdeal.dto.CreateHotDealRequest;
 import com.example.hotdeal.dto.HotDealDetailResponse;
 import com.example.hotdeal.entity.HotDeal;
@@ -38,7 +38,7 @@ public class HotDealCommandService {
     private final HotDealStatusHistoryRepository statusHistoryRepository;
     private final EventPublisher eventPublisher;
     private final StringRedisTemplate stringRedisTemplate;
-    private final ProductClient productClient;
+    private final ProductClientFacade productClient;
     private final TransactionTemplate transactionTemplate;
 
     private static final String STOCK_KEY_PREFIX = "hotdeal:stock:";
