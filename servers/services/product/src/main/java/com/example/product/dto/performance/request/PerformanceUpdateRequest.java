@@ -1,7 +1,9 @@
 package com.example.product.dto.performance.request;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -13,13 +15,11 @@ import java.util.List;
 @NoArgsConstructor
 public class PerformanceUpdateRequest {
 
-    @NotBlank(message = "공연 제목은 필수입니다")
     @Size(max = 200, message = "제목은 200자 이하여야 합니다")
     private String title;
 
     private String description;
 
-    @NotNull(message = "가격은 필수입니다")
     @Min(value = 0, message = "가격은 0 이상이어야 합니다")
     private Long price;
 
@@ -30,17 +30,15 @@ public class PerformanceUpdateRequest {
 
     private Boolean clearThumbnail;
 
-    @NotBlank(message = "공연장소는 필수입니다")
+    @Size(max = 200, message = "공연 장소는 200자 이하여야 합니다")
     private String venue;
 
-    @NotNull(message = "공연 날짜는 필수입니다")
     private LocalDate performanceDate;
 
-    @NotNull(message = "공연 시간은 필수입니다")
     private LocalTime performanceTime;
 
     @Min(value = 1, message = "총 좌석 수는 1 이상이어야 합니다")
-    private int totalSeats;
+    private Integer totalSeats;
 
     @Valid
     private List<SeatGradeRequest> seatGrades;
