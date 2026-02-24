@@ -32,13 +32,13 @@ public class ItemImageCommandService {
     private final ItemImageRepository itemImageRepository;
     private final ItemRepository itemRepository;
     private final MediaReferenceService mediaReferenceService;
-    private final ItemMediaLinkSyncService itemMediaLinkSyncService;
+    private final ItemThumbnailSyncService itemThumbnailSyncService;
     private final EventPublisher eventPublisher;
 
     public List<ItemImageResponse> addImages(Long itemId, List<ItemImageRequest> requests, Long userId) {
         Item item = validateOwnership(itemId, userId);
         if (requests == null || requests.isEmpty()) {
-            return normalizeImages(item).stream().map(ItemImageResponse::from).toList();
+            return toResponses(normalizeImages(item).images());
         }
 
         validateDuplicateMediaIds(requests);
@@ -53,11 +53,10 @@ public class ItemImageCommandService {
                 ))
                 .toList());
 
-        List<ItemImage> normalized = normalizeImages(item);
+        NormalizedImages normalized = normalizeImages(item);
         syncItemMediaLinks(item.getId(), normalized);
         publishItemUpdated(item);
-        return normalized.stream()
-                .map(ItemImageResponse::from).toList();
+        return toResponses(normalized.images());
     }
 
     public void deleteImage(Long imageId, Long userId) {
@@ -65,7 +64,7 @@ public class ItemImageCommandService {
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.IMAGE_NOT_FOUND));
         Item item = validateOwnership(image.getItemId(), userId);
         image.softDelete();
-        List<ItemImage> normalized = normalizeImages(item);
+        NormalizedImages normalized = normalizeImages(item);
         syncItemMediaLinks(item.getId(), normalized);
         publishItemUpdated(item);
     }
@@ -80,30 +79,15 @@ public class ItemImageCommandService {
         // Keep the unique(item_id, sort_order) constraint stable during reordering.
         // We first move all rows to a temporary disjoint range and flush, then write final order.
         int temporaryOrderBase = imageIds.size() + 10_000;
-        for (int i = 0; i < imageIds.size(); i++) {
-            Long targetId = imageIds.get(i);
-            ItemImage image = imageById.get(targetId);
-            if (image == null) {
-                throw new BusinessException(ProductErrorCode.INVALID_IMAGE_REORDER_REQUEST);
-            }
-            image.updateSortOrder(temporaryOrderBase + i);
-        }
+        applySortOrder(imageById, imageIds, temporaryOrderBase);
         itemImageRepository.flush();
 
-        for (int i = 0; i < imageIds.size(); i++) {
-            Long targetId = imageIds.get(i);
-            ItemImage image = imageById.get(targetId);
-            if (image == null) {
-                throw new BusinessException(ProductErrorCode.INVALID_IMAGE_REORDER_REQUEST);
-            }
-            image.updateSortOrder(i);
-        }
+        applySortOrder(imageById, imageIds, 0);
 
-        List<ItemImage> normalized = normalizeImages(item);
+        NormalizedImages normalized = normalizeImages(item);
         syncItemMediaLinks(item.getId(), normalized);
         publishItemUpdated(item);
-        return normalized.stream()
-                .map(ItemImageResponse::from).toList();
+        return toResponses(normalized.images());
     }
 
     private Item validateOwnership(Long itemId, Long userId) {
@@ -113,11 +97,11 @@ public class ItemImageCommandService {
         return item;
     }
 
-    private List<ItemImage> normalizeImages(Item item) {
+    private NormalizedImages normalizeImages(Item item) {
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(item.getId());
         if (images.isEmpty()) {
             item.clearThumbnail();
-            return List.of();
+            return new NormalizedImages(List.of(), null, List.of());
         }
 
         List<ItemImage> sorted = images.stream()
@@ -138,24 +122,40 @@ public class ItemImageCommandService {
         for (ItemImage image : sorted) {
             image.setThumbnail(image.getId().equals(thumbnail.getId()));
         }
-        item.updateThumbnail(thumbnail.getMediaId());
-
-        return sorted;
-    }
-
-    private void syncItemMediaLinks(Long itemId, List<ItemImage> images) {
-        Long thumbnailMediaId = images.stream()
-                .filter(image -> Boolean.TRUE.equals(image.getIsThumbnail()))
-                .map(ItemImage::getMediaId)
-                .filter(Objects::nonNull)
-                .findFirst()
-                .orElse(null);
-        List<Long> galleryMediaIds = images.stream()
-                .filter(image -> !Boolean.TRUE.equals(image.getIsThumbnail()))
+        Long thumbnailMediaId = thumbnail.getMediaId();
+        List<Long> galleryMediaIds = sorted.stream()
+                .filter(image -> !image.getId().equals(thumbnail.getId()))
                 .map(ItemImage::getMediaId)
                 .filter(Objects::nonNull)
                 .toList();
-        itemMediaLinkSyncService.syncAfterCommit(itemId, thumbnailMediaId, galleryMediaIds);
+        item.updateThumbnail(thumbnailMediaId);
+
+        return new NormalizedImages(sorted, thumbnailMediaId, galleryMediaIds);
+    }
+
+    private void syncItemMediaLinks(Long itemId, NormalizedImages normalizedImages) {
+        itemThumbnailSyncService.syncAfterCommit(
+                itemId,
+                normalizedImages.thumbnailMediaId(),
+                normalizedImages.galleryMediaIds()
+        );
+    }
+
+    private void applySortOrder(Map<Long, ItemImage> imageById, List<Long> imageIds, int orderOffset) {
+        for (int i = 0; i < imageIds.size(); i++) {
+            Long targetId = imageIds.get(i);
+            ItemImage image = imageById.get(targetId);
+            if (image == null) {
+                throw new BusinessException(ProductErrorCode.INVALID_IMAGE_REORDER_REQUEST);
+            }
+            image.updateSortOrder(orderOffset + i);
+        }
+    }
+
+    private List<ItemImageResponse> toResponses(List<ItemImage> images) {
+        return images.stream()
+                .map(ItemImageResponse::from)
+                .toList();
     }
 
     private void validateDuplicateMediaIds(List<ItemImageRequest> requests) {
@@ -189,5 +189,12 @@ public class ItemImageCommandService {
                 ),
                 EventMetadata.of("Item", String.valueOf(item.getId()))
         );
+    }
+
+    private record NormalizedImages(
+            List<ItemImage> images,
+            Long thumbnailMediaId,
+            List<Long> galleryMediaIds
+    ) {
     }
 }

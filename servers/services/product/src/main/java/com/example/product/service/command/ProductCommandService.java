@@ -8,9 +8,9 @@ import com.example.product.dto.goods.request.ProductCreateRequest;
 import com.example.product.dto.goods.request.ProductUpdateRequest;
 import com.example.product.dto.goods.request.ShippingInfoRequest;
 import com.example.product.dto.goods.response.GoodsDetailResponse;
-import com.example.product.entity.item.Item;
 import com.example.product.entity.goods.ItemOption;
 import com.example.product.entity.image.ItemImage;
+import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemType;
 import com.example.product.entity.goods.ShippingInfo;
 import com.example.product.event.ItemCreatedEvent;
@@ -25,7 +25,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -37,7 +36,7 @@ public class ProductCommandService {
     private final ShippingInfoRepository shippingInfoRepository;
     private final ItemImageRepository itemImageRepository;
     private final MediaReferenceService mediaReferenceService;
-    private final ItemMediaLinkSyncService itemMediaLinkSyncService;
+    private final ItemThumbnailSyncService itemThumbnailSyncService;
     private final EventPublisher eventPublisher;
 
     public GoodsDetailResponse createProduct(ProductCreateRequest request, Long sellerId) {
@@ -49,7 +48,7 @@ public class ProductCommandService {
                 request.getThumbnailMediaId());
         itemRepository.save(item);
         if (request.getThumbnailMediaId() != null) {
-            syncItemThumbnail(item.getId(), request.getThumbnailMediaId());
+            itemThumbnailSyncService.syncAfterCommit(item.getId(), request.getThumbnailMediaId());
         }
 
         List<ItemOption> options = saveOptions(item.getId(), request.getOptions());
@@ -101,13 +100,13 @@ public class ProductCommandService {
             item.update(request.getTitle(), request.getDescription(), request.getPrice(),
                     request.getCategoryId(), null);
             item.clearThumbnail();
-            syncItemThumbnail(item.getId(), null, true);
+            itemThumbnailSyncService.syncAfterCommit(item.getId(), null, true);
         } else {
             mediaReferenceService.resolveMediaUrl(thumbnailMediaId);
             item.update(request.getTitle(), request.getDescription(), request.getPrice(),
                     request.getCategoryId(), thumbnailMediaId);
             if (thumbnailMediaId != null) {
-                syncItemThumbnail(item.getId(), thumbnailMediaId);
+                itemThumbnailSyncService.syncAfterCommit(item.getId(), thumbnailMediaId);
             }
         }
 
@@ -150,7 +149,7 @@ public class ProductCommandService {
         shippingInfoRepository.softDeleteByItemId(itemId);
         itemImageRepository.softDeleteAllByItemId(itemId);
         item.clearThumbnail();
-        itemMediaLinkSyncService.clearAfterCommit(itemId);
+        itemThumbnailSyncService.syncAfterCommit(itemId, null, true);
     }
 
     private List<ItemOption> saveOptions(Long itemId, List<ItemOptionRequest> requests) {
@@ -168,22 +167,4 @@ public class ProductCommandService {
         return shippingInfoRepository.save(si);
     }
 
-    private void syncItemThumbnail(Long itemId, Long thumbnailMediaId) {
-        syncItemThumbnail(itemId, thumbnailMediaId, false);
-    }
-
-    private void syncItemThumbnail(Long itemId, Long thumbnailMediaId, boolean forceClearWhenEmpty) {
-        List<Long> galleryMediaIds = itemImageRepository.findByItemIdOrderBySortOrder(itemId).stream()
-                .map(ItemImage::getMediaId)
-                .filter(mediaId -> thumbnailMediaId == null || !thumbnailMediaId.equals(mediaId))
-                .filter(Objects::nonNull)
-                .toList();
-        if (thumbnailMediaId == null && galleryMediaIds.isEmpty()) {
-            if (forceClearWhenEmpty) {
-                itemMediaLinkSyncService.clearAfterCommit(itemId);
-            }
-            return;
-        }
-        itemMediaLinkSyncService.syncAfterCommit(itemId, thumbnailMediaId, galleryMediaIds);
-    }
 }

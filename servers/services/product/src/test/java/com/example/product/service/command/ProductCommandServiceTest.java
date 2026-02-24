@@ -42,7 +42,7 @@ class ProductCommandServiceTest {
     @Mock
     private MediaReferenceService mediaReferenceService;
     @Mock
-    private ItemMediaLinkSyncService itemMediaLinkSyncService;
+    private ItemThumbnailSyncService itemThumbnailSyncService;
     @Mock
     private EventPublisher eventPublisher;
 
@@ -69,7 +69,7 @@ class ProductCommandServiceTest {
 
         productCommandService.createProduct(request, 77L);
 
-        verify(itemMediaLinkSyncService).syncAfterCommit(itemId, 501L, java.util.List.of());
+        verify(itemThumbnailSyncService).syncAfterCommit(itemId, 501L);
         verify(eventPublisher).publish(any(), any());
     }
 
@@ -90,7 +90,7 @@ class ProductCommandServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(ProductErrorCode.INVALID_MEDIA_REFERENCE);
 
-        verifyNoInteractions(itemMediaLinkSyncService);
+        verifyNoInteractions(itemThumbnailSyncService);
         verifyNoInteractions(eventPublisher);
     }
 
@@ -112,7 +112,7 @@ class ProductCommandServiceTest {
 
         productCommandService.updateProduct(itemId, request, sellerId);
 
-        verify(itemMediaLinkSyncService).syncAfterCommit(itemId, 888L, java.util.List.of(999L));
+        verify(itemThumbnailSyncService).syncAfterCommit(itemId, 888L);
         verify(eventPublisher).publish(any(), any());
     }
 
@@ -133,7 +133,7 @@ class ProductCommandServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(ProductErrorCode.INVALID_MEDIA_REFERENCE);
 
-        verifyNoInteractions(itemMediaLinkSyncService);
+        verifyNoInteractions(itemThumbnailSyncService);
     }
 
     @Test
@@ -150,7 +150,7 @@ class ProductCommandServiceTest {
         productCommandService.updateProduct(itemId, request, sellerId);
 
         assertThat(item.getThumbnailMediaId()).isNull();
-        verify(itemMediaLinkSyncService).clearAfterCommit(itemId);
+        verify(itemThumbnailSyncService).syncAfterCommit(itemId, null, true);
         verify(mediaReferenceService, org.mockito.Mockito.never()).resolveMediaUrl(any());
     }
 
@@ -170,7 +170,7 @@ class ProductCommandServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(ProductErrorCode.INVALID_THUMBNAIL_UPDATE_REQUEST);
 
-        verifyNoInteractions(itemMediaLinkSyncService);
+        verifyNoInteractions(itemThumbnailSyncService);
     }
 
     @Test
@@ -186,7 +186,7 @@ class ProductCommandServiceTest {
         verify(itemOptionRepository).softDeleteAllByItemId(itemId);
         verify(shippingInfoRepository).softDeleteByItemId(itemId);
         verify(itemImageRepository).softDeleteAllByItemId(itemId);
-        verify(itemMediaLinkSyncService).clearAfterCommit(itemId);
+        verify(itemThumbnailSyncService).syncAfterCommit(itemId, null, true);
         assertThat(item.getThumbnailMediaId()).isNull();
     }
 

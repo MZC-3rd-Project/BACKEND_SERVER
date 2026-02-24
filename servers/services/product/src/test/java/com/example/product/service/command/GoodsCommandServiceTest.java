@@ -37,7 +37,7 @@ class GoodsCommandServiceTest {
     @Mock
     private MediaReferenceService mediaReferenceService;
     @Mock
-    private ItemMediaLinkSyncService itemMediaLinkSyncService;
+    private ItemThumbnailSyncService itemThumbnailSyncService;
     @Mock
     private EventPublisher eventPublisher;
 
@@ -58,7 +58,7 @@ class GoodsCommandServiceTest {
         verify(shippingInfoRepository).softDeleteByItemId(itemId);
         verify(itemGoodsLinkRepository).softDeleteAllByGoodsItemId(itemId);
         verify(itemImageRepository).softDeleteAllByItemId(itemId);
-        verify(itemMediaLinkSyncService).clearAfterCommit(itemId);
+        verify(itemThumbnailSyncService).syncAfterCommit(itemId, null, true);
         assertThat(item.getThumbnailMediaId()).isNull();
     }
 

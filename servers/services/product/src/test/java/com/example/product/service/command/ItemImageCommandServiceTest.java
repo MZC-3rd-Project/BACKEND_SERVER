@@ -36,7 +36,7 @@ class ItemImageCommandServiceTest {
     @Mock
     private MediaReferenceService mediaReferenceService;
     @Mock
-    private ItemMediaLinkSyncService itemMediaLinkSyncService;
+    private ItemThumbnailSyncService itemThumbnailSyncService;
     @Mock
     private EventPublisher eventPublisher;
 
@@ -78,7 +78,7 @@ class ItemImageCommandServiceTest {
         assertThat(item.getThumbnailMediaId()).isEqualTo(102L);
 
         verify(mediaReferenceService).validateMediaReferences(List.of(101L, 102L));
-        verify(itemMediaLinkSyncService).syncAfterCommit(itemId, 102L, List.of(101L));
+        verify(itemThumbnailSyncService).syncAfterCommit(itemId, 102L, List.of(101L));
         verify(eventPublisher).publish(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
@@ -102,7 +102,7 @@ class ItemImageCommandServiceTest {
                 .extracting("errorCode")
                 .isEqualTo(ProductErrorCode.INVALID_MEDIA_REFERENCE);
 
-        verify(itemMediaLinkSyncService, org.mockito.Mockito.never())
+        verify(itemThumbnailSyncService, org.mockito.Mockito.never())
                 .syncAfterCommit(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyList());
     }
 
@@ -143,7 +143,7 @@ class ItemImageCommandServiceTest {
         assertThat(responses.get(0).getSortOrder()).isEqualTo(0);
         assertThat(responses.get(1).getMediaId()).isEqualTo(101L);
         assertThat(responses.get(1).getSortOrder()).isEqualTo(1);
-        verify(itemMediaLinkSyncService).syncAfterCommit(itemId, 101L, List.of(102L));
+        verify(itemThumbnailSyncService).syncAfterCommit(itemId, 101L, List.of(102L));
         verify(eventPublisher).publish(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
@@ -161,7 +161,7 @@ class ItemImageCommandServiceTest {
         itemImageCommandService.deleteImage(image.getId(), sellerId);
 
         assertThat(item.getThumbnailMediaId()).isNull();
-        verify(itemMediaLinkSyncService).syncAfterCommit(itemId, null, List.of());
+        verify(itemThumbnailSyncService).syncAfterCommit(itemId, null, List.of());
         verify(eventPublisher).publish(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
@@ -180,7 +180,7 @@ class ItemImageCommandServiceTest {
         itemImageCommandService.deleteImage(deletedThumbnail.getId(), sellerId);
 
         assertThat(item.getThumbnailMediaId()).isEqualTo(202L);
-        verify(itemMediaLinkSyncService).syncAfterCommit(itemId, 202L, List.of());
+        verify(itemThumbnailSyncService).syncAfterCommit(itemId, 202L, List.of());
         verify(eventPublisher).publish(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
