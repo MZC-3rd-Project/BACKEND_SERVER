@@ -43,10 +43,10 @@ public class ProductClient {
     /**
      * D-3 이내 마감 예정 상품 목록 조회
      */
-    public JsonNode findItemsEndingSoon(int withinDays) {
+    public JsonNode findItemsEndingSoon() {
         try {
             JsonNode response = webClient.get()
-                    .uri("/internal/v1/items/ending-soon?withinDays={days}", withinDays)
+                    .uri("/internal/v1/items/ending-soon")
                     .retrieve()
                     .bodyToMono(JsonNode.class)
                     .block();
@@ -59,7 +59,7 @@ public class ProductClient {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Product ending-soon lookup failed: withinDays={}", withinDays, e);
+            log.error("Product ending-soon lookup failed", e);
             throw new BusinessException(HotDealErrorCode.PRODUCT_SERVICE_ERROR);
         }
     }

@@ -34,7 +34,7 @@ public class HotDealSelectionScheduler {
         log.info("Hot deal selection scheduler started");
 
         try {
-            JsonNode items = productClient.findItemsEndingSoon(3);
+            JsonNode items = productClient.findItemsEndingSoon();
 
             if (items == null || !items.isArray()) {
                 log.info("No items ending soon found");
