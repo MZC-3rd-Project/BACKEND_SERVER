@@ -555,6 +555,120 @@ wait_search_task_retry_observed() {
   return 1
 }
 
+wait_media_task_exists() {
+  local media_id="$1"
+  local timeout_seconds="$2"
+  local elapsed=0
+  while [[ "$elapsed" -lt "$timeout_seconds" ]]; do
+    local task_id
+    task_id="$(psql_query media_db "SELECT COALESCE(id::text, '') FROM media_derivative_tasks WHERE media_id=${media_id} ORDER BY created_at DESC LIMIT 1;")"
+    if [[ -n "$task_id" ]]; then
+      printf '%s\n' "$task_id"
+      return 0
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  return 1
+}
+
+wait_media_task_left_failed() {
+  local task_id="$1"
+  local timeout_seconds="$2"
+  local elapsed=0
+  while [[ "$elapsed" -lt "$timeout_seconds" ]]; do
+    local status
+    status="$(psql_query media_db "SELECT COALESCE(status, '') FROM media_derivative_tasks WHERE id=${task_id};")"
+    if [[ "$status" != "FAILED" && -n "$status" ]]; then
+      pass "replayed media task moved out of FAILED (taskId=${task_id}, status=${status})"
+      return 0
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  fail "replayed media task remained FAILED (taskId=${task_id})"
+  return 1
+}
+
+run_media_worker_ops_case() {
+  echo "[INFO] case3: media-worker ops API recovery paths"
+  local media_ops task_id
+  create_media_and_confirm media_ops "ops-e2e-m1" || return 1
+
+  task_id="$(wait_media_task_exists "$media_ops" 30 || true)"
+  if [[ -z "$task_id" ]]; then
+    fail "media task not found for ops case (mediaId=${media_ops})"
+    return 1
+  fi
+  pass "media task exists for ops case (mediaId=${media_ops}, taskId=${task_id})"
+
+  psql_exec media_db "
+    UPDATE media_derivative_tasks
+       SET status = 'FAILED',
+           completed_at = NOW(),
+           processing_started_at = NULL,
+           next_retry_at = NULL,
+           retry_count = COALESCE(retry_count, 0) + 1,
+           last_error = 'ops-injected failure'
+     WHERE id = ${task_id};
+  "
+  pass "media task forced to FAILED for replay validation (taskId=${task_id})"
+
+  local summary_raw summary_body summary_status failed_count
+  summary_raw="$(curl -sS -w '\n%{http_code}' "http://127.0.0.1:${WORKER_PORT}/internal/v1/media-worker/tasks/summary")"
+  summary_body="$(extract_http_body "$summary_raw")"
+  summary_status="$(extract_http_status "$summary_raw")"
+  ensure_http_status "media-worker ops summary status" "$summary_status" "200" || return 1
+  ensure_json_success "media-worker ops summary success" "$summary_body" || return 1
+  failed_count="$(echo "$summary_body" | jq -r '.data.failedCount // 0')"
+  if [[ "$failed_count" =~ ^[0-9]+$ && "$failed_count" -ge 1 ]]; then
+    pass "media-worker ops summary reports failedCount>=1"
+  else
+    fail "media-worker ops summary failedCount invalid (actual=${failed_count})"
+    return 1
+  fi
+
+  local dlq_raw dlq_body dlq_status
+  dlq_raw="$(curl -sS -w '\n%{http_code}' "http://127.0.0.1:${WORKER_PORT}/internal/v1/media-worker/tasks/dlq?size=5")"
+  dlq_body="$(extract_http_body "$dlq_raw")"
+  dlq_status="$(extract_http_status "$dlq_raw")"
+  ensure_http_status "media-worker ops dlq status" "$dlq_status" "200" || return 1
+  ensure_json_success "media-worker ops dlq success" "$dlq_body" || return 1
+
+  local replay_raw replay_body replay_status replay_queued
+  replay_raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${WORKER_PORT}/internal/v1/media-worker/tasks/${task_id}/replay" \
+    -H "Content-Type: application/json" \
+    -d '{"reason":"ops e2e replay"}')"
+  replay_body="$(extract_http_body "$replay_raw")"
+  replay_status="$(extract_http_status "$replay_raw")"
+  ensure_http_status "media-worker ops replay status" "$replay_status" "200" || return 1
+  ensure_json_success "media-worker ops replay success" "$replay_body" || return 1
+  replay_queued="$(echo "$replay_body" | jq -r '.data.queued // false')"
+  if [[ "$replay_queued" == "true" ]]; then
+    pass "media-worker ops replay queued=true"
+  else
+    fail "media-worker ops replay queued flag mismatch"
+    return 1
+  fi
+  wait_media_task_left_failed "$task_id" 40 || return 1
+
+  local backfill_raw backfill_body backfill_status scanned_count
+  backfill_raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${WORKER_PORT}/internal/v1/media-worker/tasks/backfill" \
+    -H "Content-Type: application/json" \
+    -d "{\"fromMediaId\":${media_ops},\"toMediaId\":${media_ops},\"size\":10,\"derivativeProfile\":\"THUMBNAIL_WEBP\"}")"
+  backfill_body="$(extract_http_body "$backfill_raw")"
+  backfill_status="$(extract_http_status "$backfill_raw")"
+  ensure_http_status "media-worker ops backfill status" "$backfill_status" "200" || return 1
+  ensure_json_success "media-worker ops backfill success" "$backfill_body" || return 1
+  scanned_count="$(echo "$backfill_body" | jq -r '.data.scannedCount // 0')"
+  if [[ "$scanned_count" =~ ^[0-9]+$ && "$scanned_count" -ge 1 ]]; then
+    pass "media-worker ops backfill scannedCount>=1"
+  else
+    fail "media-worker ops backfill scannedCount invalid (actual=${scanned_count})"
+    return 1
+  fi
+}
+
 run_enricher_e2e_cases() {
   echo "[INFO] case1: search enricher happy path"
   local media1 item1 title1
@@ -583,7 +697,7 @@ run_enricher_e2e_cases() {
 }
 
 run_dlq_case() {
-  echo "[INFO] case3: search consumer DLQ on indexing failure"
+  echo "[INFO] case4: search consumer DLQ on indexing failure"
   (cd "$ROOT/docker" && docker compose stop elasticsearch >/dev/null)
   pass "elasticsearch stopped for DLQ injection"
 
@@ -653,6 +767,7 @@ reset_data
 recreate_search_index
 
 run_enricher_e2e_cases
+run_media_worker_ops_case
 run_dlq_case
 
 echo "[INFO] result passes=${PASSES} failures=${FAILURES}"
