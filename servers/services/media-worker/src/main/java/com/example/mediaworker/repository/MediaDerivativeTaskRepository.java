@@ -15,6 +15,8 @@ import java.util.Optional;
 
 public interface MediaDerivativeTaskRepository extends JpaRepository<MediaDerivativeTask, Long> {
 
+    long countByStatus(MediaDerivativeTaskStatus status);
+
     Optional<MediaDerivativeTask> findByMediaIdAndDerivativeProfileAndMediaVersion(
             Long mediaId,
             MediaDerivativeProfile derivativeProfile,
