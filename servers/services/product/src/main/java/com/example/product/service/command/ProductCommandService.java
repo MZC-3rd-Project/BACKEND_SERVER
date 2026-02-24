@@ -120,16 +120,14 @@ public class ProductCommandService {
             }
         }
 
-        List<ItemOption> options = List.of();
         if (request.getOptions() != null) {
             itemOptionRepository.softDeleteAllByItemId(itemId);
-            options = saveOptions(itemId, request.getOptions());
+            saveOptions(itemId, request.getOptions());
         }
 
-        ShippingInfo shippingInfo = null;
         if (request.getShippingInfo() != null) {
             shippingInfoRepository.softDeleteByItemId(itemId);
-            shippingInfo = saveShippingInfo(itemId, request.getShippingInfo());
+            saveShippingInfo(itemId, request.getShippingInfo());
         }
 
         eventPublisher.publish(
@@ -142,8 +140,10 @@ public class ProductCommandService {
                 ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
+        List<ItemOption> currentOptions = itemOptionRepository.findByItemId(itemId);
+        ShippingInfo currentShippingInfo = shippingInfoRepository.findByItemId(itemId).orElse(null);
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
-        return GoodsDetailResponse.of(item, options, shippingInfo, List.of(), images);
+        return GoodsDetailResponse.of(item, currentOptions, currentShippingInfo, List.of(), images);
     }
 
     public void delete(Long itemId, Long sellerId, Long storeIdHeader) {
