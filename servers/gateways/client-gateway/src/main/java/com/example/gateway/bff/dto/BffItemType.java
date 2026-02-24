@@ -3,18 +3,24 @@ package com.example.gateway.bff.dto;
 import java.util.Locale;
 
 public enum BffItemType {
-    PRODUCT("/api/products"),
-    GOODS("/api/goods"),
-    PERFORMANCE("/api/performances");
+    PRODUCT("/api/products", "/api/seller/products"),
+    GOODS("/api/goods", "/api/seller/goods"),
+    PERFORMANCE("/api/performances", "/api/seller/performances");
 
     private final String collectionPath;
+    private final String sellerCollectionPath;
 
-    BffItemType(String collectionPath) {
+    BffItemType(String collectionPath, String sellerCollectionPath) {
         this.collectionPath = collectionPath;
+        this.sellerCollectionPath = sellerCollectionPath;
     }
 
     public String collectionPath() {
         return collectionPath;
+    }
+
+    public String sellerCollectionPath() {
+        return sellerCollectionPath;
     }
 
     public static BffItemType fromNullable(String value) {

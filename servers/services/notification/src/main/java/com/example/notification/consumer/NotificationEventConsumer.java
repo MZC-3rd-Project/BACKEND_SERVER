@@ -2,7 +2,8 @@ package com.example.notification.consumer;
 
 import com.example.config.kafka.IdempotentConsumerService;
 import com.example.core.util.JsonUtils;
-import com.example.notification.client.ProductClient;
+import com.example.clients.product.dto.ProductItemSummary;
+import com.example.clients.product.facade.ProductItemSummaryClientFacade;
 import com.example.notification.dto.command.request.CreateNotificationRequest;
 import com.example.notification.entity.NotificationChannel;
 import com.example.notification.entity.NotificationType;
@@ -28,7 +29,7 @@ public class NotificationEventConsumer {
 
     private final IdempotentConsumerService idempotentConsumerService;
     private final NotificationCommandService notificationCommandService;
-    private final ProductClient productClient;
+    private final ProductItemSummaryClientFacade productClient;
     private final NotificationSettingService notificationSettingService;
 
     @KafkaListener(topics = "funding-events", groupId = "${spring.kafka.consumer.group-id}")
@@ -319,7 +320,7 @@ public class NotificationEventConsumer {
         String title = normalizeText(explicitTitle);
 
         if ((recipientId == null || title == null) && itemId != null) {
-            ProductClient.ProductItemSummary itemSummary = productClient.findItemSummary(itemId);
+            ProductItemSummary itemSummary = productClient.findItemSummary(itemId);
             if (itemSummary != null) {
                 if (recipientId == null) {
                     recipientId = itemSummary.sellerId();

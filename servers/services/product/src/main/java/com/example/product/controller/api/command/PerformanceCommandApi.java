@@ -22,8 +22,7 @@ public interface PerformanceCommandApi {
     @PostMapping
     ApiResponse<PerformanceDetailResponse> create(
             @Valid @RequestBody PerformanceCreateRequest request,
-            @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long sellerId,
-            @Parameter(hidden = true) @RequestHeader(value = "X-Store-Id") Long storeId);
+            @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long sellerId);
 
     @Operation(summary = "공연 수정")
     @ApiResponses({
@@ -35,8 +34,7 @@ public interface PerformanceCommandApi {
     ApiResponse<PerformanceDetailResponse> update(
             @PathVariable Long itemId,
             @Valid @RequestBody PerformanceUpdateRequest request,
-            @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long sellerId,
-            @Parameter(hidden = true) @RequestHeader(value = "X-Store-Id") Long storeId);
+            @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long sellerId);
 
     @Operation(summary = "공연 삭제")
     @ApiResponses({
@@ -47,6 +45,5 @@ public interface PerformanceCommandApi {
     @DeleteMapping("/{itemId}")
     ApiResponse<Void> delete(
             @PathVariable Long itemId,
-            @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long sellerId,
-            @Parameter(hidden = true) @RequestHeader(value = "X-Store-Id") Long storeId);
+            @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long sellerId);
 }

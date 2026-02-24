@@ -1,7 +1,7 @@
 package com.example.search.service.reconciliation;
 
 import com.example.core.util.JsonUtils;
-import com.example.search.client.StockQueryClient;
+import com.example.clients.stock.facade.StockAvailabilityQueryFacade;
 import com.example.search.document.ItemDocument;
 import com.example.search.dto.reconciliation.response.StockReconciliationResponse;
 import com.example.search.service.metrics.SearchMetricsService;
@@ -24,7 +24,7 @@ import java.util.Map;
 public class StockReconciliationService {
 
     private final RestClient restClient;
-    private final StockQueryClient stockQueryClient;
+    private final StockAvailabilityQueryFacade stockQueryClient;
     private final SearchMetricsService searchMetricsService;
 
     @Value("${search.metrics.runbook-url:https://runbook.example/search}")

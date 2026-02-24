@@ -1,10 +1,10 @@
 package com.example.product.service.command.image;
 
-import com.example.clients.media.InvalidMediaReferenceException;
-import com.example.clients.media.MediaClientException;
-import com.example.clients.media.MediaClientFacade;
-import com.example.clients.media.MediaClientValidator;
-import com.example.clients.media.MediaLinksSyncCommand;
+import com.example.clients.media.exception.InvalidMediaReferenceException;
+import com.example.clients.media.exception.MediaClientException;
+import com.example.clients.media.facade.MediaClientFacade;
+import com.example.clients.media.impl.MediaClientValidator;
+import com.example.clients.media.dto.MediaLinksSyncCommand;
 import com.example.core.exception.BusinessException;
 import com.example.product.exception.ProductErrorCode;
 import org.junit.jupiter.api.BeforeEach;

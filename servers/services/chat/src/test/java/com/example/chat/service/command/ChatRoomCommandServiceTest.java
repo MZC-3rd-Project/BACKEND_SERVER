@@ -1,6 +1,7 @@
 package com.example.chat.service.command;
 
-import com.example.chat.client.ProductClient;
+import com.example.clients.product.dto.ProductItemSummary;
+import com.example.clients.product.facade.ProductItemSummaryClientFacade;
 import com.example.chat.dto.command.request.CreateInquiryRoomRequest;
 import com.example.chat.dto.command.response.ChatRoomCreateResponse;
 import com.example.chat.entity.participant.ChatParticipantRole;
@@ -33,7 +34,7 @@ import static org.mockito.Mockito.when;
 class ChatRoomCommandServiceTest {
 
     @Mock
-    private ProductClient productClient;
+    private ProductItemSummaryClientFacade productClient;
 
     @Mock
     private ChatRoomRepository chatRoomRepository;
@@ -54,7 +55,7 @@ class ChatRoomCommandServiceTest {
                 .build();
 
         when(productClient.findItemSummary(100L))
-                .thenReturn(new ProductClient.ProductItemSummary(100L, 300L, "상품 A"));
+                .thenReturn(new ProductItemSummary(100L, 300L, "상품 A"));
         when(chatRoomRepository.findByRoomKey("inquiry:100:200:300"))
                 .thenReturn(Optional.empty());
 
@@ -86,7 +87,7 @@ class ChatRoomCommandServiceTest {
                 .build();
 
         when(productClient.findItemSummary(100L))
-                .thenReturn(new ProductClient.ProductItemSummary(100L, 300L, "상품 A"));
+                .thenReturn(new ProductItemSummary(100L, 300L, "상품 A"));
 
         ChatRoom existing = ChatRoom.createInquiryRoom("inquiry:100:200:300", 100L, 300L, "상품 A");
         ReflectionTestUtils.setField(existing, "id", 2000L);

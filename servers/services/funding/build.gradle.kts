@@ -15,6 +15,7 @@ dependencies {
 
     // Data
     implementation(project(":libs:data:entity"))
+    implementation(project(":libs:clients:stock-client"))
 
     // Config
     implementation(project(":libs:config:kafka"))
