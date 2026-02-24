@@ -2,9 +2,11 @@ package com.example.product.service.command;
 
 import com.example.core.exception.BusinessException;
 import com.example.event.EventPublisher;
+import com.example.product.dto.goods.request.GoodsCreateRequest;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemType;
 import com.example.product.exception.ProductErrorCode;
+import com.example.product.repository.CategoryRepository;
 import com.example.product.repository.ItemGoodsLinkRepository;
 import com.example.product.repository.ItemImageRepository;
 import com.example.product.repository.ItemOptionRepository;
@@ -30,6 +32,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class GoodsCommandServiceTest {
 
+    @Mock
+    private CategoryRepository categoryRepository;
     @Mock
     private ItemRepository itemRepository;
     @Mock
@@ -97,6 +101,25 @@ class GoodsCommandServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ProductErrorCode.STORE_OWNERSHIP_MISMATCH);
+    }
+
+    @Test
+    void createGoods_whenCategoryNotFound_throwsBusinessError() {
+        GoodsCreateRequest request = new GoodsCreateRequest();
+        ReflectionTestUtils.setField(request, "title", "goods");
+        ReflectionTestUtils.setField(request, "description", "desc");
+        ReflectionTestUtils.setField(request, "price", 1000L);
+        ReflectionTestUtils.setField(request, "storeId", 1L);
+        ReflectionTestUtils.setField(request, "categoryId", 999L);
+
+        when(categoryRepository.existsById(999L)).thenReturn(false);
+
+        assertThatThrownBy(() -> goodsCommandService.createGoods(request, 10L, 1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ProductErrorCode.CATEGORY_NOT_FOUND);
+
+        verifyNoInteractions(itemRepository, itemThumbnailSyncService, eventPublisher);
     }
 
     private Item createItem(Long id, Long sellerId) {

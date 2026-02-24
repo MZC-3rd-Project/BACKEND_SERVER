@@ -8,6 +8,7 @@ import com.example.product.entity.image.ItemImage;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemType;
 import com.example.product.exception.ProductErrorCode;
+import com.example.product.repository.CategoryRepository;
 import com.example.product.repository.ItemImageRepository;
 import com.example.product.repository.ItemOptionRepository;
 import com.example.product.repository.ItemRepository;
@@ -33,6 +34,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class ProductCommandServiceTest {
 
+    @Mock
+    private CategoryRepository categoryRepository;
     @Mock
     private ItemRepository itemRepository;
     @Mock
@@ -125,8 +128,10 @@ class ProductCommandServiceTest {
         Item item = createItem(itemId, sellerId);
         ProductUpdateRequest request = new ProductUpdateRequest();
         ReflectionTestUtils.setField(request, "thumbnailMediaId", 777L);
+        ReflectionTestUtils.setField(request, "categoryId", 10L);
 
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
+        when(categoryRepository.existsById(10L)).thenReturn(true);
         when(mediaReferenceService.resolveMediaUrl(777L))
                 .thenThrow(new BusinessException(ProductErrorCode.INVALID_MEDIA_REFERENCE));
 
@@ -145,8 +150,10 @@ class ProductCommandServiceTest {
         Item item = createItem(itemId, sellerId);
         ProductUpdateRequest request = new ProductUpdateRequest();
         ReflectionTestUtils.setField(request, "clearThumbnail", true);
+        ReflectionTestUtils.setField(request, "categoryId", 10L);
 
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
+        when(categoryRepository.existsById(10L)).thenReturn(true);
         when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(java.util.List.of());
 
         productCommandService.updateProduct(itemId, request, sellerId, 100L);
@@ -192,6 +199,44 @@ class ProductCommandServiceTest {
 
         verifyNoInteractions(itemThumbnailSyncService);
         verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void createProduct_whenCategoryNotFound_throwsBusinessError() {
+        ProductCreateRequest request = new ProductCreateRequest();
+        ReflectionTestUtils.setField(request, "title", "new item");
+        ReflectionTestUtils.setField(request, "description", "desc");
+        ReflectionTestUtils.setField(request, "price", 1000L);
+        ReflectionTestUtils.setField(request, "storeId", 10L);
+        ReflectionTestUtils.setField(request, "categoryId", 999L);
+
+        when(categoryRepository.existsById(999L)).thenReturn(false);
+
+        assertThatThrownBy(() -> productCommandService.createProduct(request, 77L, 10L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ProductErrorCode.CATEGORY_NOT_FOUND);
+
+        verifyNoInteractions(itemRepository, itemThumbnailSyncService, eventPublisher);
+    }
+
+    @Test
+    void updateProduct_whenCategoryNotFound_throwsBusinessError() {
+        Long itemId = 1L;
+        Long sellerId = 10L;
+        Item item = createItem(itemId, sellerId);
+        ProductUpdateRequest request = new ProductUpdateRequest();
+        ReflectionTestUtils.setField(request, "categoryId", 999L);
+
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
+        when(categoryRepository.existsById(999L)).thenReturn(false);
+
+        assertThatThrownBy(() -> productCommandService.updateProduct(itemId, request, sellerId, 100L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ProductErrorCode.CATEGORY_NOT_FOUND);
+
+        verifyNoInteractions(itemThumbnailSyncService, eventPublisher);
     }
 
     @Test
