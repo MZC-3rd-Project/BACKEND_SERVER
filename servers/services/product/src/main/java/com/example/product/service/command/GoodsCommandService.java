@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -41,8 +42,9 @@ public class GoodsCommandService {
     private final ItemThumbnailSyncService itemThumbnailSyncService;
     private final EventPublisher eventPublisher;
 
-    public GoodsDetailResponse createGoods(GoodsCreateRequest request, Long sellerId) {
+    public GoodsDetailResponse createGoods(GoodsCreateRequest request, Long sellerId, Long storeIdHeader) {
         // TODO: store-service 연동 후 sellerId-storeId 소유권 검증을 추가한다.
+        validateStoreOwnership(request.getStoreId(), storeIdHeader);
         mediaReferenceService.resolveMediaUrl(request.getThumbnailMediaId());
         Item item = Item.create(
                 request.getTitle(), request.getDescription(), request.getPrice(),
@@ -89,11 +91,12 @@ public class GoodsCommandService {
         return GoodsDetailResponse.of(item, options, shippingInfo, linkedIds, images);
     }
 
-    public GoodsDetailResponse updateGoods(Long itemId, GoodsUpdateRequest request, Long sellerId) {
+    public GoodsDetailResponse updateGoods(Long itemId, GoodsUpdateRequest request, Long sellerId, Long storeIdHeader) {
         Item item = itemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
         item.validateOwnership(sellerId);
         validateItemType(item, ItemType.GOODS);
+        validateStoreOwnership(item.getStoreId(), storeIdHeader);
         if (!item.isEditable()) {
             throw new BusinessException(ProductErrorCode.ITEM_NOT_EDITABLE);
         }
@@ -153,11 +156,12 @@ public class GoodsCommandService {
         return GoodsDetailResponse.of(item, options, shippingInfo, linkedIds, images);
     }
 
-    public void delete(Long itemId, Long sellerId) {
+    public void delete(Long itemId, Long sellerId, Long storeIdHeader) {
         Item item = itemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
         item.validateOwnership(sellerId);
         validateItemType(item, ItemType.GOODS);
+        validateStoreOwnership(item.getStoreId(), storeIdHeader);
         if (!item.isDeletable()) {
             throw new BusinessException(ProductErrorCode.ITEM_NOT_DELETABLE);
         }
@@ -209,6 +213,12 @@ public class GoodsCommandService {
     private void validateItemType(Item item, ItemType expectedType) {
         if (item.getItemType() != expectedType) {
             throw new BusinessException(ProductErrorCode.ITEM_TYPE_MISMATCH);
+        }
+    }
+
+    private void validateStoreOwnership(Long expectedStoreId, Long requestStoreId) {
+        if (!Objects.equals(expectedStoreId, requestStoreId)) {
+            throw new BusinessException(ProductErrorCode.STORE_OWNERSHIP_MISMATCH);
         }
     }
 

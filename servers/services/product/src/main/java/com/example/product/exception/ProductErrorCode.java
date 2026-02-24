@@ -46,7 +46,8 @@ public enum ProductErrorCode implements DomainErrorCode {
     INVALID_THUMBNAIL_UPDATE_REQUEST("PRODUCT-605", "썸네일 변경 요청이 유효하지 않습니다", HttpStatus.BAD_REQUEST),
 
     // Authorization
-    UNAUTHORIZED_ACCESS("PRODUCT-901", "해당 상품에 대한 권한이 없습니다", HttpStatus.FORBIDDEN);
+    UNAUTHORIZED_ACCESS("PRODUCT-901", "해당 상품에 대한 권한이 없습니다", HttpStatus.FORBIDDEN),
+    STORE_OWNERSHIP_MISMATCH("PRODUCT-902", "요청한 가게 정보와 인증 가게 정보가 일치하지 않습니다", HttpStatus.FORBIDDEN);
 
     private final String code;
     private final String message;
