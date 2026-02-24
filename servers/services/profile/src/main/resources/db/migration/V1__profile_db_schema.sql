@@ -19,6 +19,8 @@ CREATE TABLE profile_images (
                                 sort_order      INT DEFAULT 0,
                                 created_at      TIMESTAMP(6) WITHOUT TIME ZONE
                         NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                                updated_at      TIMESTAMP(6) WITHOUT TIME ZONE
+    NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                 deleted_at      TIMESTAMP(6) WITHOUT TIME ZONE,
                                 CONSTRAINT fk_profile_images_profile
                                     FOREIGN KEY (profile_id)
