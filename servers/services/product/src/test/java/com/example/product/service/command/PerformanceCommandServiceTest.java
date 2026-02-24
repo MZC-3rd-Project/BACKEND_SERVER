@@ -40,7 +40,7 @@ class PerformanceCommandServiceTest {
     @Mock
     private MediaReferenceService mediaReferenceService;
     @Mock
-    private ItemMediaLinkSyncService itemMediaLinkSyncService;
+    private ItemThumbnailSyncService itemThumbnailSyncService;
     @Mock
     private EventPublisher eventPublisher;
 
@@ -63,7 +63,7 @@ class PerformanceCommandServiceTest {
         verify(castMemberRepository).softDeleteAllByPerformanceId(100L);
         verify(performanceRepository).softDeleteByItemId(itemId);
         verify(itemImageRepository).softDeleteAllByItemId(itemId);
-        verify(itemMediaLinkSyncService).clearAfterCommit(itemId);
+        verify(itemThumbnailSyncService).syncAfterCommit(itemId, null, true);
         assertThat(item.getThumbnailMediaId()).isNull();
     }
 
