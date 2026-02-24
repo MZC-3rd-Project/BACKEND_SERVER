@@ -130,24 +130,21 @@ public class GoodsCommandService {
         }
 
         // 옵션 교체
-        List<ItemOption> options = List.of();
         if (request.getOptions() != null) {
             itemOptionRepository.softDeleteAllByItemId(itemId);
-            options = saveOptions(itemId, request.getOptions());
+            saveOptions(itemId, request.getOptions());
         }
 
         // 배송정보 교체
-        ShippingInfo shippingInfo = null;
         if (request.getShippingInfo() != null) {
             shippingInfoRepository.softDeleteByItemId(itemId);
-            shippingInfo = saveShippingInfo(itemId, request.getShippingInfo());
+            saveShippingInfo(itemId, request.getShippingInfo());
         }
 
         // 공연 연결 교체
-        List<Long> linkedIds = List.of();
         if (request.getLinkedPerformanceItemIds() != null) {
             itemGoodsLinkRepository.softDeleteAllByGoodsItemId(itemId);
-            linkedIds = linkPerformances(itemId, request.getLinkedPerformanceItemIds());
+            linkPerformances(itemId, request.getLinkedPerformanceItemIds());
         }
 
         eventPublisher.publish(
@@ -160,8 +157,13 @@ public class GoodsCommandService {
                 ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
+        List<ItemOption> currentOptions = itemOptionRepository.findByItemId(itemId);
+        ShippingInfo currentShippingInfo = shippingInfoRepository.findByItemId(itemId).orElse(null);
+        List<Long> currentLinkedIds = itemGoodsLinkRepository.findByGoodsItemId(itemId).stream()
+                .map(ItemGoodsLink::getPerformanceItemId)
+                .toList();
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
-        return GoodsDetailResponse.of(item, options, shippingInfo, linkedIds, images);
+        return GoodsDetailResponse.of(item, currentOptions, currentShippingInfo, currentLinkedIds, images);
     }
 
     public void delete(Long itemId, Long sellerId, Long storeIdHeader) {
