@@ -3,6 +3,7 @@ package com.example.product.entity.item;
 import com.example.core.exception.BusinessException;
 import com.example.product.exception.ProductErrorCode;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -38,5 +39,16 @@ public enum ItemStatus {
 
     public boolean canTransitionTo(ItemStatus target) {
         return TRANSITIONS.getOrDefault(this, Set.of()).contains(target);
+    }
+
+    public static ItemStatus from(String rawStatus) {
+        if (rawStatus == null || rawStatus.isBlank()) {
+            throw new BusinessException(ProductErrorCode.INVALID_ITEM_STATUS_TRANSITION);
+        }
+        try {
+            return ItemStatus.valueOf(rawStatus.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(ProductErrorCode.INVALID_ITEM_STATUS_TRANSITION);
+        }
     }
 }
