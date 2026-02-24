@@ -1,6 +1,7 @@
 package com.example.chat.service.command;
 
 import com.example.chat.client.ProductClient;
+import com.example.chat.client.ProductClientFacade;
 import com.example.chat.dto.command.request.CreateInquiryRoomRequest;
 import com.example.chat.dto.command.response.ChatRoomCreateResponse;
 import com.example.chat.entity.audit.ChatAuditEventType;
@@ -27,7 +28,7 @@ public class ChatRoomCommandService {
 
     private static final String INQUIRY_ROOM_KEY_FORMAT = "inquiry:%d:%d:%d";
 
-    private final ProductClient productClient;
+    private final ProductClientFacade productClient;
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomParticipantRepository chatRoomParticipantRepository;
     private final ChatAuditService chatAuditService;

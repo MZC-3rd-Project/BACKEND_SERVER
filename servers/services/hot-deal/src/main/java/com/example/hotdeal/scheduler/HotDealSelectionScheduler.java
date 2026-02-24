@@ -1,7 +1,7 @@
 package com.example.hotdeal.scheduler;
 
-import com.example.hotdeal.client.ProductClient;
-import com.example.hotdeal.client.StockClient;
+import com.example.hotdeal.client.ProductClientFacade;
+import com.example.hotdeal.client.StockClientFacade;
 import com.example.hotdeal.entity.HotDealStatus;
 import com.example.hotdeal.repository.HotDealRepository;
 import com.example.hotdeal.service.HotDealCommandService;
@@ -20,8 +20,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class HotDealSelectionScheduler {
 
-    private final ProductClient productClient;
-    private final StockClient stockClient;
+    private final ProductClientFacade productClient;
+    private final StockClientFacade stockClient;
     private final HotDealRepository hotDealRepository;
     private final HotDealCommandService hotDealCommandService;
 

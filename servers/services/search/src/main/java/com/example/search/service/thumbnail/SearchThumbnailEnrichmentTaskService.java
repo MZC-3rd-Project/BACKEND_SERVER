@@ -1,6 +1,6 @@
 package com.example.search.service.thumbnail;
 
-import com.example.search.client.MediaBatchQueryClient;
+import com.example.search.client.MediaBatchQueryFacade;
 import com.example.search.entity.SearchThumbnailEnrichmentStatus;
 import com.example.search.entity.SearchThumbnailEnrichmentTask;
 import com.example.search.repository.SearchThumbnailEnrichmentTaskRepository;
@@ -29,7 +29,7 @@ public class SearchThumbnailEnrichmentTaskService {
     private final SearchThumbnailEnrichmentTaskRepository taskRepository;
     private final SearchIndexingService searchIndexingService;
     private final SearchResultCacheService searchResultCacheService;
-    private final MediaBatchQueryClient mediaBatchQueryClient;
+    private final MediaBatchQueryFacade mediaBatchQueryClient;
     private final TransactionTemplate transactionTemplate;
 
     @Value("${search.thumbnail-enricher.batch-size:50}")

@@ -4,7 +4,7 @@ import com.example.core.exception.BusinessException;
 import com.example.core.id.Snowflake;
 import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;
-import com.example.funding.client.StockClient;
+import com.example.funding.client.StockClientFacade;
 import com.example.funding.dto.participation.request.ParticipateRequest;
 import com.example.funding.dto.participation.response.ParticipationResponse;
 import com.example.funding.entity.FundingCampaign;
@@ -32,7 +32,7 @@ public class ParticipationCommandService {
 
     private final FundingCampaignRepository campaignRepository;
     private final FundingParticipationRepository participationRepository;
-    private final StockClient stockClient;
+    private final StockClientFacade stockClient;
     private final CampaignCacheService campaignCacheService;
     private final EventPublisher eventPublisher;
     private final Snowflake snowflake;

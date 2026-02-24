@@ -1,6 +1,6 @@
 package com.example.funding.service.retry;
 
-import com.example.funding.client.StockClient;
+import com.example.funding.client.StockClientFacade;
 import com.example.funding.entity.StockCancelRetry;
 import com.example.funding.entity.StockCancelRetryStatus;
 import com.example.funding.repository.StockCancelRetryRepository;
@@ -23,7 +23,7 @@ public class StockCancelRetryService {
     private static final long MAX_DELAY_SECONDS = 600;
 
     private final StockCancelRetryRepository retryRepository;
-    private final StockClient stockClient;
+    private final StockClientFacade stockClient;
     private final TransactionTemplate transactionTemplate;
 
     @Value("${app.stock-cancel-retry.processing-stale-threshold-seconds:120}")

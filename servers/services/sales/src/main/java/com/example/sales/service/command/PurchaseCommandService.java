@@ -4,8 +4,8 @@ import com.example.core.exception.BusinessException;
 import com.example.core.id.Snowflake;
 import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;
-import com.example.sales.client.ProductClient;
-import com.example.sales.client.StockClient;
+import com.example.sales.client.ProductClientFacade;
+import com.example.sales.client.StockClientFacade;
 import com.example.sales.dto.request.PurchaseRequest;
 import com.example.sales.dto.response.PurchaseResponse;
 import com.example.sales.entity.Purchase;
@@ -26,8 +26,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class PurchaseCommandService {
 
     private final PurchaseRepository purchaseRepository;
-    private final ProductClient productClient;
-    private final StockClient stockClient;
+    private final ProductClientFacade productClient;
+    private final StockClientFacade stockClient;
     private final EventPublisher eventPublisher;
     private final Snowflake snowflake;
     private final TransactionTemplate transactionTemplate;
