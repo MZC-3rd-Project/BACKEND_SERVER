@@ -7,7 +7,6 @@ import com.example.product.dto.goods.request.GoodsUpdateRequest;
 import com.example.product.dto.goods.response.GoodsDetailResponse;
 import com.example.product.service.command.GoodsCommandService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,18 +18,18 @@ public class GoodsCommandController implements GoodsCommandApi {
     private final GoodsCommandService goodsCommandService;
 
     @Override
-    public ApiResponse<GoodsDetailResponse> create(GoodsCreateRequest request, Long sellerId) {
-        return ApiResponse.success(goodsCommandService.createGoods(request, sellerId));
+    public ApiResponse<GoodsDetailResponse> create(GoodsCreateRequest request, Long sellerId, Long storeId) {
+        return ApiResponse.success(goodsCommandService.createGoods(request, sellerId, storeId));
     }
 
     @Override
-    public ApiResponse<GoodsDetailResponse> update(Long itemId, GoodsUpdateRequest request, Long sellerId) {
-        return ApiResponse.success(goodsCommandService.updateGoods(itemId, request, sellerId));
+    public ApiResponse<GoodsDetailResponse> update(Long itemId, GoodsUpdateRequest request, Long sellerId, Long storeId) {
+        return ApiResponse.success(goodsCommandService.updateGoods(itemId, request, sellerId, storeId));
     }
 
     @Override
-    public ApiResponse<Void> delete(Long itemId, Long sellerId) {
-        goodsCommandService.delete(itemId, sellerId);
+    public ApiResponse<Void> delete(Long itemId, Long sellerId, Long storeId) {
+        goodsCommandService.delete(itemId, sellerId, storeId);
         return ApiResponse.success();
     }
 }

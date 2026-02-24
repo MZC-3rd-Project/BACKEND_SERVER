@@ -18,18 +18,18 @@ public class ProductCommandController implements ProductCommandApi {
     private final ProductCommandService productCommandService;
 
     @Override
-    public ApiResponse<GoodsDetailResponse> create(ProductCreateRequest request, Long sellerId) {
-        return ApiResponse.success(productCommandService.createProduct(request, sellerId));
+    public ApiResponse<GoodsDetailResponse> create(ProductCreateRequest request, Long sellerId, Long storeId) {
+        return ApiResponse.success(productCommandService.createProduct(request, sellerId, storeId));
     }
 
     @Override
-    public ApiResponse<GoodsDetailResponse> update(Long itemId, ProductUpdateRequest request, Long sellerId) {
-        return ApiResponse.success(productCommandService.updateProduct(itemId, request, sellerId));
+    public ApiResponse<GoodsDetailResponse> update(Long itemId, ProductUpdateRequest request, Long sellerId, Long storeId) {
+        return ApiResponse.success(productCommandService.updateProduct(itemId, request, sellerId, storeId));
     }
 
     @Override
-    public ApiResponse<Void> delete(Long itemId, Long sellerId) {
-        productCommandService.delete(itemId, sellerId);
+    public ApiResponse<Void> delete(Long itemId, Long sellerId, Long storeId) {
+        productCommandService.delete(itemId, sellerId, storeId);
         return ApiResponse.success();
     }
 }
