@@ -16,6 +16,8 @@ import com.example.product.event.ItemCreatedEvent;
 import com.example.product.event.ItemUpdatedEvent;
 import com.example.product.exception.ProductErrorCode;
 import com.example.product.repository.*;
+import com.example.product.service.command.image.ItemThumbnailSyncService;
+import com.example.product.service.command.image.MediaReferenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

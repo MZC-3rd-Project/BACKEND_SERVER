@@ -1,4 +1,4 @@
-package com.example.product.service.command;
+package com.example.product.service.command.image;
 
 import com.example.core.exception.BusinessException;
 import com.example.clients.media.InvalidMediaReferenceException;

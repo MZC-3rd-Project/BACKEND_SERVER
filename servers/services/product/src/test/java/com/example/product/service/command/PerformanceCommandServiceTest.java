@@ -9,6 +9,8 @@ import com.example.product.repository.ItemImageRepository;
 import com.example.product.repository.ItemRepository;
 import com.example.product.repository.PerformanceRepository;
 import com.example.product.repository.SeatGradeRepository;
+import com.example.product.service.command.image.ItemThumbnailSyncService;
+import com.example.product.service.command.image.MediaReferenceService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
