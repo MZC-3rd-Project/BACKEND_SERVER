@@ -8,7 +8,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 @Slf4j
 @Component
-public class StockQueryClient {
+public class StockQueryClient implements StockQueryFacade {
 
     private final WebClient webClient;
 

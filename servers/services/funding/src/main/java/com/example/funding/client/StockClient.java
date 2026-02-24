@@ -15,7 +15,7 @@ import java.util.Map;
 
 @Slf4j
 @Component
-public class StockClient {
+public class StockClient implements StockClientFacade {
 
     private final WebClient webClient;
 
