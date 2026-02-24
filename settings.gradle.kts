@@ -48,6 +48,7 @@ include("servers:services:sales")
 include("servers:services:hot-deal")
 include("servers:services:media-api")
 include("servers:services:media-worker")
+include("servers:services:user-123")
 
 // 테스트 서버
 include("servers:test:test-server")

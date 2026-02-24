@@ -13,7 +13,7 @@ flowchart LR
   D1 --> M1[Media API]
   M1 --> S3[(S3 Bucket)]
   M1 --> DB[(media_db)]
-  M1 --> EV[(Kafka Event)]
+  M1 --> EV[(Kafka  Event)]
   D1 --> M2[Media Internal API]
 ```
 
