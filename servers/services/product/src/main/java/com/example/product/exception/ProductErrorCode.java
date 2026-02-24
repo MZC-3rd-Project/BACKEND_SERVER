@@ -21,6 +21,7 @@ public enum ProductErrorCode implements DomainErrorCode {
     CATEGORY_NOT_FOUND("PRODUCT-101", "카테고리를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
     CATEGORY_DEPTH_EXCEEDED("PRODUCT-102", "카테고리 최대 깊이를 초과했습니다", HttpStatus.BAD_REQUEST),
     CATEGORY_HAS_CHILDREN("PRODUCT-103", "하위 카테고리가 있어 삭제할 수 없습니다", HttpStatus.CONFLICT),
+    CATEGORY_IN_USE("PRODUCT-104", "연결된 상품이 있어 카테고리를 삭제할 수 없습니다", HttpStatus.CONFLICT),
 
     // Performance
     PERFORMANCE_NOT_FOUND("PRODUCT-201", "공연 정보를 찾을 수 없습니다", HttpStatus.NOT_FOUND),

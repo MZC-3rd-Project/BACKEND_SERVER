@@ -2,10 +2,12 @@ package com.example.product.service.command;
 
 import com.example.core.exception.BusinessException;
 import com.example.event.EventPublisher;
+import com.example.product.dto.performance.request.PerformanceCreateRequest;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemType;
 import com.example.product.entity.performance.Performance;
 import com.example.product.exception.ProductErrorCode;
+import com.example.product.repository.CategoryRepository;
 import com.example.product.repository.CastMemberRepository;
 import com.example.product.repository.ItemImageRepository;
 import com.example.product.repository.ItemRepository;
@@ -22,6 +24,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,6 +36,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class PerformanceCommandServiceTest {
 
+    @Mock
+    private CategoryRepository categoryRepository;
     @Mock
     private ItemRepository itemRepository;
     @Mock
@@ -102,6 +107,30 @@ class PerformanceCommandServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ProductErrorCode.STORE_OWNERSHIP_MISMATCH);
+    }
+
+    @Test
+    void create_whenCategoryNotFound_throwsBusinessError() {
+        PerformanceCreateRequest request = new PerformanceCreateRequest();
+        ReflectionTestUtils.setField(request, "title", "performance");
+        ReflectionTestUtils.setField(request, "description", "desc");
+        ReflectionTestUtils.setField(request, "price", 1000L);
+        ReflectionTestUtils.setField(request, "storeId", 1L);
+        ReflectionTestUtils.setField(request, "categoryId", 999L);
+        ReflectionTestUtils.setField(request, "venue", "hall");
+        ReflectionTestUtils.setField(request, "performanceDate", LocalDate.of(2030, 1, 1));
+        ReflectionTestUtils.setField(request, "performanceTime", LocalTime.of(18, 0));
+        ReflectionTestUtils.setField(request, "totalSeats", 100);
+        ReflectionTestUtils.setField(request, "seatGrades", List.of());
+
+        when(categoryRepository.existsById(999L)).thenReturn(false);
+
+        assertThatThrownBy(() -> performanceCommandService.create(request, 10L, 1L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ProductErrorCode.CATEGORY_NOT_FOUND);
+
+        verifyNoInteractions(itemRepository, performanceRepository, seatGradeRepository, castMemberRepository, eventPublisher);
     }
 
     private Item createItem(Long id, Long sellerId) {
