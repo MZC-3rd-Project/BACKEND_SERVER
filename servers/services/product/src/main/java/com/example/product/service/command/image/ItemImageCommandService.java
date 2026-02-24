@@ -162,8 +162,11 @@ public class ItemImageCommandService {
         Set<Long> seen = new HashSet<>();
         for (ItemImageRequest request : requests) {
             Long mediaId = request.getMediaId();
-            if (mediaId == null || !seen.add(mediaId)) {
+            if (mediaId == null) {
                 throw new BusinessException(ProductErrorCode.INVALID_IMAGE_REORDER_REQUEST);
+            }
+            if (!seen.add(mediaId)) {
+                throw new BusinessException(ProductErrorCode.DUPLICATE_IMAGE_MEDIA_ID);
             }
         }
     }
