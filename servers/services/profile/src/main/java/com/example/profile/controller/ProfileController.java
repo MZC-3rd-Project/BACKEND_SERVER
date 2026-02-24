@@ -1,21 +1,18 @@
 package com.example.profile.controller;
 
 import com.example.api.response.ApiResponse;
-import com.example.core.exception.BusinessException;
 import com.example.profile.dto.response.ProfileResponse;
 import com.example.profile.dto.response.ProfilesImageResponse;
 import com.example.profile.entity.Profiles;
-import com.example.profile.entity.ProfilesImage;
 import com.example.profile.repository.ProfilesImageRepository;
 import com.example.profile.repository.ProfilesRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.shaded.com.google.protobuf.Api;
-import org.springframework.context.annotation.Profile;
+
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Optional;
+
 
 @Slf4j
 @RestController
