@@ -76,7 +76,7 @@ class ProductCommandServiceTest {
         });
         when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(java.util.List.of());
 
-        productCommandService.createProduct(request, 77L, 10L);
+        productCommandService.createProduct(request, 77L);
 
         verify(itemThumbnailSyncService).syncAfterCommit(itemId, 501L);
         verify(eventPublisher).publish(any(), any());
@@ -94,7 +94,7 @@ class ProductCommandServiceTest {
         when(mediaReferenceService.resolveMediaUrl(501L))
                 .thenThrow(new BusinessException(ProductErrorCode.INVALID_MEDIA_REFERENCE));
 
-        assertThatThrownBy(() -> productCommandService.createProduct(request, 77L, 10L))
+        assertThatThrownBy(() -> productCommandService.createProduct(request, 77L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ProductErrorCode.INVALID_MEDIA_REFERENCE);
@@ -121,7 +121,7 @@ class ProductCommandServiceTest {
         when(shippingInfoRepository.findByItemId(itemId)).thenReturn(Optional.empty());
         when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(java.util.List.of(image));
 
-        productCommandService.updateProduct(itemId, request, sellerId, 100L);
+        productCommandService.updateProduct(itemId, request, sellerId);
 
         verify(itemThumbnailSyncService).syncAfterCommit(itemId, 888L);
         verify(eventPublisher).publish(any(), any());
@@ -141,7 +141,7 @@ class ProductCommandServiceTest {
         when(mediaReferenceService.resolveMediaUrl(777L))
                 .thenThrow(new BusinessException(ProductErrorCode.INVALID_MEDIA_REFERENCE));
 
-        assertThatThrownBy(() -> productCommandService.updateProduct(itemId, request, sellerId, 100L))
+        assertThatThrownBy(() -> productCommandService.updateProduct(itemId, request, sellerId))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ProductErrorCode.INVALID_MEDIA_REFERENCE);
@@ -164,7 +164,7 @@ class ProductCommandServiceTest {
         when(shippingInfoRepository.findByItemId(itemId)).thenReturn(Optional.empty());
         when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(java.util.List.of());
 
-        productCommandService.updateProduct(itemId, request, sellerId, 100L);
+        productCommandService.updateProduct(itemId, request, sellerId);
 
         assertThat(item.getThumbnailMediaId()).isNull();
         verify(itemThumbnailSyncService).syncAfterCommit(itemId, null, true);
@@ -182,7 +182,7 @@ class ProductCommandServiceTest {
 
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
 
-        assertThatThrownBy(() -> productCommandService.updateProduct(itemId, request, sellerId, 100L))
+        assertThatThrownBy(() -> productCommandService.updateProduct(itemId, request, sellerId))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ProductErrorCode.INVALID_THUMBNAIL_UPDATE_REQUEST);
@@ -200,7 +200,7 @@ class ProductCommandServiceTest {
 
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(goodsItem));
 
-        assertThatThrownBy(() -> productCommandService.updateProduct(itemId, request, sellerId, 100L))
+        assertThatThrownBy(() -> productCommandService.updateProduct(itemId, request, sellerId))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ProductErrorCode.ITEM_TYPE_MISMATCH);
@@ -220,7 +220,7 @@ class ProductCommandServiceTest {
 
         when(categoryRepository.existsById(999L)).thenReturn(false);
 
-        assertThatThrownBy(() -> productCommandService.createProduct(request, 77L, 10L))
+        assertThatThrownBy(() -> productCommandService.createProduct(request, 77L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ProductErrorCode.CATEGORY_NOT_FOUND);
@@ -239,7 +239,7 @@ class ProductCommandServiceTest {
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
         when(categoryRepository.existsById(999L)).thenReturn(false);
 
-        assertThatThrownBy(() -> productCommandService.updateProduct(itemId, request, sellerId, 100L))
+        assertThatThrownBy(() -> productCommandService.updateProduct(itemId, request, sellerId))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ProductErrorCode.CATEGORY_NOT_FOUND);
@@ -255,7 +255,7 @@ class ProductCommandServiceTest {
 
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
 
-        productCommandService.delete(itemId, sellerId, 100L);
+        productCommandService.delete(itemId, sellerId);
 
         verify(itemOptionRepository).softDeleteAllByItemId(itemId);
         verify(shippingInfoRepository).softDeleteByItemId(itemId);
@@ -272,43 +272,10 @@ class ProductCommandServiceTest {
 
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(goodsItem));
 
-        assertThatThrownBy(() -> productCommandService.delete(itemId, sellerId, 100L))
+        assertThatThrownBy(() -> productCommandService.delete(itemId, sellerId))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ProductErrorCode.ITEM_TYPE_MISMATCH);
-    }
-
-    @Test
-    void createProduct_whenStoreHeaderMismatch_throwsOwnershipError() {
-        ProductCreateRequest request = new ProductCreateRequest();
-        ReflectionTestUtils.setField(request, "title", "new item");
-        ReflectionTestUtils.setField(request, "description", "desc");
-        ReflectionTestUtils.setField(request, "price", 1000L);
-        ReflectionTestUtils.setField(request, "storeId", 10L);
-
-        assertThatThrownBy(() -> productCommandService.createProduct(request, 77L, 99L))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode")
-                .isEqualTo(ProductErrorCode.STORE_OWNERSHIP_MISMATCH);
-
-        verifyNoInteractions(itemRepository, itemThumbnailSyncService, eventPublisher);
-    }
-
-    @Test
-    void updateProduct_whenStoreHeaderMismatch_throwsOwnershipError() {
-        Long itemId = 1L;
-        Long sellerId = 10L;
-        Item item = createItem(itemId, sellerId);
-        ProductUpdateRequest request = new ProductUpdateRequest();
-
-        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
-
-        assertThatThrownBy(() -> productCommandService.updateProduct(itemId, request, sellerId, 999L))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode")
-                .isEqualTo(ProductErrorCode.STORE_OWNERSHIP_MISMATCH);
-
-        verifyNoInteractions(itemThumbnailSyncService, eventPublisher);
     }
 
     @Test
@@ -327,7 +294,7 @@ class ProductCommandServiceTest {
         when(shippingInfoRepository.findByItemId(itemId)).thenReturn(Optional.of(shippingInfo));
         when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(List.of());
 
-        GoodsDetailResponse response = productCommandService.updateProduct(itemId, request, sellerId, 100L);
+        GoodsDetailResponse response = productCommandService.updateProduct(itemId, request, sellerId);
 
         assertThat(response.getOptions()).hasSize(1);
         assertThat(response.getOptions().get(0).getOptionName()).isEqualTo("옵션A");

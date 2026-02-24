@@ -1,7 +1,7 @@
 package com.example.funding.service.command;
 
 import com.example.core.exception.BusinessException;
-import com.example.funding.client.StockClient;
+import com.example.clients.stock.facade.StockClientFacade;
 import com.example.funding.dto.campaign.request.CampaignCreateRequest;
 import com.example.funding.dto.campaign.request.CampaignUpdateRequest;
 import com.example.funding.dto.campaign.response.CampaignResponse;
@@ -40,7 +40,7 @@ public class CampaignCommandService {
     private final FundingCampaignRepository campaignRepository;
     private final FundingParticipationRepository participationRepository;
     private final FundingStatusHistoryRepository statusHistoryRepository;
-    private final StockClient stockClient;
+    private final StockClientFacade stockClient;
     private final EventPublisher eventPublisher;
     private final StockCancelRetryService stockCancelRetryService;
 

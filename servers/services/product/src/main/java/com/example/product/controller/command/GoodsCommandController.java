@@ -18,18 +18,18 @@ public class GoodsCommandController implements GoodsCommandApi {
     private final GoodsCommandService goodsCommandService;
 
     @Override
-    public ApiResponse<GoodsDetailResponse> create(GoodsCreateRequest request, Long sellerId, Long storeId) {
-        return ApiResponse.success(goodsCommandService.createGoods(request, sellerId, storeId));
+    public ApiResponse<GoodsDetailResponse> create(GoodsCreateRequest request, Long sellerId) {
+        return ApiResponse.success(goodsCommandService.createGoods(request, sellerId));
     }
 
     @Override
-    public ApiResponse<GoodsDetailResponse> update(Long itemId, GoodsUpdateRequest request, Long sellerId, Long storeId) {
-        return ApiResponse.success(goodsCommandService.updateGoods(itemId, request, sellerId, storeId));
+    public ApiResponse<GoodsDetailResponse> update(Long itemId, GoodsUpdateRequest request, Long sellerId) {
+        return ApiResponse.success(goodsCommandService.updateGoods(itemId, request, sellerId));
     }
 
     @Override
-    public ApiResponse<Void> delete(Long itemId, Long sellerId, Long storeId) {
-        goodsCommandService.delete(itemId, sellerId, storeId);
+    public ApiResponse<Void> delete(Long itemId, Long sellerId) {
+        goodsCommandService.delete(itemId, sellerId);
         return ApiResponse.success();
     }
 }
