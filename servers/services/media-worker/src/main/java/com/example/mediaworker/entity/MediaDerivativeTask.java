@@ -132,6 +132,19 @@ public class MediaDerivativeTask extends BaseEntity {
         this.lastError = truncate(errorMessage);
     }
 
+    public void requeueForReplay(LocalDateTime replayAt, String replayReason) {
+        if (this.status != MediaDerivativeTaskStatus.FAILED) {
+            throw new IllegalStateException(
+                    "Replay is only allowed for FAILED tasks. actual=" + this.status
+            );
+        }
+        this.status = MediaDerivativeTaskStatus.PENDING;
+        this.processingStartedAt = null;
+        this.nextRetryAt = replayAt;
+        this.completedAt = null;
+        this.lastError = truncate(replayReason);
+    }
+
     private void assertStatus(MediaDerivativeTaskStatus expected) {
         if (this.status != expected) {
             throw new IllegalStateException(
