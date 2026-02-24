@@ -107,6 +107,32 @@ class ItemImageCommandServiceTest {
     }
 
     @Test
+    void addImages_whenDuplicateMediaIds_throwsDuplicateMediaError() {
+        Long itemId = 1L;
+        Long sellerId = 10L;
+        Item item = createItem(itemId, sellerId);
+
+        ItemImageRequest first = new ItemImageRequest();
+        ReflectionTestUtils.setField(first, "mediaId", 101L);
+        ReflectionTestUtils.setField(first, "sortOrder", 0);
+        ReflectionTestUtils.setField(first, "isThumbnail", true);
+
+        ItemImageRequest duplicate = new ItemImageRequest();
+        ReflectionTestUtils.setField(duplicate, "mediaId", 101L);
+        ReflectionTestUtils.setField(duplicate, "sortOrder", 1);
+        ReflectionTestUtils.setField(duplicate, "isThumbnail", false);
+
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
+
+        assertThatThrownBy(() -> itemImageCommandService.addImages(itemId, List.of(first, duplicate), sellerId))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ProductErrorCode.DUPLICATE_IMAGE_MEDIA_ID);
+
+        verify(mediaReferenceService, org.mockito.Mockito.never()).validateMediaReferences(org.mockito.ArgumentMatchers.anyList());
+    }
+
+    @Test
     void reorder_rejectsInvalidRequest() {
         Long itemId = 1L;
         Long sellerId = 10L;
