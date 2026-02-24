@@ -40,6 +40,7 @@ public class GoodsQueryService {
     public GoodsDetailResponse findGoodsById(Long itemId) {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
+        validateItemType(item, ItemType.GOODS);
         List<ItemOption> options = itemOptionRepository.findByItemId(itemId);
         ShippingInfo shippingInfo = shippingInfoRepository.findByItemId(itemId).orElse(null);
         List<Long> linkedIds = itemGoodsLinkRepository.findByGoodsItemId(itemId).stream()
@@ -89,5 +90,11 @@ public class GoodsQueryService {
 
         String nextCursor = hasNext ? CursorUtils.encode(pageItems.get(pageItems.size() - 1).getId()) : null;
         return CursorResponse.of(content, nextCursor);
+    }
+
+    private void validateItemType(Item item, ItemType expectedType) {
+        if (item.getItemType() != expectedType) {
+            throw new BusinessException(ProductErrorCode.ITEM_TYPE_MISMATCH);
+        }
     }
 }

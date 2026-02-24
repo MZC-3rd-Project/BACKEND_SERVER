@@ -88,6 +88,7 @@ public class ProductCommandService {
         Item item = itemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
         item.validateOwnership(sellerId);
+        validateItemType(item, ItemType.PRODUCT);
         if (!item.isEditable()) {
             throw new BusinessException(ProductErrorCode.ITEM_NOT_EDITABLE);
         }
@@ -142,6 +143,7 @@ public class ProductCommandService {
         Item item = itemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
         item.validateOwnership(sellerId);
+        validateItemType(item, ItemType.PRODUCT);
         if (!item.isDeletable()) {
             throw new BusinessException(ProductErrorCode.ITEM_NOT_DELETABLE);
         }
@@ -167,6 +169,12 @@ public class ProductCommandService {
         ShippingInfo si = ShippingInfo.create(itemId, request.getShippingFee(),
                 request.getFreeShippingThreshold(), request.getEstimatedDays(), request.getReturnPolicy());
         return shippingInfoRepository.save(si);
+    }
+
+    private void validateItemType(Item item, ItemType expectedType) {
+        if (item.getItemType() != expectedType) {
+            throw new BusinessException(ProductErrorCode.ITEM_TYPE_MISMATCH);
+        }
     }
 
 }
