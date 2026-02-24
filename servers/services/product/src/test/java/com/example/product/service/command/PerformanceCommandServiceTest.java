@@ -3,6 +3,8 @@ package com.example.product.service.command;
 import com.example.core.exception.BusinessException;
 import com.example.event.EventPublisher;
 import com.example.product.dto.performance.request.PerformanceCreateRequest;
+import com.example.product.dto.performance.request.PerformanceUpdateRequest;
+import com.example.product.dto.performance.response.PerformanceDetailResponse;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemType;
 import com.example.product.entity.performance.Performance;
@@ -131,6 +133,36 @@ class PerformanceCommandServiceTest {
                 .isEqualTo(ProductErrorCode.CATEGORY_NOT_FOUND);
 
         verifyNoInteractions(itemRepository, performanceRepository, seatGradeRepository, castMemberRepository, eventPublisher);
+    }
+
+    @Test
+    void update_whenPartialRequest_preservesPerformanceFields() {
+        Long itemId = 3L;
+        Long sellerId = 10L;
+        Item item = createItem(itemId, sellerId);
+        Performance performance = createPerformance(100L, itemId);
+        LocalDate originalDate = performance.getPerformanceDate();
+        LocalTime originalTime = performance.getPerformanceTime();
+        Integer originalTotalSeats = performance.getTotalSeats();
+        String originalVenue = performance.getVenue();
+
+        PerformanceUpdateRequest request = new PerformanceUpdateRequest();
+        ReflectionTestUtils.setField(request, "title", "updated-title");
+
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
+        when(performanceRepository.findByItemId(itemId)).thenReturn(Optional.of(performance));
+        when(seatGradeRepository.findByPerformanceIdOrderByPriceDesc(performance.getId())).thenReturn(List.of());
+        when(castMemberRepository.findByPerformanceId(performance.getId())).thenReturn(List.of());
+        when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(List.of());
+
+        PerformanceDetailResponse response = performanceCommandService.update(itemId, request, sellerId, 100L);
+
+        assertThat(response.getTitle()).isEqualTo("updated-title");
+        assertThat(performance.getVenue()).isEqualTo(originalVenue);
+        assertThat(performance.getPerformanceDate()).isEqualTo(originalDate);
+        assertThat(performance.getPerformanceTime()).isEqualTo(originalTime);
+        assertThat(performance.getTotalSeats()).isEqualTo(originalTotalSeats);
+        verify(eventPublisher).publish(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
     private Item createItem(Long id, Long sellerId) {
