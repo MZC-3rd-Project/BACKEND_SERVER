@@ -40,6 +40,7 @@ public class PerformanceQueryService {
     public PerformanceDetailResponse findById(Long itemId) {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
+        validateItemType(item, ItemType.PERFORMANCE);
         Performance performance = performanceRepository.findByItemId(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.PERFORMANCE_NOT_FOUND));
         List<SeatGrade> seatGrades = seatGradeRepository.findByPerformanceIdOrderByPriceDesc(performance.getId());
@@ -77,5 +78,11 @@ public class PerformanceQueryService {
 
         String nextCursor = hasNext ? CursorUtils.encode(pageItems.get(pageItems.size() - 1).getId()) : null;
         return CursorResponse.of(content, nextCursor);
+    }
+
+    private void validateItemType(Item item, ItemType expectedType) {
+        if (item.getItemType() != expectedType) {
+            throw new BusinessException(ProductErrorCode.ITEM_TYPE_MISMATCH);
+        }
     }
 }

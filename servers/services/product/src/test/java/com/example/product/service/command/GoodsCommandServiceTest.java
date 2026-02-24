@@ -1,8 +1,10 @@
 package com.example.product.service.command;
 
+import com.example.core.exception.BusinessException;
 import com.example.event.EventPublisher;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemType;
+import com.example.product.exception.ProductErrorCode;
 import com.example.product.repository.ItemGoodsLinkRepository;
 import com.example.product.repository.ItemImageRepository;
 import com.example.product.repository.ItemOptionRepository;
@@ -20,7 +22,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -64,12 +68,33 @@ class GoodsCommandServiceTest {
         assertThat(item.getThumbnailMediaId()).isNull();
     }
 
+    @Test
+    void delete_whenItemTypeMismatch_throwsBusinessError() {
+        Long itemId = 2L;
+        Long sellerId = 10L;
+        Item productItem = createItem(itemId, sellerId, ItemType.PRODUCT);
+
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(productItem));
+
+        assertThatThrownBy(() -> goodsCommandService.delete(itemId, sellerId))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ProductErrorCode.ITEM_TYPE_MISMATCH);
+
+        verifyNoInteractions(itemOptionRepository, shippingInfoRepository, itemGoodsLinkRepository, itemImageRepository);
+        verifyNoInteractions(itemThumbnailSyncService);
+    }
+
     private Item createItem(Long id, Long sellerId) {
+        return createItem(id, sellerId, ItemType.GOODS);
+    }
+
+    private Item createItem(Long id, Long sellerId, ItemType itemType) {
         Item item = Item.create(
                 "goods",
                 "desc",
                 1000L,
-                ItemType.GOODS,
+                itemType,
                 null,
                 sellerId,
                 100L,

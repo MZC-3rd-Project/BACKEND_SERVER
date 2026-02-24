@@ -1,9 +1,11 @@
 package com.example.product.service.command;
 
+import com.example.core.exception.BusinessException;
 import com.example.event.EventPublisher;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemType;
 import com.example.product.entity.performance.Performance;
+import com.example.product.exception.ProductErrorCode;
 import com.example.product.repository.CastMemberRepository;
 import com.example.product.repository.ItemImageRepository;
 import com.example.product.repository.ItemRepository;
@@ -23,7 +25,9 @@ import java.time.LocalTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -69,12 +73,33 @@ class PerformanceCommandServiceTest {
         assertThat(item.getThumbnailMediaId()).isNull();
     }
 
+    @Test
+    void delete_whenItemTypeMismatch_throwsBusinessError() {
+        Long itemId = 3L;
+        Long sellerId = 10L;
+        Item goodsItem = createItem(itemId, sellerId, ItemType.GOODS);
+
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(goodsItem));
+
+        assertThatThrownBy(() -> performanceCommandService.delete(itemId, sellerId))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ProductErrorCode.ITEM_TYPE_MISMATCH);
+
+        verifyNoInteractions(seatGradeRepository, castMemberRepository, performanceRepository, itemImageRepository);
+        verifyNoInteractions(itemThumbnailSyncService);
+    }
+
     private Item createItem(Long id, Long sellerId) {
+        return createItem(id, sellerId, ItemType.PERFORMANCE);
+    }
+
+    private Item createItem(Long id, Long sellerId, ItemType itemType) {
         Item item = Item.create(
                 "performance",
                 "desc",
                 1000L,
-                ItemType.PERFORMANCE,
+                itemType,
                 null,
                 sellerId,
                 100L,

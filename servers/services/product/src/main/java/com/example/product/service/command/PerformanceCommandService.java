@@ -179,13 +179,21 @@ public class PerformanceCommandService {
     }
 
     private Item getItem(Long itemId) {
-        return itemRepository.findByIdForUpdate(itemId)
+        Item item = itemRepository.findByIdForUpdate(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
+        validateItemType(item, ItemType.PERFORMANCE);
+        return item;
     }
 
     private Performance getPerformance(Long itemId) {
         return performanceRepository.findByItemId(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.PERFORMANCE_NOT_FOUND));
+    }
+
+    private void validateItemType(Item item, ItemType expectedType) {
+        if (item.getItemType() != expectedType) {
+            throw new BusinessException(ProductErrorCode.ITEM_TYPE_MISMATCH);
+        }
     }
 
 }
