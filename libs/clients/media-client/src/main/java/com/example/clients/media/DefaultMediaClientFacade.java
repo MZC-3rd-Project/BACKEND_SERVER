@@ -24,25 +24,34 @@ public class DefaultMediaClientFacade implements MediaClientFacade {
 
     private final WebClient webClient;
     private final CircuitBreakerHelper circuitBreakerHelper;
+    private final MediaClientValidator mediaClientValidator;
 
     public DefaultMediaClientFacade(
             WebClient.Builder webClientBuilder,
             String mediaServiceUrl,
-            CircuitBreakerHelper circuitBreakerHelper
+            CircuitBreakerHelper circuitBreakerHelper,
+            MediaClientValidator mediaClientValidator
     ) {
-        this(webClientBuilder.baseUrl(mediaServiceUrl).build(), circuitBreakerHelper);
+        this(webClientBuilder.baseUrl(mediaServiceUrl).build(), circuitBreakerHelper, mediaClientValidator);
     }
 
     DefaultMediaClientFacade(WebClient webClient, CircuitBreakerHelper circuitBreakerHelper) {
+        this(webClient, circuitBreakerHelper, new MediaClientValidator());
+    }
+
+    DefaultMediaClientFacade(
+            WebClient webClient,
+            CircuitBreakerHelper circuitBreakerHelper,
+            MediaClientValidator mediaClientValidator
+    ) {
         this.webClient = webClient;
         this.circuitBreakerHelper = circuitBreakerHelper;
+        this.mediaClientValidator = mediaClientValidator;
     }
 
     @Override
     public String getMediaUrl(Long mediaId) {
-        if (mediaId == null || mediaId <= 0) {
-            throw new InvalidMediaReferenceException("mediaId must be positive");
-        }
+        mediaClientValidator.validateMediaId(mediaId);
 
         try {
             return circuitBreakerHelper.executeWithCircuitBreakerAndRetry(
@@ -56,11 +65,7 @@ public class DefaultMediaClientFacade implements MediaClientFacade {
 
     @Override
     public Map<Long, String> getMediaUrlMap(List<Long> mediaIds) {
-        List<Long> uniqueIds = mediaIds == null ? List.of() : mediaIds.stream()
-                .filter(Objects::nonNull)
-                .filter(id -> id > 0)
-                .distinct()
-                .toList();
+        List<Long> uniqueIds = mediaClientValidator.normalizeMediaIds(mediaIds);
         if (uniqueIds.isEmpty()) {
             return Map.of();
         }
@@ -77,15 +82,13 @@ public class DefaultMediaClientFacade implements MediaClientFacade {
 
     @Override
     public void syncLinks(MediaLinksSyncCommand command) {
-        if (command == null || !StringUtils.hasText(command.ownerType()) || command.ownerId() == null || command.ownerId() <= 0) {
-            throw new InvalidMediaReferenceException("syncLinks command is invalid");
-        }
+        MediaLinksSyncCommand normalizedCommand = mediaClientValidator.normalizeSyncCommand(command);
 
         try {
             circuitBreakerHelper.executeWithCircuitBreakerAndRetry(
                     SYNC_MEDIA_LINKS_RESILIENCE_NAME,
                     (Callable<Boolean>) () -> {
-                        syncLinksInternal(command);
+                        syncLinksInternal(normalizedCommand);
                         return Boolean.TRUE;
                     }
             );

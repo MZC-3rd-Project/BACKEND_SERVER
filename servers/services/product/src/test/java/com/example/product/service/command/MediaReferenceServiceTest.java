@@ -3,9 +3,11 @@ package com.example.product.service.command;
 import com.example.clients.media.InvalidMediaReferenceException;
 import com.example.clients.media.MediaClientException;
 import com.example.clients.media.MediaClientFacade;
+import com.example.clients.media.MediaClientValidator;
 import com.example.clients.media.MediaLinksSyncCommand;
 import com.example.core.exception.BusinessException;
 import com.example.product.exception.ProductErrorCode;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -20,6 +22,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.anyList;
+import static org.mockito.Mockito.anyLong;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class MediaReferenceServiceTest {
@@ -27,8 +33,17 @@ class MediaReferenceServiceTest {
     @Mock
     private MediaClientFacade mediaClientFacade;
 
+    @Mock
+    private MediaClientValidator mediaClientValidator;
+
     @InjectMocks
     private MediaReferenceService mediaReferenceService;
+
+    @BeforeEach
+    void setUp() {
+        lenient().when(mediaClientValidator.normalizeMediaIds(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().doNothing().when(mediaClientValidator).validateMediaId(anyLong());
+    }
 
     @Test
     void resolveMediaUrl_returnsNull_whenMediaIdIsNull() {
@@ -77,13 +92,24 @@ class MediaReferenceServiceTest {
     }
 
     @Test
-    void syncItemMediaLinks_filtersNullGalleryIds() {
-        mediaReferenceService.syncItemMediaLinks(100L, 10L, java.util.Arrays.asList(20L, null, 21L));
+    void syncItemMediaLinks_mapsInvalidGalleryIdsToBusinessException() {
+        when(mediaClientValidator.normalizeMediaIds(java.util.Arrays.asList(20L, null, 21L)))
+                .thenThrow(new InvalidMediaReferenceException("invalid"));
 
-        ArgumentCaptor<MediaLinksSyncCommand> commandCaptor = ArgumentCaptor.forClass(MediaLinksSyncCommand.class);
-        verify(mediaClientFacade).syncLinks(commandCaptor.capture());
+        assertThatThrownBy(() -> mediaReferenceService.syncItemMediaLinks(100L, 10L, java.util.Arrays.asList(20L, null, 21L)))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ProductErrorCode.INVALID_MEDIA_REFERENCE)
+                );
+    }
 
-        MediaLinksSyncCommand command = commandCaptor.getValue();
-        assertThat(command.sets().get(1).mediaIds()).containsExactly(20L, 21L);
+    @Test
+    void validateMediaReferences_mapsValidatorFailureToBusinessException() {
+        java.util.List<Long> invalidIds = java.util.Arrays.asList(10L, null);
+        when(mediaClientValidator.normalizeMediaIds(invalidIds)).thenThrow(new InvalidMediaReferenceException("invalid"));
+
+        assertThatThrownBy(() -> mediaReferenceService.validateMediaReferences(invalidIds))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ProductErrorCode.INVALID_MEDIA_REFERENCE)
+                );
     }
 }
