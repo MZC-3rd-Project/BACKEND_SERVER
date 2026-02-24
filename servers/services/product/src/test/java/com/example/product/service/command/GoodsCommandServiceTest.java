@@ -58,7 +58,7 @@ class GoodsCommandServiceTest {
 
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
 
-        goodsCommandService.delete(itemId, sellerId);
+        goodsCommandService.delete(itemId, sellerId, 100L);
 
         verify(itemOptionRepository).softDeleteAllByItemId(itemId);
         verify(shippingInfoRepository).softDeleteByItemId(itemId);
@@ -76,13 +76,27 @@ class GoodsCommandServiceTest {
 
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(productItem));
 
-        assertThatThrownBy(() -> goodsCommandService.delete(itemId, sellerId))
+        assertThatThrownBy(() -> goodsCommandService.delete(itemId, sellerId, 100L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ProductErrorCode.ITEM_TYPE_MISMATCH);
 
         verifyNoInteractions(itemOptionRepository, shippingInfoRepository, itemGoodsLinkRepository, itemImageRepository);
         verifyNoInteractions(itemThumbnailSyncService);
+    }
+
+    @Test
+    void delete_whenStoreHeaderMismatch_throwsOwnershipError() {
+        Long itemId = 2L;
+        Long sellerId = 10L;
+        Item item = createItem(itemId, sellerId);
+
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
+
+        assertThatThrownBy(() -> goodsCommandService.delete(itemId, sellerId, 999L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ProductErrorCode.STORE_OWNERSHIP_MISMATCH);
     }
 
     private Item createItem(Long id, Long sellerId) {
