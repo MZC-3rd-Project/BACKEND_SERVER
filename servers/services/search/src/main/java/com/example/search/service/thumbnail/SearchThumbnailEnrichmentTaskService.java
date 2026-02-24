@@ -1,6 +1,6 @@
 package com.example.search.service.thumbnail;
 
-import com.example.search.client.MediaBatchQueryFacade;
+import com.example.clients.media.facade.MediaClientFacade;
 import com.example.search.entity.SearchThumbnailEnrichmentStatus;
 import com.example.search.entity.SearchThumbnailEnrichmentTask;
 import com.example.search.repository.SearchThumbnailEnrichmentTaskRepository;
@@ -29,7 +29,7 @@ public class SearchThumbnailEnrichmentTaskService {
     private final SearchThumbnailEnrichmentTaskRepository taskRepository;
     private final SearchIndexingService searchIndexingService;
     private final SearchResultCacheService searchResultCacheService;
-    private final MediaBatchQueryFacade mediaBatchQueryClient;
+    private final MediaClientFacade mediaClientFacade;
     private final TransactionTemplate transactionTemplate;
 
     @Value("${search.thumbnail-enricher.batch-size:50}")
@@ -84,7 +84,7 @@ public class SearchThumbnailEnrichmentTaskService {
 
         Map<Long, String> mediaUrlMap;
         try {
-            mediaUrlMap = mediaBatchQueryClient.fetchMediaUrlMap(
+            mediaUrlMap = mediaClientFacade.getMediaUrlMap(
                     snapshots.stream().map(TaskSnapshot::thumbnailMediaId).distinct().toList()
             );
         } catch (Exception e) {

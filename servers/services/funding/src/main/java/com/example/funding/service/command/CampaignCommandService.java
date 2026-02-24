@@ -1,7 +1,7 @@
 package com.example.funding.service.command;
 
 import com.example.core.exception.BusinessException;
-import com.example.funding.client.StockClientFacade;
+import com.example.clients.stock.facade.StockClientFacade;
 import com.example.funding.dto.campaign.request.CampaignCreateRequest;
 import com.example.funding.dto.campaign.request.CampaignUpdateRequest;
 import com.example.funding.dto.campaign.response.CampaignResponse;

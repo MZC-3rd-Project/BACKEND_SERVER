@@ -97,8 +97,10 @@ public class ProductMediaBffService {
         if (itemId == null || itemId <= 0) {
             return Mono.just(badRequest("itemId는 양수여야 합니다"));
         }
-        return withAuthHeaders(inboundHeaders, false, downstreamHeaders ->
-                callDownstream(HttpMethod.GET, itemType.collectionPath() + "/" + itemId, downstreamHeaders, null));
+        return withAuthHeaders(inboundHeaders, false, downstreamHeaders -> {
+            String detailPath = resolveDetailPath(itemType, hasSellerContext(downstreamHeaders));
+            return callDownstream(HttpMethod.GET, detailPath + "/" + itemId, downstreamHeaders, null);
+        });
     }
 
     public Mono<ResponseEntity<JsonNode>> findItemList(String typeValue, String cursor, Integer size, HttpHeaders inboundHeaders) {
@@ -223,9 +225,19 @@ public class ProductMediaBffService {
                                                            Long itemId,
                                                            HttpHeaders downstreamHeaders,
                                                            ResponseEntity<JsonNode> fallbackResponse) {
-        return callDownstream(HttpMethod.GET, itemType.collectionPath() + "/" + itemId, downstreamHeaders, null)
+        String detailPath = resolveDetailPath(itemType, hasSellerContext(downstreamHeaders));
+        return callDownstream(HttpMethod.GET, detailPath + "/" + itemId, downstreamHeaders, null)
                 .map(detailResponse -> detailResponse.getStatusCode().is2xxSuccessful() ? detailResponse : fallbackResponse)
                 .onErrorReturn(fallbackResponse);
+    }
+
+    private String resolveDetailPath(BffItemType itemType, boolean sellerContext) {
+        return sellerContext ? itemType.sellerCollectionPath() : itemType.collectionPath();
+    }
+
+    private boolean hasSellerContext(HttpHeaders downstreamHeaders) {
+        String userId = downstreamHeaders.getFirst(HttpHeaderNames.USER_ID);
+        return StringUtils.hasText(userId);
     }
 
     private Mono<Void> ensureSuccess(Mono<ResponseEntity<JsonNode>> call) {

@@ -1,7 +1,7 @@
 package com.example.chat.service.command;
 
-import com.example.chat.client.ProductClient;
-import com.example.chat.client.ProductClientFacade;
+import com.example.clients.product.facade.ProductItemSummaryClientFacade;
+import com.example.clients.product.dto.ProductItemSummary;
 import com.example.chat.dto.command.request.CreateInquiryRoomRequest;
 import com.example.chat.dto.command.response.ChatRoomCreateResponse;
 import com.example.chat.entity.audit.ChatAuditEventType;
@@ -28,7 +28,7 @@ public class ChatRoomCommandService {
 
     private static final String INQUIRY_ROOM_KEY_FORMAT = "inquiry:%d:%d:%d";
 
-    private final ProductClientFacade productClient;
+    private final ProductItemSummaryClientFacade productClient;
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomParticipantRepository chatRoomParticipantRepository;
     private final ChatAuditService chatAuditService;
@@ -39,7 +39,7 @@ public class ChatRoomCommandService {
             throw new BusinessException(ChatErrorCode.INVALID_INQUIRY_REQUEST);
         }
 
-        ProductClient.ProductItemSummary itemSummary = productClient.findItemSummary(request.getItemId());
+        ProductItemSummary itemSummary = productClient.findItemSummary(request.getItemId());
         if (itemSummary == null || itemSummary.sellerId() == null) {
             throw new BusinessException(ChatErrorCode.PRODUCT_SERVICE_ERROR);
         }

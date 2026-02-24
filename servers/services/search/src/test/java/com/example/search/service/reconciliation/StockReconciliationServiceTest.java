@@ -1,6 +1,6 @@
 package com.example.search.service.reconciliation;
 
-import com.example.search.client.StockQueryClient;
+import com.example.clients.stock.facade.StockAvailabilityQueryFacade;
 import com.example.search.dto.reconciliation.response.StockReconciliationResponse;
 import com.example.search.service.metrics.SearchMetricsService;
 import org.apache.http.entity.ContentType;
@@ -27,7 +27,7 @@ class StockReconciliationServiceTest {
     private RestClient restClient;
 
     @Mock
-    private StockQueryClient stockQueryClient;
+    private StockAvailabilityQueryFacade stockQueryClient;
 
     @Mock
     private SearchMetricsService searchMetricsService;

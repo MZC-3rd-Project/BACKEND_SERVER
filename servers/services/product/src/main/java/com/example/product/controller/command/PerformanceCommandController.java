@@ -18,18 +18,18 @@ public class PerformanceCommandController implements PerformanceCommandApi {
     private final PerformanceCommandService performanceCommandService;
 
     @Override
-    public ApiResponse<PerformanceDetailResponse> create(PerformanceCreateRequest request, Long sellerId, Long storeId) {
-        return ApiResponse.success(performanceCommandService.create(request, sellerId, storeId));
+    public ApiResponse<PerformanceDetailResponse> create(PerformanceCreateRequest request, Long sellerId) {
+        return ApiResponse.success(performanceCommandService.create(request, sellerId));
     }
 
     @Override
-    public ApiResponse<PerformanceDetailResponse> update(Long itemId, PerformanceUpdateRequest request, Long sellerId, Long storeId) {
-        return ApiResponse.success(performanceCommandService.update(itemId, request, sellerId, storeId));
+    public ApiResponse<PerformanceDetailResponse> update(Long itemId, PerformanceUpdateRequest request, Long sellerId) {
+        return ApiResponse.success(performanceCommandService.update(itemId, request, sellerId));
     }
 
     @Override
-    public ApiResponse<Void> delete(Long itemId, Long sellerId, Long storeId) {
-        performanceCommandService.delete(itemId, sellerId, storeId);
+    public ApiResponse<Void> delete(Long itemId, Long sellerId) {
+        performanceCommandService.delete(itemId, sellerId);
         return ApiResponse.success();
     }
 }

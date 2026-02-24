@@ -22,8 +22,7 @@ public interface GoodsCommandApi {
     @PostMapping
     ApiResponse<GoodsDetailResponse> create(
             @Valid @RequestBody GoodsCreateRequest request,
-            @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long sellerId,
-            @Parameter(hidden = true) @RequestHeader(value = "X-Store-Id") Long storeId);
+            @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long sellerId);
 
     @Operation(summary = "굿즈 수정")
     @ApiResponses({
@@ -36,8 +35,7 @@ public interface GoodsCommandApi {
     ApiResponse<GoodsDetailResponse> update(
             @PathVariable Long itemId,
             @Valid @RequestBody GoodsUpdateRequest request,
-            @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long sellerId,
-            @Parameter(hidden = true) @RequestHeader(value = "X-Store-Id") Long storeId);
+            @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long sellerId);
 
     @Operation(summary = "굿즈 삭제")
     @ApiResponses({
@@ -48,6 +46,5 @@ public interface GoodsCommandApi {
     @DeleteMapping("/{itemId}")
     ApiResponse<Void> delete(
             @PathVariable Long itemId,
-            @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long sellerId,
-            @Parameter(hidden = true) @RequestHeader(value = "X-Store-Id") Long storeId);
+            @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long sellerId);
 }

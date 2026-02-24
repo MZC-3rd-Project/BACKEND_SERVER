@@ -68,7 +68,7 @@ class GoodsCommandServiceTest {
 
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
 
-        goodsCommandService.delete(itemId, sellerId, 100L);
+        goodsCommandService.delete(itemId, sellerId);
 
         verify(itemOptionRepository).softDeleteAllByItemId(itemId);
         verify(shippingInfoRepository).softDeleteByItemId(itemId);
@@ -86,27 +86,13 @@ class GoodsCommandServiceTest {
 
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(productItem));
 
-        assertThatThrownBy(() -> goodsCommandService.delete(itemId, sellerId, 100L))
+        assertThatThrownBy(() -> goodsCommandService.delete(itemId, sellerId))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ProductErrorCode.ITEM_TYPE_MISMATCH);
 
         verifyNoInteractions(itemOptionRepository, shippingInfoRepository, itemGoodsLinkRepository, itemImageRepository);
         verifyNoInteractions(itemThumbnailSyncService);
-    }
-
-    @Test
-    void delete_whenStoreHeaderMismatch_throwsOwnershipError() {
-        Long itemId = 2L;
-        Long sellerId = 10L;
-        Item item = createItem(itemId, sellerId);
-
-        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
-
-        assertThatThrownBy(() -> goodsCommandService.delete(itemId, sellerId, 999L))
-                .isInstanceOf(BusinessException.class)
-                .extracting("errorCode")
-                .isEqualTo(ProductErrorCode.STORE_OWNERSHIP_MISMATCH);
     }
 
     @Test
@@ -120,7 +106,7 @@ class GoodsCommandServiceTest {
 
         when(categoryRepository.existsById(999L)).thenReturn(false);
 
-        assertThatThrownBy(() -> goodsCommandService.createGoods(request, 10L, 1L))
+        assertThatThrownBy(() -> goodsCommandService.createGoods(request, 10L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ProductErrorCode.CATEGORY_NOT_FOUND);
@@ -146,7 +132,7 @@ class GoodsCommandServiceTest {
         when(itemGoodsLinkRepository.findByGoodsItemId(itemId)).thenReturn(List.of(link));
         when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(List.of());
 
-        GoodsDetailResponse response = goodsCommandService.updateGoods(itemId, request, sellerId, 100L);
+        GoodsDetailResponse response = goodsCommandService.updateGoods(itemId, request, sellerId);
 
         assertThat(response.getOptions()).hasSize(1);
         assertThat(response.getOptions().get(0).getOptionName()).isEqualTo("옵션A");
