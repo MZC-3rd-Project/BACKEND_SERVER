@@ -133,8 +133,11 @@ public class PerformanceCommandService {
         }
 
         Performance performance = getPerformance(itemId);
-        performance.update(request.getVenue(), request.getPerformanceDate(),
-                request.getPerformanceTime(), request.getTotalSeats());
+        performance.update(
+                request.getVenue() != null ? request.getVenue() : performance.getVenue(),
+                request.getPerformanceDate() != null ? request.getPerformanceDate() : performance.getPerformanceDate(),
+                request.getPerformanceTime() != null ? request.getPerformanceTime() : performance.getPerformanceTime(),
+                request.getTotalSeats() != null ? request.getTotalSeats() : performance.getTotalSeats());
 
         if (request.getSeatGrades() != null) {
             seatGradeRepository.softDeleteAllByPerformanceId(performance.getId());
