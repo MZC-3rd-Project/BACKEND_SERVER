@@ -314,6 +314,40 @@ create_media_and_confirm_via_gateway() {
   printf -v "$result_var" '%s' "$media_id"
 }
 
+create_upload_intent_only_via_gateway() {
+  local result_media_id_var="$1"
+  local result_upload_token_var="$2"
+  local label="$3"
+  local tmp_file file_size
+
+  tmp_file="$(mktemp)"
+  printf '%s' "${label}-intent-only-$(date +%s%N)" >"$tmp_file"
+  file_size="$(wc -c <"$tmp_file" | tr -d ' ')"
+
+  local intent_raw intent_body intent_status
+  intent_raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${GW_PORT}/api/v1/media/upload-intents" \
+    -H "Content-Type: application/json" \
+    -H "$(auth_header)" \
+    -d "{\"fileName\":\"${label}.jpg\",\"contentType\":\"image/jpeg\",\"fileSize\":${file_size}}")"
+  intent_body="$(extract_http_body "$intent_raw")"
+  intent_status="$(extract_http_status "$intent_raw")"
+  ensure_http_status "${label} intent-only upload-intent status" "$intent_status" "200"
+  ensure_json_success "${label} intent-only upload-intent success" "$intent_body" || return 1
+
+  local media_id upload_token
+  media_id="$(echo "$intent_body" | jq -r '.data.mediaId // empty')"
+  upload_token="$(echo "$intent_body" | jq -r '.data.uploadToken // empty')"
+  if [[ -z "$media_id" || -z "$upload_token" ]]; then
+    fail "${label} intent-only upload-intent response missing media info"
+    rm -f "$tmp_file"
+    return 1
+  fi
+
+  rm -f "$tmp_file"
+  printf -v "$result_media_id_var" '%s' "$media_id"
+  printf -v "$result_upload_token_var" '%s' "$upload_token"
+}
+
 bff_create_item() {
   local kind="$1"
   local payload_json="$2"
@@ -647,12 +681,61 @@ JSON
   fi
 }
 
+run_unconfirmed_media_id_case() {
+  local ts="$1"
+
+  local scenario_product_payload scenario_item_id
+  scenario_product_payload="$(cat <<JSON
+{"title":"GW Pending Intent Product ${ts}","description":"intent only mediaId rejection verify","price":17000,"storeId":${STORE_ID},"options":[{"optionName":"기본","additionalPrice":0,"stockQuantity":11}],"shippingInfo":{"shippingFee":3000,"freeShippingThreshold":30000,"estimatedDays":2,"returnPolicy":"7일 내 환불"}}
+JSON
+)"
+  scenario_item_id=""
+  bff_create_item products "$scenario_product_payload" "[]" scenario_item_id
+
+  local pending_media_id pending_upload_token
+  pending_media_id=""
+  pending_upload_token=""
+  create_upload_intent_only_via_gateway pending_media_id pending_upload_token "pending-media-${ts}"
+
+  local raw body status add_images_json detail_after_fail active_item_images active_media_links
+  add_images_json="$(cat <<JSON
+[{"mediaId":${pending_media_id},"sortOrder":0,"isThumbnail":true}]
+JSON
+)"
+  raw="$(bff_update_product_raw "$scenario_item_id" "$add_images_json" "[]" "[]")"
+  body="$(extract_http_body "$raw")"
+  status="$(extract_http_status "$raw")"
+  ensure_http_status "pending intent mediaId update rejected status" "$status" "400"
+  ensure_json_failure "pending intent mediaId update rejected payload" "$body"
+  ensure_error_code "pending intent mediaId update rejected error code" "$body" "PRODUCT-602"
+
+  detail_after_fail="$(bff_get_item_detail PRODUCT "$scenario_item_id")"
+  ensure_json_success "pending intent case detail query success" "$detail_after_fail"
+  assert_images_empty "pending intent case images remain empty after rejected update" "$detail_after_fail"
+
+  active_item_images="$(psql_query product_db "SELECT count(*) FROM item_images WHERE item_id=${scenario_item_id} AND deleted_at IS NULL;")"
+  active_media_links="$(psql_query media_db "SELECT count(*) FROM media_links WHERE owner_type='ITEM' AND owner_id=${scenario_item_id} AND deleted_at IS NULL;")"
+
+  if [[ "$active_item_images" == "0" ]]; then
+    pass "pending intent case db invariant: item_images remains 0"
+  else
+    fail "pending intent case db invariant: item_images remains 0 (actual=${active_item_images})"
+  fi
+
+  if [[ "$active_media_links" == "0" ]]; then
+    pass "pending intent case db invariant: media_links remains 0"
+  else
+    fail "pending intent case db invariant: media_links remains 0 (actual=${active_media_links})"
+  fi
+}
+
 run_extended_gateway_cases() {
   local ts="$1"
   local raw body status
 
   echo "[INFO] running extended gateway/media resilience cases"
   check_image_schema_guardrails
+  run_unconfirmed_media_id_case "$ts"
 
   raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${GW_PORT}/bff/v1/products" \
     -H "Content-Type: application/json" \

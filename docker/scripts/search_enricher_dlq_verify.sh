@@ -8,6 +8,7 @@ mkdir -p "$LOG_DIR"
 SEARCH_PORT="${SEARCH_PORT:-18388}"
 PRODUCT_PORT="${PRODUCT_PORT:-18384}"
 MEDIA_PORT="${MEDIA_PORT:-18394}"
+WORKER_PORT="${WORKER_PORT:-18395}"
 ELASTICSEARCH_PORT="${ELASTICSEARCH_PORT:-23173}"
 SELLER_ID="${SELLER_ID:-910001}"
 STORE_ID="${STORE_ID:-920001}"
@@ -23,6 +24,7 @@ PIDS=()
 MEDIA_PID=""
 PRODUCT_PID=""
 SEARCH_PID=""
+WORKER_PID=""
 FAILURES=0
 PASSES=0
 
@@ -238,6 +240,30 @@ start_product() {
   PIDS+=("$PRODUCT_PID")
 }
 
+start_worker() {
+  echo "[INFO] starting media-worker on ${WORKER_PORT}"
+  (
+    cd "$ROOT"
+    env \
+      AWS_PROFILE="$AWS_PROFILE_NAME" \
+      AWS_REGION="$AWS_REGION_NAME" \
+      GRADLE_USER_HOME=/tmp/.gradle-codex \
+      SERVER_PORT="$WORKER_PORT" \
+      SNOWFLAKE_WORKER_ID=15 \
+      APP_GATEWAY_SECURITY_ENABLED=false \
+      MEDIA_S3_REGION="$AWS_REGION_NAME" \
+      MEDIA_S3_BUCKET="$MEDIA_BUCKET" \
+      MEDIA_S3_KEY_PREFIX="$MEDIA_PREFIX" \
+      MEDIA_CLOUDFRONT_DOMAIN="$MEDIA_DOMAIN" \
+      MEDIA_WORKER_TASK_DISPATCH_FIXED_DELAY_MS=500 \
+      MEDIA_WORKER_TASK_STALE_RECOVERY_FIXED_DELAY_MS=2000 \
+      MEDIA_WORKER_TASK_STALE_PROCESSING_SECONDS=10 \
+      ./gradlew :servers:services:media-worker:bootRun --no-daemon >>"$LOG_DIR/media-worker.log" 2>&1
+  ) &
+  WORKER_PID="$!"
+  PIDS+=("$WORKER_PID")
+}
+
 start_search() {
   echo "[INFO] starting search-service on ${SEARCH_PORT}"
   (
@@ -299,7 +325,7 @@ recreate_search_index() {
 
 reset_data() {
   echo "[INFO] resetting media/product/search data"
-  psql_exec media_db "TRUNCATE TABLE media_links, media_files, processed_events, dead_letter_messages, outbox_messages RESTART IDENTITY CASCADE;"
+  psql_exec media_db "TRUNCATE TABLE media_derivative_task_dlq, media_derivative_tasks, media_derivatives, media_links, media_files, processed_events, dead_letter_messages, outbox_messages RESTART IDENTITY CASCADE;"
   psql_exec product_db "TRUNCATE TABLE item_images, item_goods_links, item_options, shipping_infos, cast_members, seat_grades, performances, item_status_histories, item_media_link_sync_tasks, items, processed_events, dead_letter_messages, outbox_messages RESTART IDENTITY CASCADE;"
   psql_exec search_db "TRUNCATE TABLE search_indexing_failures, search_thumbnail_enrichment_tasks, processed_events, dead_letter_messages, outbox_messages RESTART IDENTITY CASCADE;"
   pass "reset data complete"
@@ -310,14 +336,16 @@ create_media_and_confirm() {
   local label="$2"
   local tmp_file
   tmp_file="$(mktemp)"
-  printf '%s' "${label}-$(date +%s%N)" >"$tmp_file"
+  local png_base64
+  png_base64='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/aWQAAAAASUVORK5CYII='
+  printf '%s' "$png_base64" | openssl base64 -d -A >"$tmp_file"
   local file_size
   file_size="$(wc -c <"$tmp_file" | tr -d ' ')"
 
   local intent_raw intent_body intent_status
   intent_raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${MEDIA_PORT}/api/v1/media/upload-intents" \
     -H "Content-Type: application/json" \
-    -d "{\"fileName\":\"${label}.jpg\",\"contentType\":\"image/jpeg\",\"fileSize\":${file_size}}")"
+    -d "{\"fileName\":\"${label}.png\",\"contentType\":\"image/png\",\"fileSize\":${file_size}}")"
   intent_body="$(extract_http_body "$intent_raw")"
   intent_status="$(extract_http_status "$intent_raw")"
   ensure_http_status "${label} upload-intent status" "$intent_status" "200" || return 1
@@ -334,7 +362,7 @@ create_media_and_confirm() {
 
   local put_status
   put_status="$(curl -sS -o /dev/null -w '%{http_code}' -X PUT "$presigned_url" \
-    -H "Content-Type: image/jpeg" \
+    -H "Content-Type: image/png" \
     --data-binary @"$tmp_file")"
   if [[ "$put_status" == "200" || "$put_status" == "204" ]]; then
     pass "${label} presigned upload"
@@ -354,6 +382,32 @@ create_media_and_confirm() {
 
   rm -f "$tmp_file"
   printf -v "$result_var" '%s' "$media_id"
+}
+
+wait_media_derivative_ready() {
+  local media_id="$1"
+  local timeout_seconds="$2"
+  local elapsed=0
+  while [[ "$elapsed" -lt "$timeout_seconds" ]]; do
+    local task_status derived_key
+    task_status="$(psql_query media_db "SELECT COALESCE(status, '') FROM media_derivative_tasks WHERE media_id=${media_id} ORDER BY created_at DESC LIMIT 1;")"
+    derived_key="$(psql_query media_db "SELECT COALESCE(object_key, '') FROM media_derivatives WHERE media_id=${media_id} AND derivative_profile='THUMBNAIL_WEBP' AND status='READY' ORDER BY media_version DESC, created_at DESC LIMIT 1;")"
+
+    if [[ "$task_status" == "COMPLETED" && -n "$derived_key" ]]; then
+      pass "media derivative task completed (mediaId=${media_id})"
+      if [[ "$derived_key" == *"/derived/"* && "$derived_key" == *.webp ]]; then
+        pass "media derivative object key is webp derived path (mediaId=${media_id})"
+        return 0
+      fi
+      fail "media derivative object key is invalid (mediaId=${media_id}, key=${derived_key})"
+      return 1
+    fi
+
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  fail "media derivative task timeout (mediaId=${media_id})"
+  return 1
 }
 
 create_product_with_thumbnail() {
@@ -407,9 +461,12 @@ wait_search_thumbnail_url() {
   local query="$2"
   local timeout_seconds="$3"
   local elapsed=0
+  local attempt=0
   while [[ "$elapsed" -lt "$timeout_seconds" ]]; do
-    local raw body status success thumb_url thumb_media
-    raw="$(curl -sS -w '\n%{http_code}' "http://127.0.0.1:${SEARCH_PORT}/api/v1/search?q=${query}&size=20")"
+    local raw body status success thumb_url thumb_media page_size
+    # Alternate page size during polling to avoid repeatedly reading a stale cache key.
+    page_size=$((20 + (attempt % 2)))
+    raw="$(curl -sS -w '\n%{http_code}' "http://127.0.0.1:${SEARCH_PORT}/api/v1/search?q=${query}&size=${page_size}")"
     body="$(extract_http_body "$raw")"
     status="$(extract_http_status "$raw")"
     success="$(echo "$body" | jq -r '.success // false')"
@@ -423,8 +480,39 @@ wait_search_thumbnail_url() {
     fi
     sleep 2
     elapsed=$((elapsed + 2))
+    attempt=$((attempt + 1))
   done
   fail "search thumbnail snapshot timeout (itemId=${item_id})"
+  return 1
+}
+
+wait_search_thumbnail_url_contains() {
+  local item_id="$1"
+  local query="$2"
+  local required_substring="$3"
+  local timeout_seconds="$4"
+  local elapsed=0
+  local attempt=0
+  while [[ "$elapsed" -lt "$timeout_seconds" ]]; do
+    local raw body status success thumb_url page_size
+    # Alternate page size during polling to avoid repeatedly reading a stale cache key.
+    page_size=$((20 + (attempt % 2)))
+    raw="$(curl -sS -w '\n%{http_code}' "http://127.0.0.1:${SEARCH_PORT}/api/v1/search?q=${query}&size=${page_size}")"
+    body="$(extract_http_body "$raw")"
+    status="$(extract_http_status "$raw")"
+    success="$(echo "$body" | jq -r '.success // false')"
+    if [[ "$status" == "200" && "$success" == "true" ]]; then
+      thumb_url="$(echo "$body" | jq -r --arg id "$item_id" '.data.items[]? | select((.itemId|tostring)==$id) | .thumbnailUrl // empty' | head -n1)"
+      if [[ -n "$thumb_url" && "$thumb_url" == *"$required_substring"* ]]; then
+        pass "search thumbnail contains '${required_substring}' (itemId=${item_id})"
+        return 0
+      fi
+    fi
+    sleep 2
+    elapsed=$((elapsed + 2))
+    attempt=$((attempt + 1))
+  done
+  fail "search thumbnail missing '${required_substring}' (itemId=${item_id})"
   return 1
 }
 
@@ -467,17 +555,135 @@ wait_search_task_retry_observed() {
   return 1
 }
 
+wait_media_task_exists() {
+  local media_id="$1"
+  local timeout_seconds="$2"
+  local elapsed=0
+  while [[ "$elapsed" -lt "$timeout_seconds" ]]; do
+    local task_id
+    task_id="$(psql_query media_db "SELECT COALESCE(id::text, '') FROM media_derivative_tasks WHERE media_id=${media_id} ORDER BY created_at DESC LIMIT 1;")"
+    if [[ -n "$task_id" ]]; then
+      printf '%s\n' "$task_id"
+      return 0
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  return 1
+}
+
+wait_media_task_left_failed() {
+  local task_id="$1"
+  local timeout_seconds="$2"
+  local elapsed=0
+  while [[ "$elapsed" -lt "$timeout_seconds" ]]; do
+    local status
+    status="$(psql_query media_db "SELECT COALESCE(status, '') FROM media_derivative_tasks WHERE id=${task_id};")"
+    if [[ "$status" != "FAILED" && -n "$status" ]]; then
+      pass "replayed media task moved out of FAILED (taskId=${task_id}, status=${status})"
+      return 0
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+  fail "replayed media task remained FAILED (taskId=${task_id})"
+  return 1
+}
+
+run_media_worker_ops_case() {
+  echo "[INFO] case3: media-worker ops API recovery paths"
+  local media_ops task_id
+  create_media_and_confirm media_ops "ops-e2e-m1" || return 1
+
+  task_id="$(wait_media_task_exists "$media_ops" 30 || true)"
+  if [[ -z "$task_id" ]]; then
+    fail "media task not found for ops case (mediaId=${media_ops})"
+    return 1
+  fi
+  pass "media task exists for ops case (mediaId=${media_ops}, taskId=${task_id})"
+
+  psql_exec media_db "
+    UPDATE media_derivative_tasks
+       SET status = 'FAILED',
+           completed_at = NOW(),
+           processing_started_at = NULL,
+           next_retry_at = NULL,
+           retry_count = COALESCE(retry_count, 0) + 1,
+           last_error = 'ops-injected failure'
+     WHERE id = ${task_id};
+  "
+  pass "media task forced to FAILED for replay validation (taskId=${task_id})"
+
+  local summary_raw summary_body summary_status failed_count
+  summary_raw="$(curl -sS -w '\n%{http_code}' "http://127.0.0.1:${WORKER_PORT}/internal/v1/media-worker/tasks/summary")"
+  summary_body="$(extract_http_body "$summary_raw")"
+  summary_status="$(extract_http_status "$summary_raw")"
+  ensure_http_status "media-worker ops summary status" "$summary_status" "200" || return 1
+  ensure_json_success "media-worker ops summary success" "$summary_body" || return 1
+  failed_count="$(echo "$summary_body" | jq -r '.data.failedCount // 0')"
+  if [[ "$failed_count" =~ ^[0-9]+$ && "$failed_count" -ge 1 ]]; then
+    pass "media-worker ops summary reports failedCount>=1"
+  else
+    fail "media-worker ops summary failedCount invalid (actual=${failed_count})"
+    return 1
+  fi
+
+  local dlq_raw dlq_body dlq_status
+  dlq_raw="$(curl -sS -w '\n%{http_code}' "http://127.0.0.1:${WORKER_PORT}/internal/v1/media-worker/tasks/dlq?size=5")"
+  dlq_body="$(extract_http_body "$dlq_raw")"
+  dlq_status="$(extract_http_status "$dlq_raw")"
+  ensure_http_status "media-worker ops dlq status" "$dlq_status" "200" || return 1
+  ensure_json_success "media-worker ops dlq success" "$dlq_body" || return 1
+
+  local replay_raw replay_body replay_status replay_queued
+  replay_raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${WORKER_PORT}/internal/v1/media-worker/tasks/${task_id}/replay" \
+    -H "Content-Type: application/json" \
+    -d '{"reason":"ops e2e replay"}')"
+  replay_body="$(extract_http_body "$replay_raw")"
+  replay_status="$(extract_http_status "$replay_raw")"
+  ensure_http_status "media-worker ops replay status" "$replay_status" "200" || return 1
+  ensure_json_success "media-worker ops replay success" "$replay_body" || return 1
+  replay_queued="$(echo "$replay_body" | jq -r '.data.queued // false')"
+  if [[ "$replay_queued" == "true" ]]; then
+    pass "media-worker ops replay queued=true"
+  else
+    fail "media-worker ops replay queued flag mismatch"
+    return 1
+  fi
+  wait_media_task_left_failed "$task_id" 40 || return 1
+
+  local backfill_raw backfill_body backfill_status scanned_count
+  backfill_raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${WORKER_PORT}/internal/v1/media-worker/tasks/backfill" \
+    -H "Content-Type: application/json" \
+    -d "{\"fromMediaId\":${media_ops},\"toMediaId\":${media_ops},\"size\":10,\"derivativeProfile\":\"THUMBNAIL_WEBP\"}")"
+  backfill_body="$(extract_http_body "$backfill_raw")"
+  backfill_status="$(extract_http_status "$backfill_raw")"
+  ensure_http_status "media-worker ops backfill status" "$backfill_status" "200" || return 1
+  ensure_json_success "media-worker ops backfill success" "$backfill_body" || return 1
+  scanned_count="$(echo "$backfill_body" | jq -r '.data.scannedCount // 0')"
+  if [[ "$scanned_count" =~ ^[0-9]+$ && "$scanned_count" -ge 1 ]]; then
+    pass "media-worker ops backfill scannedCount>=1"
+  else
+    fail "media-worker ops backfill scannedCount invalid (actual=${scanned_count})"
+    return 1
+  fi
+}
+
 run_enricher_e2e_cases() {
   echo "[INFO] case1: search enricher happy path"
   local media1 item1 title1
   create_media_and_confirm media1 "search-e2e-m1" || return 1
+  wait_media_derivative_ready "$media1" 120 || return 1
   create_product_with_thumbnail "$media1" "search-e2e-item1" item1 title1 || return 1
   wait_search_thumbnail_url "$item1" "$title1" 120 || return 1
+  wait_search_thumbnail_url_contains "$item1" "$title1" "/derived/" 120 || return 1
+  wait_search_thumbnail_url_contains "$item1" "$title1" ".webp" 120 || return 1
   wait_search_task_status "$item1" "COMPLETED" 120 || return 1
 
   echo "[INFO] case2: search enricher retry and recovery"
   local media2 item2 title2
   create_media_and_confirm media2 "search-e2e-m2" || return 1
+  wait_media_derivative_ready "$media2" 120 || return 1
   create_product_with_thumbnail "$media2" "search-e2e-item2" item2 title2 || return 1
 
   stop_media
@@ -491,7 +697,7 @@ run_enricher_e2e_cases() {
 }
 
 run_dlq_case() {
-  echo "[INFO] case3: search consumer DLQ on indexing failure"
+  echo "[INFO] case4: search consumer DLQ on indexing failure"
   (cd "$ROOT/docker" && docker compose stop elasticsearch >/dev/null)
   pass "elasticsearch stopped for DLQ injection"
 
@@ -531,11 +737,13 @@ require_cmd jq
 require_cmd docker
 require_cmd lsof
 require_cmd mktemp
+require_cmd openssl
 require_cmd wc
 
 check_port_free "$SEARCH_PORT"
 check_port_free "$PRODUCT_PORT"
 check_port_free "$MEDIA_PORT"
+check_port_free "$WORKER_PORT"
 
 echo "[INFO] preparing infra"
 (cd "$ROOT/docker" && docker compose up -d postgres redis zookeeper kafka mariadb elasticsearch >/dev/null)
@@ -546,10 +754,12 @@ MEDIA_DOMAIN="$(resolve_media_domain)"
 echo "[INFO] media public domain: ${MEDIA_DOMAIN}"
 
 start_media
+start_worker
 start_product
 start_search
 
 wait_health "media-api" "$MEDIA_PORT"
+wait_health "media-worker" "$WORKER_PORT"
 wait_health "product-service" "$PRODUCT_PORT"
 wait_health "search-service" "$SEARCH_PORT"
 
@@ -557,6 +767,7 @@ reset_data
 recreate_search_index
 
 run_enricher_e2e_cases
+run_media_worker_ops_case
 run_dlq_case
 
 echo "[INFO] result passes=${PASSES} failures=${FAILURES}"

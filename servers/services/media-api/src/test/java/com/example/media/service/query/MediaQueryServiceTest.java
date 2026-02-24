@@ -4,12 +4,16 @@ import com.example.core.exception.BusinessException;
 import com.example.media.config.MediaS3Properties;
 import com.example.media.config.MediaUrlAccessType;
 import com.example.media.config.MediaUrlProperties;
+import com.example.media.entity.MediaDerivative;
+import com.example.media.entity.MediaDerivativeProfile;
+import com.example.media.entity.MediaDerivativeStatus;
 import com.example.media.dto.query.response.MediaUrlResponse;
 import com.example.media.entity.MediaFile;
 import com.example.media.entity.MediaLink;
 import com.example.media.entity.MediaOwnerType;
 import com.example.media.entity.MediaUsageType;
 import com.example.media.exception.MediaErrorCode;
+import com.example.media.repository.MediaDerivativeRepository;
 import com.example.media.repository.MediaFileRepository;
 import com.example.media.repository.MediaLinkRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +40,9 @@ class MediaQueryServiceTest {
     @Mock
     private MediaLinkRepository mediaLinkRepository;
 
+    @Mock
+    private MediaDerivativeRepository mediaDerivativeRepository;
+
     private MediaQueryService mediaQueryService;
 
     private MediaUrlProperties mediaUrlProperties;
@@ -50,7 +57,12 @@ class MediaQueryServiceTest {
         mediaUrlProperties.setSignedUrlTtlSeconds(300);
 
         MediaUrlPolicyService mediaUrlPolicyService = new MediaUrlPolicyService(mediaS3Properties, mediaUrlProperties);
-        mediaQueryService = new MediaQueryService(mediaFileRepository, mediaLinkRepository, mediaUrlPolicyService);
+        mediaQueryService = new MediaQueryService(
+                mediaFileRepository,
+                mediaLinkRepository,
+                mediaDerivativeRepository,
+                mediaUrlPolicyService
+        );
     }
 
     @Test
@@ -76,6 +88,11 @@ class MediaQueryServiceTest {
 
         when(mediaFileRepository.findById(101L)).thenReturn(Optional.of(mediaFile));
         when(mediaLinkRepository.findTopByMediaIdOrderByCreatedAtDesc(101L)).thenReturn(Optional.of(mediaLink));
+        when(mediaDerivativeRepository.findByMediaIdInAndDerivativeProfileAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
+                List.of(101L),
+                MediaDerivativeProfile.THUMBNAIL_WEBP,
+                MediaDerivativeStatus.READY
+        )).thenReturn(List.of());
 
         MediaUrlResponse response = mediaQueryService.getMediaUrl(101L, 100L);
 
@@ -110,6 +127,11 @@ class MediaQueryServiceTest {
 
         when(mediaFileRepository.findById(102L)).thenReturn(Optional.of(mediaFile));
         when(mediaLinkRepository.findTopByMediaIdOrderByCreatedAtDesc(102L)).thenReturn(Optional.empty());
+        when(mediaDerivativeRepository.findByMediaIdInAndDerivativeProfileAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
+                List.of(102L),
+                MediaDerivativeProfile.THUMBNAIL_WEBP,
+                MediaDerivativeStatus.READY
+        )).thenReturn(List.of());
 
         MediaUrlResponse response = mediaQueryService.getMediaUrl(102L, 100L);
 
@@ -184,11 +206,74 @@ class MediaQueryServiceTest {
                 .thenReturn(List.of(confirmed, pending));
         when(mediaLinkRepository.findByMediaIdInOrderByMediaIdAscCreatedAtDesc(List.of(201L, 202L, 999L)))
                 .thenReturn(List.of(link));
+        when(mediaDerivativeRepository.findByMediaIdInAndDerivativeProfileAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
+                List.of(201L, 202L, 999L),
+                MediaDerivativeProfile.THUMBNAIL_WEBP,
+                MediaDerivativeStatus.READY
+        )).thenReturn(List.of());
 
         List<MediaUrlResponse> responses = mediaQueryService.getMediaUrls(List.of(201L, 202L, 999L), 100L);
 
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).getMediaId()).isEqualTo(201L);
         assertThat(responses.get(0).getMediaUrl()).contains("cloudfront.net");
+    }
+
+    @Test
+    void getMediaUrls_prefersReadyThumbnailDerivativeForThumbnailUsage() {
+        MediaFile confirmed = MediaFile.createPending(
+                100L,
+                "ready-derived.jpg",
+                "team2-donmoa-media/raw/2026/01/01/ready-derived.jpg",
+                "team2-donmoa-media-raw",
+                "image/jpeg",
+                1024L,
+                null,
+                null,
+                null,
+                null,
+                "upload-token-derived",
+                LocalDateTime.now().plusMinutes(1)
+        );
+        ReflectionTestUtils.setField(confirmed, "id", 301L);
+        confirmed.confirm(1024L, "image/jpeg", "etag-derived", LocalDateTime.now());
+
+        MediaLink link = MediaLink.create(301L, MediaOwnerType.ITEM, 777L, MediaUsageType.THUMBNAIL, 0);
+        MediaDerivative derivative = createReadyDerivative(
+                301L,
+                "team2-donmoa-media/derived/2026/01/01/ready-derived_thumbnail_webp_v1.webp"
+        );
+
+        when(mediaFileRepository.findAllById(List.of(301L)))
+                .thenReturn(List.of(confirmed));
+        when(mediaLinkRepository.findByMediaIdInOrderByMediaIdAscCreatedAtDesc(List.of(301L)))
+                .thenReturn(List.of(link));
+        when(mediaDerivativeRepository.findByMediaIdInAndDerivativeProfileAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
+                List.of(301L),
+                MediaDerivativeProfile.THUMBNAIL_WEBP,
+                MediaDerivativeStatus.READY
+        )).thenReturn(List.of(derivative));
+
+        List<MediaUrlResponse> responses = mediaQueryService.getMediaUrls(List.of(301L), 100L);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).getObjectKey()).isEqualTo(derivative.getObjectKey());
+        assertThat(responses.get(0).getMediaUrl()).contains("/derived/");
+    }
+
+    private MediaDerivative createReadyDerivative(Long mediaId, String objectKey) {
+        MediaDerivative derivative = MediaDerivative.createReady(
+                mediaId,
+                MediaDerivativeProfile.THUMBNAIL_WEBP,
+                1L,
+                objectKey,
+                "https://cdn.example.com/" + objectKey,
+                640,
+                360,
+                "image/webp",
+                12345L
+        );
+        ReflectionTestUtils.setField(derivative, "id", 9001L);
+        return derivative;
     }
 }

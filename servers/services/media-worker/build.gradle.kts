@@ -28,6 +28,7 @@ dependencies {
     // AWS SDK
     implementation(platform("software.amazon.awssdk:bom:2.31.77"))
     implementation("software.amazon.awssdk:s3")
+    implementation("com.sksamuel.scrimage:scrimage-webp:4.1.3")
 
     // Lombok
     compileOnly("org.projectlombok:lombok")
