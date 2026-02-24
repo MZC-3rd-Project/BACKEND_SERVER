@@ -13,12 +13,19 @@ import org.springframework.web.reactive.function.client.WebClient;
 public class MediaClientAutoConfiguration {
 
     @Bean
+    @ConditionalOnMissingBean
+    public MediaClientValidator mediaClientValidator() {
+        return new MediaClientValidator();
+    }
+
+    @Bean
     @ConditionalOnMissingBean(MediaClientFacade.class)
     public MediaClientFacade mediaClientFacade(
             WebClient.Builder webClientBuilder,
             CircuitBreakerHelper circuitBreakerHelper,
+            MediaClientValidator mediaClientValidator,
             @Value("${app.clients.media.base-url:${app.service.media-url:http://localhost:8094}}") String mediaServiceUrl
     ) {
-        return new DefaultMediaClientFacade(webClientBuilder, mediaServiceUrl, circuitBreakerHelper);
+        return new DefaultMediaClientFacade(webClientBuilder, mediaServiceUrl, circuitBreakerHelper, mediaClientValidator);
     }
 }
