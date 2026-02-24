@@ -11,6 +11,7 @@ CREATE DATABASE stock_db;
 CREATE DATABASE funding_db;
 CREATE DATABASE sales_db;
 CREATE DATABASE hotdeal_db;
+CREATE DATABASE profile_db;
 
 -- auth_db 초기 설정
 \c auth_db;
@@ -42,4 +43,8 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- hotdeal_db 초기 설정
 \c hotdeal_db;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- profile_db 초기 설정
+\c profile_db;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
