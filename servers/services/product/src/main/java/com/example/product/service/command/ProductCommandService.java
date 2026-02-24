@@ -20,6 +20,8 @@ import com.example.product.repository.ItemImageRepository;
 import com.example.product.repository.ItemOptionRepository;
 import com.example.product.repository.ItemRepository;
 import com.example.product.repository.ShippingInfoRepository;
+import com.example.product.service.command.image.ItemThumbnailSyncService;
+import com.example.product.service.command.image.MediaReferenceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -1,4 +1,4 @@
-package com.example.product.service.command;
+package com.example.product.service.command.image;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

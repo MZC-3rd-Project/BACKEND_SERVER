@@ -1,4 +1,4 @@
-package com.example.product.service.command;
+package com.example.product.service.command.image;
 
 import com.example.product.entity.image.ItemMediaLinkSyncStatus;
 import com.example.product.entity.image.ItemMediaLinkSyncTask;
