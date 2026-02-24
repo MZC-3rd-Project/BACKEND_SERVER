@@ -16,7 +16,7 @@ import java.util.Objects;
 
 @Slf4j
 @Component
-public class MediaBatchQueryClient {
+public class MediaBatchQueryClient implements MediaBatchQueryFacade {
 
     private final WebClient webClient;
 

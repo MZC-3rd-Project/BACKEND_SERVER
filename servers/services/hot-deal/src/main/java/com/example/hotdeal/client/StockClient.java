@@ -10,7 +10,7 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 @Slf4j
 @Component
-public class StockClient {
+public class StockClient implements StockClientFacade {
 
     private final WebClient webClient;
 
