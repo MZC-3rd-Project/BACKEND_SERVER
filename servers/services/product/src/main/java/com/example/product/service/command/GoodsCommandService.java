@@ -18,7 +18,12 @@ import com.example.product.event.ItemCreatedEvent;
 import com.example.product.event.ItemCreatedEvent.StockItemInfo;
 import com.example.product.event.ItemUpdatedEvent;
 import com.example.product.exception.ProductErrorCode;
-import com.example.product.repository.*;
+import com.example.product.repository.CategoryRepository;
+import com.example.product.repository.ItemGoodsLinkRepository;
+import com.example.product.repository.ItemImageRepository;
+import com.example.product.repository.ItemOptionRepository;
+import com.example.product.repository.ItemRepository;
+import com.example.product.repository.ShippingInfoRepository;
 import com.example.product.service.command.image.ItemThumbnailSyncService;
 import com.example.product.service.command.image.MediaReferenceService;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +38,7 @@ import java.util.Objects;
 @Transactional
 public class GoodsCommandService {
 
+    private final CategoryRepository categoryRepository;
     private final ItemRepository itemRepository;
     private final ItemOptionRepository itemOptionRepository;
     private final ShippingInfoRepository shippingInfoRepository;
@@ -46,6 +52,7 @@ public class GoodsCommandService {
         // TODO: store-service 연동 후 sellerId-storeId 소유권 검증을 추가한다.
         validateStoreOwnership(request.getStoreId(), storeIdHeader);
         mediaReferenceService.resolveMediaUrl(request.getThumbnailMediaId());
+        validateCategoryExists(request.getCategoryId());
         Item item = Item.create(
                 request.getTitle(), request.getDescription(), request.getPrice(),
                 ItemType.GOODS, request.getCategoryId(), sellerId, request.getStoreId(),
@@ -106,6 +113,7 @@ public class GoodsCommandService {
         if (clearThumbnail && thumbnailMediaId != null) {
             throw new BusinessException(ProductErrorCode.INVALID_THUMBNAIL_UPDATE_REQUEST);
         }
+        validateCategoryExists(request.getCategoryId());
 
         if (clearThumbnail) {
             item.update(request.getTitle(), request.getDescription(), request.getPrice(),
@@ -219,6 +227,12 @@ public class GoodsCommandService {
     private void validateStoreOwnership(Long expectedStoreId, Long requestStoreId) {
         if (!Objects.equals(expectedStoreId, requestStoreId)) {
             throw new BusinessException(ProductErrorCode.STORE_OWNERSHIP_MISMATCH);
+        }
+    }
+
+    private void validateCategoryExists(Long categoryId) {
+        if (categoryId != null && !categoryRepository.existsById(categoryId)) {
+            throw new BusinessException(ProductErrorCode.CATEGORY_NOT_FOUND);
         }
     }
 
