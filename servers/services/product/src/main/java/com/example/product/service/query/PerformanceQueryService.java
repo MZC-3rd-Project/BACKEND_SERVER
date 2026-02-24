@@ -41,6 +41,20 @@ public class PerformanceQueryService {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
         validateItemType(item, ItemType.PERFORMANCE);
+        validateVisibleStatus(item);
+        Performance performance = performanceRepository.findByItemId(itemId)
+                .orElseThrow(() -> new BusinessException(ProductErrorCode.PERFORMANCE_NOT_FOUND));
+        List<SeatGrade> seatGrades = seatGradeRepository.findByPerformanceIdOrderByPriceDesc(performance.getId());
+        List<CastMember> castMembers = castMemberRepository.findByPerformanceId(performance.getId());
+        List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
+        return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers, images);
+    }
+
+    public PerformanceDetailResponse findSellerById(Long itemId, Long sellerId) {
+        Item item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
+        validateItemType(item, ItemType.PERFORMANCE);
+        item.validateOwnership(sellerId);
         Performance performance = performanceRepository.findByItemId(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.PERFORMANCE_NOT_FOUND));
         List<SeatGrade> seatGrades = seatGradeRepository.findByPerformanceIdOrderByPriceDesc(performance.getId());
@@ -83,6 +97,12 @@ public class PerformanceQueryService {
     private void validateItemType(Item item, ItemType expectedType) {
         if (item.getItemType() != expectedType) {
             throw new BusinessException(ProductErrorCode.ITEM_TYPE_MISMATCH);
+        }
+    }
+
+    private void validateVisibleStatus(Item item) {
+        if (!VISIBLE_STATUSES.contains(item.getStatus())) {
+            throw new BusinessException(ProductErrorCode.ITEM_NOT_FOUND);
         }
     }
 }

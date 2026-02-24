@@ -38,6 +38,18 @@ public class ProductQueryService {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
         validateItemType(item, ItemType.PRODUCT);
+        validateVisibleStatus(item);
+        List<ItemOption> options = itemOptionRepository.findByItemId(itemId);
+        ShippingInfo shippingInfo = shippingInfoRepository.findByItemId(itemId).orElse(null);
+        List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
+        return GoodsDetailResponse.of(item, options, shippingInfo, List.of(), images);
+    }
+
+    public GoodsDetailResponse findSellerProductById(Long itemId, Long sellerId) {
+        Item item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
+        validateItemType(item, ItemType.PRODUCT);
+        item.validateOwnership(sellerId);
         List<ItemOption> options = itemOptionRepository.findByItemId(itemId);
         ShippingInfo shippingInfo = shippingInfoRepository.findByItemId(itemId).orElse(null);
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
@@ -83,6 +95,12 @@ public class ProductQueryService {
     private void validateItemType(Item item, ItemType expectedType) {
         if (item.getItemType() != expectedType) {
             throw new BusinessException(ProductErrorCode.ITEM_TYPE_MISMATCH);
+        }
+    }
+
+    private void validateVisibleStatus(Item item) {
+        if (!VISIBLE_STATUSES.contains(item.getStatus())) {
+            throw new BusinessException(ProductErrorCode.ITEM_NOT_FOUND);
         }
     }
 }

@@ -41,6 +41,20 @@ public class GoodsQueryService {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
         validateItemType(item, ItemType.GOODS);
+        validateVisibleStatus(item);
+        List<ItemOption> options = itemOptionRepository.findByItemId(itemId);
+        ShippingInfo shippingInfo = shippingInfoRepository.findByItemId(itemId).orElse(null);
+        List<Long> linkedIds = itemGoodsLinkRepository.findByGoodsItemId(itemId).stream()
+                .map(ItemGoodsLink::getPerformanceItemId).toList();
+        List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
+        return GoodsDetailResponse.of(item, options, shippingInfo, linkedIds, images);
+    }
+
+    public GoodsDetailResponse findSellerGoodsById(Long itemId, Long sellerId) {
+        Item item = itemRepository.findById(itemId)
+                .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
+        validateItemType(item, ItemType.GOODS);
+        item.validateOwnership(sellerId);
         List<ItemOption> options = itemOptionRepository.findByItemId(itemId);
         ShippingInfo shippingInfo = shippingInfoRepository.findByItemId(itemId).orElse(null);
         List<Long> linkedIds = itemGoodsLinkRepository.findByGoodsItemId(itemId).stream()
@@ -95,6 +109,12 @@ public class GoodsQueryService {
     private void validateItemType(Item item, ItemType expectedType) {
         if (item.getItemType() != expectedType) {
             throw new BusinessException(ProductErrorCode.ITEM_TYPE_MISMATCH);
+        }
+    }
+
+    private void validateVisibleStatus(Item item) {
+        if (!VISIBLE_STATUSES.contains(item.getStatus())) {
+            throw new BusinessException(ProductErrorCode.ITEM_NOT_FOUND);
         }
     }
 }
