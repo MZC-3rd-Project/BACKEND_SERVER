@@ -8,6 +8,7 @@ dependencies {
     implementation(project(":libs:core:util"))
     implementation(project(":libs:core:id"))
     implementation(project(":libs:core:pagination"))
+    implementation(project(":libs:clients:media-client"))
 
     // API
     implementation(project(":libs:api:response"))
@@ -19,8 +20,6 @@ dependencies {
     // Config
     implementation(project(":libs:config:kafka"))
     implementation(project(":libs:config:redis"))
-    implementation(project(":libs:config:resilience"))
-    implementation(project(":libs:config:webclient"))
 
     // Event
     implementation(project(":libs:event:domain"))
