@@ -37,6 +37,7 @@ public class ProductQueryService {
     public GoodsDetailResponse findProductById(Long itemId) {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
+        validateItemType(item, ItemType.PRODUCT);
         List<ItemOption> options = itemOptionRepository.findByItemId(itemId);
         ShippingInfo shippingInfo = shippingInfoRepository.findByItemId(itemId).orElse(null);
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
@@ -77,5 +78,11 @@ public class ProductQueryService {
 
         String nextCursor = hasNext ? CursorUtils.encode(pageItems.get(pageItems.size() - 1).getId()) : null;
         return CursorResponse.of(content, nextCursor);
+    }
+
+    private void validateItemType(Item item, ItemType expectedType) {
+        if (item.getItemType() != expectedType) {
+            throw new BusinessException(ProductErrorCode.ITEM_TYPE_MISMATCH);
+        }
     }
 }

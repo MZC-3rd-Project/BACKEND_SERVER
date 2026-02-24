@@ -176,6 +176,25 @@ class ProductCommandServiceTest {
     }
 
     @Test
+    void updateProduct_whenItemTypeMismatch_throwsBusinessError() {
+        Long itemId = 1L;
+        Long sellerId = 10L;
+        Item goodsItem = createItem(itemId, sellerId, ItemType.GOODS);
+        ProductUpdateRequest request = new ProductUpdateRequest();
+        ReflectionTestUtils.setField(request, "title", "updated");
+
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(goodsItem));
+
+        assertThatThrownBy(() -> productCommandService.updateProduct(itemId, request, sellerId))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ProductErrorCode.ITEM_TYPE_MISMATCH);
+
+        verifyNoInteractions(itemThumbnailSyncService);
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
     void delete_clearsItemMediaLinks() {
         Long itemId = 1L;
         Long sellerId = 10L;
@@ -192,12 +211,30 @@ class ProductCommandServiceTest {
         assertThat(item.getThumbnailMediaId()).isNull();
     }
 
+    @Test
+    void delete_whenItemTypeMismatch_throwsBusinessError() {
+        Long itemId = 1L;
+        Long sellerId = 10L;
+        Item goodsItem = createItem(itemId, sellerId, ItemType.GOODS);
+
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(goodsItem));
+
+        assertThatThrownBy(() -> productCommandService.delete(itemId, sellerId))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ProductErrorCode.ITEM_TYPE_MISMATCH);
+    }
+
     private Item createItem(Long id, Long sellerId) {
+        return createItem(id, sellerId, ItemType.PRODUCT);
+    }
+
+    private Item createItem(Long id, Long sellerId, ItemType itemType) {
         Item item = Item.create(
                 "item",
                 "desc",
                 1000L,
-                ItemType.PRODUCT,
+                itemType,
                 null,
                 sellerId,
                 100L,
