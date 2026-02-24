@@ -147,35 +147,51 @@ public class MediaDerivativeTaskService {
     }
 
     @Transactional
-    public void handleFailure(Long taskId, Exception exception, LocalDateTime now) {
-        mediaDerivativeTaskRepository.findById(taskId).ifPresent(task -> {
-            if (task.getStatus() != MediaDerivativeTaskStatus.PROCESSING) {
-                log.warn(
-                        "[MediaWorker] skip failure handling. taskId={}, status={}",
-                        task.getId(),
-                        task.getStatus()
-                );
-                return;
-            }
+    public MediaDerivativeFailureHandleResult handleFailure(Long taskId, Exception exception, LocalDateTime now) {
+        return mediaDerivativeTaskRepository.findById(taskId)
+                .map(task -> handleFailure(task, exception, now))
+                .orElseGet(MediaDerivativeFailureHandleResult::skipped);
+    }
 
-            String errorMessage = buildErrorMessage(exception);
-            int nextRetryCount = task.getRetryCount() == null ? 1 : task.getRetryCount() + 1;
-            MediaDerivativeFailureDecision decision = failureClassifier.classify(
-                    exception,
-                    nextRetryCount,
-                    mediaWorkerTaskProperties.getMaxRetryCount()
-            );
-            if (!decision.retriable()) {
-                task.markFailed(errorMessage, now);
-                mediaDerivativeTaskDlqRepository.save(
-                        MediaDerivativeTaskDlq.fromTask(task, decision.failureCode().name(), errorMessage)
-                );
-                return;
+    @Transactional
+    public Optional<MediaDerivativeTask> replayFailedTask(Long taskId, String replayReason, LocalDateTime replayAt) {
+        return mediaDerivativeTaskRepository.findById(taskId).map(task -> {
+            if (task.getStatus() != MediaDerivativeTaskStatus.FAILED) {
+                return task;
             }
-
-            long backoffSeconds = calculateBackoffSeconds(nextRetryCount);
-            task.scheduleRetry(now.plusSeconds(backoffSeconds), errorMessage);
+            task.requeueForReplay(replayAt, replayReason);
+            return task;
         });
+    }
+
+    private MediaDerivativeFailureHandleResult handleFailure(MediaDerivativeTask task, Exception exception, LocalDateTime now) {
+        if (task.getStatus() != MediaDerivativeTaskStatus.PROCESSING) {
+            log.warn(
+                    "[MediaWorker] skip failure handling. taskId={}, status={}",
+                    task.getId(),
+                    task.getStatus()
+            );
+            return MediaDerivativeFailureHandleResult.skipped();
+        }
+
+        String errorMessage = buildErrorMessage(exception);
+        int nextRetryCount = task.getRetryCount() == null ? 1 : task.getRetryCount() + 1;
+        MediaDerivativeFailureDecision decision = failureClassifier.classify(
+                exception,
+                nextRetryCount,
+                mediaWorkerTaskProperties.getMaxRetryCount()
+        );
+        if (!decision.retriable()) {
+            task.markFailed(errorMessage, now);
+            mediaDerivativeTaskDlqRepository.save(
+                    MediaDerivativeTaskDlq.fromTask(task, decision.failureCode().name(), errorMessage)
+            );
+            return MediaDerivativeFailureHandleResult.dlqFailed(decision.failureCode(), task.getRetryCount());
+        }
+
+        long backoffSeconds = calculateBackoffSeconds(nextRetryCount);
+        task.scheduleRetry(now.plusSeconds(backoffSeconds), errorMessage);
+        return MediaDerivativeFailureHandleResult.retryScheduled(decision.failureCode(), task.getRetryCount());
     }
 
     private long normalizeMediaVersion(Long mediaVersion) {

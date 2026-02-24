@@ -143,12 +143,14 @@ class MediaDerivativeTaskServiceTest {
         when(failureClassifier.classify(any(), eq(1), eq(properties.getMaxRetryCount())))
                 .thenReturn(new MediaDerivativeFailureDecision(true, MediaDerivativeFailureCode.RETRIABLE_EXCEPTION));
 
-        mediaDerivativeTaskService.handleFailure(201L, new RuntimeException("temporary"), now);
+        MediaDerivativeFailureHandleResult handleResult =
+                mediaDerivativeTaskService.handleFailure(201L, new RuntimeException("temporary"), now);
 
         assertThat(processing.getStatus()).isEqualTo(MediaDerivativeTaskStatus.PENDING);
         assertThat(processing.getRetryCount()).isEqualTo(1);
         assertThat(processing.getNextRetryAt()).isAfter(now.minusSeconds(1));
         assertThat(processing.getLastError()).contains("RuntimeException");
+        assertThat(handleResult.outcome()).isEqualTo(MediaDerivativeFailureOutcome.RETRY_SCHEDULED);
         verify(mediaDerivativeTaskDlqRepository, never()).save(any());
     }
 
@@ -164,11 +166,29 @@ class MediaDerivativeTaskServiceTest {
         when(failureClassifier.classify(any(), eq(1), eq(properties.getMaxRetryCount())))
                 .thenReturn(new MediaDerivativeFailureDecision(false, MediaDerivativeFailureCode.MAX_RETRY_EXCEEDED));
 
-        mediaDerivativeTaskService.handleFailure(202L, new RuntimeException("boom"), now);
+        MediaDerivativeFailureHandleResult handleResult =
+                mediaDerivativeTaskService.handleFailure(202L, new RuntimeException("boom"), now);
 
         assertThat(processing.getStatus()).isEqualTo(MediaDerivativeTaskStatus.FAILED);
         assertThat(processing.getRetryCount()).isEqualTo(1);
         assertThat(processing.getCompletedAt()).isEqualTo(now);
+        assertThat(handleResult.outcome()).isEqualTo(MediaDerivativeFailureOutcome.DLQ_FAILED);
         verify(mediaDerivativeTaskDlqRepository).save(any());
+    }
+
+    @Test
+    void replayFailedTask_movesFailedToPending() {
+        LocalDateTime replayAt = LocalDateTime.now();
+        MediaDerivativeTask failedTask = MediaDerivativeTask.createPending(30L, MediaDerivativeProfile.THUMBNAIL_WEBP, 1L, "event-30");
+        ReflectionTestUtils.setField(failedTask, "status", MediaDerivativeTaskStatus.FAILED);
+        ReflectionTestUtils.setField(failedTask, "id", 301L);
+
+        when(mediaDerivativeTaskRepository.findById(301L)).thenReturn(Optional.of(failedTask));
+
+        Optional<MediaDerivativeTask> replayed = mediaDerivativeTaskService.replayFailedTask(301L, "manual replay", replayAt);
+
+        assertThat(replayed).isPresent();
+        assertThat(replayed.get().getStatus()).isEqualTo(MediaDerivativeTaskStatus.PENDING);
+        assertThat(replayed.get().getNextRetryAt()).isEqualTo(replayAt);
     }
 }
