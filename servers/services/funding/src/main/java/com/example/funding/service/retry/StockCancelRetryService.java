@@ -1,6 +1,6 @@
 package com.example.funding.service.retry;
 
-import com.example.funding.client.StockClientFacade;
+import com.example.clients.stock.facade.StockClientFacade;
 import com.example.funding.entity.StockCancelRetry;
 import com.example.funding.entity.StockCancelRetryStatus;
 import com.example.funding.repository.StockCancelRetryRepository;

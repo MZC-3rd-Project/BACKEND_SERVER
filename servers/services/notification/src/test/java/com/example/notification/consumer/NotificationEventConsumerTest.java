@@ -1,7 +1,8 @@
 package com.example.notification.consumer;
 
 import com.example.config.kafka.IdempotentConsumerService;
-import com.example.notification.client.ProductClient;
+import com.example.clients.product.dto.ProductItemSummary;
+import com.example.clients.product.facade.ProductItemSummaryClientFacade;
 import com.example.notification.dto.command.request.CreateNotificationRequest;
 import com.example.notification.service.setting.NotificationSettingService;
 import com.example.notification.service.command.NotificationCommandService;
@@ -35,7 +36,7 @@ class NotificationEventConsumerTest {
     private NotificationCommandService notificationCommandService;
 
     @Mock
-    private ProductClient productClient;
+    private ProductItemSummaryClientFacade productClient;
 
     @Mock
     private NotificationSettingService notificationSettingService;
@@ -84,7 +85,7 @@ class NotificationEventConsumerTest {
     @Test
     void consumeStock_resolvesRecipientFromProductWhenMissing() {
         when(productClient.findItemSummary(44L))
-                .thenReturn(new ProductClient.ProductItemSummary(44L, 99L, "테스트 상품"));
+                .thenReturn(new ProductItemSummary(44L, 99L, "테스트 상품"));
 
         String message = """
                 {

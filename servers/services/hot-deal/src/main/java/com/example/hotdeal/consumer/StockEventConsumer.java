@@ -1,7 +1,7 @@
 package com.example.hotdeal.consumer;
 
 import com.example.config.kafka.IdempotentConsumerService;
-import com.example.hotdeal.client.ProductClientFacade;
+import com.example.clients.product.facade.ProductItemQueryClientFacade;
 import com.example.hotdeal.entity.HotDealStatus;
 import com.example.hotdeal.repository.HotDealRepository;
 import com.example.hotdeal.service.HotDealCommandService;
@@ -23,7 +23,7 @@ public class StockEventConsumer {
     private final IdempotentConsumerService idempotentConsumerService;
     private final HotDealRepository hotDealRepository;
     private final HotDealCommandService hotDealCommandService;
-    private final ProductClientFacade productClient;
+    private final ProductItemQueryClientFacade productClient;
     private final ObjectMapper objectMapper;
 
     @KafkaListener(topics = "stock-events", groupId = "${spring.kafka.consumer.group-id}")

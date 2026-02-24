@@ -406,7 +406,8 @@ bff_update_product_raw() {
 bff_get_item_detail() {
   local type="$1"
   local item_id="$2"
-  curl -sS "http://127.0.0.1:${GW_PORT}/bff/v1/items/${item_id}?type=${type}"
+  curl -sS "http://127.0.0.1:${GW_PORT}/bff/v1/items/${item_id}?type=${type}" \
+    -H "$(auth_header)"
 }
 
 assert_images_empty() {
