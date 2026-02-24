@@ -33,7 +33,7 @@ public class ItemStatusCommandService {
         item.validateOwnership(userId);
 
         ItemStatus previousStatus = item.getStatus();
-        ItemStatus newStatus = ItemStatus.valueOf(request.getStatus());
+        ItemStatus newStatus = ItemStatus.from(request.getStatus());
 
         item.changeStatus(newStatus);
 
