@@ -4,6 +4,9 @@ import com.example.core.exception.BusinessException;
 import com.example.event.EventPublisher;
 import com.example.product.dto.goods.request.ProductCreateRequest;
 import com.example.product.dto.goods.request.ProductUpdateRequest;
+import com.example.product.dto.goods.response.GoodsDetailResponse;
+import com.example.product.entity.goods.ItemOption;
+import com.example.product.entity.goods.ShippingInfo;
 import com.example.product.entity.image.ItemImage;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemType;
@@ -22,6 +25,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -113,6 +117,8 @@ class ProductCommandServiceTest {
 
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
         when(mediaReferenceService.resolveMediaUrl(888L)).thenReturn("https://media/888");
+        when(itemOptionRepository.findByItemId(itemId)).thenReturn(List.of());
+        when(shippingInfoRepository.findByItemId(itemId)).thenReturn(Optional.empty());
         when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(java.util.List.of(image));
 
         productCommandService.updateProduct(itemId, request, sellerId, 100L);
@@ -154,6 +160,8 @@ class ProductCommandServiceTest {
 
         when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
         when(categoryRepository.existsById(10L)).thenReturn(true);
+        when(itemOptionRepository.findByItemId(itemId)).thenReturn(List.of());
+        when(shippingInfoRepository.findByItemId(itemId)).thenReturn(Optional.empty());
         when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(java.util.List.of());
 
         productCommandService.updateProduct(itemId, request, sellerId, 100L);
@@ -301,6 +309,30 @@ class ProductCommandServiceTest {
                 .isEqualTo(ProductErrorCode.STORE_OWNERSHIP_MISMATCH);
 
         verifyNoInteractions(itemThumbnailSyncService, eventPublisher);
+    }
+
+    @Test
+    void updateProduct_whenPartialRequest_returnsCurrentSnapshot() {
+        Long itemId = 3L;
+        Long sellerId = 10L;
+        Item item = createItem(itemId, sellerId);
+        ProductUpdateRequest request = new ProductUpdateRequest();
+        ReflectionTestUtils.setField(request, "title", "title-only-update");
+
+        ItemOption option = ItemOption.create(itemId, "옵션A", 100L, 3);
+        ShippingInfo shippingInfo = ShippingInfo.create(itemId, 3000L, 50000L, 2, "교환/반품 정책");
+
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
+        when(itemOptionRepository.findByItemId(itemId)).thenReturn(List.of(option));
+        when(shippingInfoRepository.findByItemId(itemId)).thenReturn(Optional.of(shippingInfo));
+        when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(List.of());
+
+        GoodsDetailResponse response = productCommandService.updateProduct(itemId, request, sellerId, 100L);
+
+        assertThat(response.getOptions()).hasSize(1);
+        assertThat(response.getOptions().get(0).getOptionName()).isEqualTo("옵션A");
+        assertThat(response.getShippingInfo()).isNotNull();
+        assertThat(response.getShippingInfo().getShippingFee()).isEqualTo(3000L);
     }
 
     private Item createItem(Long id, Long sellerId) {

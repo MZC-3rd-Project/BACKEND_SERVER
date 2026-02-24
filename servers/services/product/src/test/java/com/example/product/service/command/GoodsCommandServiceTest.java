@@ -3,6 +3,11 @@ package com.example.product.service.command;
 import com.example.core.exception.BusinessException;
 import com.example.event.EventPublisher;
 import com.example.product.dto.goods.request.GoodsCreateRequest;
+import com.example.product.dto.goods.request.GoodsUpdateRequest;
+import com.example.product.dto.goods.response.GoodsDetailResponse;
+import com.example.product.entity.goods.ItemGoodsLink;
+import com.example.product.entity.goods.ItemOption;
+import com.example.product.entity.goods.ShippingInfo;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemType;
 import com.example.product.exception.ProductErrorCode;
@@ -21,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -120,6 +126,33 @@ class GoodsCommandServiceTest {
                 .isEqualTo(ProductErrorCode.CATEGORY_NOT_FOUND);
 
         verifyNoInteractions(itemRepository, itemThumbnailSyncService, eventPublisher);
+    }
+
+    @Test
+    void updateGoods_whenPartialRequest_returnsCurrentSnapshot() {
+        Long itemId = 20L;
+        Long sellerId = 10L;
+        Item item = createItem(itemId, sellerId);
+        GoodsUpdateRequest request = new GoodsUpdateRequest();
+        ReflectionTestUtils.setField(request, "title", "title-only-update");
+
+        ItemOption option = ItemOption.create(itemId, "옵션A", 0L, 7);
+        ShippingInfo shippingInfo = ShippingInfo.create(itemId, 2500L, null, 3, "policy");
+        ItemGoodsLink link = ItemGoodsLink.create(41L, itemId);
+
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
+        when(itemOptionRepository.findByItemId(itemId)).thenReturn(List.of(option));
+        when(shippingInfoRepository.findByItemId(itemId)).thenReturn(Optional.of(shippingInfo));
+        when(itemGoodsLinkRepository.findByGoodsItemId(itemId)).thenReturn(List.of(link));
+        when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(List.of());
+
+        GoodsDetailResponse response = goodsCommandService.updateGoods(itemId, request, sellerId, 100L);
+
+        assertThat(response.getOptions()).hasSize(1);
+        assertThat(response.getOptions().get(0).getOptionName()).isEqualTo("옵션A");
+        assertThat(response.getShippingInfo()).isNotNull();
+        assertThat(response.getShippingInfo().getShippingFee()).isEqualTo(2500L);
+        assertThat(response.getLinkedPerformanceItemIds()).containsExactly(41L);
     }
 
     private Item createItem(Long id, Long sellerId) {
