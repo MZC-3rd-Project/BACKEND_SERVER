@@ -89,6 +89,7 @@ public class SearchResultCacheService {
         normalized.put("q", SearchKeywordNormalizer.normalize(request.getQ()));
         normalized.put("category", normalizeText(request.getCategory()));
         normalized.put("domainType", normalizeDomainType(request.getDomainType()));
+        normalized.put("channel", normalizeChannel(request.getChannel()));
         normalized.put("status", normalizeStatuses(request.getStatus()));
         normalized.put("minPrice", request.getMinPrice());
         normalized.put("maxPrice", request.getMaxPrice());
@@ -117,6 +118,13 @@ public class SearchResultCacheService {
     private String normalizeSort(String value) {
         if (!StringUtils.hasText(value)) {
             return "LATEST";
+        }
+        return value.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private String normalizeChannel(String value) {
+        if (!StringUtils.hasText(value)) {
+            return "ALL";
         }
         return value.trim().toUpperCase(Locale.ROOT);
     }
