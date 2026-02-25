@@ -3,6 +3,7 @@ package com.example.search.consumer;
 import com.example.config.kafka.IdempotentConsumerService;
 import com.example.core.util.JsonUtils;
 import com.example.search.service.index.SearchIndexingFailureService;
+import com.example.search.service.index.SearchEventTimeParser;
 import com.example.search.service.index.SearchIndexingService;
 import com.example.search.service.metrics.SearchMetricsService;
 import com.example.search.service.query.cache.SearchResultCacheService;
@@ -64,21 +65,41 @@ public class FundingEventConsumer {
 
     private boolean route(FundingEventMessage event) {
         String normalizedType = normalizeEventType(event.getEventType());
+        Long occurredAtMillis = SearchEventTimeParser.parseOccurredAtMillis(event.getOccurredAt());
         return switch (normalizedType) {
             case "FUNDING_CREATED" -> {
-                searchIndexingService.applyFundingCreated(event.getItemId(), event.getCampaignId());
+                searchIndexingService.applyFundingCreatedByEventTime(
+                        event.getItemId(),
+                        event.getCampaignId(),
+                        occurredAtMillis
+                );
                 yield true;
             }
             case "FUNDING_SUCCEEDED" -> {
-                searchIndexingService.applyFundingClosed(event.getItemId(), event.getCampaignId(), "FUNDED");
+                searchIndexingService.applyFundingClosedByEventTime(
+                        event.getItemId(),
+                        event.getCampaignId(),
+                        "FUNDED",
+                        occurredAtMillis
+                );
                 yield true;
             }
             case "FUNDING_FAILED" -> {
-                searchIndexingService.applyFundingClosed(event.getItemId(), event.getCampaignId(), "FUND_FAILED");
+                searchIndexingService.applyFundingClosedByEventTime(
+                        event.getItemId(),
+                        event.getCampaignId(),
+                        "FUND_FAILED",
+                        occurredAtMillis
+                );
                 yield true;
             }
             case "FUNDING_CANCELLED" -> {
-                searchIndexingService.applyFundingClosed(event.getItemId(), event.getCampaignId(), "CLOSED");
+                searchIndexingService.applyFundingClosedByEventTime(
+                        event.getItemId(),
+                        event.getCampaignId(),
+                        "CLOSED",
+                        occurredAtMillis
+                );
                 yield true;
             }
             default -> {

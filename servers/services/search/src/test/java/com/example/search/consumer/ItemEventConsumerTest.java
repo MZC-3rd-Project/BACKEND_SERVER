@@ -125,7 +125,7 @@ class ItemEventConsumerTest {
 
         itemEventConsumer.consume(message);
 
-        verify(searchIndexingService).updateItemStatus(101L, "SELLING");
+        verify(searchIndexingService).updateItemStatusByEventTime(101L, "SELLING", null);
         verify(searchResultCacheService).evictAll();
     }
 

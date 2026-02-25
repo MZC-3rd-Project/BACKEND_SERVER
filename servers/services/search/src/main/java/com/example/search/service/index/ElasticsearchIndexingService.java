@@ -122,6 +122,11 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
 
     @Override
     public void updateItemStatus(Long itemId, String status) {
+        updateItemStatusByEventTime(itemId, status, null);
+    }
+
+    @Override
+    public void updateItemStatusByEventTime(Long itemId, String status, Long eventOccurredAtMillis) {
         if (itemId == null || !StringUtils.hasText(status)) {
             return;
         }
@@ -140,11 +145,16 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         params.put("fundingPriority", CHANNEL_PRIORITY_FUNDING);
         params.put("normalChannel", CHANNEL_NORMAL);
         params.put("normalPriority", CHANNEL_PRIORITY_NORMAL);
+        params.put("eventOccurredAtMillis", eventOccurredAtMillis);
 
         Map<String, Object> script = new LinkedHashMap<>();
         script.put("lang", "painless");
         script.put("source",
-                "ctx._source.itemId = params.itemId; " +
+                "if (params.eventOccurredAtMillis != null && ctx._source.channelEventOccurredAt != null && " +
+                        "params.eventOccurredAtMillis < ctx._source.channelEventOccurredAt) { " +
+                        "ctx.op = 'none'; " +
+                        "} else { " +
+                        "ctx._source.itemId = params.itemId; " +
                         "ctx._source.status = params.status; " +
                         "boolean hasHotDeal = ctx._source.activeHotDealId != null; " +
                         "boolean hasCampaign = ctx._source.activeCampaignId != null; " +
@@ -163,6 +173,10 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
                         "} " +
                         "if (ctx._source.effectivePrice == null && ctx._source.price != null) { " +
                         "ctx._source.effectivePrice = ctx._source.price; " +
+                        "} " +
+                        "if (params.eventOccurredAtMillis != null) { " +
+                        "ctx._source.channelEventOccurredAt = params.eventOccurredAtMillis; " +
+                        "} " +
                         "}");
         script.put("params", params);
 
@@ -171,6 +185,7 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         upsert.put("status", normalizedStatus);
         upsert.put("salesChannel", statusChannel.name());
         upsert.put("channelPriority", statusChannel.priority());
+        putIfNotNull(upsert, "channelEventOccurredAt", eventOccurredAtMillis);
         upsert.put("createdAt", Instant.now().toString());
 
         Map<String, Object> body = new LinkedHashMap<>();
@@ -185,6 +200,14 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
 
     @Override
     public void applyHotDealStarted(Long itemId, Long hotDealId, Long discountedPrice) {
+        applyHotDealStartedByEventTime(itemId, hotDealId, discountedPrice, null);
+    }
+
+    @Override
+    public void applyHotDealStartedByEventTime(Long itemId,
+                                               Long hotDealId,
+                                               Long discountedPrice,
+                                               Long eventOccurredAtMillis) {
         if (itemId == null) {
             return;
         }
@@ -195,11 +218,16 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         params.put("discountedPrice", discountedPrice);
         params.put("hotDealChannel", CHANNEL_HOT_DEAL);
         params.put("hotDealPriority", CHANNEL_PRIORITY_HOT_DEAL);
+        params.put("eventOccurredAtMillis", eventOccurredAtMillis);
 
         Map<String, Object> script = new LinkedHashMap<>();
         script.put("lang", "painless");
         script.put("source",
-                "ctx._source.itemId = params.itemId; " +
+                "if (params.eventOccurredAtMillis != null && ctx._source.channelEventOccurredAt != null && " +
+                        "params.eventOccurredAtMillis < ctx._source.channelEventOccurredAt) { " +
+                        "ctx.op = 'none'; " +
+                        "} else { " +
+                        "ctx._source.itemId = params.itemId; " +
                         "ctx._source.salesChannel = params.hotDealChannel; " +
                         "ctx._source.channelPriority = params.hotDealPriority; " +
                         "ctx._source.status = 'HOT_DEAL'; " +
@@ -208,6 +236,10 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
                         "ctx._source.effectivePrice = params.discountedPrice; " +
                         "} else if (ctx._source.effectivePrice == null && ctx._source.price != null) { " +
                         "ctx._source.effectivePrice = ctx._source.price; " +
+                        "} " +
+                        "if (params.eventOccurredAtMillis != null) { " +
+                        "ctx._source.channelEventOccurredAt = params.eventOccurredAtMillis; " +
+                        "} " +
                         "}");
         script.put("params", params);
 
@@ -218,6 +250,7 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         upsert.put("status", "HOT_DEAL");
         putIfNotNull(upsert, "activeHotDealId", hotDealId);
         putIfNotNull(upsert, "effectivePrice", discountedPrice);
+        putIfNotNull(upsert, "channelEventOccurredAt", eventOccurredAtMillis);
         upsert.put("createdAt", Instant.now().toString());
 
         Map<String, Object> body = new LinkedHashMap<>();
@@ -232,6 +265,11 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
 
     @Override
     public void applyHotDealEnded(Long itemId, Long hotDealId) {
+        applyHotDealEndedByEventTime(itemId, hotDealId, null);
+    }
+
+    @Override
+    public void applyHotDealEndedByEventTime(Long itemId, Long hotDealId, Long eventOccurredAtMillis) {
         if (itemId == null) {
             return;
         }
@@ -245,11 +283,16 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         params.put("fundingPriority", CHANNEL_PRIORITY_FUNDING);
         params.put("normalChannel", CHANNEL_NORMAL);
         params.put("normalPriority", CHANNEL_PRIORITY_NORMAL);
+        params.put("eventOccurredAtMillis", eventOccurredAtMillis);
 
         Map<String, Object> script = new LinkedHashMap<>();
         script.put("lang", "painless");
         script.put("source",
-                "ctx._source.itemId = params.itemId; " +
+                "if (params.eventOccurredAtMillis != null && ctx._source.channelEventOccurredAt != null && " +
+                        "params.eventOccurredAtMillis < ctx._source.channelEventOccurredAt) { " +
+                        "ctx.op = 'none'; " +
+                        "} else { " +
+                        "ctx._source.itemId = params.itemId; " +
                         "if (params.hotDealId == null || ctx._source.activeHotDealId == null || " +
                         "ctx._source.activeHotDealId.equals(params.hotDealId)) { " +
                         "ctx._source.activeHotDealId = null; " +
@@ -275,6 +318,10 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
                         "} " +
                         "if (ctx._source.effectivePrice == null && ctx._source.price != null) { " +
                         "ctx._source.effectivePrice = ctx._source.price; " +
+                        "} " +
+                        "if (params.eventOccurredAtMillis != null) { " +
+                        "ctx._source.channelEventOccurredAt = params.eventOccurredAtMillis; " +
+                        "} " +
                         "}");
         script.put("params", params);
 
@@ -283,6 +330,7 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         upsert.put("salesChannel", CHANNEL_NORMAL);
         upsert.put("channelPriority", CHANNEL_PRIORITY_NORMAL);
         upsert.put("status", "ON_SALE");
+        putIfNotNull(upsert, "channelEventOccurredAt", eventOccurredAtMillis);
         upsert.put("createdAt", Instant.now().toString());
 
         Map<String, Object> body = new LinkedHashMap<>();
@@ -297,6 +345,11 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
 
     @Override
     public void applyFundingCreated(Long itemId, Long campaignId) {
+        applyFundingCreatedByEventTime(itemId, campaignId, null);
+    }
+
+    @Override
+    public void applyFundingCreatedByEventTime(Long itemId, Long campaignId, Long eventOccurredAtMillis) {
         if (itemId == null) {
             return;
         }
@@ -308,11 +361,16 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         params.put("hotDealPriority", CHANNEL_PRIORITY_HOT_DEAL);
         params.put("fundingChannel", CHANNEL_FUNDING);
         params.put("fundingPriority", CHANNEL_PRIORITY_FUNDING);
+        params.put("eventOccurredAtMillis", eventOccurredAtMillis);
 
         Map<String, Object> script = new LinkedHashMap<>();
         script.put("lang", "painless");
         script.put("source",
-                "ctx._source.itemId = params.itemId; " +
+                "if (params.eventOccurredAtMillis != null && ctx._source.channelEventOccurredAt != null && " +
+                        "params.eventOccurredAtMillis < ctx._source.channelEventOccurredAt) { " +
+                        "ctx.op = 'none'; " +
+                        "} else { " +
+                        "ctx._source.itemId = params.itemId; " +
                         "if (params.campaignId != null) { ctx._source.activeCampaignId = params.campaignId; } " +
                         "boolean hasHotDeal = ctx._source.activeHotDealId != null; " +
                         "if (hasHotDeal) { " +
@@ -327,6 +385,10 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
                         "} " +
                         "if (ctx._source.effectivePrice == null && ctx._source.price != null) { " +
                         "ctx._source.effectivePrice = ctx._source.price; " +
+                        "} " +
+                        "if (params.eventOccurredAtMillis != null) { " +
+                        "ctx._source.channelEventOccurredAt = params.eventOccurredAtMillis; " +
+                        "} " +
                         "}");
         script.put("params", params);
 
@@ -336,6 +398,7 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         upsert.put("channelPriority", CHANNEL_PRIORITY_FUNDING);
         upsert.put("status", "FUNDING");
         putIfNotNull(upsert, "activeCampaignId", campaignId);
+        putIfNotNull(upsert, "channelEventOccurredAt", eventOccurredAtMillis);
         upsert.put("createdAt", Instant.now().toString());
 
         Map<String, Object> body = new LinkedHashMap<>();
@@ -350,6 +413,14 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
 
     @Override
     public void applyFundingClosed(Long itemId, Long campaignId, String terminalStatus) {
+        applyFundingClosedByEventTime(itemId, campaignId, terminalStatus, null);
+    }
+
+    @Override
+    public void applyFundingClosedByEventTime(Long itemId,
+                                              Long campaignId,
+                                              String terminalStatus,
+                                              Long eventOccurredAtMillis) {
         if (itemId == null) {
             return;
         }
@@ -365,11 +436,16 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         params.put("fundingPriority", CHANNEL_PRIORITY_FUNDING);
         params.put("normalChannel", CHANNEL_NORMAL);
         params.put("normalPriority", CHANNEL_PRIORITY_NORMAL);
+        params.put("eventOccurredAtMillis", eventOccurredAtMillis);
 
         Map<String, Object> script = new LinkedHashMap<>();
         script.put("lang", "painless");
         script.put("source",
-                "ctx._source.itemId = params.itemId; " +
+                "if (params.eventOccurredAtMillis != null && ctx._source.channelEventOccurredAt != null && " +
+                        "params.eventOccurredAtMillis < ctx._source.channelEventOccurredAt) { " +
+                        "ctx.op = 'none'; " +
+                        "} else { " +
+                        "ctx._source.itemId = params.itemId; " +
                         "boolean campaignClosed = false; " +
                         "if (params.campaignId == null || ctx._source.activeCampaignId == null || " +
                         "ctx._source.activeCampaignId.equals(params.campaignId)) { " +
@@ -396,6 +472,10 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
                         "} " +
                         "if (ctx._source.effectivePrice == null && ctx._source.price != null) { " +
                         "ctx._source.effectivePrice = ctx._source.price; " +
+                        "} " +
+                        "if (params.eventOccurredAtMillis != null) { " +
+                        "ctx._source.channelEventOccurredAt = params.eventOccurredAtMillis; " +
+                        "} " +
                         "}");
         script.put("params", params);
 
@@ -404,6 +484,7 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         upsert.put("salesChannel", CHANNEL_NORMAL);
         upsert.put("channelPriority", CHANNEL_PRIORITY_NORMAL);
         putIfNotNull(upsert, "status", normalizedStatus);
+        putIfNotNull(upsert, "channelEventOccurredAt", eventOccurredAtMillis);
         upsert.put("createdAt", Instant.now().toString());
 
         Map<String, Object> body = new LinkedHashMap<>();
