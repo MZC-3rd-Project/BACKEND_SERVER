@@ -1,11 +1,8 @@
 package com.example.gateway.security;
 
-import com.nimbusds.jwt.JWT;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.JWTParser;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
-import java.text.ParseException;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -14,33 +11,26 @@ import java.util.Map;
 import java.util.Set;
 
 @Component
-public class JwtClaimParser {
+public class SessionClaimParser {
 
     private static final List<String> USER_ID_CLAIM_CANDIDATES =
             List.of("userId", "user_id", "uid", "memberId", "sub");
+    private static final List<String> SESSION_ID_CLAIM_CANDIDATES =
+            List.of("sid", "session_state");
 
-    public GatewayJwtPrincipal parse(String token) {
-        Map<String, Object> claims = parseClaims(token);
+    public GatewaySessionPrincipal parseClaims(Map<String, Object> claims) {
+        if (claims == null || claims.isEmpty()) {
+            throw new SessionClaimParseException("세션 클레임이 비어 있습니다");
+        }
+
         Long userId = extractUserId(claims);
         if (userId == null || userId <= 0) {
-            throw new JwtClaimParseException("JWT에서 유효한 사용자 ID를 찾지 못했습니다");
+            throw new SessionClaimParseException("세션 클레임에서 유효한 사용자 ID를 찾지 못했습니다");
         }
 
         List<String> roles = extractRoles(claims);
-        return new GatewayJwtPrincipal(userId, roles);
-    }
-
-    private Map<String, Object> parseClaims(String token) {
-        try {
-            JWT jwt = JWTParser.parse(token);
-            JWTClaimsSet claimsSet = jwt.getJWTClaimsSet();
-            if (claimsSet == null || claimsSet.getClaims() == null) {
-                throw new JwtClaimParseException("JWT 클레임이 비어 있습니다");
-            }
-            return claimsSet.getClaims();
-        } catch (ParseException e) {
-            throw new JwtClaimParseException("JWT 파싱에 실패했습니다", e);
-        }
+        String sessionId = extractSessionId(claims);
+        return new GatewaySessionPrincipal(userId, roles, sessionId);
     }
 
     private Long extractUserId(Map<String, Object> claims) {
@@ -68,6 +58,20 @@ public class JwtClaimParser {
                 return parsed > 0 ? parsed : null;
             } catch (NumberFormatException ignored) {
                 return null;
+            }
+        }
+        return null;
+    }
+
+    private String extractSessionId(Map<String, Object> claims) {
+        for (String claimName : SESSION_ID_CLAIM_CANDIDATES) {
+            Object value = claims.get(claimName);
+            if (value == null) {
+                continue;
+            }
+            String sessionId = String.valueOf(value).trim();
+            if (StringUtils.hasText(sessionId)) {
+                return sessionId;
             }
         }
         return null;
