@@ -4,9 +4,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
-
-    // Security (JWT claim parsing)
-    implementation("org.springframework.security:spring-security-oauth2-jose")
+    implementation("org.springframework.boot:spring-boot-starter-data-redis-reactive")
 
     // Shared modules
     implementation(project(":libs:contracts:http"))
