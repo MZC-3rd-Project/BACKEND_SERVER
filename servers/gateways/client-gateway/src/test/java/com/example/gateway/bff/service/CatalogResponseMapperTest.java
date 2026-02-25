@@ -65,12 +65,14 @@ class CatalogResponseMapperTest {
         CatalogItemCardResponse hotDeal = response.data().items().get(0);
         assertThat(hotDeal.salesChannel()).isEqualTo(CatalogSalesChannel.HOT_DEAL);
         assertThat(hotDeal.detailTarget().type()).isEqualTo("HOT_DEAL");
-        assertThat(hotDeal.detailTarget().path()).isEqualTo("/api/v1/hot-deals/901");
+        assertThat(hotDeal.detailTarget().path())
+                .isEqualTo("/bff/v1/catalog/items/11/detail?itemType=PRODUCT&salesChannel=HOT_DEAL&hotDealId=901");
 
         CatalogItemCardResponse funding = response.data().items().get(1);
         assertThat(funding.salesChannel()).isEqualTo(CatalogSalesChannel.FUNDING);
         assertThat(funding.detailTarget().type()).isEqualTo("FUNDING");
-        assertThat(funding.detailTarget().path()).isEqualTo("/api/campaigns/301");
+        assertThat(funding.detailTarget().path())
+                .isEqualTo("/bff/v1/catalog/items/22/detail?itemType=GOODS&salesChannel=FUNDING&campaignId=301");
 
         CatalogItemCardResponse normal = response.data().items().get(2);
         assertThat(normal.salesChannel()).isEqualTo(CatalogSalesChannel.NORMAL);
@@ -130,6 +132,30 @@ class CatalogResponseMapperTest {
 
         assertThat(response.data().items()).hasSize(1);
         assertThat(response.data().items().get(0).salesChannel()).isEqualTo(CatalogSalesChannel.FUNDING);
+    }
+
+    @Test
+    void toCatalogResponse_mapsFundingRouteWithoutCampaignId() throws Exception {
+        JsonNode searchBody = objectMapper.readTree("""
+                {
+                  "success": true,
+                  "data": {
+                    "items": [
+                      {"itemId": 2, "domainType": "PRODUCT", "status": "FUNDING", "price": 14000}
+                    ],
+                    "nextCursor": null,
+                    "totalCount": 1
+                  }
+                }
+                """);
+
+        CatalogItemsResponse response = mapper.toCatalogResponse(searchBody, defaultParams());
+
+        assertThat(response.data().items()).hasSize(1);
+        CatalogItemCardResponse funding = response.data().items().get(0);
+        assertThat(funding.detailTarget().type()).isEqualTo("FUNDING");
+        assertThat(funding.detailTarget().path())
+                .isEqualTo("/bff/v1/catalog/items/2/detail?itemType=PRODUCT&salesChannel=FUNDING");
     }
 
     @Test
