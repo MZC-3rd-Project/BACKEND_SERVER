@@ -23,6 +23,8 @@ import reactor.core.publisher.Mono;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
+import java.util.concurrent.atomic.LongAdder;
 
 @Slf4j
 @Service
@@ -30,6 +32,7 @@ public class CatalogBffService {
 
     private static final String CODE_INVALID_REQUEST = "BFF-CATALOG-400";
     private static final String CODE_DOWNSTREAM_ERROR = "BFF-CATALOG-502";
+    private static final String DEGRADE_QUERY_PARAM = "degrade";
 
     private final WebClient searchWebClient;
     private final WebClient mediaWebClient;
@@ -37,6 +40,7 @@ public class CatalogBffService {
     private final SearchThumbnailFallbackEnricher fallbackEnricher;
     private final CatalogResponseMapper responseMapper;
     private final ObjectMapper objectMapper;
+    private final LongAdder degradeFallbackCounter = new LongAdder();
 
     public CatalogBffService(
             WebClient.Builder webClientBuilder,
@@ -63,15 +67,29 @@ public class CatalogBffService {
             return Mono.just(badRequest(e.getMessage()));
         }
 
+        boolean degradeRequested = isDegradeRequested(request);
         HttpHeaders downstreamHeaders = buildDownstreamHeaders();
-        MultiValueMap<String, String> searchQueryParams = params.toSearchQueryParams();
+        MultiValueMap<String, String> primaryQueryParams = params.toSearchQueryParams();
 
-        return callSearch(searchQueryParams, downstreamHeaders)
-                .flatMap(searchResponse -> enrichWithMediaFallback(searchResponse, downstreamHeaders))
-                .map(searchResponse -> mapCatalogResponse(searchResponse, params))
+        return queryCatalog(primaryQueryParams, params, downstreamHeaders)
+                .onErrorResume(CatalogQueryException.class, e -> handleCatalogQueryFailure(
+                        params,
+                        downstreamHeaders,
+                        degradeRequested,
+                        e.reason(),
+                        e.status(),
+                        e.getMessage()
+                ))
                 .onErrorResume(e -> {
-                    log.warn("[CatalogBff] catalog query failed", e);
-                    return Mono.just(badGateway("통합 목록 조회에 실패했습니다"));
+                    log.warn("[CatalogBff] catalog query failed with exception", e);
+                    return handleCatalogQueryFailure(
+                            params,
+                            downstreamHeaders,
+                            degradeRequested,
+                            "primary_exception",
+                            HttpStatus.BAD_GATEWAY,
+                            "통합 목록 조회에 실패했습니다"
+                    );
                 });
     }
 
@@ -155,20 +173,69 @@ public class CatalogBffService {
         return builder.build();
     }
 
-    private ResponseEntity<CatalogItemsResponse> mapCatalogResponse(ResponseEntity<JsonNode> searchResponse,
-                                                                    CatalogQueryParams params) {
+    private Mono<ResponseEntity<CatalogItemsResponse>> queryCatalog(MultiValueMap<String, String> queryParams,
+                                                                    CatalogQueryParams params,
+                                                                    HttpHeaders downstreamHeaders) {
+        return callSearch(queryParams, downstreamHeaders)
+                .flatMap(searchResponse -> enrichWithMediaFallback(searchResponse, downstreamHeaders))
+                .flatMap(searchResponse -> mapCatalogResponse(searchResponse, params));
+    }
+
+    private Mono<ResponseEntity<CatalogItemsResponse>> mapCatalogResponse(ResponseEntity<JsonNode> searchResponse,
+                                                                          CatalogQueryParams params) {
         if (!searchResponse.getStatusCode().is2xxSuccessful()) {
-            return ResponseEntity.status(searchResponse.getStatusCode())
-                    .body(CatalogItemsResponse.error(CODE_DOWNSTREAM_ERROR,
-                            extractDownstreamErrorMessage(searchResponse.getBody())));
+            HttpStatus status = HttpStatus.resolve(searchResponse.getStatusCode().value());
+            if (status == null) {
+                status = HttpStatus.BAD_GATEWAY;
+            }
+            return Mono.error(new CatalogQueryException(
+                    "primary_non_2xx",
+                    status,
+                    extractDownstreamErrorMessage(searchResponse.getBody())
+            ));
         }
 
         try {
             CatalogItemsResponse response = responseMapper.toCatalogResponse(searchResponse.getBody(), params);
-            return ResponseEntity.ok(response);
+            return Mono.just(ResponseEntity.ok(response));
         } catch (IllegalArgumentException e) {
-            return badGateway(e.getMessage());
+            return Mono.error(new CatalogQueryException(
+                    "primary_mapping_error",
+                    HttpStatus.BAD_GATEWAY,
+                    e.getMessage()
+            ));
         }
+    }
+
+    private Mono<ResponseEntity<CatalogItemsResponse>> handleCatalogQueryFailure(CatalogQueryParams params,
+                                                                                 HttpHeaders downstreamHeaders,
+                                                                                 boolean degradeRequested,
+                                                                                 String reason,
+                                                                                 HttpStatus status,
+                                                                                 String message) {
+        if (!degradeRequested) {
+            if (status == HttpStatus.BAD_GATEWAY) {
+                return Mono.just(badGateway(message));
+            }
+            return Mono.just(downstreamError(status, message));
+        }
+
+        long fallbackCount = incrementDegradeFallbackCount();
+        log.warn("[CatalogBff] degrade fallback activated. reason={}, count={}, q={}, channel={}",
+                reason, fallbackCount, params.query(), params.channel());
+
+        return queryCatalog(params.toDegradeSearchQueryParams(), params, downstreamHeaders)
+                .onErrorResume(CatalogQueryException.class, e -> {
+                    log.warn("[CatalogBff] degrade query failed. reason={}, status={}", e.reason(), e.status().value());
+                    if (e.status() == HttpStatus.BAD_GATEWAY) {
+                        return Mono.just(badGateway(e.getMessage()));
+                    }
+                    return Mono.just(downstreamError(e.status(), e.getMessage()));
+                })
+                .onErrorResume(e -> {
+                    log.warn("[CatalogBff] degrade query failed with exception. reason={}", reason, e);
+                    return Mono.just(badGateway("통합 목록 조회에 실패했습니다"));
+                });
     }
 
     private String extractDownstreamErrorMessage(JsonNode body) {
@@ -198,9 +265,31 @@ public class CatalogBffService {
         return value.trim();
     }
 
+    private boolean isDegradeRequested(ServerHttpRequest request) {
+        String raw = request.getQueryParams().getFirst(DEGRADE_QUERY_PARAM);
+        if (!StringUtils.hasText(raw)) {
+            return false;
+        }
+        String normalized = raw.trim().toLowerCase(Locale.ROOT);
+        return "true".equals(normalized)
+                || "1".equals(normalized)
+                || "yes".equals(normalized)
+                || "y".equals(normalized);
+    }
+
+    private long incrementDegradeFallbackCount() {
+        degradeFallbackCounter.increment();
+        return degradeFallbackCounter.sum();
+    }
+
     private ResponseEntity<CatalogItemsResponse> badRequest(String message) {
         return ResponseEntity.badRequest()
                 .body(CatalogItemsResponse.error(CODE_INVALID_REQUEST, message));
+    }
+
+    private ResponseEntity<CatalogItemsResponse> downstreamError(HttpStatus status, String message) {
+        return ResponseEntity.status(status)
+                .body(CatalogItemsResponse.error(CODE_DOWNSTREAM_ERROR, message));
     }
 
     private ResponseEntity<CatalogItemsResponse> badGateway(String message) {
@@ -216,5 +305,25 @@ public class CatalogBffService {
             headers.set(securityProperties.getInternalAuthHeader(), securityProperties.getInternalAuthToken());
         }
         return headers;
+    }
+
+    private static final class CatalogQueryException extends RuntimeException {
+
+        private final String reason;
+        private final HttpStatus status;
+
+        private CatalogQueryException(String reason, HttpStatus status, String message) {
+            super(message);
+            this.reason = reason;
+            this.status = status;
+        }
+
+        private String reason() {
+            return reason;
+        }
+
+        private HttpStatus status() {
+            return status;
+        }
     }
 }
