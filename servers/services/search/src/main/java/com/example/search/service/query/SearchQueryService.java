@@ -38,6 +38,9 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class SearchQueryService {
 
+    private static final String CHANNEL_ALL = "ALL";
+    private static final Set<String> ALLOWED_CHANNELS = Set.of("ALL", "HOT_DEAL", "FUNDING", "NORMAL");
+
     private static final Set<String> BLOCKED_EXPOSURE_STATUSES = Set.of(
             "DELETED", "HIDDEN", "PRIVATE", "SOLD_OUT", "ENDED", "INACTIVE"
     );
@@ -139,6 +142,10 @@ public class SearchQueryService {
             filter.add(Map.of("terms", Map.of("status", statuses)));
         }
 
+        if (StringUtils.hasText(request.getChannel()) && !CHANNEL_ALL.equals(request.getChannel())) {
+            filter.add(channelFilterClause(request.getChannel()));
+        }
+
         mustNot.add(Map.of("terms", Map.of("status", BLOCKED_EXPOSURE_STATUSES)));
 
         Map<String, Object> priceRange = new LinkedHashMap<>();
@@ -166,23 +173,66 @@ public class SearchQueryService {
 
     private List<Map<String, Object>> buildSort(SearchSortType sortType) {
         return switch (sortType) {
+            case RELEVANCE -> List.of(
+                    Map.of("_score", Map.of("order", "desc")),
+                    Map.of("channelPriority", Map.of("order", "desc", "missing", "_last")),
+                    Map.of("createdAt", Map.of("order", "desc")),
+                    Map.of("itemId", Map.of("order", "desc"))
+            );
             case LATEST -> List.of(
+                    Map.of("channelPriority", Map.of("order", "desc", "missing", "_last")),
                     Map.of("createdAt", Map.of("order", "desc")),
                     Map.of("itemId", Map.of("order", "desc"))
             );
             case POPULAR -> List.of(
                     Map.of("stock", Map.of("order", "desc", "missing", "_last")),
+                    Map.of("channelPriority", Map.of("order", "desc", "missing", "_last")),
                     Map.of("createdAt", Map.of("order", "desc")),
                     Map.of("itemId", Map.of("order", "desc"))
             );
             case PRICE_ASC -> List.of(
                     Map.of("price", Map.of("order", "asc", "missing", "_last")),
+                    Map.of("channelPriority", Map.of("order", "desc", "missing", "_last")),
                     Map.of("itemId", Map.of("order", "desc"))
             );
             case PRICE_DESC -> List.of(
                     Map.of("price", Map.of("order", "desc", "missing", "_last")),
+                    Map.of("channelPriority", Map.of("order", "desc", "missing", "_last")),
                     Map.of("itemId", Map.of("order", "desc"))
             );
+        };
+    }
+
+    private Map<String, Object> channelFilterClause(String channel) {
+        return switch (channel) {
+            case "HOT_DEAL" -> Map.of(
+                    "bool", Map.of(
+                            "should", List.of(
+                                    Map.of("term", Map.of("salesChannel", "HOT_DEAL")),
+                                    Map.of("term", Map.of("status", "HOT_DEAL"))
+                            ),
+                            "minimum_should_match", 1
+                    )
+            );
+            case "FUNDING" -> Map.of(
+                    "bool", Map.of(
+                            "should", List.of(
+                                    Map.of("term", Map.of("salesChannel", "FUNDING")),
+                                    Map.of("terms", Map.of("status", List.of("FUNDING", "FUNDED", "FUND_FAILED")))
+                            ),
+                            "minimum_should_match", 1
+                    )
+            );
+            case "NORMAL" -> Map.of(
+                    "bool", Map.of(
+                            "should", List.of(
+                                    Map.of("term", Map.of("salesChannel", "NORMAL")),
+                                    Map.of("term", Map.of("status", "ON_SALE"))
+                            ),
+                            "minimum_should_match", 1
+                    )
+            );
+            default -> Map.of();
         };
     }
 
@@ -323,6 +373,15 @@ public class SearchQueryService {
         }
         if (StringUtils.hasText(request.getSort())) {
             request.setSort(request.getSort().trim().toUpperCase(Locale.ROOT));
+        }
+        if (StringUtils.hasText(request.getChannel())) {
+            request.setChannel(request.getChannel().trim().toUpperCase(Locale.ROOT));
+        } else {
+            request.setChannel(CHANNEL_ALL);
+        }
+        if (!ALLOWED_CHANNELS.contains(request.getChannel())) {
+            throw new BusinessException(SearchErrorCode.INVALID_SEARCH_PARAMETER,
+                    "channel은 ALL, HOT_DEAL, FUNDING, NORMAL 중 하나여야 합니다.");
         }
 
         if (request.getMinPrice() != null && request.getMinPrice() < 0) {
