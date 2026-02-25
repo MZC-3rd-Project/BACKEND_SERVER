@@ -43,8 +43,23 @@ public class ItemDocument {
     @Field(type = FieldType.Long)
     private Long price;
 
+    @Field(type = FieldType.Long)
+    private Long effectivePrice;
+
     @Field(type = FieldType.Keyword)
     private String status;
+
+    @Field(type = FieldType.Keyword)
+    private String salesChannel;
+
+    @Field(type = FieldType.Integer)
+    private Integer channelPriority;
+
+    @Field(type = FieldType.Long)
+    private Long activeHotDealId;
+
+    @Field(type = FieldType.Long)
+    private Long activeCampaignId;
 
     @Field(type = FieldType.Integer)
     private Integer stock;
