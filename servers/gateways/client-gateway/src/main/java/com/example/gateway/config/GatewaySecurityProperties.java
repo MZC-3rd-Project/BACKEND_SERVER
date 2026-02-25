@@ -32,8 +32,8 @@ public class GatewaySecurityProperties {
             "/api/v1/hot-deals",
             "/api/v1/notifications"
     );
-    private List<String> requireJwtPathPrefixes = List.of("/api/v1/chat", "/ws/chat");
-    private List<String> requireJwtWritePathPrefixes = List.of(
+    private List<String> requireAuthPathPrefixes = List.of("/api/v1/chat", "/ws/chat");
+    private List<String> requireAuthWritePathPrefixes = List.of(
             "/bff/v1",
             "/api/v1/media",
             "/api/products",

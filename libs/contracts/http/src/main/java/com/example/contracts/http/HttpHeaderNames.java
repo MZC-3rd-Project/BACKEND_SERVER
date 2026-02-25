@@ -12,4 +12,5 @@ public final class HttpHeaderNames {
     public static final String SIGNATURE = "X-Signature";
     public static final String GATEWAY_CONTEXT = "X-Gateway-Context";
     public static final String GATEWAY_AUTH = "X-Gateway-Auth";
+    public static final String SESSION_ID = "X-Session-Id";
 }
