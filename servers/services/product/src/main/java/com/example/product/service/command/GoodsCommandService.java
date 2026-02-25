@@ -8,6 +8,7 @@ import com.example.product.dto.goods.request.GoodsUpdateRequest;
 import com.example.product.dto.goods.request.ItemOptionRequest;
 import com.example.product.dto.goods.request.ShippingInfoRequest;
 import com.example.product.dto.goods.response.GoodsDetailResponse;
+import com.example.product.dto.item.response.ItemContentSnapshot;
 import com.example.product.entity.goods.ItemGoodsLink;
 import com.example.product.entity.goods.ItemOption;
 import com.example.product.entity.goods.ShippingInfo;
@@ -24,6 +25,7 @@ import com.example.product.repository.ItemImageRepository;
 import com.example.product.repository.ItemOptionRepository;
 import com.example.product.repository.ItemRepository;
 import com.example.product.repository.ShippingInfoRepository;
+import com.example.product.service.content.ItemContentService;
 import com.example.product.service.command.image.ItemThumbnailSyncService;
 import com.example.product.service.command.image.MediaReferenceService;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +45,7 @@ public class GoodsCommandService {
     private final ShippingInfoRepository shippingInfoRepository;
     private final ItemGoodsLinkRepository itemGoodsLinkRepository;
     private final ItemImageRepository itemImageRepository;
+    private final ItemContentService itemContentService;
     private final MediaReferenceService mediaReferenceService;
     private final ItemThumbnailSyncService itemThumbnailSyncService;
     private final EventPublisher eventPublisher;
@@ -71,6 +74,9 @@ public class GoodsCommandService {
         if (request.getLinkedPerformanceItemIds() != null) {
             linkedIds = linkPerformances(item.getId(), request.getLinkedPerformanceItemIds());
         }
+        itemContentService.replaceTags(item.getId(), request.getTags());
+        itemContentService.replaceFeatures(item.getId(), request.getFeatures());
+        itemContentService.replaceDetailSections(item.getId(), request.getDetailSections());
 
         List<ItemCreatedEvent.StockItemInfo> stockItems = options.stream()
                 .map(opt -> new ItemCreatedEvent.StockItemInfo(
@@ -92,8 +98,9 @@ public class GoodsCommandService {
                 ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
+        ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(item.getId());
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(item.getId());
-        return GoodsDetailResponse.of(item, options, shippingInfo, linkedIds, images);
+        return GoodsDetailResponse.of(item, options, shippingInfo, linkedIds, contentSnapshot, images);
     }
 
     public GoodsDetailResponse updateGoods(Long itemId, GoodsUpdateRequest request, Long sellerId) {
@@ -143,6 +150,15 @@ public class GoodsCommandService {
             itemGoodsLinkRepository.softDeleteAllByGoodsItemId(itemId);
             linkPerformances(itemId, request.getLinkedPerformanceItemIds());
         }
+        if (request.getTags() != null) {
+            itemContentService.replaceTags(itemId, request.getTags());
+        }
+        if (request.getFeatures() != null) {
+            itemContentService.replaceFeatures(itemId, request.getFeatures());
+        }
+        if (request.getDetailSections() != null) {
+            itemContentService.replaceDetailSections(itemId, request.getDetailSections());
+        }
 
         eventPublisher.publish(
                 new ItemUpdatedEvent(
@@ -159,8 +175,9 @@ public class GoodsCommandService {
         List<Long> currentLinkedIds = itemGoodsLinkRepository.findByGoodsItemId(itemId).stream()
                 .map(ItemGoodsLink::getPerformanceItemId)
                 .toList();
+        ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(itemId);
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
-        return GoodsDetailResponse.of(item, currentOptions, currentShippingInfo, currentLinkedIds, images);
+        return GoodsDetailResponse.of(item, currentOptions, currentShippingInfo, currentLinkedIds, contentSnapshot, images);
     }
 
     public void delete(Long itemId, Long sellerId) {
@@ -176,6 +193,7 @@ public class GoodsCommandService {
         itemOptionRepository.softDeleteAllByItemId(itemId);
         shippingInfoRepository.softDeleteByItemId(itemId);
         itemGoodsLinkRepository.softDeleteAllByGoodsItemId(itemId);
+        itemContentService.softDeleteAll(itemId);
         itemImageRepository.softDeleteAllByItemId(itemId);
         item.clearThumbnail();
         itemThumbnailSyncService.syncAfterCommit(itemId, null, true);

@@ -8,6 +8,7 @@ import com.example.product.dto.goods.request.ProductCreateRequest;
 import com.example.product.dto.goods.request.ProductUpdateRequest;
 import com.example.product.dto.goods.request.ShippingInfoRequest;
 import com.example.product.dto.goods.response.GoodsDetailResponse;
+import com.example.product.dto.item.response.ItemContentSnapshot;
 import com.example.product.entity.goods.ItemOption;
 import com.example.product.entity.image.ItemImage;
 import com.example.product.entity.item.Item;
@@ -21,6 +22,7 @@ import com.example.product.repository.ItemImageRepository;
 import com.example.product.repository.ItemOptionRepository;
 import com.example.product.repository.ItemRepository;
 import com.example.product.repository.ShippingInfoRepository;
+import com.example.product.service.content.ItemContentService;
 import com.example.product.service.command.image.ItemThumbnailSyncService;
 import com.example.product.service.command.image.MediaReferenceService;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +41,7 @@ public class ProductCommandService {
     private final ItemOptionRepository itemOptionRepository;
     private final ShippingInfoRepository shippingInfoRepository;
     private final ItemImageRepository itemImageRepository;
+    private final ItemContentService itemContentService;
     private final MediaReferenceService mediaReferenceService;
     private final ItemThumbnailSyncService itemThumbnailSyncService;
     private final EventPublisher eventPublisher;
@@ -62,6 +65,9 @@ public class ProductCommandService {
         if (request.getShippingInfo() != null) {
             shippingInfo = saveShippingInfo(item.getId(), request.getShippingInfo());
         }
+        itemContentService.replaceTags(item.getId(), request.getTags());
+        itemContentService.replaceFeatures(item.getId(), request.getFeatures());
+        itemContentService.replaceDetailSections(item.getId(), request.getDetailSections());
 
         List<ItemCreatedEvent.StockItemInfo> stockItems = options.stream()
                 .map(opt -> new ItemCreatedEvent.StockItemInfo(
@@ -83,8 +89,9 @@ public class ProductCommandService {
                 ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
+        ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(item.getId());
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(item.getId());
-        return GoodsDetailResponse.of(item, options, shippingInfo, List.of(), images);
+        return GoodsDetailResponse.of(item, options, shippingInfo, List.of(), contentSnapshot, images);
     }
 
     public GoodsDetailResponse updateProduct(Long itemId, ProductUpdateRequest request, Long sellerId) {
@@ -126,6 +133,15 @@ public class ProductCommandService {
             shippingInfoRepository.softDeleteByItemId(itemId);
             saveShippingInfo(itemId, request.getShippingInfo());
         }
+        if (request.getTags() != null) {
+            itemContentService.replaceTags(itemId, request.getTags());
+        }
+        if (request.getFeatures() != null) {
+            itemContentService.replaceFeatures(itemId, request.getFeatures());
+        }
+        if (request.getDetailSections() != null) {
+            itemContentService.replaceDetailSections(itemId, request.getDetailSections());
+        }
 
         eventPublisher.publish(
                 new ItemUpdatedEvent(
@@ -139,8 +155,9 @@ public class ProductCommandService {
 
         List<ItemOption> currentOptions = itemOptionRepository.findByItemId(itemId);
         ShippingInfo currentShippingInfo = shippingInfoRepository.findByItemId(itemId).orElse(null);
+        ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(itemId);
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
-        return GoodsDetailResponse.of(item, currentOptions, currentShippingInfo, List.of(), images);
+        return GoodsDetailResponse.of(item, currentOptions, currentShippingInfo, List.of(), contentSnapshot, images);
     }
 
     public void delete(Long itemId, Long sellerId) {
@@ -155,6 +172,7 @@ public class ProductCommandService {
 
         itemOptionRepository.softDeleteAllByItemId(itemId);
         shippingInfoRepository.softDeleteByItemId(itemId);
+        itemContentService.softDeleteAll(itemId);
         itemImageRepository.softDeleteAllByItemId(itemId);
         item.clearThumbnail();
         itemThumbnailSyncService.syncAfterCommit(itemId, null, true);

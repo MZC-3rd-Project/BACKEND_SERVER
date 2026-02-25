@@ -108,10 +108,12 @@ class SearchResultCacheServiceTest {
         SearchRequest lowerCaseRequest = request("아이폰", List.of("SELLING"));
         lowerCaseRequest.setSort("latest");
         lowerCaseRequest.setDomainType("goods");
+        lowerCaseRequest.setChannel("hot_deal");
 
         SearchRequest upperCaseRequest = request("아이폰", List.of("SELLING"));
         upperCaseRequest.setSort("LATEST");
         upperCaseRequest.setDomainType("GOODS");
+        upperCaseRequest.setChannel("HOT_DEAL");
 
         when(stringRedisTemplate.opsForValue()).thenReturn(valueOperations);
         when(stringRedisTemplate.opsForSet()).thenReturn(setOperations);

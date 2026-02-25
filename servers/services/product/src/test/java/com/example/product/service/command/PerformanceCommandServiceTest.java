@@ -17,6 +17,7 @@ import com.example.product.repository.PerformanceRepository;
 import com.example.product.repository.SeatGradeRepository;
 import com.example.product.service.command.image.ItemThumbnailSyncService;
 import com.example.product.service.command.image.MediaReferenceService;
+import com.example.product.service.content.ItemContentService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -56,6 +57,8 @@ class PerformanceCommandServiceTest {
     private ItemThumbnailSyncService itemThumbnailSyncService;
     @Mock
     private EventPublisher eventPublisher;
+    @Mock
+    private ItemContentService itemContentService;
 
     @InjectMocks
     private PerformanceCommandService performanceCommandService;
