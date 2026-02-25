@@ -217,17 +217,22 @@ public class SearchQueryService {
     private SearchItemResponse toSearchItem(Map<String, Object> hit) {
         Map<String, Object> source = toMap(hit.get("_source"));
         Map<String, Object> highlight = toMap(hit.get("highlight"));
+        Long price = asLong(source.get("price"));
+        String status = asString(source.get("status"));
+        String salesChannel = resolveSalesChannel(source, status);
+        Integer channelPriority = resolveChannelPriority(source, salesChannel);
+        Long effectivePrice = firstNonNull(asLong(source.get("effectivePrice")), price);
 
         return SearchItemResponse.builder()
                 .itemId(asLong(source.get("itemId")))
                 .title(asString(source.get("title")))
                 .category(asString(source.get("category")))
                 .domainType(asString(source.get("domainType")))
-                .price(asLong(source.get("price")))
-                .effectivePrice(asLong(source.get("effectivePrice")))
-                .status(asString(source.get("status")))
-                .salesChannel(asString(source.get("salesChannel")))
-                .channelPriority(asInteger(source.get("channelPriority")))
+                .price(price)
+                .effectivePrice(effectivePrice)
+                .status(status)
+                .salesChannel(salesChannel)
+                .channelPriority(channelPriority)
                 .activeHotDealId(asLong(source.get("activeHotDealId")))
                 .activeCampaignId(asLong(source.get("activeCampaignId")))
                 .stock(asInteger(source.get("stock")))
@@ -237,6 +242,41 @@ public class SearchQueryService {
                 .highlightedTitle(firstHighlight(highlight, "title"))
                 .highlightedDescription(firstHighlight(highlight, "description"))
                 .build();
+    }
+
+    private String resolveSalesChannel(Map<String, Object> source, String status) {
+        String fromDocument = asString(source.get("salesChannel"));
+        if (StringUtils.hasText(fromDocument)) {
+            return fromDocument;
+        }
+        return switch (normalizeStatus(status)) {
+            case "HOT_DEAL" -> "HOT_DEAL";
+            case "FUNDING", "FUNDED", "FUND_FAILED" -> "FUNDING";
+            default -> "NORMAL";
+        };
+    }
+
+    private Integer resolveChannelPriority(Map<String, Object> source, String salesChannel) {
+        Integer fromDocument = asInteger(source.get("channelPriority"));
+        if (fromDocument != null) {
+            return fromDocument;
+        }
+        return switch (normalizeStatus(salesChannel)) {
+            case "HOT_DEAL" -> 3;
+            case "FUNDING" -> 2;
+            default -> 1;
+        };
+    }
+
+    private String normalizeStatus(String raw) {
+        if (!StringUtils.hasText(raw)) {
+            return "";
+        }
+        return raw.trim().toUpperCase(Locale.ROOT);
+    }
+
+    private Long firstNonNull(Long first, Long second) {
+        return first != null ? first : second;
     }
 
     private List<String> normalizeStatuses(List<String> statuses) {

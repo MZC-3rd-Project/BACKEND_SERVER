@@ -198,6 +198,46 @@ class SearchQueryServiceTest {
     }
 
     @Test
+    void search_appliesDefaultProjectionValuesWhenFieldsMissing() throws Exception {
+        String responseJson = """
+                {
+                  "hits": {
+                    "total": {"value": 1, "relation": "eq"},
+                    "hits": [
+                      {
+                        "_source": {
+                          "itemId": 201,
+                          "title": "핫딜 상품",
+                          "price": 15000,
+                          "status": "HOT_DEAL"
+                        },
+                        "_score": 2.5,
+                        "sort": [201]
+                      }
+                    ]
+                  }
+                }
+                """;
+
+        Response response = mock(Response.class);
+        when(response.getEntity()).thenReturn(new StringEntity(responseJson, ContentType.APPLICATION_JSON));
+        when(restClient.performRequest(any(Request.class))).thenReturn(response);
+        when(searchResultCacheService.get(any())).thenReturn(java.util.Optional.empty());
+
+        SearchRequest request = new SearchRequest();
+        request.setQ("핫딜");
+        request.setSize(1);
+
+        CursorResponse<SearchItemResponse> result = searchQueryService.search(request);
+
+        assertThat(result.getItems()).hasSize(1);
+        SearchItemResponse item = result.getItems().get(0);
+        assertThat(item.getSalesChannel()).isEqualTo("HOT_DEAL");
+        assertThat(item.getChannelPriority()).isEqualTo(3);
+        assertThat(item.getEffectivePrice()).isEqualTo(15000L);
+    }
+
+    @Test
     void search_throwsWhenQueryBlank() throws Exception {
         SearchRequest request = new SearchRequest();
         request.setQ("   ");
