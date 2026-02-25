@@ -2,7 +2,6 @@ package com.example.search.dto.search.request;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -15,7 +14,6 @@ import java.util.List;
 @NoArgsConstructor
 public class SearchRequest {
 
-    @NotBlank(message = "검색어(q)는 필수입니다.")
     private String q;
 
     private String category;

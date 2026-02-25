@@ -3,6 +3,7 @@ package com.example.product.service.query;
 import com.example.core.exception.BusinessException;
 import com.example.core.pagination.CursorResponse;
 import com.example.core.pagination.CursorUtils;
+import com.example.product.dto.item.response.ItemContentSnapshot;
 import com.example.product.dto.performance.response.PerformanceDetailResponse;
 import com.example.product.dto.performance.response.PerformanceListResponse;
 import com.example.product.entity.image.ItemImage;
@@ -18,6 +19,7 @@ import com.example.product.repository.ItemImageRepository;
 import com.example.product.repository.ItemRepository;
 import com.example.product.repository.PerformanceRepository;
 import com.example.product.repository.SeatGradeRepository;
+import com.example.product.service.content.ItemContentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -37,6 +39,7 @@ public class PerformanceQueryService {
     private final SeatGradeRepository seatGradeRepository;
     private final CastMemberRepository castMemberRepository;
     private final ItemImageRepository itemImageRepository;
+    private final ItemContentService itemContentService;
 
     private static final List<ItemStatus> VISIBLE_STATUSES = List.of(
             ItemStatus.FUNDING, ItemStatus.FUNDED, ItemStatus.ON_SALE, ItemStatus.HOT_DEAL);
@@ -50,8 +53,9 @@ public class PerformanceQueryService {
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.PERFORMANCE_NOT_FOUND));
         List<SeatGrade> seatGrades = seatGradeRepository.findByPerformanceIdOrderByPriceDesc(performance.getId());
         List<CastMember> castMembers = castMemberRepository.findByPerformanceId(performance.getId());
+        ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(itemId);
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
-        return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers, images);
+        return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers, contentSnapshot, images);
     }
 
     public PerformanceDetailResponse findSellerById(Long itemId, Long sellerId) {
@@ -63,8 +67,9 @@ public class PerformanceQueryService {
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.PERFORMANCE_NOT_FOUND));
         List<SeatGrade> seatGrades = seatGradeRepository.findByPerformanceIdOrderByPriceDesc(performance.getId());
         List<CastMember> castMembers = castMemberRepository.findByPerformanceId(performance.getId());
+        ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(itemId);
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
-        return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers, images);
+        return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers, contentSnapshot, images);
     }
 
     public CursorResponse<PerformanceListResponse> findList(String cursor, int size) {

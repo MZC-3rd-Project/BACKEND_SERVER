@@ -289,18 +289,32 @@ class SearchQueryServiceTest {
     }
 
     @Test
-    void search_throwsWhenQueryBlank() throws Exception {
+    void search_usesBrowseModeWhenQueryBlank() throws Exception {
+        String responseJson = """
+                {"hits":{"total":{"value":0,"relation":"eq"},"hits":[]}}
+                """;
+
+        Response response = mock(Response.class);
+        when(response.getEntity()).thenReturn(new StringEntity(responseJson, ContentType.APPLICATION_JSON));
+        when(restClient.performRequest(any(Request.class))).thenReturn(response);
+        when(searchResultCacheService.get(any())).thenReturn(java.util.Optional.empty());
+
         SearchRequest request = new SearchRequest();
         request.setQ("   ");
         request.setSize(20);
 
-        assertThatThrownBy(() -> searchQueryService.search(request))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> {
-                    BusinessException businessException = (BusinessException) ex;
-                    assertThat(businessException.getErrorCode()).isEqualTo(SearchErrorCode.INVALID_SEARCH_PARAMETER);
-                });
-        verify(restClient, never()).performRequest(any(Request.class));
+        CursorResponse<SearchItemResponse> result = searchQueryService.search(request);
+
+        assertThat(result.getItems()).isEmpty();
+        verify(restClient).performRequest(any(Request.class));
+        verify(autocompleteService, never()).recordKeyword(anyString());
+        verify(popularSearchService, never()).recordKeyword(anyString());
+
+        ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+        verify(restClient).performRequest(captor.capture());
+        String body = EntityUtils.toString(captor.getValue().getEntity());
+        assertThat(body).contains("\"match_all\"");
+        assertThat(body).doesNotContain("\"multi_match\"");
     }
 
     @Test

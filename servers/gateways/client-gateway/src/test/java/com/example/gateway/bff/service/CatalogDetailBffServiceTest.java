@@ -16,6 +16,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -123,9 +127,124 @@ class CatalogDetailBffServiceTest {
         verifyNoInteractions(downstreamClient);
     }
 
+    @Test
+    void getCatalogDetail_enrichesFundingResponse() {
+        when(downstreamClient.fetchFundingDetail(eq(77L), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successResponse("""
+                        {
+                          "id": 77,
+                          "itemId": 22,
+                          "goalAmount": 1000,
+                          "currentAmount": 250
+                        }
+                        """)));
+        when(downstreamClient.fetchNormalDetail(eq(BffItemType.PRODUCT), eq(22L), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successResponse("""
+                        {
+                          "title": "일반 상품",
+                          "price": 9900,
+                          "categoryId": 12,
+                          "images": {
+                            "thumbnail": {
+                              "mediaId": 3001
+                            }
+                          }
+                        }
+                        """)));
+        when(downstreamClient.fetchFundingParticipations(eq(77L), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successArrayResponse("[{\"id\":1},{\"id\":2}]")));
+        when(downstreamClient.fetchMediaUrls(eq(List.of(3001L)), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successArrayResponse("""
+                        [
+                          {
+                            "mediaId": 3001,
+                            "mediaUrl": "https://cdn.example.com/3001.webp"
+                          }
+                        ]
+                        """)));
+
+        ResponseEntity<JsonNode> response = service
+                .getCatalogDetail(22L, "PRODUCT", "FUNDING", null, 77L)
+                .block();
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().path("data").path("progressRate").asDouble()).isEqualTo(25.0);
+        assertThat(response.getBody().path("data").path("supporterCount").asInt()).isEqualTo(2);
+        assertThat(response.getBody().path("data").path("title").asText()).isEqualTo("일반 상품");
+        assertThat(response.getBody().path("data").path("thumbnailUrl").asText())
+                .isEqualTo("https://cdn.example.com/3001.webp");
+    }
+
+    @Test
+    void getCatalogDetail_enrichesHotDealResponseWithLeftLabel() {
+        String endAt = Instant.now().plus(Duration.ofHours(2)).toString();
+        when(downstreamClient.fetchHotDealDetail(eq(901L), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successResponse("""
+                        {
+                          "id": 901,
+                          "itemId": 11,
+                          "endAt": "%s"
+                        }
+                        """.formatted(endAt))));
+        when(downstreamClient.fetchNormalDetail(eq(BffItemType.PRODUCT), eq(11L), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successResponse("""
+                        {
+                          "title": "핫딜 상품",
+                          "images": {
+                            "thumbnail": {
+                              "mediaId": 1010
+                            }
+                          }
+                        }
+                        """)));
+        when(downstreamClient.fetchMediaUrls(eq(List.of(1010L)), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successArrayResponse("""
+                        [
+                          {
+                            "mediaId": 1010,
+                            "mediaUrl": "https://cdn.example.com/1010.webp"
+                          }
+                        ]
+                        """)));
+
+        ResponseEntity<JsonNode> response = service
+                .getCatalogDetail(11L, "PRODUCT", "HOT_DEAL", 901L, null)
+                .block();
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().path("data").path("leftLabel").asText()).isNotBlank();
+        assertThat(response.getBody().path("data").path("title").asText()).isEqualTo("핫딜 상품");
+        assertThat(response.getBody().path("data").path("thumbnailUrl").asText())
+                .isEqualTo("https://cdn.example.com/1010.webp");
+    }
+
     private ResponseEntity<JsonNode> response(HttpStatus status, String source) {
         ObjectNode body = objectMapper.createObjectNode();
         body.put("source", source);
         return ResponseEntity.status(status).body(body);
+    }
+
+    private ResponseEntity<JsonNode> successResponse(String dataJson) {
+        ObjectNode body = objectMapper.createObjectNode();
+        body.put("success", true);
+        try {
+            body.set("data", objectMapper.readTree(dataJson));
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+        return ResponseEntity.ok(body);
+    }
+
+    private ResponseEntity<JsonNode> successArrayResponse(String dataJson) {
+        ObjectNode body = objectMapper.createObjectNode();
+        body.put("success", true);
+        try {
+            body.set("data", objectMapper.readTree(dataJson));
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+        return ResponseEntity.ok(body);
     }
 }

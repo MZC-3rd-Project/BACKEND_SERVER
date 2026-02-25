@@ -32,15 +32,19 @@
 ## 로컬 E2E 검증
 ```text
 ./docker/scripts/gateway_jwt_header_verify.sh
+./docker/scripts/gateway_session_trusted_auth_verify.sh
+./docker/scripts/gateway_session_userid_itemsearch_e2e.sh
 ```
 - 기본 포트: Gateway `18173`, Chat `18093`
 - 환경 변수로 변경 가능: `GW_PORT`, `CHAT_PORT`, `LOG_DIR`
+- `gateway_session_trusted_auth_verify.sh`는 `X-Gateway-Context`(HMAC 서명) + `X-Session-Id` + Redis `sid` 상태(`ACTIVE`) 조합으로 세션 인증 경로를 검증합니다.
+- `gateway_session_userid_itemsearch_e2e.sh`는 세션 인증 상태에서 상품/채팅 도메인의 `X-User-Id` 전달과 아이템 노출 조건(상태/타입 필터) 동작을 검증합니다.
 
 ## 보안 헤더 서명
 - `APP_SECURITY_CONTEXT_SIGNING_KEY`를 설정하면 Gateway가 사용자 컨텍스트 헤더를 HMAC으로 서명해 전달합니다.
 - Chat 같은 소비 서비스도 같은 키를 사용해야 검증이 통과합니다.
-- 미디어/비즈니스 쓰기 경로(`POST/PUT/PATCH/DELETE` on `/api/v1/media`, `/api/products`, `/api/goods`, `/api/performances`, `/api/items`, `/api/categories`, `/api/campaigns`, `/api/v1/sales`, `/api/v1/hot-deals`, `/api/v1/notifications`)는 JWT가 필수입니다.
-- BFF 쓰기 경로(`/bff/v1/**`)도 동일하게 JWT가 필수입니다.
+- 미디어/비즈니스 쓰기 경로(`POST/PUT/PATCH/DELETE` on `/api/v1/media`, `/api/products`, `/api/goods`, `/api/performances`, `/api/items`, `/api/categories`, `/api/campaigns`, `/api/v1/sales`, `/api/v1/hot-deals`, `/api/v1/notifications`)와 BFF 쓰기 경로(`/bff/v1/**`)는 인증 Principal + `sid` 상태 검증이 필요합니다.
+- 로컬/테스트에서는 `GATEWAY_SESSION_TRUSTED_HEADER_AUTH_ENABLED=true`일 때 `X-Gateway-Context` + `X-Session-Id`를 사용해 pre-auth를 구성할 수 있습니다(운영 비권장).
 - 상품 조회(`GET`)는 익명 접근을 허용하되, 클라이언트가 보낸 `X-User-*`/`X-Gateway-*` 스푸핑 헤더는 Gateway가 제거합니다.
 
 ## BFF 인증 스켈레톤

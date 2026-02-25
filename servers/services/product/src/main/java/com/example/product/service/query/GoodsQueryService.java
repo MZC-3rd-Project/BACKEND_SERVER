@@ -4,6 +4,7 @@ import com.example.core.exception.BusinessException;
 import com.example.core.pagination.CursorResponse;
 import com.example.core.pagination.CursorUtils;
 import com.example.product.dto.goods.response.GoodsDetailResponse;
+import com.example.product.dto.item.response.ItemContentSnapshot;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.goods.ItemGoodsLink;
 import com.example.product.entity.image.ItemImage;
@@ -17,6 +18,7 @@ import com.example.product.repository.ItemImageRepository;
 import com.example.product.repository.ItemOptionRepository;
 import com.example.product.repository.ItemRepository;
 import com.example.product.repository.ShippingInfoRepository;
+import com.example.product.service.content.ItemContentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -36,6 +38,7 @@ public class GoodsQueryService {
     private final ShippingInfoRepository shippingInfoRepository;
     private final ItemGoodsLinkRepository itemGoodsLinkRepository;
     private final ItemImageRepository itemImageRepository;
+    private final ItemContentService itemContentService;
 
     public GoodsDetailResponse findGoodsById(Long itemId) {
         Item item = itemRepository.findById(itemId)
@@ -46,8 +49,9 @@ public class GoodsQueryService {
         ShippingInfo shippingInfo = shippingInfoRepository.findByItemId(itemId).orElse(null);
         List<Long> linkedIds = itemGoodsLinkRepository.findByGoodsItemId(itemId).stream()
                 .map(ItemGoodsLink::getPerformanceItemId).toList();
+        ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(itemId);
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
-        return GoodsDetailResponse.of(item, options, shippingInfo, linkedIds, images);
+        return GoodsDetailResponse.of(item, options, shippingInfo, linkedIds, contentSnapshot, images);
     }
 
     public GoodsDetailResponse findSellerGoodsById(Long itemId, Long sellerId) {
@@ -59,8 +63,9 @@ public class GoodsQueryService {
         ShippingInfo shippingInfo = shippingInfoRepository.findByItemId(itemId).orElse(null);
         List<Long> linkedIds = itemGoodsLinkRepository.findByGoodsItemId(itemId).stream()
                 .map(ItemGoodsLink::getPerformanceItemId).toList();
+        ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(itemId);
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
-        return GoodsDetailResponse.of(item, options, shippingInfo, linkedIds, images);
+        return GoodsDetailResponse.of(item, options, shippingInfo, linkedIds, contentSnapshot, images);
     }
 
     private static final List<ItemStatus> VISIBLE_STATUSES = List.of(
@@ -93,13 +98,15 @@ public class GoodsQueryService {
         Map<Long, List<ItemImage>> imageMap = itemImageRepository
                 .findByItemIdInOrderByItemIdAscSortOrderAsc(itemIds).stream()
                 .collect(Collectors.groupingBy(ItemImage::getItemId));
+        Map<Long, ItemContentSnapshot> contentMap = itemContentService.findByItemIds(itemIds);
 
         List<GoodsDetailResponse> content = pageItems.stream().map(item -> {
             List<ItemOption> options = optionsMap.getOrDefault(item.getId(), List.of());
             ShippingInfo shippingInfo = shippingMap.get(item.getId());
             List<Long> linkedIds = linksMap.getOrDefault(item.getId(), List.of());
             List<ItemImage> images = imageMap.getOrDefault(item.getId(), List.of());
-            return GoodsDetailResponse.of(item, options, shippingInfo, linkedIds, images);
+            ItemContentSnapshot contentSnapshot = contentMap.getOrDefault(item.getId(), ItemContentSnapshot.empty());
+            return GoodsDetailResponse.of(item, options, shippingInfo, linkedIds, contentSnapshot, images);
         }).toList();
 
         String nextCursor = hasNext ? CursorUtils.encode(pageItems.get(pageItems.size() - 1).getId()) : null;

@@ -11,6 +11,9 @@ MEDIA_PORT="${MEDIA_PORT:-18094}"
 
 SELLER_ID="${SELLER_ID:-910001}"
 STORE_ID="${STORE_ID:-920001}"
+SELLER_SID="${SELLER_SID:-sid-seller-910001}"
+SELLER_ROLES="${SELLER_ROLES:-SELLER,USER}"
+REDIS_CONTAINER="${REDIS_CONTAINER:-project03-redis}"
 
 AWS_PROFILE_NAME="${AWS_PROFILE:-mzc}"
 AWS_REGION_NAME="${AWS_REGION:-ap-northeast-2}"
@@ -26,7 +29,6 @@ PIDS=()
 PASSES=0
 FAILURES=0
 WARNINGS=0
-JWT_TOKEN=""
 MEDIA_API_PID=""
 RUN_EXTENDED_SCENARIOS="${RUN_EXTENDED_SCENARIOS:-true}"
 
@@ -216,15 +218,34 @@ b64url() {
   printf '%s' "$1" | openssl base64 -A | tr '+/' '-_' | tr -d '='
 }
 
-build_test_jwt() {
-  local header payload
-  header='{"alg":"none","typ":"JWT"}'
-  payload="$(printf '{"userId":%s,"roles":["seller","user"]}' "$SELLER_ID")"
-  JWT_TOKEN="$(b64url "$header").$(b64url "$payload")."
+build_gateway_context() {
+  local user_id="$1"
+  local roles="$2"
+  local nonce="$3"
+  local timestamp="$4"
+  local payload signature
+
+  payload="${user_id}|${roles}|${nonce}|${timestamp}"
+  signature="$(printf '%s' "$payload" | openssl dgst -binary -sha256 -hmac "$SIGNING_KEY" | openssl base64 -A)"
+
+  printf '%s.%s.%s.%s.%s' \
+    "$(b64url "$user_id")" \
+    "$(b64url "$roles")" \
+    "$(b64url "$nonce")" \
+    "$timestamp" \
+    "$signature"
 }
 
 auth_header() {
-  echo "Authorization: Bearer ${JWT_TOKEN}"
+  local nonce timestamp gateway_context
+  nonce="$(openssl rand -hex 8)"
+  timestamp="$(( $(date +%s) * 1000 ))"
+  gateway_context="$(build_gateway_context "$SELLER_ID" "$SELLER_ROLES" "$nonce" "$timestamp")"
+  echo "X-Gateway-Context: ${gateway_context}"
+}
+
+session_header() {
+  echo "X-Session-Id: ${SELLER_SID}"
 }
 
 psql_exec() {
@@ -272,6 +293,7 @@ create_media_and_confirm_via_gateway() {
   intent_raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${GW_PORT}/api/v1/media/upload-intents" \
     -H "Content-Type: application/json" \
     -H "$(auth_header)" \
+    -H "$(session_header)" \
     -d "{\"fileName\":\"${label}.jpg\",\"contentType\":\"image/jpeg\",\"fileSize\":${file_size}}")"
   intent_body="$(extract_http_body "$intent_raw")"
   intent_status="$(extract_http_status "$intent_raw")"
@@ -304,6 +326,7 @@ create_media_and_confirm_via_gateway() {
   confirm_raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${GW_PORT}/api/v1/media/confirm" \
     -H "Content-Type: application/json" \
     -H "$(auth_header)" \
+    -H "$(session_header)" \
     -d "{\"mediaId\":${media_id},\"uploadToken\":\"${upload_token}\"}")"
   confirm_body="$(extract_http_body "$confirm_raw")"
   confirm_status="$(extract_http_status "$confirm_raw")"
@@ -328,6 +351,7 @@ create_upload_intent_only_via_gateway() {
   intent_raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${GW_PORT}/api/v1/media/upload-intents" \
     -H "Content-Type: application/json" \
     -H "$(auth_header)" \
+    -H "$(session_header)" \
     -d "{\"fileName\":\"${label}.jpg\",\"contentType\":\"image/jpeg\",\"fileSize\":${file_size}}")"
   intent_body="$(extract_http_body "$intent_raw")"
   intent_status="$(extract_http_status "$intent_raw")"
@@ -358,6 +382,7 @@ bff_create_item() {
   raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${GW_PORT}/bff/v1/${kind}" \
     -H "Content-Type: application/json" \
     -H "$(auth_header)" \
+    -H "$(session_header)" \
     -d "{\"item\":${payload_json},\"images\":${images_json}}")"
   body="$(extract_http_body "$raw")"
   status="$(extract_http_status "$raw")"
@@ -384,6 +409,7 @@ bff_update_product() {
   raw="$(curl -sS -w '\n%{http_code}' -X PUT "http://127.0.0.1:${GW_PORT}/bff/v1/products/${item_id}" \
     -H "Content-Type: application/json" \
     -H "$(auth_header)" \
+    -H "$(session_header)" \
     -d "{\"item\":{},\"addImages\":${add_images_json},\"deleteImageIds\":${delete_ids_json},\"reorderImageIds\":${reorder_ids_json}}")"
   body="$(extract_http_body "$raw")"
   status="$(extract_http_status "$raw")"
@@ -400,6 +426,7 @@ bff_update_product_raw() {
   curl -sS -w '\n%{http_code}' -X PUT "http://127.0.0.1:${GW_PORT}/bff/v1/products/${item_id}" \
     -H "Content-Type: application/json" \
     -H "$(auth_header)" \
+    -H "$(session_header)" \
     -d "{\"item\":{},\"addImages\":${add_images_json},\"deleteImageIds\":${delete_ids_json},\"reorderImageIds\":${reorder_ids_json}}"
 }
 
@@ -407,7 +434,8 @@ bff_get_item_detail() {
   local type="$1"
   local item_id="$2"
   curl -sS "http://127.0.0.1:${GW_PORT}/bff/v1/items/${item_id}?type=${type}" \
-    -H "$(auth_header)"
+    -H "$(auth_header)" \
+    -H "$(session_header)"
 }
 
 assert_images_empty() {
@@ -740,13 +768,13 @@ run_extended_gateway_cases() {
 
   raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${GW_PORT}/bff/v1/products" \
     -H "Content-Type: application/json" \
-    -H "Authorization: Token invalid-format" \
+    -H "X-Gateway-Context: malformed-context" \
     -d '{"item":{"title":"bad-auth"},"images":[]}' )"
   body="$(extract_http_body "$raw")"
   status="$(extract_http_status "$raw")"
   ensure_http_status "bff malformed auth rejected status" "$status" "401"
   ensure_json_failure "bff malformed auth rejected payload" "$body"
-  ensure_error_code "bff malformed auth error code" "$body" "GW-AUTH-001"
+  ensure_error_code "bff malformed auth error code" "$body" "GW-AUTH-009"
 
   raw="$(curl -sS -w '\n%{http_code}' "http://127.0.0.1:${GW_PORT}/bff/v1/items?type=INVALID&size=20")"
   body="$(extract_http_body "$raw")"
@@ -765,6 +793,7 @@ run_extended_gateway_cases() {
   raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${GW_PORT}/api/v1/media/upload-intents" \
     -H "Content-Type: application/json" \
     -H "$(auth_header)" \
+    -H "$(session_header)" \
     -d '{"fileName":"invalid-size.jpg","contentType":"image/jpeg","fileSize":0}')"
   body="$(extract_http_body "$raw")"
   status="$(extract_http_status "$raw")"
@@ -779,6 +808,7 @@ run_extended_gateway_cases() {
   intent_raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${GW_PORT}/api/v1/media/upload-intents" \
     -H "Content-Type: application/json" \
     -H "$(auth_header)" \
+    -H "$(session_header)" \
     -d "{\"fileName\":\"invalid-confirm.jpg\",\"contentType\":\"image/jpeg\",\"fileSize\":${file_size}}")"
   intent_body="$(extract_http_body "$intent_raw")"
   intent_status="$(extract_http_status "$intent_raw")"
@@ -798,6 +828,7 @@ run_extended_gateway_cases() {
   raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${GW_PORT}/api/v1/media/confirm" \
     -H "Content-Type: application/json" \
     -H "$(auth_header)" \
+    -H "$(session_header)" \
     -d "{\"mediaId\":${invalid_confirm_media_id},\"uploadToken\":\"${invalid_confirm_upload_token}x\"}")"
   body="$(extract_http_body "$raw")"
   status="$(extract_http_status "$raw")"
@@ -846,6 +877,7 @@ JSON
   raw="$(curl -sS -w '\n%{http_code}' -X POST "http://127.0.0.1:${GW_PORT}/api/v1/media/upload-intents" \
     -H "Content-Type: application/json" \
     -H "$(auth_header)" \
+    -H "$(session_header)" \
     -d '{"fileName":"down.jpg","contentType":"image/jpeg","fileSize":3}' || true)"
   body="$(extract_http_body "$raw")"
   status="$(extract_http_status "$raw")"
@@ -917,14 +949,14 @@ if [[ -z "$MAX_AGE" ]]; then
   MAX_AGE=300000
 fi
 
-build_test_jwt
-
 check_port_free "$GW_PORT"
 check_port_free "$PRODUCT_PORT"
 check_port_free "$MEDIA_PORT"
 
 echo "[INFO] preparing infra"
 (cd "$ROOT/docker" && docker compose up -d >/dev/null)
+docker exec -i "$REDIS_CONTAINER" redis-cli HSET "gateway:sess:${SELLER_SID}" status ACTIVE >/dev/null
+pass "redis seeded active sid for seller"
 
 MEDIA_DOMAIN="$(resolve_media_domain)"
 echo "[INFO] media public domain: $MEDIA_DOMAIN"
@@ -958,6 +990,8 @@ echo "[INFO] starting client-gateway"
     SERVER_PORT="$GW_PORT" \
     APP_SECURITY_CONTEXT_SIGNING_KEY="$SIGNING_KEY" \
     APP_SECURITY_CONTEXT_MAX_AGE_MILLIS="$MAX_AGE" \
+    GATEWAY_SESSION_ENABLED=true \
+    GATEWAY_SESSION_TRUSTED_HEADER_AUTH_ENABLED=true \
     GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN="$INTERNAL_AUTH_TOKEN" \
     APP_SERVICE_PRODUCT_URL="http://127.0.0.1:${PRODUCT_PORT}" \
     APP_SERVICE_MEDIA_URL="http://127.0.0.1:${MEDIA_PORT}" \

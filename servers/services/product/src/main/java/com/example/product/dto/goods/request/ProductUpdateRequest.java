@@ -1,5 +1,6 @@
 package com.example.product.dto.goods.request;
 
+import com.example.product.dto.item.request.ItemDetailSectionRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
@@ -27,6 +28,13 @@ public class ProductUpdateRequest {
     private Long thumbnailMediaId;
 
     private Boolean clearThumbnail;
+
+    private List<@Size(max = 50) String> tags;
+
+    private List<@Size(max = 200) String> features;
+
+    @Valid
+    private List<ItemDetailSectionRequest> detailSections;
 
     @Valid
     private List<ItemOptionRequest> options;

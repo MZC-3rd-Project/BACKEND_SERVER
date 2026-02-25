@@ -44,17 +44,18 @@ class CatalogQueryParamsTest {
 
     @Test
     void from_appliesDefaultsWhenOptionalFieldsMissing() {
-        ServerHttpRequest request = MockServerHttpRequest.get("/bff/v1/catalog/items?q=shoe").build();
+        ServerHttpRequest request = MockServerHttpRequest.get("/bff/v1/catalog/items").build();
 
         CatalogQueryParams params = CatalogQueryParams.from(request);
         MultiValueMap<String, String> searchParams = params.toSearchQueryParams();
 
+        assertThat(params.query()).isNull();
         assertThat(params.channel()).isEqualTo(CatalogSalesChannel.ALL);
         assertThat(params.sort()).isEqualTo("LATEST");
         assertThat(params.size()).isEqualTo(20);
         assertThat(params.resolvedStatuses()).isEmpty();
 
-        assertThat(searchParams.getFirst("q")).isEqualTo("shoe");
+        assertThat(searchParams.containsKey("q")).isFalse();
         assertThat(searchParams.getFirst("size")).isEqualTo("20");
         assertThat(searchParams.containsKey("status")).isFalse();
     }
