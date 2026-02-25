@@ -20,6 +20,7 @@ class CatalogQueryParamsTest {
 
         CatalogQueryParams params = CatalogQueryParams.from(request);
         MultiValueMap<String, String> searchParams = params.toSearchQueryParams();
+        MultiValueMap<String, String> degradeParams = params.toDegradeSearchQueryParams();
 
         assertThat(params.query()).isEqualTo("shoe");
         assertThat(params.channel()).isEqualTo(CatalogSalesChannel.FUNDING);
@@ -35,6 +36,10 @@ class CatalogQueryParamsTest {
         assertThat(searchParams.getFirst("domainType")).isEqualTo("PRODUCT");
         assertThat(searchParams.get("status")).containsExactly("FUNDING");
         assertThat(searchParams.getFirst("sort")).isEqualTo("PRICE_DESC");
+
+        assertThat(degradeParams.getFirst("q")).isEqualTo("shoe");
+        assertThat(degradeParams.getFirst("domainType")).isEqualTo("PRODUCT");
+        assertThat(degradeParams.containsKey("status")).isFalse();
     }
 
     @Test
