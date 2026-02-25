@@ -20,10 +20,11 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriBuilder;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.atomic.LongAdder;
 
 @Slf4j
@@ -39,6 +40,7 @@ public class CatalogBffService {
     private final GatewaySecurityProperties securityProperties;
     private final SearchThumbnailFallbackEnricher fallbackEnricher;
     private final CatalogResponseMapper responseMapper;
+    private final CatalogMetricsService catalogMetricsService;
     private final ObjectMapper objectMapper;
     private final LongAdder degradeFallbackCounter = new LongAdder();
 
@@ -47,6 +49,7 @@ public class CatalogBffService {
             GatewaySecurityProperties securityProperties,
             SearchThumbnailFallbackEnricher fallbackEnricher,
             CatalogResponseMapper responseMapper,
+            CatalogMetricsService catalogMetricsService,
             ObjectMapper objectMapper,
             @Value("${app.service.search-url:http://localhost:8088}") String searchServiceUrl,
             @Value("${app.service.media-url:http://localhost:8094}") String mediaServiceUrl
@@ -56,10 +59,12 @@ public class CatalogBffService {
         this.securityProperties = securityProperties;
         this.fallbackEnricher = fallbackEnricher;
         this.responseMapper = responseMapper;
+        this.catalogMetricsService = catalogMetricsService;
         this.objectMapper = objectMapper;
     }
 
     public Mono<ResponseEntity<CatalogItemsResponse>> listCatalogItems(ServerHttpRequest request) {
+        long startedAtNanos = System.nanoTime();
         CatalogQueryParams params;
         try {
             params = CatalogQueryParams.from(request);
@@ -90,7 +95,15 @@ public class CatalogBffService {
                             HttpStatus.BAD_GATEWAY,
                             "통합 목록 조회에 실패했습니다"
                     );
-                });
+                })
+                .doOnSuccess(response -> catalogMetricsService.recordQueryCompleted(
+                        Duration.ofNanos(System.nanoTime() - startedAtNanos),
+                        response
+                ))
+                .doOnError(e -> catalogMetricsService.recordQueryException(
+                        Duration.ofNanos(System.nanoTime() - startedAtNanos),
+                        "exception"
+                ));
     }
 
     private Mono<ResponseEntity<JsonNode>> callSearch(MultiValueMap<String, String> queryParams,
@@ -221,6 +234,7 @@ public class CatalogBffService {
         }
 
         long fallbackCount = incrementDegradeFallbackCount();
+        catalogMetricsService.recordDegradeFallback(reason);
         log.warn("[CatalogBff] degrade fallback activated. reason={}, count={}, q={}, channel={}",
                 reason, fallbackCount, params.query(), params.channel());
 
