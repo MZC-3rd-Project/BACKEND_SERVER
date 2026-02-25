@@ -142,6 +142,36 @@ class SearchIndexingFailureServiceTest {
         assertThat(response.getStatus()).isEqualTo(SearchIndexingFailureStatus.RESOLVED);
     }
 
+    @Test
+    void retryFailure_replaysFundingSucceededProjection() {
+        SearchIndexingFailure failure = SearchIndexingFailure.builder()
+                .eventId("evt-fund-77")
+                .eventType("FUNDING_SUCCEEDED")
+                .itemId(101L)
+                .payload("""
+                        {
+                          "eventId": "evt-fund-77",
+                          "eventType": "FUNDING_SUCCEEDED",
+                          "campaignId": 77,
+                          "itemId": 101
+                        }
+                        """)
+                .retryCount(0)
+                .status(SearchIndexingFailureStatus.PENDING)
+                .failureReason("initial")
+                .build();
+
+        when(failureRepository.findById(3L)).thenReturn(Optional.of(failure));
+        when(failureRepository.save(any(SearchIndexingFailure.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        IndexingFailureRetryResponse response = searchIndexingFailureService.retryFailure(3L);
+
+        verify(searchIndexingService).applyFundingClosed(101L, 77L, "FUNDED");
+        verify(searchResultCacheService).evictAll();
+        assertThat(response.getStatus()).isEqualTo(SearchIndexingFailureStatus.RESOLVED);
+    }
+
     private void setField(Object target, String fieldName, Object value) {
         try {
             java.lang.reflect.Field field = target.getClass().getDeclaredField(fieldName);

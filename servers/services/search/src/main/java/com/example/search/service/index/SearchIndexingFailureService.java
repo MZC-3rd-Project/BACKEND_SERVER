@@ -2,6 +2,8 @@ package com.example.search.service.index;
 
 import com.example.core.exception.BusinessException;
 import com.example.core.util.JsonUtils;
+import com.example.search.consumer.FundingEventMessage;
+import com.example.search.consumer.HotDealEventMessage;
 import com.example.search.consumer.ItemEventMessage;
 import com.example.search.consumer.StockEventMessage;
 import com.example.search.dto.index.response.IndexingFailureRetryResponse;
@@ -50,6 +52,22 @@ public class SearchIndexingFailureService {
     }
 
     @Transactional
+    public void recordHotDealEventFailure(HotDealEventMessage event, String rawMessage, Exception e) {
+        String eventId = event == null ? null : event.getEventId();
+        String eventType = event == null ? null : event.getEventType();
+        Long itemId = event == null ? null : event.getItemId();
+        recordFailure(eventId, eventType, itemId, rawMessage, e);
+    }
+
+    @Transactional
+    public void recordFundingEventFailure(FundingEventMessage event, String rawMessage, Exception e) {
+        String eventId = event == null ? null : event.getEventId();
+        String eventType = event == null ? null : event.getEventType();
+        Long itemId = event == null ? null : event.getItemId();
+        recordFailure(eventId, eventType, itemId, rawMessage, e);
+    }
+
+    @Transactional
     public IndexingFailureRetryResponse retryFailure(Long failureId) {
         SearchIndexingFailure failure = failureRepository.findById(failureId)
                 .orElseThrow(() -> new BusinessException(SearchErrorCode.SEARCH_INDEXING_FAILURE_NOT_FOUND));
@@ -81,6 +99,12 @@ public class SearchIndexingFailureService {
             case "STOCK_DECREASED" -> replayStockDecreased(payload);
             case "STOCK_INCREASED" -> replayStockIncreased(payload);
             case "ITEM_AVAILABLE_STOCK_CHANGED" -> replayItemAvailableStockChanged(payload);
+            case "HOT_DEAL_STARTED" -> replayHotDealStarted(payload);
+            case "HOT_DEAL_ENDED", "HOT_DEAL_CANCELLED" -> replayHotDealEnded(payload);
+            case "FUNDING_CREATED" -> replayFundingCreated(payload);
+            case "FUNDING_SUCCEEDED" -> replayFundingClosed(payload, "FUNDED");
+            case "FUNDING_FAILED" -> replayFundingClosed(payload, "FUND_FAILED");
+            case "FUNDING_CANCELLED" -> replayFundingClosed(payload, "CLOSED");
             default -> throw new BusinessException(SearchErrorCode.SEARCH_INDEXING_FAILED,
                     "지원하지 않는 재처리 이벤트 타입입니다. eventType=" + eventType);
         }
@@ -144,6 +168,40 @@ public class SearchIndexingFailureService {
                 event.getItemId(),
                 event.getAvailableStockTotal(),
                 event.getStockVersion()
+        );
+    }
+
+    private void replayHotDealStarted(String payload) {
+        HotDealEventMessage event = JsonUtils.fromJson(payload, HotDealEventMessage.class);
+        searchIndexingService.applyHotDealStarted(
+                event.getItemId(),
+                event.getHotDealId(),
+                event.getDiscountedPrice()
+        );
+    }
+
+    private void replayHotDealEnded(String payload) {
+        HotDealEventMessage event = JsonUtils.fromJson(payload, HotDealEventMessage.class);
+        searchIndexingService.applyHotDealEnded(
+                event.getItemId(),
+                event.getHotDealId()
+        );
+    }
+
+    private void replayFundingCreated(String payload) {
+        FundingEventMessage event = JsonUtils.fromJson(payload, FundingEventMessage.class);
+        searchIndexingService.applyFundingCreated(
+                event.getItemId(),
+                event.getCampaignId()
+        );
+    }
+
+    private void replayFundingClosed(String payload, String terminalStatus) {
+        FundingEventMessage event = JsonUtils.fromJson(payload, FundingEventMessage.class);
+        searchIndexingService.applyFundingClosed(
+                event.getItemId(),
+                event.getCampaignId(),
+                terminalStatus
         );
     }
 

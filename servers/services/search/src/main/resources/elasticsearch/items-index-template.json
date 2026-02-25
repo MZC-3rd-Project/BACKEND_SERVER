@@ -83,8 +83,23 @@
       "price": {
         "type": "long"
       },
+      "effectivePrice": {
+        "type": "long"
+      },
       "status": {
         "type": "keyword"
+      },
+      "salesChannel": {
+        "type": "keyword"
+      },
+      "channelPriority": {
+        "type": "integer"
+      },
+      "activeHotDealId": {
+        "type": "long"
+      },
+      "activeCampaignId": {
+        "type": "long"
       },
       "stock": {
         "type": "integer"
