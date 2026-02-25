@@ -3,7 +3,7 @@ package com.example.gateway.security;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public record GatewayJwtPrincipal(Long userId, List<String> roles) {
+public record GatewaySessionPrincipal(Long userId, List<String> roles, String sessionId) {
 
     public String rolesHeaderValue() {
         String joined = roles.stream()

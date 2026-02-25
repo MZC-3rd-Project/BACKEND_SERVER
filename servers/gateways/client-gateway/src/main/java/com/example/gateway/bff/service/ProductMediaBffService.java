@@ -6,9 +6,9 @@ import com.example.gateway.bff.dto.BffItemCreateCommandRequest;
 import com.example.gateway.bff.dto.BffItemImageRequest;
 import com.example.gateway.bff.dto.BffItemType;
 import com.example.gateway.bff.dto.BffItemUpdateCommandRequest;
-import com.example.gateway.security.GatewayJwtPrincipal;
-import com.example.gateway.security.JwtClaimParseException;
-import com.example.gateway.security.JwtClaimParser;
+import com.example.gateway.security.GatewaySessionPrincipal;
+import com.example.gateway.security.SessionClaimParseException;
+import com.example.gateway.security.session.application.GatewaySessionPrincipalResolver;
 import com.example.security.gateway.GatewayContextHeaderCodec;
 import com.example.security.signature.HmacSigner;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -31,7 +31,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -40,13 +40,13 @@ public class ProductMediaBffService {
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
-    private final JwtClaimParser jwtClaimParser;
+    private final GatewaySessionPrincipalResolver sessionPrincipalResolver;
     private final GatewaySecurityProperties securityProperties;
     private final ObjectProvider<HmacSigner> hmacSignerProvider;
 
     public ProductMediaBffService(WebClient.Builder webClientBuilder,
                                   ObjectMapper objectMapper,
-                                  JwtClaimParser jwtClaimParser,
+                                  GatewaySessionPrincipalResolver sessionPrincipalResolver,
                                   GatewaySecurityProperties securityProperties,
                                   ObjectProvider<HmacSigner> hmacSignerProvider,
                                   @Value("${app.service.product-url:http://localhost:8084}") String productServiceUrl) {
@@ -54,42 +54,39 @@ public class ProductMediaBffService {
                 .baseUrl(productServiceUrl)
                 .build();
         this.objectMapper = objectMapper;
-        this.jwtClaimParser = jwtClaimParser;
+        this.sessionPrincipalResolver = sessionPrincipalResolver;
         this.securityProperties = securityProperties;
         this.hmacSignerProvider = hmacSignerProvider;
     }
 
-    public Mono<ResponseEntity<JsonNode>> createProductWithMedia(BffItemCreateCommandRequest request, HttpHeaders inboundHeaders) {
-        return createItemWithMedia(BffItemType.PRODUCT, request, inboundHeaders);
+    public Mono<ResponseEntity<JsonNode>> createProductWithMedia(BffItemCreateCommandRequest request) {
+        return createItemWithMedia(BffItemType.PRODUCT, request);
     }
 
-    public Mono<ResponseEntity<JsonNode>> createGoodsWithMedia(BffItemCreateCommandRequest request, HttpHeaders inboundHeaders) {
-        return createItemWithMedia(BffItemType.GOODS, request, inboundHeaders);
+    public Mono<ResponseEntity<JsonNode>> createGoodsWithMedia(BffItemCreateCommandRequest request) {
+        return createItemWithMedia(BffItemType.GOODS, request);
     }
 
-    public Mono<ResponseEntity<JsonNode>> createPerformanceWithMedia(BffItemCreateCommandRequest request, HttpHeaders inboundHeaders) {
-        return createItemWithMedia(BffItemType.PERFORMANCE, request, inboundHeaders);
+    public Mono<ResponseEntity<JsonNode>> createPerformanceWithMedia(BffItemCreateCommandRequest request) {
+        return createItemWithMedia(BffItemType.PERFORMANCE, request);
     }
 
     public Mono<ResponseEntity<JsonNode>> updateProductWithMedia(Long itemId,
-                                                                 BffItemUpdateCommandRequest request,
-                                                                 HttpHeaders inboundHeaders) {
-        return updateItemWithMedia(BffItemType.PRODUCT, itemId, request, inboundHeaders);
+                                                                 BffItemUpdateCommandRequest request) {
+        return updateItemWithMedia(BffItemType.PRODUCT, itemId, request);
     }
 
     public Mono<ResponseEntity<JsonNode>> updateGoodsWithMedia(Long itemId,
-                                                               BffItemUpdateCommandRequest request,
-                                                               HttpHeaders inboundHeaders) {
-        return updateItemWithMedia(BffItemType.GOODS, itemId, request, inboundHeaders);
+                                                               BffItemUpdateCommandRequest request) {
+        return updateItemWithMedia(BffItemType.GOODS, itemId, request);
     }
 
     public Mono<ResponseEntity<JsonNode>> updatePerformanceWithMedia(Long itemId,
-                                                                     BffItemUpdateCommandRequest request,
-                                                                     HttpHeaders inboundHeaders) {
-        return updateItemWithMedia(BffItemType.PERFORMANCE, itemId, request, inboundHeaders);
+                                                                     BffItemUpdateCommandRequest request) {
+        return updateItemWithMedia(BffItemType.PERFORMANCE, itemId, request);
     }
 
-    public Mono<ResponseEntity<JsonNode>> findItemDetail(String typeValue, Long itemId, HttpHeaders inboundHeaders) {
+    public Mono<ResponseEntity<JsonNode>> findItemDetail(String typeValue, Long itemId) {
         BffItemType itemType = parseItemType(typeValue);
         if (itemType == null) {
             return Mono.just(badRequest("type은 PRODUCT, GOODS, PERFORMANCE 중 하나여야 합니다"));
@@ -97,13 +94,13 @@ public class ProductMediaBffService {
         if (itemId == null || itemId <= 0) {
             return Mono.just(badRequest("itemId는 양수여야 합니다"));
         }
-        return withAuthHeaders(inboundHeaders, false, downstreamHeaders -> {
+        return withAuthHeaders(false, downstreamHeaders -> {
             String detailPath = resolveDetailPath(itemType, hasSellerContext(downstreamHeaders));
             return callDownstream(HttpMethod.GET, detailPath + "/" + itemId, downstreamHeaders, null);
         });
     }
 
-    public Mono<ResponseEntity<JsonNode>> findItemList(String typeValue, String cursor, Integer size, HttpHeaders inboundHeaders) {
+    public Mono<ResponseEntity<JsonNode>> findItemList(String typeValue, String cursor, Integer size) {
         BffItemType itemType = parseItemType(typeValue);
         if (itemType == null) {
             return Mono.just(badRequest("type은 PRODUCT, GOODS, PERFORMANCE 중 하나여야 합니다"));
@@ -120,18 +117,17 @@ public class ProductMediaBffService {
             uriBuilder.queryParam("cursor", cursor);
         }
         String pathWithQuery = uriBuilder.build(true).toUriString();
-        return withAuthHeaders(inboundHeaders, false, downstreamHeaders ->
+        return withAuthHeaders(false, downstreamHeaders ->
                 callDownstream(HttpMethod.GET, pathWithQuery, downstreamHeaders, null));
     }
 
     private Mono<ResponseEntity<JsonNode>> createItemWithMedia(BffItemType itemType,
-                                                               BffItemCreateCommandRequest request,
-                                                               HttpHeaders inboundHeaders) {
+                                                               BffItemCreateCommandRequest request) {
         if (request == null || request.getItem() == null || request.getItem().isNull()) {
             return Mono.just(badRequest("item payload는 필수입니다"));
         }
 
-        return withAuthHeaders(inboundHeaders, true, downstreamHeaders ->
+        return withAuthHeaders(true, downstreamHeaders ->
                 callDownstream(HttpMethod.POST, itemType.collectionPath(), downstreamHeaders, request.getItem())
                         .flatMap(createResponse -> {
                             if (!createResponse.getStatusCode().is2xxSuccessful()) {
@@ -159,8 +155,7 @@ public class ProductMediaBffService {
 
     private Mono<ResponseEntity<JsonNode>> updateItemWithMedia(BffItemType itemType,
                                                                Long itemId,
-                                                               BffItemUpdateCommandRequest request,
-                                                               HttpHeaders inboundHeaders) {
+                                                               BffItemUpdateCommandRequest request) {
         if (itemId == null || itemId <= 0) {
             return Mono.just(badRequest("itemId는 양수여야 합니다"));
         }
@@ -168,7 +163,7 @@ public class ProductMediaBffService {
             return Mono.just(badRequest("item payload는 필수입니다"));
         }
 
-        return withAuthHeaders(inboundHeaders, true, downstreamHeaders ->
+        return withAuthHeaders(true, downstreamHeaders ->
                 callDownstream(HttpMethod.PUT, itemType.collectionPath() + "/" + itemId, downstreamHeaders, request.getItem())
                         .flatMap(updateResponse -> {
                             if (!updateResponse.getStatusCode().is2xxSuccessful()) {
@@ -266,36 +261,29 @@ public class ProductMediaBffService {
                 .map(payload -> ResponseEntity.status(response.statusCode()).body(payload)));
     }
 
-    private Mono<ResponseEntity<JsonNode>> withAuthHeaders(HttpHeaders inboundHeaders,
-                                                           boolean jwtRequired,
+    private Mono<ResponseEntity<JsonNode>> withAuthHeaders(boolean authRequired,
                                                            java.util.function.Function<HttpHeaders, Mono<ResponseEntity<JsonNode>>> callback) {
-        try {
-            HttpHeaders downstreamHeaders = buildDownstreamHeaders(inboundHeaders, jwtRequired);
-            return callback.apply(downstreamHeaders);
-        } catch (AuthHeaderException e) {
-            return Mono.just(unauthorized(e.code(), e.getMessage()));
-        }
+        return sessionPrincipalResolver.resolveFromSecurityContext()
+                .map(Optional::of)
+                .defaultIfEmpty(Optional.empty())
+                .flatMap(optionalPrincipal -> {
+                    if (optionalPrincipal.isEmpty() && authRequired) {
+                        return Mono.just(unauthorized("GW-AUTH-003", "요청 경로는 인증 정보가 필요합니다"));
+                    }
+                    HttpHeaders downstreamHeaders = buildDownstreamHeaders(optionalPrincipal.orElse(null));
+                    return callback.apply(downstreamHeaders);
+                })
+                .onErrorResume(SessionClaimParseException.class, e -> Mono.just(unauthorized("GW-AUTH-008", e.getMessage())));
     }
 
-    private HttpHeaders buildDownstreamHeaders(HttpHeaders inboundHeaders, boolean jwtRequired) {
+    private HttpHeaders buildDownstreamHeaders(GatewaySessionPrincipal principal) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         applyInternalAuthHeader(headers);
 
-        String bearerToken = resolveBearerToken(inboundHeaders);
-        if (!StringUtils.hasText(bearerToken)) {
-            if (jwtRequired) {
-                throw new AuthHeaderException("GW-AUTH-003", "요청 경로는 Bearer 토큰이 필요합니다");
-            }
+        if (principal == null) {
             return headers;
-        }
-
-        GatewayJwtPrincipal principal;
-        try {
-            principal = jwtClaimParser.parse(bearerToken);
-        } catch (JwtClaimParseException e) {
-            throw new AuthHeaderException("GW-AUTH-002", e.getMessage());
         }
 
         headers.set(HttpHeaderNames.USER_ID, String.valueOf(principal.userId()));
@@ -316,28 +304,7 @@ public class ProductMediaBffService {
         }
     }
 
-    private String resolveBearerToken(HttpHeaders inboundHeaders) {
-        if (inboundHeaders == null || inboundHeaders.isEmpty()) {
-            return null;
-        }
-        String authHeader = inboundHeaders.getFirst(HttpHeaders.AUTHORIZATION);
-        if (!StringUtils.hasText(authHeader)) {
-            return null;
-        }
-
-        String prefix = "bearer ";
-        if (!authHeader.toLowerCase(Locale.ROOT).startsWith(prefix)) {
-            throw new AuthHeaderException("GW-AUTH-001", "Authorization 헤더는 Bearer 형식이어야 합니다");
-        }
-
-        String token = authHeader.substring(prefix.length()).trim();
-        if (!StringUtils.hasText(token)) {
-            throw new AuthHeaderException("GW-AUTH-001", "Bearer 토큰이 비어 있습니다");
-        }
-        return token;
-    }
-
-    private String createSignedContextHeader(GatewayJwtPrincipal principal) {
+    private String createSignedContextHeader(GatewaySessionPrincipal principal) {
         HmacSigner signer = hmacSignerProvider.getIfAvailable();
         if (signer == null) {
             return null;
@@ -434,17 +401,4 @@ public class ProductMediaBffService {
         }
     }
 
-    private static final class AuthHeaderException extends RuntimeException {
-
-        private final String code;
-
-        private AuthHeaderException(String code, String message) {
-            super(message);
-            this.code = code;
-        }
-
-        private String code() {
-            return code;
-        }
-    }
 }

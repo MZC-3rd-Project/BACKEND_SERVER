@@ -1,7 +1,11 @@
 package com.example.gateway.security;
 
 import com.example.contracts.http.HttpHeaderNames;
+import com.example.gateway.config.GatewaySessionProperties;
 import com.example.gateway.config.GatewaySecurityProperties;
+import com.example.gateway.security.session.application.GatewaySessionPrincipalResolver;
+import com.example.gateway.security.session.application.port.GatewaySessionValidator;
+import com.example.gateway.security.session.domain.SessionValidationResult;
 import com.example.security.signature.HmacSigner;
 import com.example.security.gateway.GatewayContextHeaderCodec;
 import lombok.RequiredArgsConstructor;
@@ -23,20 +27,23 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class JwtHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
+public class SessionHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
 
     private static final Set<String> WRITE_HTTP_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
     private static final Set<String> REWRITE_BFF_TO_DOWNSTREAM_PATHS = Set.of("/bff/v1/items");
 
-    private final JwtClaimParser jwtClaimParser;
+    private final GatewaySessionPrincipalResolver sessionPrincipalResolver;
     private final GatewaySecurityProperties securityProperties;
+    private final GatewaySessionProperties sessionProperties;
     private final ObjectProvider<HmacSigner> hmacSignerProvider;
+    private final ObjectProvider<GatewaySessionValidator> sessionValidatorProvider;
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -45,48 +52,61 @@ public class JwtHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
             return chain.filter(exchange);
         }
 
-        String bearerToken;
-        try {
-            bearerToken = resolveBearerToken(exchange.getRequest().getHeaders());
-        } catch (JwtClaimParseException e) {
-            return unauthorized(exchange, "GW-AUTH-001", e.getMessage());
-        }
-
         String method = exchange.getRequest().getMethod() != null
                 ? exchange.getRequest().getMethod().name()
                 : null;
-        boolean jwtRequired = isJwtRequiredPath(path, method);
-        GatewayJwtPrincipal principal = null;
-        if (StringUtils.hasText(bearerToken)) {
-            try {
-                principal = jwtClaimParser.parse(bearerToken);
-            } catch (JwtClaimParseException e) {
-                return unauthorized(exchange, "GW-AUTH-002", e.getMessage());
-            }
-        } else if (jwtRequired) {
-            return unauthorized(exchange, "GW-AUTH-003", "요청 경로는 Bearer 토큰이 필요합니다");
-        }
+        boolean authRequired = isAuthRequiredPath(path, method);
 
-        SignedContextHeader signedContextHeader = null;
-        try {
-            if (principal != null) {
-                signedContextHeader = createSignedContextHeader(principal);
-            }
-        } catch (IllegalArgumentException e) {
-            return unauthorized(exchange, "GW-AUTH-004", "서명 헤더 생성에 실패했습니다");
-        }
+        Mono<GatewaySessionPrincipal> principalMono = sessionPrincipalResolver.resolve(exchange);
 
-        GatewayJwtPrincipal finalPrincipal = principal;
-        SignedContextHeader finalSignedContextHeader = signedContextHeader;
-        ServerHttpRequest request = exchange.getRequest().mutate()
-                .headers(headers -> {
-                    removeSensitiveHeaders(headers);
-                    applyInternalAuthHeader(headers);
-                    applyPrincipalHeaders(headers, finalPrincipal, finalSignedContextHeader);
+        return principalMono
+                .map(Optional::of)
+                .defaultIfEmpty(Optional.empty())
+                .flatMap(optionalPrincipal -> {
+                    if (optionalPrincipal.isEmpty()) {
+                        if (authRequired) {
+                            return unauthorized(exchange, "GW-AUTH-003", "요청 경로는 인증 정보가 필요합니다");
+                        }
+                        return validateAndRelay(exchange, chain, null);
+                    }
+                    return validateAndRelay(exchange, chain, optionalPrincipal.get());
                 })
-                .build();
+                .onErrorResume(SessionClaimParseException.class,
+                        error -> unauthorized(exchange, "GW-AUTH-008", error.getMessage()));
+    }
 
-        return chain.filter(exchange.mutate().request(request).build());
+    private Mono<Void> validateAndRelay(ServerWebExchange exchange,
+                                        GatewayFilterChain chain,
+                                        GatewaySessionPrincipal principal) {
+        GatewaySessionValidator sessionValidator = sessionValidatorProvider.getIfAvailable();
+        Mono<SessionValidationResult> validationMono = sessionValidator == null
+                ? Mono.just(SessionValidationResult.allow())
+                : sessionValidator.validate(principal);
+        return validationMono.flatMap(validation -> {
+            if (!validation.allowed()) {
+                return unauthorized(exchange, validation.code(), validation.message());
+            }
+
+            SignedContextHeader signedContextHeader = null;
+            try {
+                if (principal != null) {
+                    signedContextHeader = createSignedContextHeader(principal);
+                }
+            } catch (IllegalArgumentException e) {
+                return unauthorized(exchange, "GW-AUTH-004", "서명 헤더 생성에 실패했습니다");
+            }
+
+            SignedContextHeader finalSignedContextHeader = signedContextHeader;
+            ServerHttpRequest request = exchange.getRequest().mutate()
+                    .headers(headers -> {
+                        removeSensitiveHeaders(headers);
+                        applyInternalAuthHeader(headers);
+                        applyPrincipalHeaders(headers, principal, finalSignedContextHeader);
+                    })
+                    .build();
+
+            return chain.filter(exchange.mutate().request(request).build());
+        });
     }
 
     @Override
@@ -98,12 +118,12 @@ public class JwtHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
         return matchesAnyPrefix(path, securityProperties.getRelayPathPrefixes());
     }
 
-    private boolean isJwtRequiredPath(String path, String method) {
-        String jwtMatchingPath = mapPathForJwtRequirement(path);
-        if (matchesAnyPrefix(jwtMatchingPath, securityProperties.getRequireJwtPathPrefixes())) {
+    private boolean isAuthRequiredPath(String path, String method) {
+        String authMatchingPath = mapPathForAuthRequirement(path);
+        if (matchesAnyPrefix(authMatchingPath, securityProperties.getRequireAuthPathPrefixes())) {
             return true;
         }
-        return isWriteMethod(method) && matchesAnyPrefix(jwtMatchingPath, securityProperties.getRequireJwtWritePathPrefixes());
+        return isWriteMethod(method) && matchesAnyPrefix(authMatchingPath, securityProperties.getRequireAuthWritePathPrefixes());
     }
 
     private boolean matchesAnyPrefix(String path, List<String> prefixes) {
@@ -122,7 +142,7 @@ public class JwtHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
         return WRITE_HTTP_METHODS.contains(method.toUpperCase(Locale.ROOT));
     }
 
-    private String mapPathForJwtRequirement(String path) {
+    private String mapPathForAuthRequirement(String path) {
         if (!StringUtils.hasText(path)) {
             return path;
         }
@@ -132,25 +152,7 @@ public class JwtHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
         return path;
     }
 
-    private String resolveBearerToken(HttpHeaders headers) {
-        String authHeader = headers.getFirst(HttpHeaders.AUTHORIZATION);
-        if (!StringUtils.hasText(authHeader)) {
-            return null;
-        }
-
-        String prefix = "bearer ";
-        if (!authHeader.toLowerCase(Locale.ROOT).startsWith(prefix)) {
-            throw new JwtClaimParseException("Authorization 헤더는 Bearer 형식이어야 합니다");
-        }
-
-        String token = authHeader.substring(prefix.length()).trim();
-        if (!StringUtils.hasText(token)) {
-            throw new JwtClaimParseException("Bearer 토큰이 비어 있습니다");
-        }
-        return token;
-    }
-
-    private SignedContextHeader createSignedContextHeader(GatewayJwtPrincipal principal) {
+    private SignedContextHeader createSignedContextHeader(GatewaySessionPrincipal principal) {
         HmacSigner signer = hmacSignerProvider.getIfAvailable();
         if (signer == null) {
             return null;
@@ -172,6 +174,7 @@ public class JwtHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
         headers.remove(HttpHeaderNames.SIGNATURE);
         headers.remove(HttpHeaderNames.GATEWAY_CONTEXT);
         headers.remove(HttpHeaderNames.GATEWAY_AUTH);
+        headers.remove(HttpHeaderNames.SESSION_ID);
     }
 
     private void applyInternalAuthHeader(HttpHeaders headers) {
@@ -182,7 +185,7 @@ public class JwtHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
     }
 
     private void applyPrincipalHeaders(HttpHeaders headers,
-                                       GatewayJwtPrincipal principal,
+                                       GatewaySessionPrincipal principal,
                                        SignedContextHeader signedContextHeader) {
         if (principal == null) {
             return;
@@ -191,6 +194,9 @@ public class JwtHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
         headers.set(HttpHeaderNames.USER_ID, String.valueOf(principal.userId()));
         String rolesHeader = principal.rolesHeaderValue();
         headers.set(HttpHeaderNames.USER_ROLES, rolesHeader);
+        if (sessionProperties.isRelayHeaderEnabled() && StringUtils.hasText(principal.sessionId())) {
+            headers.set(HttpHeaderNames.SESSION_ID, principal.sessionId());
+        }
 
         if (signedContextHeader != null) {
             headers.set(HttpHeaderNames.GATEWAY_CONTEXT, signedContextHeader.gatewayContext());
