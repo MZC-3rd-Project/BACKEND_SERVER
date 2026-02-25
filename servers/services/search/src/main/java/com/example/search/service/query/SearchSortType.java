@@ -6,6 +6,7 @@ import com.example.search.exception.SearchErrorCode;
 import java.util.Locale;
 
 public enum SearchSortType {
+    RELEVANCE,
     LATEST,
     POPULAR,
     PRICE_ASC,
