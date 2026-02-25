@@ -5,6 +5,7 @@ import com.example.gateway.config.GatewaySecurityProperties;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,7 +40,8 @@ class CatalogDetailBffServiceTest {
         securityProperties.setInternalAuthToken("internal-secret");
 
         objectMapper = new ObjectMapper();
-        service = new CatalogDetailBffService(downstreamClient, securityProperties, objectMapper);
+        CatalogMetricsService catalogMetricsService = new CatalogMetricsService(new SimpleMeterRegistry());
+        service = new CatalogDetailBffService(downstreamClient, securityProperties, catalogMetricsService, objectMapper);
     }
 
     @Test

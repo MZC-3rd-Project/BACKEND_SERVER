@@ -24,13 +24,16 @@ public class CatalogDetailBffService {
 
     private final CatalogDetailDownstreamClient downstreamClient;
     private final GatewaySecurityProperties securityProperties;
+    private final CatalogMetricsService catalogMetricsService;
     private final ObjectMapper objectMapper;
 
     public CatalogDetailBffService(CatalogDetailDownstreamClient downstreamClient,
                                    GatewaySecurityProperties securityProperties,
+                                   CatalogMetricsService catalogMetricsService,
                                    ObjectMapper objectMapper) {
         this.downstreamClient = downstreamClient;
         this.securityProperties = securityProperties;
+        this.catalogMetricsService = catalogMetricsService;
         this.objectMapper = objectMapper;
     }
 
@@ -95,6 +98,7 @@ public class CatalogDetailBffService {
     private Mono<ResponseEntity<JsonNode>> fallbackToNormal(CatalogDetailRequest request,
                                                             HttpHeaders headers,
                                                             String reason) {
+        catalogMetricsService.recordDetailFallback(request.salesChannel().name(), reason);
         log.info("[CatalogDetail] fallback applied. itemId={}, salesChannel={}, reason={}",
                 request.itemId(), request.salesChannel(), reason);
         return downstreamClient.fetchNormalDetail(request.itemType(), request.itemId(), headers)

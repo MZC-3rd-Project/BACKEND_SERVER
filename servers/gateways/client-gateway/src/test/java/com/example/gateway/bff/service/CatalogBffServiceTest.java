@@ -3,6 +3,7 @@ package com.example.gateway.bff.service;
 import com.example.gateway.bff.dto.catalog.CatalogItemsResponse;
 import com.example.gateway.config.GatewaySecurityProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
@@ -40,11 +41,13 @@ class CatalogBffServiceTest {
         securityProperties.setInternalAuthToken("internal-secret");
 
         WebClient.Builder webClientBuilder = WebClient.builder().exchangeFunction(exchangeFunction);
+        CatalogMetricsService catalogMetricsService = new CatalogMetricsService(new SimpleMeterRegistry());
         catalogBffService = new CatalogBffService(
                 webClientBuilder,
                 securityProperties,
                 new SearchThumbnailFallbackEnricher(objectMapper),
                 new CatalogResponseMapper(),
+                catalogMetricsService,
                 objectMapper,
                 "http://search",
                 "http://media"
