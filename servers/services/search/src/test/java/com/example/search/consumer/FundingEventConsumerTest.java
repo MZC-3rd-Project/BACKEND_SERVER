@@ -16,6 +16,7 @@ import java.util.function.Supplier;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -56,7 +57,7 @@ class FundingEventConsumerTest {
 
         fundingEventConsumer.consume(message);
 
-        verify(searchIndexingService).applyFundingCreated(101L, 8001L);
+        verify(searchIndexingService).applyFundingCreatedByEventTime(101L, 8001L, null);
         verify(searchResultCacheService).evictAll();
     }
 
@@ -75,7 +76,7 @@ class FundingEventConsumerTest {
 
         fundingEventConsumer.consume(message);
 
-        verify(searchIndexingService).applyFundingClosed(101L, 8001L, "FUNDED");
+        verify(searchIndexingService).applyFundingClosedByEventTime(101L, 8001L, "FUNDED", null);
         verify(searchResultCacheService).evictAll();
     }
 
@@ -94,7 +95,7 @@ class FundingEventConsumerTest {
 
         fundingEventConsumer.consume(message);
 
-        verify(searchIndexingService).applyFundingClosed(101L, 8001L, "FUND_FAILED");
+        verify(searchIndexingService).applyFundingClosedByEventTime(101L, 8001L, "FUND_FAILED", null);
         verify(searchResultCacheService).evictAll();
     }
 
@@ -110,8 +111,8 @@ class FundingEventConsumerTest {
         fundingEventConsumer.consume(message);
 
         verify(idempotentConsumerService, never()).executeIdempotent(anyString(), anyString(), any());
-        verify(searchIndexingService, never()).applyFundingCreated(any(), any());
-        verify(searchIndexingService, never()).applyFundingClosed(any(), any(), any());
+        verify(searchIndexingService, never()).applyFundingCreatedByEventTime(any(), any(), isNull());
+        verify(searchIndexingService, never()).applyFundingClosedByEventTime(any(), any(), any(), isNull());
     }
 
     private void stubIdempotentExecution() {

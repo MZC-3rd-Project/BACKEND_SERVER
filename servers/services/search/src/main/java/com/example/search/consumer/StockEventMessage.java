@@ -9,6 +9,7 @@ public class StockEventMessage {
 
     private String eventId;
     private String eventType;
+    private String occurredAt;
 
     private Long stockItemId;
     private Long itemId;

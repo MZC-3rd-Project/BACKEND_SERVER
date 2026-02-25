@@ -31,6 +31,7 @@ public class OutboxService implements EventPublisher {
         Map<String, Object> envelope = new LinkedHashMap<>();
         envelope.put("eventId", event.getEventId());
         envelope.put("eventType", event.getEventTypeName());
+        envelope.put("occurredAt", event.getOccurredAt().toString());
         envelope.putAll(event.getPayload());
         String payload = JsonUtils.toJson(envelope);
 

@@ -11,6 +11,7 @@ public class ItemEventMessage {
 
     private String eventId;
     private String eventType;
+    private String occurredAt;
 
     private Long itemId;
     private String title;

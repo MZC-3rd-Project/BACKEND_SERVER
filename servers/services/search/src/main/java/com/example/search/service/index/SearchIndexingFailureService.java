@@ -143,7 +143,11 @@ public class SearchIndexingFailureService {
 
     private void replayItemStatusChanged(String payload) {
         ItemEventMessage event = JsonUtils.fromJson(payload, ItemEventMessage.class);
-        searchIndexingService.updateItemStatus(event.getItemId(), event.getNewStatus());
+        searchIndexingService.updateItemStatusByEventTime(
+                event.getItemId(),
+                event.getNewStatus(),
+                SearchEventTimeParser.parseOccurredAtMillis(event.getOccurredAt())
+        );
     }
 
     private void replayItemDeleted(String payload) {
@@ -173,35 +177,39 @@ public class SearchIndexingFailureService {
 
     private void replayHotDealStarted(String payload) {
         HotDealEventMessage event = JsonUtils.fromJson(payload, HotDealEventMessage.class);
-        searchIndexingService.applyHotDealStarted(
+        searchIndexingService.applyHotDealStartedByEventTime(
                 event.getItemId(),
                 event.getHotDealId(),
-                event.getDiscountedPrice()
+                event.getDiscountedPrice(),
+                SearchEventTimeParser.parseOccurredAtMillis(event.getOccurredAt())
         );
     }
 
     private void replayHotDealEnded(String payload) {
         HotDealEventMessage event = JsonUtils.fromJson(payload, HotDealEventMessage.class);
-        searchIndexingService.applyHotDealEnded(
+        searchIndexingService.applyHotDealEndedByEventTime(
                 event.getItemId(),
-                event.getHotDealId()
+                event.getHotDealId(),
+                SearchEventTimeParser.parseOccurredAtMillis(event.getOccurredAt())
         );
     }
 
     private void replayFundingCreated(String payload) {
         FundingEventMessage event = JsonUtils.fromJson(payload, FundingEventMessage.class);
-        searchIndexingService.applyFundingCreated(
+        searchIndexingService.applyFundingCreatedByEventTime(
                 event.getItemId(),
-                event.getCampaignId()
+                event.getCampaignId(),
+                SearchEventTimeParser.parseOccurredAtMillis(event.getOccurredAt())
         );
     }
 
     private void replayFundingClosed(String payload, String terminalStatus) {
         FundingEventMessage event = JsonUtils.fromJson(payload, FundingEventMessage.class);
-        searchIndexingService.applyFundingClosed(
+        searchIndexingService.applyFundingClosedByEventTime(
                 event.getItemId(),
                 event.getCampaignId(),
-                terminalStatus
+                terminalStatus,
+                SearchEventTimeParser.parseOccurredAtMillis(event.getOccurredAt())
         );
     }
 

@@ -117,6 +117,9 @@
       "stockVersion": {
         "type": "long"
       },
+      "channelEventOccurredAt": {
+        "type": "long"
+      },
       "tags": {
         "type": "keyword"
       },

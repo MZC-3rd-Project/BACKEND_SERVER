@@ -167,7 +167,7 @@ class SearchIndexingFailureServiceTest {
 
         IndexingFailureRetryResponse response = searchIndexingFailureService.retryFailure(3L);
 
-        verify(searchIndexingService).applyFundingClosed(101L, 77L, "FUNDED");
+        verify(searchIndexingService).applyFundingClosedByEventTime(101L, 77L, "FUNDED", null);
         verify(searchResultCacheService).evictAll();
         assertThat(response.getStatus()).isEqualTo(SearchIndexingFailureStatus.RESOLVED);
     }

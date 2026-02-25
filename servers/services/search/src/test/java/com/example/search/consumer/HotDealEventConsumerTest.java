@@ -16,6 +16,7 @@ import java.util.function.Supplier;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -57,7 +58,7 @@ class HotDealEventConsumerTest {
 
         hotDealEventConsumer.consume(message);
 
-        verify(searchIndexingService).applyHotDealStarted(101L, 9001L, 9900L);
+        verify(searchIndexingService).applyHotDealStartedByEventTime(101L, 9001L, 9900L, null);
         verify(searchResultCacheService).evictAll();
     }
 
@@ -76,7 +77,7 @@ class HotDealEventConsumerTest {
 
         hotDealEventConsumer.consume(message);
 
-        verify(searchIndexingService).applyHotDealEnded(101L, 9001L);
+        verify(searchIndexingService).applyHotDealEndedByEventTime(101L, 9001L, null);
         verify(searchResultCacheService).evictAll();
     }
 
@@ -92,8 +93,8 @@ class HotDealEventConsumerTest {
         hotDealEventConsumer.consume(message);
 
         verify(idempotentConsumerService, never()).executeIdempotent(anyString(), anyString(), any());
-        verify(searchIndexingService, never()).applyHotDealStarted(any(), any(), any());
-        verify(searchIndexingService, never()).applyHotDealEnded(any(), any());
+        verify(searchIndexingService, never()).applyHotDealStartedByEventTime(any(), any(), any(), isNull());
+        verify(searchIndexingService, never()).applyHotDealEndedByEventTime(any(), any(), isNull());
     }
 
     private void stubIdempotentExecution() {
