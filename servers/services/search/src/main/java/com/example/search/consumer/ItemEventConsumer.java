@@ -5,6 +5,7 @@ import com.example.core.util.JsonUtils;
 import com.example.search.service.metrics.SearchMetricsService;
 import com.example.search.service.index.SearchIndexingService;
 import com.example.search.service.index.SearchIndexingFailureService;
+import com.example.search.service.index.SearchEventTimeParser;
 import com.example.search.service.thumbnail.SearchThumbnailEnrichmentTaskService;
 import com.example.search.service.query.cache.SearchResultCacheService;
 import lombok.RequiredArgsConstructor;
@@ -112,7 +113,11 @@ public class ItemEventConsumer {
             log.warn("[SearchItemConsumer] newStatus 누락으로 상태 업데이트 스킵. itemId={}", event.getItemId());
             return;
         }
-        searchIndexingService.updateItemStatus(event.getItemId(), event.getNewStatus());
+        searchIndexingService.updateItemStatusByEventTime(
+                event.getItemId(),
+                event.getNewStatus(),
+                SearchEventTimeParser.parseOccurredAtMillis(event.getOccurredAt())
+        );
         searchResultCacheService.evictAll();
     }
 

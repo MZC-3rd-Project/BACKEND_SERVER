@@ -3,6 +3,7 @@ package com.example.search.consumer;
 import com.example.config.kafka.IdempotentConsumerService;
 import com.example.core.util.JsonUtils;
 import com.example.search.service.index.SearchIndexingFailureService;
+import com.example.search.service.index.SearchEventTimeParser;
 import com.example.search.service.index.SearchIndexingService;
 import com.example.search.service.metrics.SearchMetricsService;
 import com.example.search.service.query.cache.SearchResultCacheService;
@@ -64,13 +65,23 @@ public class HotDealEventConsumer {
 
     private boolean route(HotDealEventMessage event) {
         String normalizedType = normalizeEventType(event.getEventType());
+        Long occurredAtMillis = SearchEventTimeParser.parseOccurredAtMillis(event.getOccurredAt());
         return switch (normalizedType) {
             case "HOT_DEAL_STARTED" -> {
-                searchIndexingService.applyHotDealStarted(event.getItemId(), event.getHotDealId(), event.getDiscountedPrice());
+                searchIndexingService.applyHotDealStartedByEventTime(
+                        event.getItemId(),
+                        event.getHotDealId(),
+                        event.getDiscountedPrice(),
+                        occurredAtMillis
+                );
                 yield true;
             }
             case "HOT_DEAL_ENDED", "HOT_DEAL_CANCELLED" -> {
-                searchIndexingService.applyHotDealEnded(event.getItemId(), event.getHotDealId());
+                searchIndexingService.applyHotDealEndedByEventTime(
+                        event.getItemId(),
+                        event.getHotDealId(),
+                        occurredAtMillis
+                );
                 yield true;
             }
             default -> {

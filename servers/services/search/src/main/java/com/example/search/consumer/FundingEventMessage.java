@@ -9,6 +9,7 @@ public class FundingEventMessage {
 
     private String eventId;
     private String eventType;
+    private String occurredAt;
 
     private Long campaignId;
     private Long itemId;

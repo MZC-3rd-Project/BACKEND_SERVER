@@ -9,6 +9,7 @@ public class HotDealEventMessage {
 
     private String eventId;
     private String eventType;
+    private String occurredAt;
 
     private Long hotDealId;
     private Long itemId;

@@ -76,6 +76,9 @@ public class ItemDocument {
     @Field(type = FieldType.Long)
     private Long stockVersion;
 
+    @Field(type = FieldType.Long)
+    private Long channelEventOccurredAt;
+
     @Field(type = FieldType.Keyword)
     private List<String> tags;
 
