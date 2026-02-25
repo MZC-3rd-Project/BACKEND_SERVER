@@ -122,6 +122,25 @@ public record CatalogQueryParams(
         return params;
     }
 
+    public MultiValueMap<String, String> toDegradeSearchQueryParams() {
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("q", query);
+        addIfPresent(params, "category", category);
+        if (itemType != null) {
+            params.add("domainType", itemType.name());
+        }
+        if (minPrice != null) {
+            params.add("minPrice", String.valueOf(minPrice));
+        }
+        if (maxPrice != null) {
+            params.add("maxPrice", String.valueOf(maxPrice));
+        }
+        addIfPresent(params, "sort", sort);
+        addIfPresent(params, "cursor", cursor);
+        params.add("size", String.valueOf(size));
+        return params;
+    }
+
     private static void addIfPresent(MultiValueMap<String, String> params, String key, String value) {
         if (StringUtils.hasText(value)) {
             params.add(key, value);
