@@ -6,6 +6,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+
 public interface CatalogDetailDownstreamClient {
 
     Mono<ResponseEntity<JsonNode>> fetchHotDealDetail(Long hotDealId, HttpHeaders headers);
@@ -15,4 +17,8 @@ public interface CatalogDetailDownstreamClient {
     Mono<ResponseEntity<JsonNode>> fetchFundingDetailByItem(Long itemId, HttpHeaders headers);
 
     Mono<ResponseEntity<JsonNode>> fetchNormalDetail(BffItemType itemType, Long itemId, HttpHeaders headers);
+
+    Mono<ResponseEntity<JsonNode>> fetchFundingParticipations(Long campaignId, HttpHeaders headers);
+
+    Mono<ResponseEntity<JsonNode>> fetchMediaUrls(List<Long> mediaIds, HttpHeaders headers);
 }

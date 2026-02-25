@@ -20,6 +20,14 @@ public class CampaignResponse {
     @SnowflakeId
     private Long sellerId;
 
+    private String title;
+    private String summary;
+    private String makerName;
+    private String category;
+
+    @SnowflakeId
+    private Long thumbnailMediaId;
+
     private String fundingType;
     private Long goalAmount;
     private Long currentAmount;
@@ -37,6 +45,11 @@ public class CampaignResponse {
                 .id(campaign.getId())
                 .itemId(campaign.getItemId())
                 .sellerId(campaign.getSellerId())
+                .title(campaign.getTitle())
+                .summary(campaign.getSummary())
+                .makerName(campaign.getMakerName())
+                .category(campaign.getCategory())
+                .thumbnailMediaId(campaign.getThumbnailMediaId())
                 .fundingType(campaign.getFundingType().name())
                 .goalAmount(campaign.getGoalAmount())
                 .currentAmount(campaign.getCurrentAmount())

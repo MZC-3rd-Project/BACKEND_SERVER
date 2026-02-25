@@ -15,6 +15,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeParseException;
+import java.util.List;
+
 @Slf4j
 @Service
 public class CatalogDetailBffService {
@@ -70,7 +77,8 @@ public class CatalogDetailBffService {
             return fallbackToNormal(request, headers, "hot_deal_id_missing");
         }
         return downstreamClient.fetchHotDealDetail(request.hotDealId(), headers)
-                .flatMap(primary -> apply404Fallback(request, headers, primary, "hot_deal_404"));
+                .flatMap(primary -> apply404Fallback(request, headers, primary, "hot_deal_404"))
+                .flatMap(response -> enrichHotDealResponse(request, headers, response));
     }
 
     private Mono<ResponseEntity<JsonNode>> routeFunding(CatalogDetailRequest request, HttpHeaders headers) {
@@ -82,7 +90,9 @@ public class CatalogDetailBffService {
                 ? "funding_campaign_404"
                 : "funding_item_404";
 
-        return primaryMono.flatMap(primary -> apply404Fallback(request, headers, primary, fallbackReason));
+        return primaryMono
+                .flatMap(primary -> apply404Fallback(request, headers, primary, fallbackReason))
+                .flatMap(response -> enrichFundingResponse(request, headers, response));
     }
 
     private Mono<ResponseEntity<JsonNode>> apply404Fallback(CatalogDetailRequest request,
@@ -107,6 +117,285 @@ public class CatalogDetailBffService {
                             request.itemId(), request.salesChannel(), reason, e);
                     return Mono.just(badGateway("fallback 상세 조회에 실패했습니다"));
                 });
+    }
+
+    private Mono<ResponseEntity<JsonNode>> enrichHotDealResponse(CatalogDetailRequest request,
+                                                                 HttpHeaders headers,
+                                                                 ResponseEntity<JsonNode> response) {
+        ObjectNode dataNode = dataObject(response);
+        if (dataNode == null) {
+            return Mono.just(response);
+        }
+
+        String leftLabel = toLeftLabel(textOrNull(dataNode.path("endAt")));
+        if (StringUtils.hasText(leftLabel) && !StringUtils.hasText(textOrNull(dataNode.path("leftLabel")))) {
+            dataNode.put("leftLabel", leftLabel);
+        }
+
+        Long itemId = positiveLong(dataNode.path("itemId"), request.itemId());
+        if (itemId == null) {
+            return Mono.just(response);
+        }
+
+        return enrichWithNormalItem(request.itemType(), itemId, headers, response, dataNode);
+    }
+
+    private Mono<ResponseEntity<JsonNode>> enrichFundingResponse(CatalogDetailRequest request,
+                                                                 HttpHeaders headers,
+                                                                 ResponseEntity<JsonNode> response) {
+        ObjectNode dataNode = dataObject(response);
+        if (dataNode == null) {
+            return Mono.just(response);
+        }
+
+        enrichProgressRate(dataNode);
+
+        Long itemId = positiveLong(dataNode.path("itemId"), request.itemId());
+        Long campaignId = positiveLong(dataNode.path("id"), request.campaignId());
+
+        Mono<ResponseEntity<JsonNode>> chain = Mono.just(response);
+        if (itemId != null) {
+            chain = chain.flatMap(r -> enrichWithNormalItem(request.itemType(), itemId, headers, r, dataNode));
+        }
+        if (campaignId != null) {
+            chain = chain.flatMap(r -> enrichSupporterCount(campaignId, headers, r, dataNode));
+        }
+        return chain;
+    }
+
+    private Mono<ResponseEntity<JsonNode>> enrichWithNormalItem(BffItemType itemType,
+                                                                Long itemId,
+                                                                HttpHeaders headers,
+                                                                ResponseEntity<JsonNode> response,
+                                                                ObjectNode dataNode) {
+        return downstreamClient.fetchNormalDetail(itemType, itemId, headers)
+                .map(normalResponse -> {
+                    ObjectNode itemData = dataObject(normalResponse);
+                    if (itemData != null) {
+                        mergeItemData(dataNode, itemData);
+                    }
+                    return response;
+                })
+                .flatMap(r -> enrichThumbnailUrl(headers, r, dataNode))
+                .onErrorResume(e -> {
+                    log.debug("[CatalogDetail] normal item enrichment skipped. itemId={}", itemId, e);
+                    return Mono.just(response);
+                });
+    }
+
+    private Mono<ResponseEntity<JsonNode>> enrichSupporterCount(Long campaignId,
+                                                                HttpHeaders headers,
+                                                                ResponseEntity<JsonNode> response,
+                                                                ObjectNode dataNode) {
+        return downstreamClient.fetchFundingParticipations(campaignId, headers)
+                .map(participationResponse -> {
+                    ObjectNode participationData = dataObject(participationResponse);
+                    if (participationData != null) {
+                        JsonNode items = participationData.path("items");
+                        if (items.isArray()) {
+                            dataNode.put("supporterCount", items.size());
+                            return response;
+                        }
+                    }
+
+                    JsonNode body = participationResponse.getBody();
+                    if (participationResponse.getStatusCode().is2xxSuccessful()
+                            && body != null
+                            && body.path("success").asBoolean(false)) {
+                        JsonNode data = body.path("data");
+                        if (data.isArray()) {
+                            dataNode.put("supporterCount", data.size());
+                        }
+                    }
+                    return response;
+                })
+                .onErrorResume(e -> {
+                    log.debug("[CatalogDetail] supporterCount enrichment skipped. campaignId={}", campaignId, e);
+                    return Mono.just(response);
+                });
+    }
+
+    private Mono<ResponseEntity<JsonNode>> enrichThumbnailUrl(HttpHeaders headers,
+                                                              ResponseEntity<JsonNode> response,
+                                                              ObjectNode dataNode) {
+        if (StringUtils.hasText(textOrNull(dataNode.path("thumbnailUrl")))) {
+            return Mono.just(response);
+        }
+        Long thumbnailMediaId = positiveLong(dataNode.path("thumbnailMediaId"), null);
+        if (thumbnailMediaId == null) {
+            return Mono.just(response);
+        }
+
+        return downstreamClient.fetchMediaUrls(List.of(thumbnailMediaId), headers)
+                .map(mediaResponse -> {
+                    JsonNode body = mediaResponse.getBody();
+                    if (mediaResponse.getStatusCode().is2xxSuccessful()
+                            && body != null
+                            && body.path("success").asBoolean(false)) {
+                        JsonNode data = body.path("data");
+                        if (data.isArray()) {
+                            for (JsonNode node : data) {
+                                if (thumbnailMediaId.equals(positiveLong(node.path("mediaId"), null))) {
+                                    String mediaUrl = textOrNull(node.path("mediaUrl"));
+                                    if (StringUtils.hasText(mediaUrl)) {
+                                        dataNode.put("thumbnailUrl", mediaUrl);
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    return response;
+                })
+                .onErrorResume(e -> {
+                    log.debug("[CatalogDetail] thumbnailUrl enrichment skipped. thumbnailMediaId={}", thumbnailMediaId, e);
+                    return Mono.just(response);
+                });
+    }
+
+    private void mergeItemData(ObjectNode target, ObjectNode itemData) {
+        putIfBlank(target, "title", textOrNull(itemData.path("title")));
+        putIfNull(target, "price", positiveLong(itemData.path("price"), null));
+        putIfBlank(target, "status", textOrNull(itemData.path("status")));
+        putIfNull(target, "categoryId", positiveLong(itemData.path("categoryId"), null));
+
+        JsonNode images = itemData.path("images");
+        if (images.isObject()) {
+            JsonNode thumbnail = images.path("thumbnail");
+            Long mediaId = positiveLong(thumbnail.path("mediaId"), null);
+            putIfNull(target, "thumbnailMediaId", mediaId);
+        }
+
+        if (!target.has("item")) {
+            target.set("item", itemData.deepCopy());
+        }
+    }
+
+    private void enrichProgressRate(ObjectNode dataNode) {
+        if (dataNode.hasNonNull("progressRate")) {
+            return;
+        }
+        Long currentAmount = positiveLong(dataNode.path("currentAmount"), 0L);
+        Long goalAmount = positiveLong(dataNode.path("goalAmount"), 0L);
+        if (goalAmount == null || goalAmount <= 0) {
+            dataNode.put("progressRate", 0.0);
+            return;
+        }
+        double rate = (double) currentAmount / goalAmount * 100.0;
+        double rounded = Math.round(rate * 100) / 100.0;
+        dataNode.put("progressRate", rounded);
+    }
+
+    private ObjectNode dataObject(ResponseEntity<JsonNode> response) {
+        if (response == null || !response.getStatusCode().is2xxSuccessful()) {
+            return null;
+        }
+        JsonNode body = response.getBody();
+        if (body == null || !body.isObject() || !body.path("success").asBoolean(false)) {
+            return null;
+        }
+        JsonNode data = body.path("data");
+        if (!data.isObject()) {
+            return null;
+        }
+        return (ObjectNode) data;
+    }
+
+    private String toLeftLabel(String rawEndAt) {
+        if (!StringUtils.hasText(rawEndAt)) {
+            return null;
+        }
+        Instant endAt = toInstant(rawEndAt);
+        if (endAt == null) {
+            return null;
+        }
+
+        Duration duration = Duration.between(Instant.now(), endAt);
+        if (duration.isNegative() || duration.isZero()) {
+            return "종료";
+        }
+
+        long seconds = duration.getSeconds();
+        long days = seconds / 86_400;
+        long hours = (seconds % 86_400) / 3_600;
+        long minutes = (seconds % 3_600) / 60;
+        long remainSeconds = seconds % 60;
+
+        if (days > 0) {
+            return days + "일 " + hours + "시간 남음";
+        }
+        if (hours > 0) {
+            return hours + "시간 " + minutes + "분 남음";
+        }
+        return String.format("%02d:%02d:%02d", hours, minutes, remainSeconds);
+    }
+
+    private Instant toInstant(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        try {
+            return Instant.parse(value);
+        } catch (DateTimeParseException ignored) {
+            try {
+                LocalDateTime localDateTime = LocalDateTime.parse(value);
+                return localDateTime.atZone(ZoneId.systemDefault()).toInstant();
+            } catch (DateTimeParseException ignoredAgain) {
+                return null;
+            }
+        }
+    }
+
+    private Long positiveLong(JsonNode node, Long fallback) {
+        if (node == null || node.isNull() || node.isMissingNode()) {
+            return fallback;
+        }
+        Long parsed;
+        if (node.isNumber()) {
+            parsed = node.asLong();
+        } else if (node.isTextual()) {
+            String raw = node.asText(null);
+            if (!StringUtils.hasText(raw)) {
+                return fallback;
+            }
+            try {
+                parsed = Long.parseLong(raw.trim());
+            } catch (NumberFormatException e) {
+                return fallback;
+            }
+        } else {
+            return fallback;
+        }
+        return parsed >= 0 ? parsed : fallback;
+    }
+
+    private String textOrNull(JsonNode node) {
+        if (node == null || node.isNull() || node.isMissingNode()) {
+            return null;
+        }
+        String value = node.asText(null);
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private void putIfBlank(ObjectNode node, String fieldName, String value) {
+        if (!StringUtils.hasText(value)) {
+            return;
+        }
+        if (!StringUtils.hasText(textOrNull(node.path(fieldName)))) {
+            node.put(fieldName, value);
+        }
+    }
+
+    private void putIfNull(ObjectNode node, String fieldName, Long value) {
+        if (value == null) {
+            return;
+        }
+        if (!node.hasNonNull(fieldName)) {
+            node.put(fieldName, value);
+        }
     }
 
     private CatalogDetailRequest normalize(Long itemId,

@@ -55,9 +55,6 @@ public record CatalogQueryParams(
         MultiValueMap<String, String> queryParams = request.getQueryParams();
 
         String query = trimToNull(queryParams.getFirst("q"));
-        if (!StringUtils.hasText(query)) {
-            throw new IllegalArgumentException("q는 필수입니다");
-        }
 
         String category = trimToNull(queryParams.getFirst("category"));
         BffItemType itemType = parseItemType(queryParams.getFirst("itemType"));
@@ -102,7 +99,7 @@ public record CatalogQueryParams(
 
     public MultiValueMap<String, String> toSearchQueryParams() {
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-        params.add("q", query);
+        addIfPresent(params, "q", query);
         addIfPresent(params, "category", category);
         if (itemType != null) {
             params.add("domainType", itemType.name());
@@ -124,7 +121,7 @@ public record CatalogQueryParams(
 
     public MultiValueMap<String, String> toDegradeSearchQueryParams() {
         MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
-        params.add("q", query);
+        addIfPresent(params, "q", query);
         addIfPresent(params, "category", category);
         if (itemType != null) {
             params.add("domainType", itemType.name());

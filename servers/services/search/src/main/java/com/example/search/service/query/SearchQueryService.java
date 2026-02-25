@@ -109,6 +109,9 @@ public class SearchQueryService {
     }
 
     private void recordKeyword(String keyword) {
+        if (!StringUtils.hasText(keyword)) {
+            return;
+        }
         autocompleteService.recordKeyword(keyword);
         popularSearchService.recordKeyword(keyword);
     }
@@ -118,16 +121,18 @@ public class SearchQueryService {
         List<Object> filter = new ArrayList<>();
         List<Object> mustNot = new ArrayList<>();
 
-        Map<String, Object> multiMatch = new LinkedHashMap<>();
-        multiMatch.put("query", request.getQ());
-        multiMatch.put("fields", List.of("title^3", "description"));
-        multiMatch.put("type", "best_fields");
-        if (shouldApplyFuzziness(request.getQ())) {
-            multiMatch.put("fuzziness", "AUTO:3,6");
-            multiMatch.put("prefix_length", 1);
-            multiMatch.put("max_expansions", 20);
+        if (StringUtils.hasText(request.getQ())) {
+            Map<String, Object> multiMatch = new LinkedHashMap<>();
+            multiMatch.put("query", request.getQ());
+            multiMatch.put("fields", List.of("title^3", "description"));
+            multiMatch.put("type", "best_fields");
+            if (shouldApplyFuzziness(request.getQ())) {
+                multiMatch.put("fuzziness", "AUTO:3,6");
+                multiMatch.put("prefix_length", 1);
+                multiMatch.put("max_expansions", 20);
+            }
+            must.add(Map.of("multi_match", multiMatch));
         }
-        must.add(Map.of("multi_match", multiMatch));
 
         if (StringUtils.hasText(request.getCategory())) {
             filter.add(Map.of("term", Map.of("category", request.getCategory())));
@@ -160,7 +165,11 @@ public class SearchQueryService {
         }
 
         Map<String, Object> bool = new LinkedHashMap<>();
-        bool.put("must", must);
+        if (!must.isEmpty()) {
+            bool.put("must", must);
+        } else {
+            bool.put("must", List.of(Map.of("match_all", Map.of())));
+        }
         if (!filter.isEmpty()) {
             bool.put("filter", filter);
         }
@@ -360,10 +369,11 @@ public class SearchQueryService {
         if (request == null) {
             throw new BusinessException(SearchErrorCode.INVALID_SEARCH_PARAMETER, "검색 요청이 비어 있습니다.");
         }
-        if (!StringUtils.hasText(request.getQ())) {
-            throw new BusinessException(SearchErrorCode.INVALID_SEARCH_PARAMETER, "검색어(q)는 필수입니다.");
+        if (StringUtils.hasText(request.getQ())) {
+            request.setQ(request.getQ().trim());
+        } else {
+            request.setQ(null);
         }
-        request.setQ(request.getQ().trim());
 
         if (StringUtils.hasText(request.getCategory())) {
             request.setCategory(request.getCategory().trim());

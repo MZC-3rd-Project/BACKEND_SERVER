@@ -6,6 +6,7 @@ import com.example.event.EventPublisher;
 import com.example.product.dto.performance.request.PerformanceCreateRequest;
 import com.example.product.dto.performance.request.PerformanceUpdateRequest;
 import com.example.product.dto.performance.response.PerformanceDetailResponse;
+import com.example.product.dto.item.response.ItemContentSnapshot;
 import com.example.product.entity.image.ItemImage;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemType;
@@ -21,6 +22,7 @@ import com.example.product.repository.ItemImageRepository;
 import com.example.product.repository.ItemRepository;
 import com.example.product.repository.PerformanceRepository;
 import com.example.product.repository.SeatGradeRepository;
+import com.example.product.service.content.ItemContentService;
 import com.example.product.service.command.image.ItemThumbnailSyncService;
 import com.example.product.service.command.image.MediaReferenceService;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +42,7 @@ public class PerformanceCommandService {
     private final SeatGradeRepository seatGradeRepository;
     private final CastMemberRepository castMemberRepository;
     private final ItemImageRepository itemImageRepository;
+    private final ItemContentService itemContentService;
     private final MediaReferenceService mediaReferenceService;
     private final ItemThumbnailSyncService itemThumbnailSyncService;
     private final EventPublisher eventPublisher;
@@ -76,6 +79,9 @@ public class PerformanceCommandService {
                     .toList();
             castMemberRepository.saveAll(castMembers);
         }
+        itemContentService.replaceTags(item.getId(), request.getTags());
+        itemContentService.replaceFeatures(item.getId(), request.getFeatures());
+        itemContentService.replaceDetailSections(item.getId(), request.getDetailSections());
 
         List<ItemCreatedEvent.StockItemInfo> stockItems = seatGrades.stream()
                 .map(sg -> new ItemCreatedEvent.StockItemInfo(
@@ -97,8 +103,9 @@ public class PerformanceCommandService {
                 ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
+        ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(item.getId());
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(item.getId());
-        return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers, images);
+        return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers, contentSnapshot, images);
     }
 
     public PerformanceDetailResponse update(Long itemId, PerformanceUpdateRequest request, Long sellerId) {
@@ -153,6 +160,15 @@ public class PerformanceCommandService {
                     .toList();
             castMemberRepository.saveAll(castMembers);
         }
+        if (request.getTags() != null) {
+            itemContentService.replaceTags(itemId, request.getTags());
+        }
+        if (request.getFeatures() != null) {
+            itemContentService.replaceFeatures(itemId, request.getFeatures());
+        }
+        if (request.getDetailSections() != null) {
+            itemContentService.replaceDetailSections(itemId, request.getDetailSections());
+        }
 
         eventPublisher.publish(
                 new ItemUpdatedEvent(
@@ -166,8 +182,9 @@ public class PerformanceCommandService {
 
         List<SeatGrade> seatGrades = seatGradeRepository.findByPerformanceIdOrderByPriceDesc(performance.getId());
         List<CastMember> castMembers = castMemberRepository.findByPerformanceId(performance.getId());
+        ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(itemId);
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
-        return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers, images);
+        return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers, contentSnapshot, images);
     }
 
     public void delete(Long itemId, Long sellerId) {
@@ -184,6 +201,7 @@ public class PerformanceCommandService {
             castMemberRepository.softDeleteAllByPerformanceId(performance.getId());
             performanceRepository.softDeleteByItemId(itemId);
         }
+        itemContentService.softDeleteAll(itemId);
         itemImageRepository.softDeleteAllByItemId(itemId);
         item.clearThumbnail();
         itemThumbnailSyncService.syncAfterCommit(itemId, null, true);
