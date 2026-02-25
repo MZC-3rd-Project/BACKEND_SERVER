@@ -11,6 +11,7 @@ import com.example.gateway.bff.dto.catalog.CatalogSalesChannel;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -101,11 +102,19 @@ public class CatalogResponseMapper {
         return switch (salesChannel) {
             case HOT_DEAL -> {
                 if (activeHotDealId != null && activeHotDealId > 0) {
+                    if (itemType != null) {
+                        yield new CatalogDetailTargetResponse("HOT_DEAL",
+                                buildCatalogDetailRoutePath(itemId, itemType, CatalogSalesChannel.HOT_DEAL, activeHotDealId, null));
+                    }
                     yield new CatalogDetailTargetResponse("HOT_DEAL", "/api/v1/hot-deals/" + activeHotDealId);
                 }
                 yield new CatalogDetailTargetResponse("NORMAL", buildNormalDetailPath(itemId, itemType));
             }
             case FUNDING -> {
+                if (itemType != null) {
+                    yield new CatalogDetailTargetResponse("FUNDING",
+                            buildCatalogDetailRoutePath(itemId, itemType, CatalogSalesChannel.FUNDING, null, activeCampaignId));
+                }
                 if (activeCampaignId != null && activeCampaignId > 0) {
                     yield new CatalogDetailTargetResponse("FUNDING", "/api/campaigns/" + activeCampaignId);
                 }
@@ -113,6 +122,25 @@ public class CatalogResponseMapper {
             }
             case NORMAL, ALL -> new CatalogDetailTargetResponse("NORMAL", buildNormalDetailPath(itemId, itemType));
         };
+    }
+
+    private String buildCatalogDetailRoutePath(Long itemId,
+                                               BffItemType itemType,
+                                               CatalogSalesChannel salesChannel,
+                                               Long hotDealId,
+                                               Long campaignId) {
+        UriComponentsBuilder builder = UriComponentsBuilder
+                .fromPath("/bff/v1/catalog/items/{itemId}/detail")
+                .queryParam("itemType", itemType.name())
+                .queryParam("salesChannel", salesChannel.name());
+
+        if (hotDealId != null && hotDealId > 0) {
+            builder.queryParam("hotDealId", hotDealId);
+        }
+        if (campaignId != null && campaignId > 0) {
+            builder.queryParam("campaignId", campaignId);
+        }
+        return builder.buildAndExpand(itemId).toUriString();
     }
 
     private String buildNormalDetailPath(Long itemId, BffItemType itemType) {
