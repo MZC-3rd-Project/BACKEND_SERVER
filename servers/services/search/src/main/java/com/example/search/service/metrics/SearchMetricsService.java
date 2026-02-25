@@ -46,11 +46,22 @@ public class SearchMetricsService {
     }
 
     public void recordIndexingEvent(String eventType, boolean success) {
+        String safeEventType = eventType == null ? "UNKNOWN" : eventType;
         meterRegistry.counter(
                 "search.indexing.events",
-                "eventType", eventType == null ? "UNKNOWN" : eventType,
+                "eventType", safeEventType,
                 "result", success ? "success" : "failure"
         ).increment();
+
+        meterRegistry.counter(
+                "catalog.projection.events",
+                "eventType", safeEventType,
+                "result", success ? "success" : "failure"
+        ).increment();
+
+        if (!success) {
+            meterRegistry.counter("catalog.projection.failures", "eventType", safeEventType).increment();
+        }
     }
 
     public void updateKafkaLag(long lag) {

@@ -10,6 +10,7 @@ import com.example.product.repository.ItemImageRepository;
 import com.example.product.repository.ItemOptionRepository;
 import com.example.product.repository.ItemRepository;
 import com.example.product.repository.ShippingInfoRepository;
+import com.example.product.service.content.ItemContentService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -38,6 +39,8 @@ class GoodsQueryServiceTest {
     private ItemGoodsLinkRepository itemGoodsLinkRepository;
     @Mock
     private ItemImageRepository itemImageRepository;
+    @Mock
+    private ItemContentService itemContentService;
 
     @InjectMocks
     private GoodsQueryService goodsQueryService;

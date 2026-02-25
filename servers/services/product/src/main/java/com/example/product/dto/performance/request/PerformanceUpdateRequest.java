@@ -1,5 +1,6 @@
 package com.example.product.dto.performance.request;
 
+import com.example.product.dto.item.request.ItemDetailSectionRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Positive;
@@ -29,6 +30,13 @@ public class PerformanceUpdateRequest {
     private Long thumbnailMediaId;
 
     private Boolean clearThumbnail;
+
+    private List<@Size(max = 50) String> tags;
+
+    private List<@Size(max = 200) String> features;
+
+    @Valid
+    private List<ItemDetailSectionRequest> detailSections;
 
     @Size(max = 200, message = "공연 장소는 200자 이하여야 합니다")
     private String venue;

@@ -62,6 +62,7 @@ gateway:
     ops-enabled: ${GATEWAY_SESSION_OPS_ENABLED:false}
     public-refresh-enabled: ${GATEWAY_SESSION_PUBLIC_REFRESH_ENABLED:false}
     keycloak-logout-enabled: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_ENABLED:false}
+    trusted-header-auth-enabled: ${GATEWAY_SESSION_TRUSTED_HEADER_AUTH_ENABLED:false}
     redis-key-prefix: ${GATEWAY_SESSION_REDIS_KEY_PREFIX:gateway:sess:}
     user-sessions-key-prefix: ${GATEWAY_SESSION_USER_SESSIONS_KEY_PREFIX:gateway:user:sessions:}
     refresh-family-key-prefix: ${GATEWAY_SESSION_REFRESH_FAMILY_KEY_PREFIX:gateway:rtfam:}

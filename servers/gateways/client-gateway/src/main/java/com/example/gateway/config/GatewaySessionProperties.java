@@ -16,6 +16,7 @@ public class GatewaySessionProperties {
     private boolean opsEnabled = false;
     private boolean publicRefreshEnabled = false;
     private boolean keycloakLogoutEnabled = false;
+    private boolean trustedHeaderAuthEnabled = false;
     private String redisKeyPrefix = "gateway:sess:";
     private String userSessionsKeyPrefix = "gateway:user:sessions:";
     private String refreshFamilyKeyPrefix = "gateway:rtfam:";

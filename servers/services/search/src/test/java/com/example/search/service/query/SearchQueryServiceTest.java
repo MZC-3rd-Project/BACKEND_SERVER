@@ -198,9 +198,130 @@ class SearchQueryServiceTest {
     }
 
     @Test
-    void search_throwsWhenQueryBlank() throws Exception {
+    void search_appliesDefaultProjectionValuesWhenFieldsMissing() throws Exception {
+        String responseJson = """
+                {
+                  "hits": {
+                    "total": {"value": 1, "relation": "eq"},
+                    "hits": [
+                      {
+                        "_source": {
+                          "itemId": 201,
+                          "title": "핫딜 상품",
+                          "price": 15000,
+                          "status": "HOT_DEAL"
+                        },
+                        "_score": 2.5,
+                        "sort": [201]
+                      }
+                    ]
+                  }
+                }
+                """;
+
+        Response response = mock(Response.class);
+        when(response.getEntity()).thenReturn(new StringEntity(responseJson, ContentType.APPLICATION_JSON));
+        when(restClient.performRequest(any(Request.class))).thenReturn(response);
+        when(searchResultCacheService.get(any())).thenReturn(java.util.Optional.empty());
+
+        SearchRequest request = new SearchRequest();
+        request.setQ("핫딜");
+        request.setSize(1);
+
+        CursorResponse<SearchItemResponse> result = searchQueryService.search(request);
+
+        assertThat(result.getItems()).hasSize(1);
+        SearchItemResponse item = result.getItems().get(0);
+        assertThat(item.getSalesChannel()).isEqualTo("HOT_DEAL");
+        assertThat(item.getChannelPriority()).isEqualTo(3);
+        assertThat(item.getEffectivePrice()).isEqualTo(15000L);
+    }
+
+    @Test
+    void search_appliesChannelFilterWhenProvided() throws Exception {
+        String responseJson = """
+                {"hits":{"total":{"value":0,"relation":"eq"},"hits":[]}}
+                """;
+
+        Response response = mock(Response.class);
+        when(response.getEntity()).thenReturn(new StringEntity(responseJson, ContentType.APPLICATION_JSON));
+        when(restClient.performRequest(any(Request.class))).thenReturn(response);
+        when(searchResultCacheService.get(any())).thenReturn(java.util.Optional.empty());
+
+        SearchRequest request = new SearchRequest();
+        request.setQ("상품");
+        request.setChannel("hot_deal");
+        request.setSize(20);
+
+        searchQueryService.search(request);
+
+        ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+        verify(restClient).performRequest(captor.capture());
+        String body = EntityUtils.toString(captor.getValue().getEntity());
+        assertThat(body).contains("\"salesChannel\"");
+        assertThat(body).contains("\"HOT_DEAL\"");
+        assertThat(body).contains("\"minimum_should_match\":1");
+    }
+
+    @Test
+    void search_buildsRelevanceSortWithChannelPriority() throws Exception {
+        String responseJson = """
+                {"hits":{"total":{"value":0,"relation":"eq"},"hits":[]}}
+                """;
+
+        Response response = mock(Response.class);
+        when(response.getEntity()).thenReturn(new StringEntity(responseJson, ContentType.APPLICATION_JSON));
+        when(restClient.performRequest(any(Request.class))).thenReturn(response);
+        when(searchResultCacheService.get(any())).thenReturn(java.util.Optional.empty());
+
+        SearchRequest request = new SearchRequest();
+        request.setQ("아이폰");
+        request.setSort("RELEVANCE");
+        request.setSize(20);
+
+        searchQueryService.search(request);
+
+        ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+        verify(restClient).performRequest(captor.capture());
+        String body = EntityUtils.toString(captor.getValue().getEntity());
+        assertThat(body).contains("\"_score\"");
+        assertThat(body).contains("\"channelPriority\"");
+    }
+
+    @Test
+    void search_usesBrowseModeWhenQueryBlank() throws Exception {
+        String responseJson = """
+                {"hits":{"total":{"value":0,"relation":"eq"},"hits":[]}}
+                """;
+
+        Response response = mock(Response.class);
+        when(response.getEntity()).thenReturn(new StringEntity(responseJson, ContentType.APPLICATION_JSON));
+        when(restClient.performRequest(any(Request.class))).thenReturn(response);
+        when(searchResultCacheService.get(any())).thenReturn(java.util.Optional.empty());
+
         SearchRequest request = new SearchRequest();
         request.setQ("   ");
+        request.setSize(20);
+
+        CursorResponse<SearchItemResponse> result = searchQueryService.search(request);
+
+        assertThat(result.getItems()).isEmpty();
+        verify(restClient).performRequest(any(Request.class));
+        verify(autocompleteService, never()).recordKeyword(anyString());
+        verify(popularSearchService, never()).recordKeyword(anyString());
+
+        ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+        verify(restClient).performRequest(captor.capture());
+        String body = EntityUtils.toString(captor.getValue().getEntity());
+        assertThat(body).contains("\"match_all\"");
+        assertThat(body).doesNotContain("\"multi_match\"");
+    }
+
+    @Test
+    void search_throwsWhenChannelInvalid() throws Exception {
+        SearchRequest request = new SearchRequest();
+        request.setQ("아이폰");
+        request.setChannel("INVALID");
         request.setSize(20);
 
         assertThatThrownBy(() -> searchQueryService.search(request))

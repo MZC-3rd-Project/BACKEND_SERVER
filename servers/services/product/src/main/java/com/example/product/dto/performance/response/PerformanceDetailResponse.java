@@ -2,6 +2,8 @@ package com.example.product.dto.performance.response;
 
 import com.example.core.id.jackson.SnowflakeId;
 import com.example.product.dto.image.response.ItemImagesResponse;
+import com.example.product.dto.item.response.ItemContentSnapshot;
+import com.example.product.dto.item.response.ItemDetailSectionResponse;
 import com.example.product.entity.performance.CastMember;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.image.ItemImage;
@@ -37,6 +39,10 @@ public class PerformanceDetailResponse {
     @SnowflakeId
     private Long storeId;
 
+    private List<String> tags;
+    private List<String> features;
+    private List<ItemDetailSectionResponse> detailSections;
+
     private String venue;
     private LocalDate performanceDate;
     private LocalTime performanceTime;
@@ -51,7 +57,9 @@ public class PerformanceDetailResponse {
     public static PerformanceDetailResponse of(Item item, Performance perf,
                                                List<SeatGrade> seatGrades,
                                                List<CastMember> castMembers,
+                                               ItemContentSnapshot content,
                                                List<ItemImage> images) {
+        ItemContentSnapshot safeContent = content != null ? content : ItemContentSnapshot.empty();
         return PerformanceDetailResponse.builder()
                 .id(item.getId())
                 .title(item.getTitle())
@@ -62,6 +70,9 @@ public class PerformanceDetailResponse {
                 .categoryId(item.getCategoryId())
                 .sellerId(item.getSellerId())
                 .storeId(item.getStoreId())
+                .tags(safeContent.tags())
+                .features(safeContent.features())
+                .detailSections(safeContent.detailSections())
                 .venue(perf.getVenue())
                 .performanceDate(perf.getPerformanceDate())
                 .performanceTime(perf.getPerformanceTime())

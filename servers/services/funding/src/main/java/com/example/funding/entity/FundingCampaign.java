@@ -34,6 +34,21 @@ public class FundingCampaign extends BaseEntity {
     @Column(name = "seller_id", nullable = false)
     private Long sellerId;
 
+    @Column(name = "title", length = 200)
+    private String title;
+
+    @Column(name = "summary", columnDefinition = "TEXT")
+    private String summary;
+
+    @Column(name = "maker_name", length = 120)
+    private String makerName;
+
+    @Column(name = "category", length = 100)
+    private String category;
+
+    @Column(name = "thumbnail_media_id")
+    private Long thumbnailMediaId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "funding_type", nullable = false, length = 20)
     private FundingType fundingType;
@@ -63,12 +78,20 @@ public class FundingCampaign extends BaseEntity {
     @Column(name = "end_at", nullable = false)
     private LocalDateTime endAt;
 
-    public static FundingCampaign create(Long itemId, Long sellerId, FundingType fundingType,
-                                          Long goalAmount, Integer goalQuantity, Long minAmount,
-                                          LocalDateTime startAt, LocalDateTime endAt) {
+    public static FundingCampaign create(Long itemId, Long sellerId,
+                                         String title, String summary, String makerName,
+                                         String category, Long thumbnailMediaId,
+                                         FundingType fundingType, Long goalAmount,
+                                         Integer goalQuantity, Long minAmount,
+                                         LocalDateTime startAt, LocalDateTime endAt) {
         FundingCampaign campaign = new FundingCampaign();
         campaign.itemId = itemId;
         campaign.sellerId = sellerId;
+        campaign.title = title;
+        campaign.summary = summary;
+        campaign.makerName = makerName;
+        campaign.category = category;
+        campaign.thumbnailMediaId = thumbnailMediaId;
         campaign.fundingType = fundingType;
         campaign.goalAmount = goalAmount;
         campaign.currentAmount = 0L;
@@ -122,7 +145,9 @@ public class FundingCampaign extends BaseEntity {
     }
 
     public void update(Long goalAmount, Integer goalQuantity, Long minAmount,
-                       LocalDateTime startAt, LocalDateTime endAt) {
+                       LocalDateTime startAt, LocalDateTime endAt,
+                       String title, String summary, String makerName,
+                       String category, Long thumbnailMediaId) {
         if (this.status != FundingStatus.ACTIVE || isExpired()) {
             throw new BusinessException(FundingErrorCode.CAMPAIGN_NOT_EDITABLE);
         }
@@ -131,5 +156,20 @@ public class FundingCampaign extends BaseEntity {
         this.minAmount = minAmount;
         this.startAt = startAt;
         this.endAt = endAt;
+        if (title != null) {
+            this.title = title;
+        }
+        if (summary != null) {
+            this.summary = summary;
+        }
+        if (makerName != null) {
+            this.makerName = makerName;
+        }
+        if (category != null) {
+            this.category = category;
+        }
+        if (thumbnailMediaId != null) {
+            this.thumbnailMediaId = thumbnailMediaId;
+        }
     }
 }

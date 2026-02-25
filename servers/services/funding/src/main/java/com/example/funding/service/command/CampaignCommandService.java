@@ -56,6 +56,11 @@ public class CampaignCommandService {
         FundingCampaign campaign = FundingCampaign.create(
                 request.getItemId(),
                 sellerId,
+                request.getTitle(),
+                request.getSummary(),
+                request.getMakerName(),
+                request.getCategory(),
+                request.getThumbnailMediaId(),
                 fundingType,
                 request.getGoalAmount(),
                 request.getGoalQuantity(),
@@ -89,7 +94,12 @@ public class CampaignCommandService {
                 request.getGoalQuantity(),
                 request.getMinAmount(),
                 request.getStartAt(),
-                request.getEndAt()
+                request.getEndAt(),
+                request.getTitle(),
+                request.getSummary(),
+                request.getMakerName(),
+                request.getCategory(),
+                request.getThumbnailMediaId()
         );
 
         return CampaignResponse.from(campaign);

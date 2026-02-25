@@ -41,13 +41,15 @@ class SearchQueryControllerTest {
     }
 
     @Test
-    void search_returnsBadRequestWhenQueryIsBlank() throws Exception {
+    void search_acceptsRequestWhenQueryIsBlank() throws Exception {
+        CursorResponse<SearchItemResponse> response = CursorResponse.of(List.of(), null, 0L);
+        given(searchQueryService.search(any())).willReturn(response);
+
         mockMvc.perform(get("/api/v1/search")
                         .param("q", "  ")
                         .param("size", "20"))
-                .andExpect(status().isBadRequest());
-
-        verifyNoInteractions(searchQueryService);
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
     }
 
     @Test
