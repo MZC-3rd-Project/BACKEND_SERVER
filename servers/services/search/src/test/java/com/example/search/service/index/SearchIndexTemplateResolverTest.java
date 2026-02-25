@@ -18,6 +18,11 @@ class SearchIndexTemplateResolverTest {
         assertThat(template).contains("\"ko_stop_filter\"");
         assertThat(template).contains("\"user_dictionary_rules\"");
         assertThat(template).contains("\"stock\"");
+        assertThat(template).contains("\"effectivePrice\"");
+        assertThat(template).contains("\"salesChannel\"");
+        assertThat(template).contains("\"channelPriority\"");
+        assertThat(template).contains("\"activeHotDealId\"");
+        assertThat(template).contains("\"activeCampaignId\"");
         assertThat(template).contains("아이폰, iphone, i-phone");
         assertThat(template).contains("그리고");
         assertThat(template).contains("에어팟프로");

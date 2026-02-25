@@ -88,8 +88,46 @@ class ElasticsearchIndexingServiceTest {
         assertThat(request.getMethod()).isEqualTo("POST");
         assertThat(request.getEndpoint()).isEqualTo("/items-write/_update/15");
         String json = EntityUtils.toString(request.getEntity());
-        assertThat(json).contains("\"doc_as_upsert\":true");
+        assertThat(json).contains("\"scripted_upsert\":true");
+        assertThat(json).contains("\"script\"");
         assertThat(json).contains("\"status\":\"SOLD_OUT\"");
+    }
+
+    @Test
+    void applyHotDealStarted_sendsScriptedProjectionUpdate() throws Exception {
+        when(restClient.performRequest(any(Request.class))).thenReturn(mock(Response.class));
+
+        indexingService.applyHotDealStarted(15L, 9001L, 9900L);
+
+        ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+        verify(restClient).performRequest(captor.capture());
+        Request request = captor.getValue();
+
+        assertThat(request.getMethod()).isEqualTo("POST");
+        assertThat(request.getEndpoint()).isEqualTo("/items-write/_update/15");
+        String json = EntityUtils.toString(request.getEntity());
+        assertThat(json).contains("\"scripted_upsert\":true");
+        assertThat(json).contains("\"activeHotDealId\":9001");
+        assertThat(json).contains("\"effectivePrice\":9900");
+        assertThat(json).contains("\"salesChannel\":\"HOT_DEAL\"");
+    }
+
+    @Test
+    void applyFundingClosed_sendsScriptedProjectionUpdate() throws Exception {
+        when(restClient.performRequest(any(Request.class))).thenReturn(mock(Response.class));
+
+        indexingService.applyFundingClosed(15L, 8001L, "FUNDED");
+
+        ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
+        verify(restClient).performRequest(captor.capture());
+        Request request = captor.getValue();
+
+        assertThat(request.getMethod()).isEqualTo("POST");
+        assertThat(request.getEndpoint()).isEqualTo("/items-write/_update/15");
+        String json = EntityUtils.toString(request.getEntity());
+        assertThat(json).contains("\"scripted_upsert\":true");
+        assertThat(json).contains("\"campaignId\":8001");
+        assertThat(json).contains("\"terminalStatus\":\"FUNDED\"");
     }
 
     @Test
