@@ -40,7 +40,6 @@ include("servers:gateways:client-gateway")
 
 // 서비스
 include("servers:services:auth")
-include("servers:services:user")
 include("servers:services:chat")
 include("servers:services:search")
 include("servers:services:product")
