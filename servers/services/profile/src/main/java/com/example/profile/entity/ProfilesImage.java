@@ -9,7 +9,6 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
-@Setter
 @Entity
 @Table(name = "profile_images")
 public class ProfilesImage extends BaseEntity {
@@ -20,11 +19,19 @@ public class ProfilesImage extends BaseEntity {
 
     @MapsId
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "profile_id")
+    @JoinColumn(name = "profile_id", nullable = false)
     private Profiles profile;
 
-    private String mediaId;
+    @Column(name = "media_id", nullable = false, length = 500)
+    private Long mediaId;
 
+    @Column(name = "sort_order")
     private Integer sortOrder = 0;
+
+    public static ProfilesImage create(Long mediaId) {
+        return ProfilesImage.builder()
+            .mediaId(mediaId)
+            .build();
+    }
 
 }
