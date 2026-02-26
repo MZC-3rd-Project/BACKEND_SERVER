@@ -11,6 +11,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ProfileImageResponse {
-    @SnowflakeId private long userId;
-    @SnowflakeId private long mediaId;
+    @SnowflakeId
+    private long userId;
+    @SnowflakeId
+    private long mediaId;
 }
