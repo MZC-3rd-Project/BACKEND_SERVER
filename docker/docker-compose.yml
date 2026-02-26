@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # ─── PostgreSQL ───────────────────────────────────────────
   postgres:
@@ -22,6 +20,28 @@ services:
     networks:
       - project03-network
 
+  # ─── MariaDB ──────────────────────────────────────────────
+  mariadb:
+    image: mariadb:11.4
+    container_name: project03-mariadb
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-mariadb}
+      MARIADB_DATABASE: ${MARIADB_DATABASE:-project03}
+      MARIADB_USER: ${MARIADB_USER:-project03}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:-project03}
+    ports:
+      - "${MARIADB_PORT:-3306}:3306"
+    volumes:
+      - mariadb-data:/var/lib/mysql
+      - ./init-scripts/mariadb:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p${MARIADB_ROOT_PASSWORD:-mariadb} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - project03-network
+
   # ─── Redis ────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
@@ -35,6 +55,30 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - project03-network
+
+  # ─── Elasticsearch ────────────────────────────
+  elasticsearch:
+    build:
+      context: ./elasticsearch
+    image: project03-elasticsearch:8.18.8-nori
+    container_name: project03-elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      xpack.security.enrollment.enabled: "false"
+      xpack.license.self_generated.type: basic
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "${ELASTICSEARCH_PORT:-23173}:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health | grep -E '\"status\":\"(green|yellow)\"' > /dev/null"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
     networks:
       - project03-network
 
@@ -100,9 +144,46 @@ services:
     networks:
       - project03-network
 
+  # ─── MailHog (Local SMTP) ────────────────────────────────
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: project03-mailhog
+    ports:
+      - "${MAIL_PORT:-1025}:1025"
+      - "${MAIL_WEB_PORT:-8025}:8025"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8025 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - project03-network
+
+  # ─── Keyclock ────────────────────────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0.0
+    container_name: keycloak
+    ports:
+      - "43217:8080"
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command: start-dev --import-realm
+    volumes:
+      - ./keycloak/don-moa-realm.json:/opt/keycloak/data/import/don-moa-realm.json
+    networks:
+      - project03-network
+    healthcheck:
+      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/localhost/8080 && echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\n\r\n' >&3 && cat <&3 | grep -q '200'" ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
 volumes:
   postgres-data:
+  mariadb-data:
   redis-data:
+  elasticsearch-data:
   zookeeper-data:
   kafka-data:
 

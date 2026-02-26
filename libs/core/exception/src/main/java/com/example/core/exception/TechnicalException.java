@@ -23,3 +23,4 @@ public class TechnicalException extends ApplicationException {
         return "TECHNICAL";
     }
 }
+
