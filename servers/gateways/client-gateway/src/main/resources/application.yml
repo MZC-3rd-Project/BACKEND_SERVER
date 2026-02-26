@@ -83,6 +83,8 @@ gateway:
     keycloak-logout-auth-token: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_TOKEN:}
 
 app:
+  service:
+    analytics-dashboard-url: ${ANALYTICS_DASHBOARD_SERVICE_URL:http://localhost:8095}
   security:
     context:
       signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}
