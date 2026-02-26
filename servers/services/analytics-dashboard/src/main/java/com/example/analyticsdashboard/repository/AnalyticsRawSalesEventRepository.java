@@ -11,6 +11,8 @@ public interface AnalyticsRawSalesEventRepository extends JpaRepository<Analytic
 
     Optional<AnalyticsRawSalesEvent> findByEventId(String eventId);
 
+    Optional<AnalyticsRawSalesEvent> findTopByPurchaseIdOrderByOccurredAtDesc(Long purchaseId);
+
     List<AnalyticsRawSalesEvent> findByStoreIdAndOccurredAtBetween(
             Long storeId,
             LocalDateTime from,

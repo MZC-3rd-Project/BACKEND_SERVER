@@ -64,6 +64,21 @@
 - Verification:
   - `./gradlew :servers:services:analytics-dashboard:test :servers:gateways:client-gateway:compileJava` 통과
 
+6. `epic/757-seller-ops-dashboard-mvp` (통합 진행)
+- Scope (진행 중):
+  - analytics ingest 컨슈머 추가:
+    - `AnalyticsItemEventConsumer` (`item-events`)
+    - `AnalyticsSalesEventConsumer` (`sales-events`)
+    - `AnalyticsSearchEventConsumer` (`search-events`)
+  - ingest 서비스 추가:
+    - `AnalyticsEventIngestService`
+    - item 이벤트 -> `analytics_dim_item_snapshot` upsert
+    - sales/search 이벤트 -> raw 테이블 적재
+  - 컨슈머/ingest 단위 테스트 추가
+- Verification:
+  - `./gradlew :servers:services:analytics-dashboard:test` 통과
+  - `./gradlew :servers:gateways:client-gateway:compileJava` 통과
+
 ## 2) Common Module Reuse Status
 
 다음 공통 모듈을 그대로 재사용했다.
@@ -106,6 +121,7 @@
 
 1. `task/772-analytics-ingest-consumers`
 - sales/search/item 이벤트 컨슈머 + raw/dim 적재
+- 현재 epic 브랜치에서 1차 구현 완료, 추후 이벤트 계약 확장(`sales seller/store 필드`, `search event producer`) 보강 필요
 
 2. `task/773-dashboard-kpi-aggregation`
 - minute/daily/monthly 집계 계산 로직
