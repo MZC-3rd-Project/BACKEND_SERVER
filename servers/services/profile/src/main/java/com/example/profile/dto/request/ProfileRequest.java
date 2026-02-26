@@ -5,8 +5,6 @@ import com.example.profile.entity.Profiles;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
-
 @Getter
 @Builder
 public class ProfileRequest {
@@ -18,14 +16,14 @@ public class ProfileRequest {
     private Long mediaId;
     private String email;
     private String phone;
-    private String delevery;
+    private String delivery;
     private String nickname;
 
     public static ProfileRequest from(Profiles profile) {
         return ProfileRequest.builder()
             .email(profile.getEmail())
             .phone(profile.getPhone())
-            .delevery(profile.getDelivery())
+            .delivery(profile.getDelivery())
             .nickname(profile.getNickname())
             .build();
     }

@@ -1,10 +1,7 @@
 package com.example.profile.service.command;
 
 import com.example.core.exception.BusinessException;
-import com.example.core.exception.CommonErrorCode;
-import com.example.core.exception.TechnicalException;
 import com.example.profile.dto.request.ProfileRequest;
-import com.example.profile.dto.response.ProfileResponse;
 import com.example.profile.entity.Profiles;
 import com.example.profile.entity.ProfilesImage;
 import com.example.profile.exception.ProfileErrorCode;
@@ -32,7 +29,7 @@ public class ProfileCommandService {
 
         Profiles profile = profileRepository.findByUserId(req.getUserId())
             .orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_NOT_FOUND));
-        profile.updateProfile(req.getEmail(),req.getNickname(), req.getPhone(), req.getDelevery());
+        profile.updateProfile(req.getEmail(),req.getNickname(), req.getPhone(), req.getDelivery());
     };
 
     private void uploadProfileImage(Long userId, Long mediaId){
