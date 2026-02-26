@@ -15,7 +15,7 @@ CREATE INDEX IF NOT EXISTS idx_profiles_deleted_at ON profiles (deleted_at);
 
 CREATE TABLE profile_images (
                                 user_id     BIGINT PRIMARY KEY,
-                                media_id    BIGINT NOT NULL,
+                                media_id    BIGINT default null,
                                 sort_order  INT DEFAULT 0,
                                 created_at  TIMESTAMP(6) WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
                                 updated_at  TIMESTAMP(6) WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
