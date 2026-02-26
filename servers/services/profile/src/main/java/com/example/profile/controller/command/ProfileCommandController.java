@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/profile")
 @RequiredArgsConstructor
-public class ProfileImageCommandController implements ProfileCommandApi {
+public class ProfileCommandController implements ProfileCommandApi {
     private final ProfileImageService profileImageService;
 
     @Override
