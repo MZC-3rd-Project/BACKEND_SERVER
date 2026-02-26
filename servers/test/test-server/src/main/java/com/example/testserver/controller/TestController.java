@@ -15,6 +15,7 @@ import com.example.testserver.exception.TestErrorCode;
 import com.example.testserver.service.ExternalCallService;
 import com.example.testserver.service.TestService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
@@ -70,6 +71,7 @@ public class TestController implements
 
     @Override
     public ApiResponse<TestItemResponse> createItem(TestItemRequest request) {
+
         return ApiResponse.success(
                 TestItemResponse.from(testService.createItem(request.getName(), request.getDescription())));
     }

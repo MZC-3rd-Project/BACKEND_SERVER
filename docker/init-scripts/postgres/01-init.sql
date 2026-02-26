@@ -11,6 +11,7 @@ CREATE DATABASE stock_db;
 CREATE DATABASE funding_db;
 CREATE DATABASE sales_db;
 CREATE DATABASE hotdeal_db;
+CREATE DATABASE profile_db;
 CREATE DATABASE search_db;
 CREATE DATABASE notification_db;
 CREATE DATABASE chat_db;
