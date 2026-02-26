@@ -51,6 +51,7 @@ public class SearchQueryService {
     private final PopularSearchService popularSearchService;
     private final SearchResultCacheService searchResultCacheService;
     private final SearchMetricsService searchMetricsService;
+    private final SearchAnalyticsEventPublisher searchAnalyticsEventPublisher;
 
     public CursorResponse<SearchItemResponse> search(SearchRequest request) {
         long startNanos = System.nanoTime();
@@ -64,6 +65,7 @@ public class SearchQueryService {
             try {
                 CursorResponse<SearchItemResponse> cachedResult = parseSearchResponse(cachedJson, size);
                 recordKeyword(request.getQ());
+                publishSearchExecutedEvent(request, cachedResult);
                 searchMetricsService.recordSearchLatency(Duration.ofNanos(System.nanoTime() - startNanos), true, false);
                 return cachedResult;
             } catch (RuntimeException e) {
@@ -92,6 +94,7 @@ public class SearchQueryService {
             CursorResponse<SearchItemResponse> result = parseSearchResponse(json, size);
             searchResultCacheService.put(request, json);
             recordKeyword(request.getQ());
+            publishSearchExecutedEvent(request, result);
             searchMetricsService.recordSearchLatency(Duration.ofNanos(System.nanoTime() - startNanos), true, false);
             return result;
         } catch (IOException e) {
@@ -114,6 +117,13 @@ public class SearchQueryService {
         }
         autocompleteService.recordKeyword(keyword);
         popularSearchService.recordKeyword(keyword);
+    }
+
+    private void publishSearchExecutedEvent(SearchRequest request, CursorResponse<SearchItemResponse> result) {
+        if (!StringUtils.hasText(request.getQ())) {
+            return;
+        }
+        searchAnalyticsEventPublisher.publishSearchExecuted(request, result);
     }
 
     private Map<String, Object> buildQuery(SearchRequest request) {
