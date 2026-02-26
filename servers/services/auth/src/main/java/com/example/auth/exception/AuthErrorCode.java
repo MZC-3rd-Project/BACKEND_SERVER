@@ -29,6 +29,11 @@ public enum AuthErrorCode implements DomainErrorCode {
     // 탈퇴
     WITHDRAW_KEYCLOAK_FAILED("AUTH-040", "Keycloak 사용자 비활성화에 실패했습니다", HttpStatus.BAD_GATEWAY),
 
+    // 이메일 인증
+    VERIFICATION_CODE_INVALID("AUTH-050", "인증 코드가 올바르지 않습니다", HttpStatus.BAD_REQUEST),
+    VERIFICATION_CODE_EXPIRED("AUTH-051", "인증 코드가 만료되었습니다", HttpStatus.BAD_REQUEST),
+    EMAIL_SEND_FAILED("AUTH-052", "이메일 발송에 실패했습니다", HttpStatus.BAD_GATEWAY),
+
     // Keycloak 통신
     KEYCLOAK_COMMUNICATION_ERROR("AUTH-090", "Keycloak 서버와 통신에 실패했습니다", HttpStatus.BAD_GATEWAY),
 
