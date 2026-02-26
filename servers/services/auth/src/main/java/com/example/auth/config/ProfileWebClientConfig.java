@@ -17,4 +17,6 @@ public class ProfileWebClientConfig {
                 .baseUrl(profileServiceUrl)
                 .build();
     }
+
+
 }
