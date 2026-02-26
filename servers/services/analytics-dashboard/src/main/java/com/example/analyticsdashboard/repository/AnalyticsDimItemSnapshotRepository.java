@@ -7,5 +7,7 @@ import java.util.List;
 
 public interface AnalyticsDimItemSnapshotRepository extends JpaRepository<AnalyticsDimItemSnapshot, Long> {
 
+    List<AnalyticsDimItemSnapshot> findByStoreId(Long storeId);
+
     List<AnalyticsDimItemSnapshot> findBySellerId(Long sellerId);
 }

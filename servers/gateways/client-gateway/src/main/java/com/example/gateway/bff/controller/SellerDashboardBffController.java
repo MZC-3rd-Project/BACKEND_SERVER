@@ -21,6 +21,7 @@ public class SellerDashboardBffController {
     @GetMapping("/overview")
     public Mono<ResponseEntity<JsonNode>> getOverview(
             ServerHttpRequest request,
+            @RequestParam(required = false) String storeId,
             @RequestParam(required = false) String mode,
             @RequestParam(required = false) String date,
             @RequestParam(required = false) String yearMonth,
@@ -29,6 +30,6 @@ public class SellerDashboardBffController {
             @RequestParam(required = false) String bucket,
             @RequestParam(required = false) String timezone
     ) {
-        return sellerDashboardBffService.getOverview(request, mode, date, yearMonth, from, to, bucket, timezone);
+        return sellerDashboardBffService.getOverview(request, storeId, mode, date, yearMonth, from, to, bucket, timezone);
     }
 }

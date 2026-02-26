@@ -43,6 +43,7 @@ public class SellerDashboardBffService {
     }
 
     public Mono<ResponseEntity<JsonNode>> getOverview(ServerHttpRequest request,
+                                                      String storeId,
                                                       String mode,
                                                       String date,
                                                       String yearMonth,
@@ -54,12 +55,16 @@ public class SellerDashboardBffService {
         if (sellerId == null) {
             return Mono.just(badRequest("X-User-Id 헤더가 없거나 유효하지 않습니다."));
         }
+        Long resolvedStoreId = resolveStoreId(request, storeId, sellerId);
+        if (resolvedStoreId == null) {
+            return Mono.just(badRequest("storeId는 양수여야 합니다."));
+        }
 
-        HttpHeaders downstreamHeaders = buildDownstreamHeaders(sellerId);
+        HttpHeaders downstreamHeaders = buildDownstreamHeaders(sellerId, resolvedStoreId);
         return analyticsDashboardWebClient.get()
                 .uri(uriBuilder -> buildOverviewUri(
                         uriBuilder,
-                        sellerId,
+                        resolvedStoreId,
                         mode,
                         date,
                         yearMonth,
@@ -73,13 +78,16 @@ public class SellerDashboardBffService {
                         .defaultIfEmpty(objectMapper.createObjectNode())
                         .map(payload -> ResponseEntity.status(response.statusCode()).body(payload)))
                 .onErrorResume(e -> {
-                    log.warn("[SellerDashboardBff] overview query failed. sellerId={}", sellerId, e);
+                    log.warn("[SellerDashboardBff] overview query failed. sellerId={}, storeId={}",
+                            sellerId,
+                            resolvedStoreId,
+                            e);
                     return Mono.just(badGateway("셀러 대시보드 조회에 실패했습니다."));
                 });
     }
 
     private java.net.URI buildOverviewUri(UriBuilder uriBuilder,
-                                          Long sellerId,
+                                          Long storeId,
                                           String mode,
                                           String date,
                                           String yearMonth,
@@ -87,7 +95,7 @@ public class SellerDashboardBffService {
                                           String to,
                                           String bucket,
                                           String timezone) {
-        UriBuilder builder = uriBuilder.path("/internal/v1/analytics/sellers/{sellerId}/dashboard/overview");
+        UriBuilder builder = uriBuilder.path("/internal/v1/analytics/stores/{storeId}/dashboard/overview");
         addQueryParam(builder, "mode", mode);
         addQueryParam(builder, "date", date);
         addQueryParam(builder, "yearMonth", yearMonth);
@@ -95,7 +103,7 @@ public class SellerDashboardBffService {
         addQueryParam(builder, "to", to);
         addQueryParam(builder, "bucket", bucket);
         addQueryParam(builder, "timezone", timezone);
-        return builder.build(sellerId);
+        return builder.build(storeId);
     }
 
     private void addQueryParam(UriBuilder builder, String name, String value) {
@@ -106,21 +114,37 @@ public class SellerDashboardBffService {
 
     private Long parseSellerId(ServerHttpRequest request) {
         String userIdHeader = request.getHeaders().getFirst(HttpHeaderNames.USER_ID);
-        if (!StringUtils.hasText(userIdHeader)) {
+        return parsePositiveLong(userIdHeader);
+    }
+
+    private Long resolveStoreId(ServerHttpRequest request, String storeId, Long fallbackStoreId) {
+        if (StringUtils.hasText(storeId)) {
+            return parsePositiveLong(storeId);
+        }
+        String storeIdHeader = request.getHeaders().getFirst(HttpHeaderNames.STORE_ID);
+        if (StringUtils.hasText(storeIdHeader)) {
+            return parsePositiveLong(storeIdHeader);
+        }
+        return fallbackStoreId;
+    }
+
+    private Long parsePositiveLong(String value) {
+        if (!StringUtils.hasText(value)) {
             return null;
         }
         try {
-            long parsed = Long.parseLong(userIdHeader.trim());
+            long parsed = Long.parseLong(value.trim());
             return parsed > 0 ? parsed : null;
         } catch (NumberFormatException e) {
             return null;
         }
     }
 
-    private HttpHeaders buildDownstreamHeaders(Long sellerId) {
+    private HttpHeaders buildDownstreamHeaders(Long sellerId, Long storeId) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set(HttpHeaderNames.USER_ID, String.valueOf(sellerId));
+        headers.set(HttpHeaderNames.STORE_ID, String.valueOf(storeId));
         if (StringUtils.hasText(securityProperties.getInternalAuthToken())
                 && StringUtils.hasText(securityProperties.getInternalAuthHeader())) {
             headers.set(securityProperties.getInternalAuthHeader(), securityProperties.getInternalAuthToken());

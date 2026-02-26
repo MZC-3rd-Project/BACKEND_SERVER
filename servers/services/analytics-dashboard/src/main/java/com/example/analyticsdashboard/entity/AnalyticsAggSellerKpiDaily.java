@@ -22,10 +22,11 @@ import java.time.LocalDate;
         name = "analytics_agg_seller_kpi_daily",
         indexes = {
                 @Index(
-                        name = "uk_analytics_agg_seller_kpi_daily_business_seller",
-                        columnList = "business_date,seller_id",
+                        name = "uk_analytics_agg_seller_kpi_daily_business_store",
+                        columnList = "business_date,store_id",
                         unique = true
                 ),
+                @Index(name = "idx_analytics_agg_seller_kpi_daily_store", columnList = "store_id"),
                 @Index(name = "idx_analytics_agg_seller_kpi_daily_seller", columnList = "seller_id")
         }
 )
@@ -37,6 +38,9 @@ public class AnalyticsAggSellerKpiDaily extends BaseEntity {
 
     @Column(name = "business_date", nullable = false)
     private LocalDate businessDate;
+
+    @Column(name = "store_id", nullable = false)
+    private Long storeId;
 
     @Column(name = "seller_id", nullable = false)
     private Long sellerId;
@@ -68,6 +72,7 @@ public class AnalyticsAggSellerKpiDaily extends BaseEntity {
     @Builder
     private AnalyticsAggSellerKpiDaily(
             LocalDate businessDate,
+            Long storeId,
             Long sellerId,
             Long orderCount,
             Long cancelCount,
@@ -79,6 +84,7 @@ public class AnalyticsAggSellerKpiDaily extends BaseEntity {
             Double ctr
     ) {
         this.businessDate = businessDate;
+        this.storeId = storeId;
         this.sellerId = sellerId;
         this.orderCount = orderCount;
         this.cancelCount = cancelCount;

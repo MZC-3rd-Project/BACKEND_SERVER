@@ -9,6 +9,14 @@ import java.util.Optional;
 
 public interface AnalyticsAggSellerKpiDailyRepository extends JpaRepository<AnalyticsAggSellerKpiDaily, Long> {
 
+    Optional<AnalyticsAggSellerKpiDaily> findByStoreIdAndBusinessDate(Long storeId, LocalDate businessDate);
+
+    List<AnalyticsAggSellerKpiDaily> findByStoreIdAndBusinessDateBetweenOrderByBusinessDateAsc(
+            Long storeId,
+            LocalDate from,
+            LocalDate to
+    );
+
     Optional<AnalyticsAggSellerKpiDaily> findBySellerIdAndBusinessDate(Long sellerId, LocalDate businessDate);
 
     List<AnalyticsAggSellerKpiDaily> findBySellerIdAndBusinessDateBetweenOrderByBusinessDateAsc(
