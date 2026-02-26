@@ -77,8 +77,12 @@ public class CatalogDetailBffService {
             return fallbackToNormal(request, headers, "hot_deal_id_missing");
         }
         return downstreamClient.fetchHotDealDetail(request.hotDealId(), headers)
-                .flatMap(primary -> apply404Fallback(request, headers, primary, "hot_deal_404"))
-                .flatMap(response -> enrichHotDealResponse(request, headers, response));
+                .flatMap(primaryResponse -> {
+                    if (primaryResponse.getStatusCode() == HttpStatus.NOT_FOUND) {
+                        return fallbackToNormal(request, headers, "hot_deal_404");
+                    }
+                    return enrichHotDealResponse(request, headers, primaryResponse);
+                });
     }
 
     private Mono<ResponseEntity<JsonNode>> routeFunding(CatalogDetailRequest request, HttpHeaders headers) {
@@ -91,18 +95,12 @@ public class CatalogDetailBffService {
                 : "funding_item_404";
 
         return primaryMono
-                .flatMap(primary -> apply404Fallback(request, headers, primary, fallbackReason))
-                .flatMap(response -> enrichFundingResponse(request, headers, response));
-    }
-
-    private Mono<ResponseEntity<JsonNode>> apply404Fallback(CatalogDetailRequest request,
-                                                            HttpHeaders headers,
-                                                            ResponseEntity<JsonNode> primaryResponse,
-                                                            String reason) {
-        if (primaryResponse.getStatusCode() != HttpStatus.NOT_FOUND) {
-            return Mono.just(primaryResponse);
-        }
-        return fallbackToNormal(request, headers, reason);
+                .flatMap(primaryResponse -> {
+                    if (primaryResponse.getStatusCode() == HttpStatus.NOT_FOUND) {
+                        return fallbackToNormal(request, headers, fallbackReason);
+                    }
+                    return enrichFundingResponse(request, headers, primaryResponse);
+                });
     }
 
     private Mono<ResponseEntity<JsonNode>> fallbackToNormal(CatalogDetailRequest request,

@@ -49,6 +49,9 @@ class SearchQueryServiceTest {
     @Mock
     private SearchMetricsService searchMetricsService;
 
+    @Mock
+    private SearchAnalyticsEventPublisher searchAnalyticsEventPublisher;
+
     private SearchQueryService searchQueryService;
 
     @BeforeEach
@@ -59,7 +62,8 @@ class SearchQueryServiceTest {
                 autocompleteService,
                 popularSearchService,
                 searchResultCacheService,
-                searchMetricsService
+                searchMetricsService,
+                searchAnalyticsEventPublisher
         );
     }
 
@@ -116,6 +120,7 @@ class SearchQueryServiceTest {
         verify(searchResultCacheService).put(any(SearchRequest.class), anyString());
         verify(autocompleteService).recordKeyword("아이폰");
         verify(popularSearchService).recordKeyword("아이폰");
+        verify(searchAnalyticsEventPublisher).publishSearchExecuted(any(SearchRequest.class), any(CursorResponse.class));
 
         ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
         verify(restClient).performRequest(captor.capture());
@@ -172,6 +177,7 @@ class SearchQueryServiceTest {
         verify(searchResultCacheService, never()).put(any(SearchRequest.class), anyString());
         verify(autocompleteService).recordKeyword("아이폰");
         verify(popularSearchService).recordKeyword("아이폰");
+        verify(searchAnalyticsEventPublisher).publishSearchExecuted(any(SearchRequest.class), any(CursorResponse.class));
     }
 
     @Test
@@ -309,6 +315,7 @@ class SearchQueryServiceTest {
         verify(restClient).performRequest(any(Request.class));
         verify(autocompleteService, never()).recordKeyword(anyString());
         verify(popularSearchService, never()).recordKeyword(anyString());
+        verify(searchAnalyticsEventPublisher, never()).publishSearchExecuted(any(SearchRequest.class), any(CursorResponse.class));
 
         ArgumentCaptor<Request> captor = ArgumentCaptor.forClass(Request.class);
         verify(restClient).performRequest(captor.capture());
