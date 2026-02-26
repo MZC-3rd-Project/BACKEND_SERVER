@@ -2,6 +2,7 @@ package com.example.profile.entity;
 
 import com.example.core.id.jpa.SnowflakeGenerated;
 import com.example.data.entity.BaseEntity;
+import com.example.profile.dto.request.ProfileCreateRequest;
 import com.example.profile.dto.request.ProfileRequest;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -50,4 +51,16 @@ public class Profiles extends BaseEntity {
         if (profile.getDelivery() != null && !Objects.equals(this.delivery, profile.getDelivery()))
             this.delivery = profile.getDelivery();
     }
+
+    public static Profiles create(ProfileCreateRequest req){
+        return Profiles.builder()
+            .userId(req.getUserId())
+            .email(req.getEmail())
+            .nickname(req.getNickname())
+            .phone(req.getPhone())
+            .delivery(req.getDelivery())
+            .build();
+    }
+
+
 }

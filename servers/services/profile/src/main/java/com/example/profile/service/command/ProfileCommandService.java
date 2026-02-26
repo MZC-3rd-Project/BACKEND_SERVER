@@ -3,8 +3,8 @@ package com.example.profile.service.command;
 import com.example.core.exception.BusinessException;
 import com.example.core.exception.CommonErrorCode;
 import com.example.core.exception.TechnicalException;
+import com.example.profile.dto.request.ProfileCreateRequest;
 import com.example.profile.dto.request.ProfileRequest;
-import com.example.profile.dto.response.ProfileResponse;
 import com.example.profile.entity.Profiles;
 import com.example.profile.entity.ProfilesImage;
 import com.example.profile.exception.ProfileErrorCode;
@@ -24,6 +24,17 @@ public class ProfileCommandService {
 
     private final ProfileImageRepository profilesImageRepository;
     private final ProfileRepository profileRepository;
+
+    @Transactional
+    public Profiles createProfile(ProfileCreateRequest req)
+    {
+        if(profileRepository.existsByNickname(req.getNickname()))
+        {
+            throw new BusinessException(ProfileErrorCode.PROFILE_ALREADY_NICKNAME);
+        }
+        Profiles profile = Profiles.create(req);
+        return profileRepository.save(profile);
+    }
 
     @Transactional
     public void updateProfile(ProfileRequest req, Long userId) {
