@@ -5,12 +5,10 @@ import com.example.auth.dto.request.ChangeEmailRequest;
 import com.example.auth.dto.request.ChangePasswordRequest;
 import com.example.auth.dto.request.SendVerificationRequest;
 import com.example.auth.dto.request.SignupRequest;
-import com.example.auth.dto.request.VerifyCodeRequest;
 import com.example.auth.dto.request.WithdrawRequest;
 import com.example.auth.dto.response.CheckAvailableResponse;
 import com.example.auth.dto.response.SignupResponse;
 import com.example.auth.service.AuthService;
-import com.example.auth.service.EmailVerificationService;
 import com.example.security.gateway.CurrentUserId;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +21,6 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
-    private final EmailVerificationService emailVerificationService;
 
     @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)
@@ -56,15 +53,10 @@ public class AuthController {
         return ApiResponse.success();
     }
 
+    // Keycloak 인증 메일 재발송
     @PostMapping("/emails/verification")
-    public ApiResponse<Void> sendVerification(@Valid @RequestBody SendVerificationRequest request) {
-        emailVerificationService.sendVerificationCode(request.email());
-        return ApiResponse.success();
-    }
-
-    @PostMapping("/emails/verification/confirm")
-    public ApiResponse<Void> confirmVerification(@Valid @RequestBody VerifyCodeRequest request) {
-        emailVerificationService.verifyCode(request.email(), request.code());
+    public ApiResponse<Void> resendVerification(@Valid @RequestBody SendVerificationRequest request) {
+        authService.resendVerificationEmail(request.email());
         return ApiResponse.success();
     }
 
