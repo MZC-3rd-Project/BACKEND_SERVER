@@ -5,7 +5,9 @@ import com.example.profile.entity.ProfilesImage;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.Optional;
+
 public interface ProfileImageRepository extends JpaRepository<ProfilesImage, Long> {
 
-    ProfilesImage findByProfileId(Long profileId);
+    Optional<ProfilesImage> findByUserId(Long userId);
 }

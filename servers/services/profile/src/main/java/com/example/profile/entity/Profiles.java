@@ -34,5 +34,17 @@ public class Profiles extends BaseEntity {
     private String phone;
 
     @Column(name = "delivery", length = 100)
-    private String delivery;
+    private String delivery; // 테이블 따로 만들어야 될거 같음
+
+    public void updateProfile(String email,
+                              String nickname,
+                              String phone,
+                              String delivery
+                              ){
+
+       if(email != null) this.email= email;
+       if(nickname != null) this.nickname = nickname;
+       if(phone != null) this.phone = phone;
+       if(delivery != null) this.delivery = delivery;
+    }
 }
