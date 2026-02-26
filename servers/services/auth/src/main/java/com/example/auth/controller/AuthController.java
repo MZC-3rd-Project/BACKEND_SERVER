@@ -5,6 +5,7 @@ import com.example.auth.dto.request.ChangeEmailRequest;
 import com.example.auth.dto.request.ChangePasswordRequest;
 import com.example.auth.dto.request.SignupRequest;
 import com.example.auth.dto.request.WithdrawRequest;
+import com.example.auth.dto.response.CheckAvailableResponse;
 import com.example.auth.dto.response.SignupResponse;
 import com.example.auth.service.AuthService;
 import com.example.security.gateway.CurrentUserId;
@@ -49,6 +50,16 @@ public class AuthController {
             @Valid @RequestBody WithdrawRequest request) {
         authService.withdraw(userId, request);
         return ApiResponse.success();
+    }
+
+    @GetMapping("/emails/check")
+    public ApiResponse<CheckAvailableResponse> checkEmail(@RequestParam String email) {
+        return ApiResponse.success(CheckAvailableResponse.of(authService.isEmailAvailable(email)));
+    }
+
+    @GetMapping("/nicknames/check")
+    public ApiResponse<CheckAvailableResponse> checkNickname(@RequestParam String nickname) {
+        return ApiResponse.success(CheckAvailableResponse.of(authService.isNicknameAvailable(nickname)));
     }
 
     @PostMapping("/login-record")
