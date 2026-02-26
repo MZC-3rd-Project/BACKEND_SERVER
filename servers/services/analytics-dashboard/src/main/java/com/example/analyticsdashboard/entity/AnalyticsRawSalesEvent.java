@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
         name = "analytics_raw_sales_event",
         indexes = {
                 @Index(name = "idx_analytics_raw_sales_event_event_id", columnList = "event_id", unique = true),
+                @Index(name = "idx_analytics_raw_sales_event_store_occurred", columnList = "store_id,occurred_at"),
                 @Index(name = "idx_analytics_raw_sales_event_seller_occurred", columnList = "seller_id,occurred_at")
         }
 )
@@ -36,6 +37,9 @@ public class AnalyticsRawSalesEvent extends BaseEntity {
 
     @Column(name = "event_type", nullable = false, length = 40)
     private String eventType;
+
+    @Column(name = "store_id", nullable = false)
+    private Long storeId;
 
     @Column(name = "seller_id", nullable = false)
     private Long sellerId;
@@ -68,6 +72,7 @@ public class AnalyticsRawSalesEvent extends BaseEntity {
     private AnalyticsRawSalesEvent(
             String eventId,
             String eventType,
+            Long storeId,
             Long sellerId,
             Long itemId,
             Long orderId,
@@ -80,6 +85,7 @@ public class AnalyticsRawSalesEvent extends BaseEntity {
     ) {
         this.eventId = eventId;
         this.eventType = eventType;
+        this.storeId = storeId;
         this.sellerId = sellerId;
         this.itemId = itemId;
         this.orderId = orderId;

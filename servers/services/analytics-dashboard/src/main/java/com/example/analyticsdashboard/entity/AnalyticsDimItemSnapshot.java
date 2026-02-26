@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 @Table(
         name = "analytics_dim_item_snapshot",
         indexes = {
+                @Index(name = "idx_analytics_dim_item_snapshot_store", columnList = "store_id"),
                 @Index(name = "idx_analytics_dim_item_snapshot_seller", columnList = "seller_id"),
                 @Index(name = "idx_analytics_dim_item_snapshot_status", columnList = "item_status")
         }
@@ -28,6 +29,9 @@ public class AnalyticsDimItemSnapshot extends BaseEntity {
     @Id
     @Column(name = "item_id")
     private Long itemId;
+
+    @Column(name = "store_id", nullable = false)
+    private Long storeId;
 
     @Column(name = "seller_id", nullable = false)
     private Long sellerId;
@@ -50,6 +54,7 @@ public class AnalyticsDimItemSnapshot extends BaseEntity {
     @Builder
     private AnalyticsDimItemSnapshot(
             Long itemId,
+            Long storeId,
             Long sellerId,
             String itemType,
             String itemStatus,
@@ -58,6 +63,7 @@ public class AnalyticsDimItemSnapshot extends BaseEntity {
             LocalDateTime snapshotAt
     ) {
         this.itemId = itemId;
+        this.storeId = storeId;
         this.sellerId = sellerId;
         this.itemType = itemType;
         this.itemStatus = itemStatus;
@@ -66,11 +72,13 @@ public class AnalyticsDimItemSnapshot extends BaseEntity {
         this.snapshotAt = snapshotAt;
     }
 
-    public void updateSnapshot(String itemType,
+    public void updateSnapshot(Long storeId,
+                               String itemType,
                                String itemStatus,
                                Long price,
                                Long stockQuantity,
                                LocalDateTime snapshotAt) {
+        this.storeId = storeId;
         this.itemType = itemType;
         this.itemStatus = itemStatus;
         this.price = price;

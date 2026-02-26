@@ -30,10 +30,16 @@ public class SellerDashboardOverviewQueryService {
     private static final String API_VERSION = "v1";
 
     public SellerDashboardOverviewResponse getOverview(Long sellerId, SellerDashboardOverviewQuery query) {
-        if (sellerId == null || sellerId <= 0) {
+        return getOverviewByStore(sellerId, sellerId, query);
+    }
+
+    public SellerDashboardOverviewResponse getOverviewByStore(Long storeId,
+                                                              Long sellerId,
+                                                              SellerDashboardOverviewQuery query) {
+        if (storeId == null || storeId <= 0) {
             throw new BusinessException(
                     AnalyticsDashboardErrorCode.INVALID_DASHBOARD_QUERY_PARAMETER,
-                    "sellerId는 1 이상이어야 합니다."
+                    "storeId는 1 이상이어야 합니다."
             );
         }
 

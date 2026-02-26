@@ -74,4 +74,25 @@ class SellerDashboardOverviewQueryServiceTest {
                             .isEqualTo(AnalyticsDashboardErrorCode.INVALID_DASHBOARD_QUERY_PARAMETER);
                 });
     }
+
+    @Test
+    void getOverviewByStore_throwsWhenStoreIdInvalid() {
+        SellerDashboardOverviewQuery query = SellerDashboardOverviewQuery.of(
+                "DAILY",
+                "2026-02-26",
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> service.getOverviewByStore(-1L, 100L, query))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException businessException = (BusinessException) ex;
+                    assertThat(businessException.getErrorCode())
+                            .isEqualTo(AnalyticsDashboardErrorCode.INVALID_DASHBOARD_QUERY_PARAMETER);
+                });
+    }
 }

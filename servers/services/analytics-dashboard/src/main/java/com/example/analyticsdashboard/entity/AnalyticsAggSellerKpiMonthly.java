@@ -20,10 +20,11 @@ import lombok.NoArgsConstructor;
         name = "analytics_agg_seller_kpi_monthly",
         indexes = {
                 @Index(
-                        name = "uk_analytics_agg_seller_kpi_monthly_business_seller",
-                        columnList = "business_month,seller_id",
+                        name = "uk_analytics_agg_seller_kpi_monthly_business_store",
+                        columnList = "business_month,store_id",
                         unique = true
                 ),
+                @Index(name = "idx_analytics_agg_seller_kpi_monthly_store", columnList = "store_id"),
                 @Index(name = "idx_analytics_agg_seller_kpi_monthly_seller", columnList = "seller_id")
         }
 )
@@ -35,6 +36,9 @@ public class AnalyticsAggSellerKpiMonthly extends BaseEntity {
 
     @Column(name = "business_month", nullable = false, length = 7)
     private String businessMonth;
+
+    @Column(name = "store_id", nullable = false)
+    private Long storeId;
 
     @Column(name = "seller_id", nullable = false)
     private Long sellerId;
@@ -66,6 +70,7 @@ public class AnalyticsAggSellerKpiMonthly extends BaseEntity {
     @Builder
     private AnalyticsAggSellerKpiMonthly(
             String businessMonth,
+            Long storeId,
             Long sellerId,
             Long orderCount,
             Long cancelCount,
@@ -77,6 +82,7 @@ public class AnalyticsAggSellerKpiMonthly extends BaseEntity {
             Double ctr
     ) {
         this.businessMonth = businessMonth;
+        this.storeId = storeId;
         this.sellerId = sellerId;
         this.orderCount = orderCount;
         this.cancelCount = cancelCount;
