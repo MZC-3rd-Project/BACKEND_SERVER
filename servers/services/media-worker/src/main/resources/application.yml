@@ -1,0 +1,69 @@
+server:
+  port: ${SERVER_PORT:8095}
+
+spring:
+  application:
+    name: media-worker
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/media_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: ${JPA_SHOW_SQL:false}
+    open-in-view: false
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+
+media:
+  s3:
+    region: ${MEDIA_S3_REGION:ap-northeast-2}
+    bucket: ${MEDIA_S3_BUCKET:team2-donmoa-media-raw}
+    key-prefix: ${MEDIA_S3_KEY_PREFIX:team2-donmoa-media}
+    cloudfront-domain: ${MEDIA_CLOUDFRONT_DOMAIN:}
+  worker:
+    group-id: ${MEDIA_WORKER_GROUP_ID:media-worker-group}
+    confirmed-topic: ${MEDIA_CONFIRMED_TOPIC:media.confirmed}
+    derivative:
+      enabled: ${MEDIA_WORKER_DERIVATIVE_ENABLED:true}
+      thumbnail-max-width: ${MEDIA_WORKER_DERIVATIVE_THUMBNAIL_MAX_WIDTH:640}
+      thumbnail-max-height: ${MEDIA_WORKER_DERIVATIVE_THUMBNAIL_MAX_HEIGHT:640}
+      webp-quality: ${MEDIA_WORKER_DERIVATIVE_WEBP_QUALITY:0.82}
+    tasks:
+      batch-size: ${MEDIA_WORKER_TASK_BATCH_SIZE:20}
+      max-retry-count: ${MEDIA_WORKER_TASK_MAX_RETRY_COUNT:5}
+      dispatch-fixed-delay-ms: ${MEDIA_WORKER_TASK_DISPATCH_FIXED_DELAY_MS:3000}
+      stale-recovery-fixed-delay-ms: ${MEDIA_WORKER_TASK_STALE_RECOVERY_FIXED_DELAY_MS:30000}
+      stale-processing-seconds: ${MEDIA_WORKER_TASK_STALE_PROCESSING_SECONDS:180}
+      retry-initial-delay-seconds: ${MEDIA_WORKER_TASK_RETRY_INITIAL_DELAY_SECONDS:5}
+      retry-max-delay-seconds: ${MEDIA_WORKER_TASK_RETRY_MAX_DELAY_SECONDS:300}
+
+app:
+  security:
+    context:
+      signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}
+      max-age-millis: ${APP_SECURITY_CONTEXT_MAX_AGE_MILLIS:300000}
+
+  snowflake:
+    datacenter-id: ${SNOWFLAKE_DATACENTER_ID:1}
+    worker-id: ${SNOWFLAKE_WORKER_ID:11}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${ACTUATOR_ENDPOINTS:health,info,metrics,prometheus}
+  endpoint:
+    health:
+      show-details: always

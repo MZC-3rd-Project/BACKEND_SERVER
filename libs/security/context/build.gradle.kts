@@ -5,9 +5,6 @@ plugins {
 }
 
 dependencies {
-    api(project(":libs:contracts:http"))
-    api(project(":libs:core:exception"))
-
     // Servlet API (for AuthContextCleanupFilter)
     compileOnly("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-autoconfigure")

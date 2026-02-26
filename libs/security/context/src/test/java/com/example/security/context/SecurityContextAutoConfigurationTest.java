@@ -19,25 +19,11 @@ class SecurityContextAutoConfigurationTest {
     }
 
     @Test
-    void shouldCreateSignerAndParserWhenSigningKeyExists() {
+    void shouldDisableCleanupFilterWhenPropertyOff() {
         contextRunner
-                .withPropertyValues("app.security.context.signing-key=test-signing-key")
+                .withPropertyValues("app.security.context.cleanup-filter-enabled=false")
                 .run(context -> {
-                    assertThat(context).hasSingleBean(HmacSigner.class);
-                    assertThat(context).hasSingleBean(SignedHeaderParser.class);
-                });
-    }
-
-    @Test
-    void shouldFailFastWhenSigningKeyIsBlank() {
-        contextRunner
-                .withPropertyValues("app.security.context.signing-key=")
-                .run(context -> {
-                    assertThat(context).hasFailed();
-                    assertThat(context.getStartupFailure()).isNotNull();
-                    assertThat(context.getStartupFailure())
-                            .hasRootCauseInstanceOf(IllegalStateException.class)
-                            .hasStackTraceContaining("must not be blank");
+                    assertThat(context).doesNotHaveBean(AuthContextCleanupFilter.class);
                 });
     }
 }

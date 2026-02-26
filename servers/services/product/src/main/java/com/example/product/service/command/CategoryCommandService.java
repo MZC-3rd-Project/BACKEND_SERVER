@@ -6,6 +6,7 @@ import com.example.product.dto.category.request.CategoryUpdateRequest;
 import com.example.product.entity.category.Category;
 import com.example.product.exception.ProductErrorCode;
 import com.example.product.repository.CategoryRepository;
+import com.example.product.repository.ItemRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class CategoryCommandService {
 
     private final CategoryRepository categoryRepository;
+    private final ItemRepository itemRepository;
 
     public Category create(CategoryCreateRequest request) {
         if (request.getParentId() == null) {
@@ -47,6 +49,9 @@ public class CategoryCommandService {
 
         if (categoryRepository.existsByParentId(id)) {
             throw new BusinessException(ProductErrorCode.CATEGORY_HAS_CHILDREN);
+        }
+        if (itemRepository.existsByCategoryId(id)) {
+            throw new BusinessException(ProductErrorCode.CATEGORY_IN_USE);
         }
 
         category.softDelete();

@@ -5,6 +5,7 @@ build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/gradle/wrapper/gradle-wrapper.jar
 
+/docs
 ### STS ###
 .apt_generated
 .classpath
@@ -39,6 +40,8 @@ out/
 .env
 .env.*
 *.env
+!.env.example
+!docker/.env.example
 application-local.yml
 application-local.yaml
 **/application-local.yml
@@ -115,3 +118,4 @@ CLAUDE.md
 
 ### Agent docs ###
 AGENTS.md
+.kiro/

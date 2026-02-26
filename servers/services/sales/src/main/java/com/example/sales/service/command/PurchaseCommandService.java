@@ -4,8 +4,11 @@ import com.example.core.exception.BusinessException;
 import com.example.core.id.Snowflake;
 import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;
-import com.example.sales.client.ProductClient;
-import com.example.sales.client.StockClient;
+import com.example.clients.product.exception.ProductClientException;
+import com.example.clients.product.facade.ProductItemQueryClientFacade;
+import com.example.clients.stock.exception.StockClientConflictException;
+import com.example.clients.stock.exception.StockClientException;
+import com.example.clients.stock.facade.StockReservationClientFacade;
 import com.example.sales.dto.request.PurchaseRequest;
 import com.example.sales.dto.response.PurchaseResponse;
 import com.example.sales.entity.Purchase;
@@ -26,15 +29,21 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class PurchaseCommandService {
 
     private final PurchaseRepository purchaseRepository;
-    private final ProductClient productClient;
-    private final StockClient stockClient;
+    private final ProductItemQueryClientFacade productClient;
+    private final StockReservationClientFacade stockClient;
     private final EventPublisher eventPublisher;
     private final Snowflake snowflake;
     private final TransactionTemplate transactionTemplate;
     private final StockCancelRetryService stockCancelRetryService;
 
     public PurchaseResponse purchase(PurchaseRequest request, Long userId) {
-        JsonNode itemData = productClient.findItem(request.getItemId());
+        JsonNode itemData;
+        try {
+            itemData = productClient.findItem(request.getItemId());
+        } catch (ProductClientException e) {
+            throw new BusinessException(SalesErrorCode.PRODUCT_SERVICE_ERROR);
+        }
+
         String itemStatus = itemData.path("status").asText();
         if (!"ON_SALE".equals(itemStatus)) {
             throw new BusinessException(SalesErrorCode.PURCHASE_NOT_FOUND);
@@ -45,8 +54,15 @@ public class PurchaseCommandService {
 
         Long orderId = snowflake.nextId();
 
-        Long reservationId = stockClient.reserveStock(
-                request.getStockItemId(), userId, request.getQuantity(), orderId);
+        Long reservationId;
+        try {
+            reservationId = stockClient.reserveStock(
+                    request.getStockItemId(), userId, request.getQuantity(), orderId);
+        } catch (StockClientConflictException e) {
+            throw new BusinessException(SalesErrorCode.STOCK_INSUFFICIENT);
+        } catch (StockClientException e) {
+            throw new BusinessException(SalesErrorCode.STOCK_SERVICE_ERROR);
+        }
 
         try {
             return transactionTemplate.execute(status -> {

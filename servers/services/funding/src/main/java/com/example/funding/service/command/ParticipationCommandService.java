@@ -4,7 +4,9 @@ import com.example.core.exception.BusinessException;
 import com.example.core.id.Snowflake;
 import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;
-import com.example.funding.client.StockClient;
+import com.example.clients.stock.exception.StockClientConflictException;
+import com.example.clients.stock.exception.StockClientException;
+import com.example.clients.stock.facade.StockClientFacade;
 import com.example.funding.dto.participation.request.ParticipateRequest;
 import com.example.funding.dto.participation.response.ParticipationResponse;
 import com.example.funding.entity.FundingCampaign;
@@ -32,7 +34,7 @@ public class ParticipationCommandService {
 
     private final FundingCampaignRepository campaignRepository;
     private final FundingParticipationRepository participationRepository;
-    private final StockClient stockClient;
+    private final StockClientFacade stockClient;
     private final CampaignCacheService campaignCacheService;
     private final EventPublisher eventPublisher;
     private final Snowflake snowflake;
@@ -155,8 +157,16 @@ public class ParticipationCommandService {
                 : request.getItemOptionId();
 
         // HTTP calls OUTSIDE transaction
-        Long stockItemId = stockClient.findStockItemId(campaign.getItemId(), referenceId);
-        Long reservationId = stockClient.reserveStock(stockItemId, userId, quantity, orderId);
+        Long stockItemId;
+        Long reservationId;
+        try {
+            stockItemId = stockClient.findStockItemId(campaign.getItemId(), referenceId);
+            reservationId = stockClient.reserveStock(stockItemId, userId, quantity, orderId);
+        } catch (StockClientConflictException e) {
+            throw new BusinessException(FundingErrorCode.STOCK_INSUFFICIENT);
+        } catch (StockClientException e) {
+            throw new BusinessException(FundingErrorCode.STOCK_SERVICE_ERROR);
+        }
 
         try {
             // DB operations INSIDE transaction

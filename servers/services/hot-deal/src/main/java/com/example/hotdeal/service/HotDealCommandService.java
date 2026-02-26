@@ -1,8 +1,9 @@
 package com.example.hotdeal.service;
 
 import com.example.config.lock.DistributedLock;
+import com.example.clients.product.exception.ProductClientException;
+import com.example.clients.product.facade.ProductItemQueryClientFacade;
 import com.example.core.exception.BusinessException;
-import com.example.hotdeal.client.ProductClient;
 import com.example.hotdeal.dto.CreateHotDealRequest;
 import com.example.hotdeal.dto.HotDealDetailResponse;
 import com.example.hotdeal.entity.HotDeal;
@@ -38,7 +39,7 @@ public class HotDealCommandService {
     private final HotDealStatusHistoryRepository statusHistoryRepository;
     private final EventPublisher eventPublisher;
     private final StringRedisTemplate stringRedisTemplate;
-    private final ProductClient productClient;
+    private final ProductItemQueryClientFacade productClient;
     private final TransactionTemplate transactionTemplate;
 
     private static final String STOCK_KEY_PREFIX = "hotdeal:stock:";
@@ -55,7 +56,12 @@ public class HotDealCommandService {
     @DistributedLock(key = "'hotdeal:item:' + #request.itemId", waitTime = 3)
     public HotDealDetailResponse createManual(CreateHotDealRequest request, Long userId) {
         // 상품 정보 조회 (트랜잭션 밖)
-        JsonNode itemData = productClient.findItem(request.getItemId());
+        JsonNode itemData;
+        try {
+            itemData = productClient.findItem(request.getItemId());
+        } catch (ProductClientException e) {
+            throw new BusinessException(HotDealErrorCode.PRODUCT_SERVICE_ERROR);
+        }
         String title = itemData.path("title").asText();
         Long originalPrice = itemData.path("price").asLong();
 
