@@ -68,6 +68,9 @@ app:
       signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}
       max-age-millis: ${APP_SECURITY_CONTEXT_MAX_AGE_MILLIS:300000}
 
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000}
+
   openapi:
     enabled: ${OPENAPI_ENABLED:true}
     title: Auth Service API
