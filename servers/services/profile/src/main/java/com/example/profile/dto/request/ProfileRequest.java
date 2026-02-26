@@ -9,9 +9,6 @@ import lombok.Getter;
 @Builder
 public class ProfileRequest {
 
-    private Long id;
-    @SnowflakeId
-    private Long userId;
     @SnowflakeId
     private Long mediaId;
     private String email;
@@ -19,12 +16,4 @@ public class ProfileRequest {
     private String delivery;
     private String nickname;
 
-    public static ProfileRequest from(Profiles profile) {
-        return ProfileRequest.builder()
-            .email(profile.getEmail())
-            .phone(profile.getPhone())
-            .delivery(profile.getDelivery())
-            .nickname(profile.getNickname())
-            .build();
-    }
 }

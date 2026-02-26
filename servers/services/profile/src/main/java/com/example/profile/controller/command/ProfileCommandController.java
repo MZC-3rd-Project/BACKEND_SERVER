@@ -19,8 +19,8 @@ public class ProfileCommandController implements ProfileCommandApi {
     private final ProfileCommandService profileService;
 
     @Override
-    public ApiResponse<ProfileResponse> createProfileImage(ProfileRequest req) {
-        profileService.updateProfile(req);
+    public ApiResponse<ProfileResponse> createProfileImage(ProfileRequest req, Long userId) {
+        profileService.updateProfile(req, userId);
         return ApiResponse.success();
     }
 }

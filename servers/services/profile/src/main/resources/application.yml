@@ -1,5 +1,6 @@
+
 server:
-  port: 8071
+  port: ${SERVER_PORT:8071}
 
 spring:
   application:
@@ -50,6 +51,8 @@ spring:
     description: |
       프로필 유저 관리
 
+  profiles:
+    active: ${SPRING_PROFILE_ACTIVE:local}
 # ─── Actuator ─────────────────────────────────
 management:
   endpoints:
