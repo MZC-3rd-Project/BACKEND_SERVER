@@ -73,12 +73,14 @@ public class AnalyticsDimItemSnapshot extends BaseEntity {
     }
 
     public void updateSnapshot(Long storeId,
+                               Long sellerId,
                                String itemType,
                                String itemStatus,
                                Long price,
                                Long stockQuantity,
                                LocalDateTime snapshotAt) {
         this.storeId = storeId;
+        this.sellerId = sellerId;
         this.itemType = itemType;
         this.itemStatus = itemStatus;
         this.price = price;
