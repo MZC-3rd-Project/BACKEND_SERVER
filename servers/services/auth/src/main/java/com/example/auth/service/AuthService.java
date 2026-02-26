@@ -176,6 +176,18 @@ public class AuthService {
         log.info("User withdrawn: userId={}", userId);
     }
 
+    // ─── 중복 확인 ────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public boolean isEmailAvailable(String email) {
+        return !userRepository.existsByEmail(email);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isNicknameAvailable(String nickname) {
+        return !userRepository.existsByNickname(nickname);
+    }
+
     // ─── 로그인 기록 갱신 ──────────────────────────────────────
 
     @Transactional
