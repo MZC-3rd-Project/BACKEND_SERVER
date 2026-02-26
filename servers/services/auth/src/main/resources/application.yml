@@ -1,18 +1,91 @@
 server:
-  port: 8081
+  port: ${SERVER_PORT:8081}
 
 spring:
   application:
     name: auth-service
+
+  # ─── DataSource ─────────────────────────────────
   datasource:
-    url: jdbc:postgresql://localhost:5432/auth_db
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/auth_db}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
+
+  # ─── JPA ────────────────────────────────────────
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-    show-sql: false
+        format_sql: true
+    open-in-view: false
+
+  # ─── Flyway ────────────────────────────────────
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  # ─── Kafka ──────────────────────────────────────
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+# ─── Keycloak Admin Client ─────────────────────
+keycloak:
+  admin:
+    server-url: ${KC_SERVER_URL:http://localhost:43217}
+    realm: ${KC_REALM:don-moa}
+    client-id: ${KC_ADMIN_CLIENT_ID:don-moa-admin}
+    client-secret: ${KC_ADMIN_CLIENT_SECRET}
+    # 비밀번호 검증용 (directAccessGrantsEnabled=true인 클라이언트)
+    direct-grant-client-id: ${KC_DIRECT_GRANT_CLIENT_ID:don-moa-gateway}
+
+# ─── Profile Service ──────────────────────────
+profile:
+  service:
+    base-url: ${PROFILE_SERVICE_URL:http://localhost:8082}
+
+# ─── App ───────────────────────────────────────
+app:
+  snowflake:
+    datacenter-id: ${SNOWFLAKE_DATACENTER_ID:1}
+    worker-id: ${SNOWFLAKE_WORKER_ID:1}
+
+  gateway-security:
+    enabled: ${APP_GATEWAY_SECURITY_ENABLED:false}
+    required-paths:
+      - /api/v1/auth/password
+      - /api/v1/auth/email
+      - /api/v1/auth/withdraw
+      - /api/v1/auth/login-record
+    optional-user-context-paths:
+      - /api/v1/auth/signup
+
+  security:
+    context:
+      signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}
+      max-age-millis: ${APP_SECURITY_CONTEXT_MAX_AGE_MILLIS:300000}
+
+  openapi:
+    enabled: ${OPENAPI_ENABLED:true}
+    title: Auth Service API
+    version: 1.0.0
+    description: 인증/인가 서비스 API
+
+# ─── Actuator ──────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${ACTUATOR_ENDPOINTS:health,info,metrics,prometheus}
+  endpoint:
+    health:
+      show-details: always
+
+# ─── Logging ───────────────────────────────────
+logging:
+  level:
+    com.example: ${LOG_LEVEL:DEBUG}
+    org.keycloak: ${KC_LOG_LEVEL:INFO}
