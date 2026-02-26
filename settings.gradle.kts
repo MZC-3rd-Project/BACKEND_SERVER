@@ -52,7 +52,6 @@ include("servers:services:hot-deal")
 include("servers:services:profile")
 include("servers:services:media-api")
 include("servers:services:media-worker")
-include("servers:services:user-123")
 include("servers:services:analytics-dashboard")
 
 // 테스트 서버
