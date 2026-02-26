@@ -15,6 +15,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Objects;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -27,8 +29,11 @@ public class ProfileCommandService {
     public void updateProfile(ProfileRequest req) {
         log.info("mediaid : {}, userid: {}", req.getMediaId(),req.getUserId());
 
-        uploadProfileImage(req.getUserId(), req.getMediaId());
-
+        if(req.getMediaId() != null){
+            uploadProfileImage(req.getUserId(), req.getMediaId());
+        } else{
+            uploadProfileImage(req.getUserId(), null);
+        }
 
         Profiles profile = profileRepository.findByUserId(req.getUserId())
             .orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_NOT_FOUND));
@@ -39,7 +44,9 @@ public class ProfileCommandService {
 
         ProfilesImage profileImage = profilesImageRepository.findByUserId(userId)
             .orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_IMAGE_NOT_FOUND));
-        profileImage.updateMediaId(mediaId);
+        if(!Objects.equals(profileImage.getMediaId(), mediaId)){
+            profileImage.updateMediaId(mediaId);
+        }
     }
 
 
