@@ -1,17 +1,15 @@
-package com.example.profile.dto.response;
+package com.example.profile.dto.request;
 
 import com.example.core.id.jackson.SnowflakeId;
-import com.example.profile.dto.request.ProfileRequest;
 import com.example.profile.entity.Profiles;
 import lombok.Builder;
 import lombok.Getter;
-import org.springframework.context.annotation.Profile;
 
 import java.time.LocalDateTime;
 
 @Getter
 @Builder
-public class ProfileResponse {
+public class ProfileRequest {
 
     private Long id;
     @SnowflakeId
@@ -19,13 +17,15 @@ public class ProfileResponse {
     @SnowflakeId
     private Long mediaId;
     private String email;
+    private String phone;
+    private String delevery;
     private String nickname;
 
-    public static ProfileResponse from(ProfileRequest profile) {
-        return ProfileResponse.builder()
-            .id(profile.getId())
-            .userId(profile.getUserId())
+    public static ProfileRequest from(Profiles profile) {
+        return ProfileRequest.builder()
             .email(profile.getEmail())
+            .phone(profile.getPhone())
+            .delevery(profile.getDelivery())
             .nickname(profile.getNickname())
             .build();
     }

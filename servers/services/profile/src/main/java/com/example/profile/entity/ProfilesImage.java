@@ -4,7 +4,6 @@ import com.example.data.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
-
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -14,12 +13,12 @@ import lombok.*;
 public class ProfilesImage extends BaseEntity {
 
     @Id
-    @Column(name = "profile_id")
-    private Long profileId;
+    @Column(name = "user_id")
+    private Long userId;
 
     @MapsId
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "profile_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = false)
     private Profiles profile;
 
     @Column(name = "media_id", nullable = false, length = 500)
@@ -28,10 +27,9 @@ public class ProfilesImage extends BaseEntity {
     @Column(name = "sort_order")
     private Integer sortOrder = 0;
 
-    public static ProfilesImage create(Long mediaId) {
-        return ProfilesImage.builder()
-            .mediaId(mediaId)
-            .build();
+    public void updateMediaId(Long mediaId) {
+        this.mediaId = mediaId;
     }
+
 
 }

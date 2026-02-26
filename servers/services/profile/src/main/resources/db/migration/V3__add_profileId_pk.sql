@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS profiles (
                                         id          BIGINT PRIMARY KEY,
-                                        user_id     BIGINT NOT NULL,
+                                        user_id     BIGINT NOT NULL UNIQUE,
                                         email       VARCHAR(255) NOT NULL,
     nickname    VARCHAR(100),
     phone       VARCHAR(15),
@@ -14,7 +14,7 @@ CREATE INDEX IF NOT EXISTS idx_profiles_emails ON profiles (email);
 CREATE INDEX IF NOT EXISTS idx_profiles_deleted_at ON profiles (deleted_at);
 
 CREATE TABLE profile_images (
-                                profile_id  BIGINT PRIMARY KEY,              -- 1:1이므로 PK + FK
+                                user_id     BIGINT PRIMARY KEY,
                                 media_id    BIGINT NOT NULL,
                                 sort_order  INT DEFAULT 0,
                                 created_at  TIMESTAMP(6) WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -22,13 +22,13 @@ CREATE TABLE profile_images (
                                 deleted_at  TIMESTAMP(6) WITHOUT TIME ZONE,
 
                                 CONSTRAINT fk_profile_images_profile
-                                    FOREIGN KEY (profile_id)
-                                        REFERENCES profiles(id)
+                                    FOREIGN KEY (user_id)
+                                        REFERENCES profiles(user_id)
                                         ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_profiles_emails ON profiles(email);
 CREATE INDEX IF NOT EXISTS idx_profile_images_deleted_at ON profile_images (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_profile_media_id ON profile_images (media_id);
 
 INSERT INTO profiles (id, user_id, email, nickname, phone, delivery, created_at, updated_at) VALUES
                                                                                                  (1, 101, 'alice@example.com',   'Alice',   '010-1111-1111', '서울시 강남구',   NOW(), NOW()),
@@ -37,8 +37,9 @@ INSERT INTO profiles (id, user_id, email, nickname, phone, delivery, created_at,
                                                                                                  (4, 104, 'david@example.com',   'David',   '010-4444-4444', '대구시 중구',     NOW(), NOW()),
                                                                                                  (5, 105, 'eve@example.com',     'Eve',     '010-5555-5555', '인천시 연수구',   NOW(), NOW());
 
-INSERT INTO profile_images (profile_id, media_id, sort_order, created_at, updated_at) VALUES
-                                                                                          (1, 1, 0, NOW(), NOW()),
-                                                                                          (2, 2, 0, NOW(), NOW()),
-                                                                                          (3, 3, 0, NOW(), NOW()),
-                                                                                          (4, 4, 0, NOW(), NOW());
+INSERT INTO profile_images (user_id, media_id, sort_order, created_at, updated_at) VALUES
+                                                                                       (101, 1, 0, NOW(), NOW()),
+                                                                                       (102, 2, 0, NOW(), NOW()),
+                                                                                       (103, 3, 0, NOW(), NOW()),
+                                                                                       (104, 4, 0, NOW(), NOW());
+
