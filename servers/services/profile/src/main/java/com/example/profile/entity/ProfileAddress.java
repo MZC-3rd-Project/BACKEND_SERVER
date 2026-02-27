@@ -1,5 +1,6 @@
 package com.example.profile.entity;
 
+import com.example.clients.auth.dto.profile.ProfileDeliveryAddressQuery;
 import com.example.core.id.jpa.SnowflakeGenerated;
 import com.example.data.entity.BaseEntity;
 import com.example.profile.dto.request.ProfileAddressRequest;
@@ -23,7 +24,7 @@ public class ProfileAddress extends BaseEntity {
     @SnowflakeGenerated
     private Long id;
 
-    @Column(name = "profile_id", nullable = false)
+    @Column(name = "profile_id", nullable = false) // userid
     private Long profileId;
 
     @Column(name = "delivery_name", nullable = false, length = 20)
@@ -68,4 +69,21 @@ public class ProfileAddress extends BaseEntity {
         this.detailAddress  = req.detailAddress();
         this.sortOrder      = req.sortOrder();
     }
+
+    public static ProfileAddress create(Long profileId, ProfileDeliveryAddressQuery req){
+        return ProfileAddress.builder()
+            .profileId(profileId)
+            .deliveryName(req.deliveryName())
+            .zipcode(req.zipcode())
+            .sido(req.sido())
+            .sigungu(req.sigungu())
+            .roadName(req.roadName())
+            .buildingNumber(req.buildingNumber())
+            .buildingName(req.buildingName())
+            .detailAddress(req.detailAddress())
+            .sortOrder(req.sortOrder())
+            .build();
+    }
+
+
 }

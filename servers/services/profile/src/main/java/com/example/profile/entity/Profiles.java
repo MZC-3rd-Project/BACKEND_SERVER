@@ -1,5 +1,6 @@
 package com.example.profile.entity;
 
+import com.example.clients.auth.dto.profile.AuthSyncQuery;
 import com.example.core.id.jpa.SnowflakeGenerated;
 import com.example.data.entity.BaseEntity;
 import com.example.profile.dto.request.ProfileCreateRequest;
@@ -47,12 +48,12 @@ public class Profiles extends BaseEntity {
             this.phoneNumber = profile.getPhone();
     }
 
-    public static Profiles create(ProfileCreateRequest req){
+    public static Profiles create(AuthSyncQuery req){
         return Profiles.builder()
-            .userId(req.getUserId())
-            .email(req.getEmail())
-            .nickname(req.getNickname())
-            .phoneNumber(req.getPhone())
+            .userId(req.profileInfo().userId())
+            .email(req.profileInfo().email())
+            .nickname(req.profileInfo().nickname())
+            .phoneNumber(req.profileInfo().phoneNumber())
             .build();
     }
 
