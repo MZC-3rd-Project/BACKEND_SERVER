@@ -1,0 +1,112 @@
+version: 0.2
+
+env:
+  shell: bash
+  variables:
+    ECS_CLUSTER_NAME: donmoa-dev
+    GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto21
+    commands:
+      - echo "[INFO] install phase started"
+      - java -version
+      - ./gradlew --version
+
+  pre_build:
+    commands:
+      - set -euo pipefail
+      - echo "[INFO] pre_build phase started"
+      - AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-ap-northeast-2}"
+      - ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+      - IMAGE_TAG="${CODEBUILD_RESOLVED_SOURCE_VERSION:-latest}"
+      - SHORT_TAG="${IMAGE_TAG:0:8}"
+      - |
+        if [ -z "${SHORT_TAG}" ] || [ "${SHORT_TAG}" = "latest" ]; then
+          SHORT_TAG="latest"
+        fi
+      - export AWS_DEFAULT_REGION ACCOUNT_ID IMAGE_TAG SHORT_TAG
+      - echo "[INFO] account=${ACCOUNT_ID}, region=${AWS_DEFAULT_REGION}, tag=${SHORT_TAG}"
+      - aws ecr get-login-password --region "${AWS_DEFAULT_REGION}" | docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com"
+
+  build:
+    commands:
+      - set -euo pipefail
+      - echo "[INFO] build phase started"
+      - |
+        SERVICE_MATRIX=$(cat <<'EOF'
+        servers:gateways:client-gateway|donmoa-dev-client-gateway|donmoa-dev-client-gateway
+        servers:services:auth|donmoa-dev-auth-service|donmoa-dev-auth
+        servers:services:profile|donmoa-dev-profile-service|donmoa-dev-profile
+        servers:services:product|donmoa-dev-product-service|donmoa-dev-product
+        servers:services:stock|donmoa-dev-stock-service|donmoa-dev-stock
+        servers:services:sales|donmoa-dev-sales-service|donmoa-dev-sales
+        servers:services:search|donmoa-dev-search-service|donmoa-dev-search
+        servers:services:funding|donmoa-dev-funding-service|donmoa-dev-funding
+        servers:services:hot-deal|donmoa-dev-hot-deal-service|donmoa-dev-hot-deal
+        servers:services:analytics-dashboard|donmoa-dev-analytics-dashboard-service|donmoa-dev-analytics-dashboard
+        EOF
+        )
+      - |
+        while IFS='|' read -r gradle_module ecr_repo ecs_service; do
+          [ -z "${gradle_module}" ] && continue
+
+          image_uri="${ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${ecr_repo}"
+          image_with_tag="${image_uri}:${SHORT_TAG}"
+
+          echo "[INFO] Building ${gradle_module} -> ${image_with_tag}"
+          ./gradlew ":${gradle_module}:bootBuildImage" \
+            --imageName="${image_with_tag}" \
+            --publishImage \
+            -x test \
+            --no-daemon
+
+          echo "[INFO] Tagging latest for ${ecr_repo}"
+          docker pull "${image_with_tag}"
+          docker tag "${image_with_tag}" "${image_uri}:latest"
+          docker push "${image_uri}:latest"
+        done <<< "${SERVICE_MATRIX}"
+
+  post_build:
+    commands:
+      - set -euo pipefail
+      - echo "[INFO] post_build phase started"
+      - |
+        SERVICE_LIST=$(cat <<'EOF'
+        donmoa-dev-client-gateway
+        donmoa-dev-auth
+        donmoa-dev-profile
+        donmoa-dev-product
+        donmoa-dev-stock
+        donmoa-dev-sales
+        donmoa-dev-search
+        donmoa-dev-funding
+        donmoa-dev-hot-deal
+        donmoa-dev-analytics-dashboard
+        EOF
+        )
+      - |
+        while IFS= read -r svc; do
+          [ -z "${svc}" ] && continue
+
+          status=$(aws ecs describe-services \
+            --cluster "${ECS_CLUSTER_NAME}" \
+            --services "${svc}" \
+            --query 'services[0].status' \
+            --output text 2>/dev/null || echo "MISSING")
+
+          if [ "${status}" != "ACTIVE" ]; then
+            echo "[WARN] Skip deploy for ${svc} (status=${status})"
+            continue
+          fi
+
+          echo "[INFO] Force new deployment: ${svc}"
+          aws ecs update-service \
+            --cluster "${ECS_CLUSTER_NAME}" \
+            --service "${svc}" \
+            --force-new-deployment \
+            --output json >/dev/null
+        done <<< "${SERVICE_LIST}"
+      - echo "[INFO] deploy completed"

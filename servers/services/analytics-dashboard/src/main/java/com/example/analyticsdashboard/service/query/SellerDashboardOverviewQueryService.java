@@ -18,6 +18,7 @@ import com.example.analyticsdashboard.repository.AnalyticsDimItemSnapshotReposit
 import com.example.analyticsdashboard.repository.AnalyticsRawSalesEventRepository;
 import com.example.analyticsdashboard.repository.AnalyticsRawSearchEventRepository;
 import com.example.core.exception.BusinessException;
+import com.example.data.entity.datasource.UseWriteDataSource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,7 @@ import java.util.stream.Stream;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@UseWriteDataSource
 public class SellerDashboardOverviewQueryService {
 
     private static final String API_VERSION = "v1";

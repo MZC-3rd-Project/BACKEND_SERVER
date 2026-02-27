@@ -28,6 +28,17 @@ public class RedisGatewaySessionRepository implements GatewaySessionRepository {
     }
 
     @Override
+    public Mono<Void> activateSession(Long userId, String sessionId) {
+        if (userId == null || sessionId == null || sessionId.isBlank()) {
+            return Mono.empty();
+        }
+        return redisTemplate.opsForHash()
+                .put(sessionKey(sessionId), sessionProperties.getStatusField(), sessionProperties.getActiveStatus())
+                .then(redisTemplate.opsForSet().add(userSessionsKey(userId), sessionId))
+                .then();
+    }
+
+    @Override
     public Mono<Void> indexUserSession(Long userId, String sessionId) {
         if (userId == null || sessionId == null || sessionId.isBlank()) {
             return Mono.empty();

@@ -49,6 +49,7 @@ public class HotDealCommandService {
     private static final String ADMITTED_KEY_PREFIX = "hotdeal:admitted:";
     private static final String PURCHASED_KEY_PREFIX = "hotdeal:purchased:";
     private static final String RESERVATION_KEY_PREFIX = "hotdeal:reservation:";
+    private static final String DETAIL_CACHE_KEY_PREFIX = "hotdeal:detail:";
 
     /**
      * 판매자가 직접 핫딜 생성 — HTTP 조회 후 트랜잭션 시작
@@ -112,6 +113,7 @@ public class HotDealCommandService {
         runAfterCommit(() -> {
             stringRedisTemplate.opsForValue().set(STOCK_KEY_PREFIX + hotDealId, String.valueOf(maxQuantity));
             stringRedisTemplate.opsForValue().set(MAX_PER_USER_KEY_PREFIX + hotDealId, String.valueOf(maxPerUser));
+            clearDetailCache(hotDealId);
         });
 
         // 이벤트 발행
@@ -154,7 +156,10 @@ public class HotDealCommandService {
         statusHistoryRepository.save(
                 HotDealStatusHistory.create(hotDeal.getId(), from, HotDealStatus.ENDED, "시간 만료"));
 
-        runAfterCommit(() -> clearRedisKeys(hotDealId));
+        runAfterCommit(() -> {
+            clearRedisKeys(hotDealId);
+            clearDetailCache(hotDealId);
+        });
 
         eventPublisher.publish(
                 new HotDealEndedEvent(
@@ -176,6 +181,10 @@ public class HotDealCommandService {
         deleteKeysByPattern(TOKEN_KEY_PREFIX + hotDealId + ":*");
         deleteKeysByPattern(PURCHASED_KEY_PREFIX + hotDealId + ":*");
         deleteKeysByPattern(RESERVATION_KEY_PREFIX + hotDealId + ":*");
+    }
+
+    private void clearDetailCache(Long hotDealId) {
+        stringRedisTemplate.delete(DETAIL_CACHE_KEY_PREFIX + hotDealId);
     }
 
     private void deleteKeysByPattern(String pattern) {

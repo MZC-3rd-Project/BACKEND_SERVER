@@ -40,7 +40,6 @@ include("servers:gateways:client-gateway")
 
 // 서비스
 include("servers:services:auth")
-include("servers:services:user")
 include("servers:services:chat")
 include("servers:services:search")
 include("servers:services:product")
@@ -49,10 +48,7 @@ include("servers:services:funding")
 include("servers:services:notification")
 include("servers:services:sales")
 include("servers:services:hot-deal")
+include("servers:services:profile")
 include("servers:services:media-api")
 include("servers:services:media-worker")
-include("servers:services:user-123")
 include("servers:services:analytics-dashboard")
-
-// 테스트 서버
-include("servers:test:test-server")

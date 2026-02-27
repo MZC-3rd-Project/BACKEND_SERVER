@@ -1,6 +1,7 @@
 package com.example.funding.service.query;
 
 import com.example.core.exception.BusinessException;
+import com.example.data.entity.datasource.UseWriteDataSource;
 import com.example.funding.dto.campaign.response.CampaignResponse;
 import com.example.funding.entity.FundingCampaign;
 import com.example.funding.exception.FundingErrorCode;
@@ -14,6 +15,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@UseWriteDataSource
 public class InternalCampaignQueryService {
 
     private final FundingCampaignRepository campaignRepository;

@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -54,6 +55,7 @@ class RedisGatewaySessionValidatorTest {
         assertThat(result).isNotNull();
         assertThat(result.allowed()).isFalse();
         assertThat(result.code()).isEqualTo("GW-AUTH-005");
+        verifyNoInteractions(sessionRepository);
     }
 
     @Test
@@ -67,6 +69,19 @@ class RedisGatewaySessionValidatorTest {
         assertThat(result).isNotNull();
         assertThat(result.allowed()).isTrue();
         verify(sessionRepository).indexUserSession(12L, "sid-12");
+    }
+
+    @Test
+    void validate_activatesAndAllowsWhenStatusMissing() {
+        GatewaySessionPrincipal principal = new GatewaySessionPrincipal(22L, List.of("USER"), "sid-22");
+        when(sessionRepository.findStatusBySid("sid-22")).thenReturn(Mono.empty());
+        when(sessionRepository.activateSession(22L, "sid-22")).thenReturn(Mono.empty());
+
+        SessionValidationResult result = validator.validate(principal).block();
+
+        assertThat(result).isNotNull();
+        assertThat(result.allowed()).isTrue();
+        verify(sessionRepository).activateSession(22L, "sid-22");
     }
 
     @Test
@@ -92,5 +107,19 @@ class RedisGatewaySessionValidatorTest {
 
         assertThat(result).isNotNull();
         assertThat(result.allowed()).isTrue();
+    }
+
+    @Test
+    void validate_deniesWhenActivationFails() {
+        GatewaySessionPrincipal principal = new GatewaySessionPrincipal(23L, List.of("USER"), "sid-23");
+        when(sessionRepository.findStatusBySid("sid-23")).thenReturn(Mono.empty());
+        when(sessionRepository.activateSession(anyLong(), anyString()))
+                .thenReturn(Mono.error(new RuntimeException("redis write error")));
+
+        SessionValidationResult result = validator.validate(principal).block();
+
+        assertThat(result).isNotNull();
+        assertThat(result.allowed()).isFalse();
+        assertThat(result.code()).isEqualTo("GW-AUTH-007");
     }
 }

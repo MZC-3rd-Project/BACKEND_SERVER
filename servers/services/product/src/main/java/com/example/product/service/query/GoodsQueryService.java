@@ -3,6 +3,7 @@ package com.example.product.service.query;
 import com.example.core.exception.BusinessException;
 import com.example.core.pagination.CursorResponse;
 import com.example.core.pagination.CursorUtils;
+import com.example.data.entity.datasource.UseWriteDataSource;
 import com.example.product.dto.goods.response.GoodsDetailResponse;
 import com.example.product.dto.item.response.ItemContentSnapshot;
 import com.example.product.entity.item.Item;
@@ -54,6 +55,7 @@ public class GoodsQueryService {
         return GoodsDetailResponse.of(item, options, shippingInfo, linkedIds, contentSnapshot, images);
     }
 
+    @UseWriteDataSource
     public GoodsDetailResponse findSellerGoodsById(Long itemId, Long sellerId) {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));

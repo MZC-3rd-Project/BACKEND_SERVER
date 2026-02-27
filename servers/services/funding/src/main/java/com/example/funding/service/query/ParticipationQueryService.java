@@ -2,6 +2,7 @@ package com.example.funding.service.query;
 
 import com.example.core.pagination.CursorResponse;
 import com.example.core.pagination.CursorUtils;
+import com.example.data.entity.datasource.UseWriteDataSource;
 import com.example.funding.dto.participation.response.ParticipationResponse;
 import com.example.funding.entity.FundingParticipation;
 import com.example.funding.repository.FundingParticipationRepository;
@@ -19,6 +20,7 @@ public class ParticipationQueryService {
 
     private final FundingParticipationRepository participationRepository;
 
+    @UseWriteDataSource
     public CursorResponse<ParticipationResponse> findByUserId(Long userId, String cursor, int size) {
         Long cursorId = CursorUtils.decodeLong(cursor);
         PageRequest pageable = PageRequest.of(0, size + 1);
@@ -40,6 +42,7 @@ public class ParticipationQueryService {
         return CursorResponse.of(content, nextCursor);
     }
 
+    @UseWriteDataSource
     public List<ParticipationResponse> findByCampaignId(Long campaignId) {
         return participationRepository.findByCampaignId(campaignId).stream()
                 .map(ParticipationResponse::from)

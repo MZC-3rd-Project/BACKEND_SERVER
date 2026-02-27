@@ -89,3 +89,4 @@ logging:
   level:
     com.example: ${LOG_LEVEL:DEBUG}
     org.keycloak: ${KC_LOG_LEVEL:INFO}
+

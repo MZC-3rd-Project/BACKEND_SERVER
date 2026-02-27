@@ -57,11 +57,21 @@ public class SessionHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
                 : null;
         boolean authRequired = isAuthRequiredPath(path, method);
 
-        Mono<GatewaySessionPrincipal> principalMono = sessionPrincipalResolver.resolve(exchange);
+        Mono<Optional<GatewaySessionPrincipal>> principalMono = sessionPrincipalResolver.resolve(exchange)
+                .map(Optional::of)
+                .onErrorResume(SessionClaimParseException.class, error -> {
+                    if (authRequired) {
+                        return Mono.error(error);
+                    }
+                    log.info("Gateway session principal parsing skipped for optional-auth request. path={}, method={}, reason={}",
+                            path,
+                            method,
+                            error.getMessage());
+                    return Mono.just(Optional.empty());
+                })
+                .defaultIfEmpty(Optional.empty());
 
         return principalMono
-                .map(Optional::of)
-                .defaultIfEmpty(Optional.empty())
                 .flatMap(optionalPrincipal -> {
                     if (optionalPrincipal.isEmpty()) {
                         if (authRequired) {
@@ -99,7 +109,7 @@ public class SessionHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
             SignedContextHeader finalSignedContextHeader = signedContextHeader;
             ServerHttpRequest request = exchange.getRequest().mutate()
                     .headers(headers -> {
-                        removeSensitiveHeaders(headers);
+                        removeSensitiveHeaders(headers, principal);
                         applyInternalAuthHeader(headers);
                         applyPrincipalHeaders(headers, principal, finalSignedContextHeader);
                     })
@@ -166,9 +176,12 @@ public class SessionHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
         return new SignedContextHeader(gatewayContext);
     }
 
-    private void removeSensitiveHeaders(HttpHeaders headers) {
-        headers.remove(HttpHeaderNames.USER_ID);
-        headers.remove(HttpHeaderNames.USER_ROLES);
+    private void removeSensitiveHeaders(HttpHeaders headers, GatewaySessionPrincipal principal) {
+        boolean preserveClientIdentityHeaders = securityProperties.isAllowClientIdentityHeaders() && principal == null;
+        if (!preserveClientIdentityHeaders) {
+            headers.remove(HttpHeaderNames.USER_ID);
+            headers.remove(HttpHeaderNames.USER_ROLES);
+        }
         headers.remove(HttpHeaderNames.NONCE);
         headers.remove(HttpHeaderNames.TIMESTAMP);
         headers.remove(HttpHeaderNames.SIGNATURE);

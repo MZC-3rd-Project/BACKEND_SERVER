@@ -35,6 +35,7 @@ public class HotDealPurchaseService {
     private static final String RESERVATION_KEY_PREFIX = "hotdeal:reservation:";
     private static final String PURCHASED_KEY_PREFIX = "hotdeal:purchased:";
     private static final String MAX_PER_USER_KEY_PREFIX = "hotdeal:maxperuser:";
+    private static final String DETAIL_CACHE_KEY_PREFIX = "hotdeal:detail:";
     private static final long RESERVATION_TTL_MINUTES = 5;
 
     private static final String LUA_SCRIPT = """
@@ -154,6 +155,8 @@ public class HotDealPurchaseService {
                     ),
                     EventMetadata.of("HotDeal", String.valueOf(hotDealId))
             );
+
+            stringRedisTemplate.delete(DETAIL_CACHE_KEY_PREFIX + hotDealId);
 
             log.info("Hot deal purchased: hotDealId={}, userId={}, quantity={}", hotDealId, userId, request.getQuantity());
 
