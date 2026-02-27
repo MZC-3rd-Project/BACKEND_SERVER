@@ -17,7 +17,7 @@ public class ProfileResponse {
 
     public static ProfileResponse from(Profiles profile) {
         return ProfileResponse.builder()
-            .phone(profile.getPhone())
+            .phone(profile.getPhoneNumber())
             .delivery(profile.getDelivery())
             .email(profile.getEmail())
             .nickname(profile.getNickname())

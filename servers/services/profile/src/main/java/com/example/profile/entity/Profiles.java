@@ -34,8 +34,8 @@ public class Profiles extends BaseEntity {
     @Column(name = "nickname", length = 100)
     private String nickname;
 
-    @Column(name = "phone", length = 15)
-    private String phone;
+    @Column(name = "phone_number", length = 15)
+    private String phoneNumber;
 
     @Column(name = "delivery", length = 100)
     private String delivery; // 테이블 따로 만들어야 될거 같음
@@ -46,8 +46,8 @@ public class Profiles extends BaseEntity {
             this.email = profile.getEmail();
         if (profile.getNickname() != null && !Objects.equals(this.nickname, profile.getNickname()))
             this.nickname = profile.getNickname();
-        if (profile.getPhone() != null && !Objects.equals(this.phone, profile.getPhone()))
-            this.phone = profile.getPhone();
+        if (profile.getPhone() != null && !Objects.equals(this.phoneNumber, profile.getPhone()))
+            this.phoneNumber = profile.getPhone();
         if (profile.getDelivery() != null && !Objects.equals(this.delivery, profile.getDelivery()))
             this.delivery = profile.getDelivery();
     }
@@ -57,7 +57,7 @@ public class Profiles extends BaseEntity {
             .userId(req.getUserId())
             .email(req.getEmail())
             .nickname(req.getNickname())
-            .phone(req.getPhone())
+            .phoneNumber(req.getPhone())
             .delivery(req.getDelivery())
             .build();
     }
