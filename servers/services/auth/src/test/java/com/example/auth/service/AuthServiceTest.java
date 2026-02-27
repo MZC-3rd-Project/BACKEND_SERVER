@@ -1,6 +1,6 @@
 package com.example.auth.service;
 
-import com.example.auth.client.ProfileServiceClient;
+import com.example.auth.client.ProfileServicePort;
 import com.example.auth.dto.request.SignupRequest;
 import com.example.auth.dto.request.WithdrawRequest;
 import com.example.auth.dto.response.SignupResponse;
@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.resource.RealmResource;
+import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.mockito.Mock;
@@ -47,7 +48,7 @@ class AuthServiceTest {
     private Keycloak keycloakAdminClient;
 
     @Mock
-    private ProfileServiceClient profileServiceClient;
+    private ProfileServicePort profileServiceClient;
 
     @Mock
     private EventPublisher eventPublisher;
@@ -84,6 +85,7 @@ class AuthServiceTest {
 
             RealmResource realmResource = mock(RealmResource.class);
             UsersResource usersResource = mock(UsersResource.class);
+            UserResource userResource = mock(UserResource.class);
             Response kcResponse = mock(Response.class);
 
             when(keycloakAdminClient.realm("don-moa")).thenReturn(realmResource);
@@ -92,6 +94,8 @@ class AuthServiceTest {
             when(kcResponse.getStatus()).thenReturn(201);
             when(kcResponse.getHeaderString("Location"))
                     .thenReturn("http://localhost/users/kc-user-id-123");
+            when(usersResource.get(anyString())).thenReturn(userResource);
+            when(userResource.toRepresentation()).thenReturn(new UserRepresentation());
 
             when(userRepository.save(any(User.class)))
                     .thenAnswer(invocation -> invocation.getArgument(0));
@@ -133,6 +137,7 @@ class AuthServiceTest {
 
             RealmResource realmResource = mock(RealmResource.class);
             UsersResource usersResource = mock(UsersResource.class);
+            UserResource userResource = mock(UserResource.class);
             Response kcResponse = mock(Response.class);
 
             when(keycloakAdminClient.realm("don-moa")).thenReturn(realmResource);
@@ -141,6 +146,8 @@ class AuthServiceTest {
             when(kcResponse.getStatus()).thenReturn(201);
             when(kcResponse.getHeaderString("Location"))
                     .thenReturn("http://localhost/users/kc-user-id-456");
+            when(usersResource.get(anyString())).thenReturn(userResource);
+            when(userResource.toRepresentation()).thenReturn(new UserRepresentation());
 
             when(userRepository.save(any(User.class)))
                     .thenAnswer(invocation -> invocation.getArgument(0));
