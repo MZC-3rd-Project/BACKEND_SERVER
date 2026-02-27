@@ -5,6 +5,9 @@ spring:
   application:
     name: auth-service
 
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
   # ─── DataSource ─────────────────────────────────
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/auth_db}
@@ -30,7 +33,7 @@ spring:
 
   # ─── Kafka ──────────────────────────────────────
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
 
 # ─── Keycloak Admin Client ─────────────────────
 keycloak:
@@ -38,7 +41,7 @@ keycloak:
     server-url: ${KC_SERVER_URL:http://localhost:43217}
     realm: ${KC_REALM:don-moa}
     client-id: ${KC_ADMIN_CLIENT_ID:don-moa-admin}
-    client-secret: ${KC_ADMIN_CLIENT_SECRET}
+    client-secret: ${KC_ADMIN_CLIENT_SECRET:local-admin-secret}
     # 비밀번호 검증용 (directAccessGrantsEnabled=true인 클라이언트)
     direct-grant-client-id: ${KC_DIRECT_GRANT_CLIENT_ID:don-moa-gateway}
 

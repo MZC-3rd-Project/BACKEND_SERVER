@@ -713,7 +713,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "**********",
+      "secret": "local-admin-secret",
       "redirectUris": [
         "/*"
       ],
@@ -813,7 +813,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "**********",
+      "secret": "local-gateway-secret",
       "redirectUris": [
         "http://localhost:18080/login/oauth2/code/keycloak"
       ],
@@ -1521,7 +1521,15 @@
     "xXSSProtection": "1; mode=block",
     "strictTransportSecurity": "max-age=31536000; includeSubDomains"
   },
-  "smtpServer": {},
+  "smtpServer": {
+    "host": "mailhog",
+    "port": "1025",
+    "from": "keycloak@don-moa.local",
+    "fromDisplayName": "Don-Moa (Local)",
+    "ssl": "false",
+    "starttls": "false",
+    "auth": "false"
+  },
   "eventsEnabled": false,
   "eventsListeners": [
     "jboss-logging"

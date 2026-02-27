@@ -15,6 +15,7 @@ This directory contains Docker Compose configuration for running the Project03 b
 | Zookeeper | 2181 | Kafka coordination |
 | Zipkin | 9411 | Distributed tracing UI |
 | MailHog | 1025 / 8025 | Local SMTP + UI |
+| Keycloak | 43217 | Identity provider (admin console) |
 
 ## Quick Start
 
@@ -254,6 +255,34 @@ docker exec project03-kafka kafka-topics --bootstrap-server localhost:9092 --lis
 # Elasticsearch
 curl -fsS http://localhost:23173/_cluster/health
 ```
+
+## Keycloak (Identity Provider)
+
+### Admin Console
+
+Access at: http://localhost:43217
+Login: admin / admin
+
+### Local Client Secrets
+
+The realm JSON (`keycloak/don-moa-realm.json`) contains fixed local secrets:
+
+| Client | Secret | Used By |
+|--------|--------|---------|
+| `don-moa-admin` | `local-admin-secret` | Auth Service (`KC_ADMIN_CLIENT_SECRET`) |
+| `don-moa-gateway` | `local-gateway-secret` | Gateway (`GATEWAY_OAUTH2_CLIENT_SECRET`) |
+
+**These are local-only values. Production uses different secrets via AWS Secrets Manager.**
+
+### MailHog SMTP Integration
+
+Keycloak is configured to use MailHog as its SMTP server for local development.
+Emails sent by Keycloak (password reset, verification) can be viewed at: http://localhost:8025
+
+### Troubleshooting
+
+If Keycloak fails health checks, wait up to 2 minutes for initial startup.
+Check logs: `docker-compose logs -f keycloak`
 
 ## Data Persistence
 
