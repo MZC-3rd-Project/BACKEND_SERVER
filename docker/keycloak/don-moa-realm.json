@@ -26,8 +26,8 @@
   "oauth2DeviceCodeLifespan": 600,
   "oauth2DevicePollingInterval": 5,
   "enabled": true,
-  "sslRequired": "external",
-  "registrationAllowed": false,
+  "sslRequired": "none",
+  "registrationAllowed": true,
   "registrationEmailAsUsername": false,
   "rememberMe": false,
   "verifyEmail": false,
@@ -704,22 +704,13 @@
     {
       "id": "e4e75017-bbcb-453d-b333-7a68bef992b9",
       "clientId": "don-moa-admin",
-      "name": "",
-      "description": "",
-      "rootUrl": "",
-      "adminUrl": "",
-      "baseUrl": "",
       "surrogateAuthRequired": false,
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "local-admin-secret",
-      "redirectUris": [
-        "/*"
-      ],
-      "webOrigins": [
-        "/*"
-      ],
+      "redirectUris": [],
+      "webOrigins": [],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -728,12 +719,9 @@
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,
       "publicClient": false,
-      "frontchannelLogout": true,
+      "frontchannelLogout": false,
       "protocol": "openid-connect",
       "attributes": {
-        "oidc.ciba.grant.enabled": "false",
-        "oauth2.device.authorization.grant.enabled": "false",
-        "client.secret.creation.time": "1771915150",
         "backchannel.logout.session.required": "true",
         "backchannel.logout.revoke.offline.tokens": "false"
       },
@@ -805,7 +793,7 @@
     {
       "id": "07e8efdf-a660-4133-9479-3414ce3b3b0e",
       "clientId": "don-moa-gateway",
-      "name": "Gateway BFF Client",
+      "name": "",
       "description": "",
       "rootUrl": "",
       "adminUrl": "",
@@ -816,10 +804,13 @@
       "clientAuthenticatorType": "client-secret",
       "secret": "local-gateway-secret",
       "redirectUris": [
-        "http://localhost:18080/login/oauth2/code/keycloak"
+        "http://localhost:18080/login/oauth2/code/keycloak",
+        "http://donmoa-dev-alb-214468272.ap-northeast-2.elb.amazonaws.com/*",
+        "http://donmoa-dev-alb-214468272.ap-northeast-2.elb.amazonaws.com/login/oauth2/code/keycloak"
       ],
       "webOrigins": [
-        "http://localhost:3000"
+        "http://localhost:3000",
+        "http://donmoa-dev-alb-214468272.ap-northeast-2.elb.amazonaws.com"
       ],
       "notBefore": 0,
       "bearerOnly": false,
@@ -829,14 +820,12 @@
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": false,
       "publicClient": false,
-      "frontchannelLogout": true,
+      "frontchannelLogout": false,
       "protocol": "openid-connect",
       "attributes": {
-        "oidc.ciba.grant.enabled": "false",
-        "client.secret.creation.time": "1771914632",
+        "display.on.consent.screen": "false",
         "backchannel.logout.session.required": "true",
-        "post.logout.redirect.uris": "http://localhost:18080/*",
-        "oauth2.device.authorization.grant.enabled": "false",
+        "post.logout.redirect.uris": "http://localhost:18080/*##http://donmoa-dev-alb-214468272.ap-northeast-2.elb.amazonaws.com/*",
         "backchannel.logout.revoke.offline.tokens": "false"
       },
       "authenticationFlowBindingOverrides": {},
