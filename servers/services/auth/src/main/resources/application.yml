@@ -7,16 +7,6 @@ spring:
     name: auth-service
 
   # ─── DataSource ─────────────────────────────────
-  mail:
-    host: ${SMTP_HOST:localhost}
-    port: ${SMTP_PORT:1025}
-    username: ${SMTP_USERNAME:}
-    password: ${SMTP_PASSWORD:}
-    from: ${SMTP_FROM:noreply@don-moa.com}
-    properties:
-      mail.smtp.auth: false
-      mail.smtp.starttls.enable: false
-
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/auth_db}
     username: ${DB_USERNAME:postgres}
@@ -41,9 +31,9 @@ spring:
 
   # ─── Kafka ──────────────────────────────────────
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
   profiles:
-    active: ${SPRING_PROFILE:local}
+    active: ${SPRING_PROFILES_ACTIVE:local}  # 로컬 기본값=local, ECS에서는 반드시 SPRING_PROFILES_ACTIVE 환경변수 설정 필요
 
 # ─── Keycloak Admin Client ─────────────────────
 keycloak:
@@ -51,7 +41,7 @@ keycloak:
     server-url: ${KC_SERVER_URL:http://localhost:43217}
     realm: ${KC_REALM:don-moa}
     client-id: ${KC_ADMIN_CLIENT_ID:don-moa-admin}
-    client-secret: ${KC_ADMIN_CLIENT_SECRET}
+    client-secret: ${KC_ADMIN_CLIENT_SECRET:local-admin-secret}
     # 비밀번호 검증용 (directAccessGrantsEnabled=true인 클라이언트)
     direct-grant-client-id: ${KC_DIRECT_GRANT_CLIENT_ID:don-moa-gateway}
 
