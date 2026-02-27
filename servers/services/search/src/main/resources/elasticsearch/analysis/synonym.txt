@@ -1,0 +1,6 @@
+# 한국어/영문 혼용 검색 동의어 초안
+아이폰, iphone, i-phone
+갤럭시, galaxy
+에어팟, airpods
+콘서트, 공연
+굿즈, merchandise

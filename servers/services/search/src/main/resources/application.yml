@@ -1,0 +1,123 @@
+server:
+  port: ${SERVER_PORT:8088}
+
+spring:
+  application:
+    name: search-service
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  # ─── DataSource ───────────────────────────────
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/search_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  # ─── JPA ──────────────────────────────────────
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_batch_fetch_size: 100
+    show-sql: ${JPA_SHOW_SQL:false}
+    open-in-view: false
+
+  # ─── Redis ────────────────────────────────────
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  # ─── Kafka ────────────────────────────────────
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    consumer:
+      group-id: search-service-group
+      auto-offset-reset: earliest
+
+  # ─── Elasticsearch ────────────────────────────
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
+
+search:
+  popular:
+    per-second-limit: ${SEARCH_POPULAR_PER_SECOND_LIMIT:8}
+    per-minute-limit: ${SEARCH_POPULAR_PER_MINUTE_LIMIT:100}
+    repeat-penalty-threshold: ${SEARCH_POPULAR_REPEAT_PENALTY_THRESHOLD:5}
+    repeat-reject-threshold: ${SEARCH_POPULAR_REPEAT_REJECT_THRESHOLD:20}
+    blocked-keywords: ${SEARCH_POPULAR_BLOCKED_KEYWORDS:}
+  metrics:
+    runbook-url: ${SEARCH_METRICS_RUNBOOK_URL:https://runbook.example/search}
+    alert:
+      search-latency-ms: ${SEARCH_METRICS_ALERT_SEARCH_LATENCY_MS:1500}
+    kafka-lag:
+      enabled: ${SEARCH_METRICS_KAFKA_LAG_ENABLED:true}
+      interval-ms: ${SEARCH_METRICS_KAFKA_LAG_INTERVAL_MS:30000}
+  reconciliation:
+    enabled: ${SEARCH_RECONCILIATION_ENABLED:false}
+    interval-ms: ${SEARCH_RECONCILIATION_INTERVAL_MS:300000}
+    sample-item-ids: ${SEARCH_RECONCILIATION_SAMPLE_ITEM_IDS:}
+  thumbnail-enricher:
+    enabled: ${SEARCH_THUMBNAIL_ENRICHER_ENABLED:true}
+    fixed-delay-ms: ${SEARCH_THUMBNAIL_ENRICHER_FIXED_DELAY_MS:15000}
+    batch-size: ${SEARCH_THUMBNAIL_ENRICHER_BATCH_SIZE:50}
+    processing-stale-threshold-seconds: ${SEARCH_THUMBNAIL_ENRICHER_PROCESSING_STALE_THRESHOLD_SECONDS:120}
+    max-retry-count: ${SEARCH_THUMBNAIL_ENRICHER_MAX_RETRY_COUNT:7}
+    base-delay-seconds: ${SEARCH_THUMBNAIL_ENRICHER_BASE_DELAY_SECONDS:30}
+    max-delay-seconds: ${SEARCH_THUMBNAIL_ENRICHER_MAX_DELAY_SECONDS:600}
+
+# ─── Snowflake ID ────────────────────────────
+app:
+  security:
+    context:
+      signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}
+      max-age-millis: ${APP_SECURITY_CONTEXT_MAX_AGE_MILLIS:300000}
+
+  gateway-security:
+    enabled: ${APP_GATEWAY_SECURITY_ENABLED:true}
+    gateway-auth-enabled: ${APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED:${SEARCH_SECURITY_GATEWAY_AUTH_ENABLED:false}}
+    internal-auth-header: ${APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:${SEARCH_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}}
+    internal-auth-token: ${APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:${SEARCH_SECURITY_INTERNAL_AUTH_TOKEN:}}
+    user-id-header: ${APP_GATEWAY_SECURITY_USER_ID_HEADER:${SEARCH_SECURITY_USER_ID_HEADER:X-User-Id}}
+    optional-user-context-paths:
+      - /api/v1/search
+      - /api/v1/search/**
+    excluded-paths:
+      - /actuator/**
+      - /v3/api-docs/**
+      - /swagger-ui/**
+
+  service:
+    stock-url: ${STOCK_SERVICE_URL:http://localhost:8085}
+    media-url: ${MEDIA_SERVICE_URL:http://localhost:8094}
+  snowflake:
+    datacenter-id: ${SNOWFLAKE_DATACENTER_ID:1}
+    worker-id: ${SNOWFLAKE_WORKER_ID:11}
+
+  # ─── OpenAPI ──────────────────────────────────
+  openapi:
+    enabled: ${OPENAPI_ENABLED:true}
+    title: "Search Service API"
+    version: "1.0.0"
+    description: |
+      Elasticsearch 기반 검색/자동완성/인기검색어 서비스
+
+# ─── Actuator ─────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${ACTUATOR_ENDPOINTS:health,info,metrics,prometheus}
+  endpoint:
+    health:
+      show-details: always
+
+# ─── Logging ──────────────────────────────────
+logging:
+  level:
+    com.example: ${LOG_LEVEL:INFO}
+    org.springframework.kafka: INFO

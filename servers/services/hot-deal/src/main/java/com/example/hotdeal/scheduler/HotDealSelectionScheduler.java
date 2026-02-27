@@ -1,7 +1,7 @@
 package com.example.hotdeal.scheduler;
 
-import com.example.hotdeal.client.ProductClient;
-import com.example.hotdeal.client.StockClient;
+import com.example.clients.product.facade.ProductEndingSoonClientFacade;
+import com.example.clients.stock.facade.StockInfoQueryClientFacade;
 import com.example.hotdeal.entity.HotDealStatus;
 import com.example.hotdeal.repository.HotDealRepository;
 import com.example.hotdeal.service.HotDealCommandService;
@@ -20,8 +20,8 @@ import java.util.List;
 @RequiredArgsConstructor
 public class HotDealSelectionScheduler {
 
-    private final ProductClient productClient;
-    private final StockClient stockClient;
+    private final ProductEndingSoonClientFacade productClient;
+    private final StockInfoQueryClientFacade stockClient;
     private final HotDealRepository hotDealRepository;
     private final HotDealCommandService hotDealCommandService;
 
@@ -34,7 +34,7 @@ public class HotDealSelectionScheduler {
         log.info("Hot deal selection scheduler started");
 
         try {
-            JsonNode items = productClient.findItemsEndingSoon(3);
+            JsonNode items = productClient.findItemsEndingSoon();
 
             if (items == null || !items.isArray()) {
                 log.info("No items ending soon found");

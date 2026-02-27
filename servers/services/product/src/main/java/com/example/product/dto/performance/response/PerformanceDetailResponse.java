@@ -1,8 +1,12 @@
 package com.example.product.dto.performance.response;
 
 import com.example.core.id.jackson.SnowflakeId;
+import com.example.product.dto.image.response.ItemImagesResponse;
+import com.example.product.dto.item.response.ItemContentSnapshot;
+import com.example.product.dto.item.response.ItemDetailSectionResponse;
 import com.example.product.entity.performance.CastMember;
 import com.example.product.entity.item.Item;
+import com.example.product.entity.image.ItemImage;
 import com.example.product.entity.performance.Performance;
 import com.example.product.entity.performance.SeatGrade;
 import lombok.Builder;
@@ -24,13 +28,20 @@ public class PerformanceDetailResponse {
     private String description;
     private Long price;
     private String status;
-    private String thumbnailUrl;
+    private ItemImagesResponse images;
 
     @SnowflakeId
     private Long categoryId;
 
     @SnowflakeId
     private Long sellerId;
+
+    @SnowflakeId
+    private Long storeId;
+
+    private List<String> tags;
+    private List<String> features;
+    private List<ItemDetailSectionResponse> detailSections;
 
     private String venue;
     private LocalDate performanceDate;
@@ -45,16 +56,23 @@ public class PerformanceDetailResponse {
 
     public static PerformanceDetailResponse of(Item item, Performance perf,
                                                List<SeatGrade> seatGrades,
-                                               List<CastMember> castMembers) {
+                                               List<CastMember> castMembers,
+                                               ItemContentSnapshot content,
+                                               List<ItemImage> images) {
+        ItemContentSnapshot safeContent = content != null ? content : ItemContentSnapshot.empty();
         return PerformanceDetailResponse.builder()
                 .id(item.getId())
                 .title(item.getTitle())
                 .description(item.getDescription())
                 .price(item.getPrice())
                 .status(item.getStatus().name())
-                .thumbnailUrl(item.getThumbnailUrl())
+                .images(ItemImagesResponse.from(images, item.getThumbnailMediaId()))
                 .categoryId(item.getCategoryId())
                 .sellerId(item.getSellerId())
+                .storeId(item.getStoreId())
+                .tags(safeContent.tags())
+                .features(safeContent.features())
+                .detailSections(safeContent.detailSections())
                 .venue(perf.getVenue())
                 .performanceDate(perf.getPerformanceDate())
                 .performanceTime(perf.getPerformanceTime())
