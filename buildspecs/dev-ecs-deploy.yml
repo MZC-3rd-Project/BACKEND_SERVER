@@ -36,9 +36,9 @@ phases:
       - set -euo pipefail
       - echo "[INFO] build phase started"
       - DEPLOY_RECORD_FILE="/tmp/deploy_services.txt"
-      - : > "${DEPLOY_RECORD_FILE}"
+      - rm -f "${DEPLOY_RECORD_FILE}" && touch "${DEPLOY_RECORD_FILE}"
       - TARGET_SET_FILE="/tmp/deploy_target_keys.txt"
-      - : > "${TARGET_SET_FILE}"
+      - rm -f "${TARGET_SET_FILE}" && touch "${TARGET_SET_FILE}"
       - |
         SERVICE_MATRIX=$(cat <<'EOF'
         servers:gateways:client-gateway|client-gateway|donmoa-dev-client-gateway|donmoa-dev-client-gateway
