@@ -1,6 +1,7 @@
 version: 0.2
 
 env:
+  shell: bash
   variables:
     ECS_CLUSTER_NAME: donmoa-dev
     GRADLE_OPTS: "-Dorg.gradle.daemon=false"
