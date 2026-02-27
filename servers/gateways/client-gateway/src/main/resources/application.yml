@@ -12,6 +12,21 @@ spring:
     gateway:
       server:
         webflux:
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedOrigins:
+                  - "http://donmoa-dev-alb-214468272.ap-northeast-2.elb.amazonaws.com"
+                  - "http://localhost:3000"
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                  - OPTIONS
+                  - PATCH
+                allowedHeaders: "*"
+                allowCredentials: true
           routes:
             - id: search-service
               uri: ${app.service.search-url:http://localhost:8088}

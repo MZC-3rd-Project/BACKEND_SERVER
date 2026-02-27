@@ -691,7 +691,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "**********",
+      "secret": "local-admin-secret",
       "redirectUris": [
         "/*"
       ],
@@ -791,7 +791,7 @@
       "enabled": true,
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
-      "secret": "**********",
+      "secret": "local-gateway-secret",
       "redirectUris": [
         "http://localhost:18080/login/oauth2/code/keycloak"
       ],
