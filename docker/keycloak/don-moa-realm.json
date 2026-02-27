@@ -792,7 +792,8 @@
         "acr",
         "roles",
         "profile",
-        "email"
+        "email",
+        "snowflake-id"
       ],
       "optionalClientScopes": [
         "address",
@@ -846,7 +847,8 @@
         "acr",
         "roles",
         "profile",
-        "email"
+        "email",
+        "snowflake-id"
       ],
       "optionalClientScopes": [
         "address",
@@ -1495,6 +1497,35 @@
           }
         }
       ]
+    },
+    {
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "snowflake-id",
+      "description": "Includes the snowflakeId user attribute in tokens",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "id": "f1e2d3c4-b5a6-7890-fedc-ba0987654321",
+          "name": "snowflakeId",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "snowflakeId",
+            "claim.name": "snowflakeId",
+            "jsonType.label": "long",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "introspection.token.claim": "true",
+            "multivalued": "false"
+          }
+        }
+      ]
     }
   ],
   "defaultDefaultClientScopes": [
@@ -1503,7 +1534,8 @@
     "email",
     "roles",
     "web-origins",
-    "acr"
+    "acr",
+    "snowflake-id"
   ],
   "defaultOptionalClientScopes": [
     "offline_access",
@@ -2328,7 +2360,8 @@
     "oauth2DevicePollingInterval": "5",
     "parRequestUriLifespan": "60",
     "cibaInterval": "5",
-    "realmReusableOtpCode": "false"
+    "realmReusableOtpCode": "false",
+    "unmanagedAttributePolicy": "ADMIN_EDIT"
   },
   "keycloakVersion": "23.0.0",
   "userManagedAccessAllowed": false,

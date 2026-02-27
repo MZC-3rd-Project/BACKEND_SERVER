@@ -31,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -76,19 +77,22 @@ public class AuthService {
         String keycloakUserId = createKeycloakUser(request.email(), request.password());
 
         try {
-            // 3. DB 저장
+            // 3. DB 저장 (Snowflake ID 자동 생성)
             User user = User.create(keycloakUserId, request.email(), request.nickname());
             userRepository.save(user);
 
-            // 4. 상태 이력 기록
+            // 4. Keycloak 사용자에 snowflakeId 속성 설정 (JWT 토큰에 포함시키기 위함)
+            updateKeycloakUserSnowflakeId(keycloakUserId, user.getId());
+
+            // 5. 상태 이력 기록
             UserStatusHistory history = UserStatusHistory.create(
                     user.getId(), null, UserStatus.ACTIVE, "회원가입", user.getId());
             statusHistoryRepository.save(history);
 
-            // 5. Profile Service 동기 호출
+            // 6. Profile Service 동기 호출
             profileServiceClient.createProfile(user.getId(), user.getEmail(), request.nickname());
 
-            // 6. Outbox 이벤트 발행
+            // 7. Outbox 이벤트 발행
             eventPublisher.publish(
                     new UserCreatedEvent(user.getId(), user.getEmail()),
                     EventMetadata.of("USER", String.valueOf(user.getId()))
@@ -273,6 +277,21 @@ public class AuthService {
         } catch (Exception e) {
             throw new TechnicalException(AuthErrorCode.EMAIL_CHANGE_FAILED,
                     "Keycloak 이메일 변경 실패", e);
+        }
+    }
+
+    private void updateKeycloakUserSnowflakeId(String keycloakId, Long snowflakeId) {
+        try {
+            UserRepresentation kcUser = keycloakAdminClient.realm(realm)
+                    .users().get(keycloakId).toRepresentation();
+            kcUser.setAttributes(Map.of("snowflakeId", List.of(String.valueOf(snowflakeId))));
+            keycloakAdminClient.realm(realm).users().get(keycloakId).update(kcUser);
+            log.info("Keycloak user snowflakeId set: keycloakId={}, snowflakeId={}", keycloakId, snowflakeId);
+        } catch (Exception e) {
+            log.error("Failed to set snowflakeId on Keycloak user: keycloakId={}, snowflakeId={}",
+                    keycloakId, snowflakeId, e);
+            throw new TechnicalException(AuthErrorCode.KEYCLOAK_COMMUNICATION_ERROR,
+                    "Keycloak 사용자 snowflakeId 설정 실패", e);
         }
     }
 
