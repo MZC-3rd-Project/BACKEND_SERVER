@@ -6,4 +6,5 @@ public record AuthSyncQuery(
     ProfileQuery profileInfo,
     List<ProfileDeliveryAddressQuery> profileDeliveryInfo
 ){
+
 }

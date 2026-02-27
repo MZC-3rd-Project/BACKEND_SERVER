@@ -1,9 +1,9 @@
 package com.example.profile.service.command;
 
+import com.example.clients.auth.dto.profile.AuthSyncQuery;
 import com.example.core.exception.BusinessException;
 import com.example.core.exception.CommonErrorCode;
 import com.example.core.exception.TechnicalException;
-import com.example.profile.dto.request.ProfileCreateRequest;
 import com.example.profile.dto.request.ProfileRequest;
 import com.example.profile.entity.Profiles;
 import com.example.profile.entity.ProfilesImage;
@@ -26,14 +26,15 @@ public class ProfileCommandService {
     private final ProfileRepository profileRepository;
 
     @Transactional
-    public Profiles createProfile(ProfileCreateRequest req)
+    public Profiles createProfile(AuthSyncQuery req)
     {
-        if(profileRepository.existsByNickname(req.getNickname()))
+        if(profileRepository.existsByNickname(req.profileInfo().nickname()))
         {
             throw new BusinessException(ProfileErrorCode.PROFILE_ALREADY_NICKNAME);
         }
-        Profiles profile = Profiles.create(req);
-        return profileRepository.save(profile);
+//        Profiles profile = Profiles.create(req);
+//        return profileRepository.save(profile);
+        return null;
     }
 
     @Transactional
