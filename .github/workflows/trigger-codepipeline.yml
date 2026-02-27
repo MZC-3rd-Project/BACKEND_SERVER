@@ -43,6 +43,7 @@ jobs:
           set -euo pipefail
           should_trigger="true"
           reason="ok"
+          deploy_targets=""
           pipelines=()
 
           dedupe_and_output() {
@@ -125,6 +126,9 @@ jobs:
                   should_trigger="false"
                   reason="no deployable service/gateway changes"
                 else
+                  mapfile -t changed_service_list < <(printf '%s\n' "${!changed_services[@]}" | sort)
+                  deploy_targets="$(IFS=,; echo "${changed_service_list[*]}")"
+
                   if [[ -z "${DEV_SERVICE_MAP}" || "${DEV_SERVICE_MAP}" == "{}" ]]; then
                     if [[ -z "${DEV_PIPELINE}" ]]; then
                       echo "::error::AWS_CODEPIPELINE_DEV_NAME is empty."
@@ -162,10 +166,12 @@ jobs:
 
           echo "should_trigger=${should_trigger}" >> "$GITHUB_OUTPUT"
           echo "reason=${reason}" >> "$GITHUB_OUTPUT"
+          echo "deploy_targets=${deploy_targets}" >> "$GITHUB_OUTPUT"
           dedupe_and_output "${pipelines[@]}"
 
           echo "should trigger: ${should_trigger}"
           echo "reason: ${reason}"
+          echo "deploy targets: ${deploy_targets:-<full>}"
           printf 'resolved pipelines:\n%s\n' "${pipelines[@]}"
 
       - name: Configure AWS Credentials (OIDC)
@@ -182,13 +188,36 @@ jobs:
           set -euo pipefail
           summary_file="$(mktemp)"
           pipelines="${{ steps.resolve.outputs.pipelines }}"
+          deploy_targets="${{ steps.resolve.outputs.deploy_targets }}"
 
           while IFS= read -r pipeline; do
             [[ -z "${pipeline}" ]] && continue
-            execution_id="$(aws codepipeline start-pipeline-execution \
-              --name "${pipeline}" \
-              --query "pipelineExecutionId" \
-              --output text)"
+
+            if [[ -n "${deploy_targets}" ]]; then
+              set +e
+              execution_id="$(aws codepipeline start-pipeline-execution \
+                --name "${pipeline}" \
+                --variables name=deployTargets,value="${deploy_targets}" \
+                --query "pipelineExecutionId" \
+                --output text 2>/tmp/codepipeline_start.err)"
+              start_rc=$?
+              set -e
+
+              if [[ "${start_rc}" -ne 0 ]]; then
+                echo "[WARN] start-pipeline-execution with variables failed for ${pipeline}; fallback to default execution"
+                cat /tmp/codepipeline_start.err >&2 || true
+                execution_id="$(aws codepipeline start-pipeline-execution \
+                  --name "${pipeline}" \
+                  --query "pipelineExecutionId" \
+                  --output text)"
+              fi
+            else
+              execution_id="$(aws codepipeline start-pipeline-execution \
+                --name "${pipeline}" \
+                --query "pipelineExecutionId" \
+                --output text)"
+            fi
+
             echo "${pipeline}|${execution_id}" >> "${summary_file}"
             echo "pipeline execution started: ${pipeline} -> ${execution_id}"
           done <<< "${pipelines}"

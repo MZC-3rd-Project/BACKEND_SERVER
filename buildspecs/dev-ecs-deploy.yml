@@ -35,23 +35,53 @@ phases:
     commands:
       - set -euo pipefail
       - echo "[INFO] build phase started"
+      - DEPLOY_RECORD_FILE="/tmp/deploy_services.txt"
+      - : > "${DEPLOY_RECORD_FILE}"
+      - TARGET_SET_FILE="/tmp/deploy_target_keys.txt"
+      - : > "${TARGET_SET_FILE}"
       - |
         SERVICE_MATRIX=$(cat <<'EOF'
-        servers:gateways:client-gateway|donmoa-dev-client-gateway|donmoa-dev-client-gateway
-        servers:services:auth|donmoa-dev-auth-service|donmoa-dev-auth
-        servers:services:profile|donmoa-dev-profile-service|donmoa-dev-profile
-        servers:services:product|donmoa-dev-product-service|donmoa-dev-product
-        servers:services:stock|donmoa-dev-stock-service|donmoa-dev-stock
-        servers:services:sales|donmoa-dev-sales-service|donmoa-dev-sales
-        servers:services:search|donmoa-dev-search-service|donmoa-dev-search
-        servers:services:funding|donmoa-dev-funding-service|donmoa-dev-funding
-        servers:services:hot-deal|donmoa-dev-hot-deal-service|donmoa-dev-hot-deal
-        servers:services:analytics-dashboard|donmoa-dev-analytics-dashboard-service|donmoa-dev-analytics-dashboard
+        servers:gateways:client-gateway|client-gateway|donmoa-dev-client-gateway|donmoa-dev-client-gateway
+        servers:services:auth|auth|donmoa-dev-auth-service|donmoa-dev-auth
+        servers:services:profile|profile|donmoa-dev-profile-service|donmoa-dev-profile
+        servers:services:product|product|donmoa-dev-product-service|donmoa-dev-product
+        servers:services:stock|stock|donmoa-dev-stock-service|donmoa-dev-stock
+        servers:services:sales|sales|donmoa-dev-sales-service|donmoa-dev-sales
+        servers:services:search|search|donmoa-dev-search-service|donmoa-dev-search
+        servers:services:funding|funding|donmoa-dev-funding-service|donmoa-dev-funding
+        servers:services:hot-deal|hot-deal|donmoa-dev-hot-deal-service|donmoa-dev-hot-deal
+        servers:services:chat|chat|donmoa-dev-chat-service|donmoa-dev-chat
+        servers:services:analytics-dashboard|analytics-dashboard|donmoa-dev-analytics-dashboard-service|donmoa-dev-analytics-dashboard
         EOF
         )
       - |
-        while IFS='|' read -r gradle_module ecr_repo ecs_service; do
+        if [ -n "${DEPLOY_TARGETS:-}" ] && [ "${DEPLOY_TARGETS}" != "__FULL__" ]; then
+          echo "[INFO] selective deploy enabled: ${DEPLOY_TARGETS}"
+          IFS=',' read -ra raw_targets <<< "${DEPLOY_TARGETS}"
+          for raw_target in "${raw_targets[@]}"; do
+            target="$(echo "${raw_target}" | xargs)"
+            [ -z "${target}" ] && continue
+            echo "${target}" >> "${TARGET_SET_FILE}"
+          done
+          sort -u "${TARGET_SET_FILE}" -o "${TARGET_SET_FILE}"
+
+          if [ ! -s "${TARGET_SET_FILE}" ]; then
+            echo "[WARN] DEPLOY_TARGETS was provided but no valid service key was parsed."
+          else
+            echo "[INFO] selected service keys:"
+            cat "${TARGET_SET_FILE}"
+          fi
+        else
+          echo "[INFO] full deploy mode (DEPLOY_TARGETS=${DEPLOY_TARGETS:-<empty>})"
+        fi
+      - |
+        while IFS='|' read -r gradle_module service_key ecr_repo ecs_service; do
           [ -z "${gradle_module}" ] && continue
+
+          if [ -s "${TARGET_SET_FILE}" ] && ! grep -Fxq "${service_key}" "${TARGET_SET_FILE}"; then
+            echo "[INFO] Skip ${service_key} (not in DEPLOY_TARGETS)"
+            continue
+          fi
 
           image_uri="${ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${ecr_repo}"
           image_with_tag="${image_uri}:${SHORT_TAG}"
@@ -67,26 +97,21 @@ phases:
           docker pull "${image_with_tag}"
           docker tag "${image_with_tag}" "${image_uri}:latest"
           docker push "${image_uri}:latest"
+
+          echo "${ecs_service}" >> "${DEPLOY_RECORD_FILE}"
         done <<< "${SERVICE_MATRIX}"
 
   post_build:
     commands:
       - set -euo pipefail
       - echo "[INFO] post_build phase started"
+      - DEPLOY_RECORD_FILE="/tmp/deploy_services.txt"
       - |
-        SERVICE_LIST=$(cat <<'EOF'
-        donmoa-dev-client-gateway
-        donmoa-dev-auth
-        donmoa-dev-profile
-        donmoa-dev-product
-        donmoa-dev-stock
-        donmoa-dev-sales
-        donmoa-dev-search
-        donmoa-dev-funding
-        donmoa-dev-hot-deal
-        donmoa-dev-analytics-dashboard
-        EOF
-        )
+        if [ ! -s "${DEPLOY_RECORD_FILE}" ]; then
+          echo "[INFO] no services were built. skip ECS force deployment."
+          echo "[INFO] deploy completed"
+          exit 0
+        fi
       - |
         while IFS= read -r svc; do
           [ -z "${svc}" ] && continue
@@ -108,5 +133,5 @@ phases:
             --service "${svc}" \
             --force-new-deployment \
             --output json >/dev/null
-        done <<< "${SERVICE_LIST}"
+        done < <(sort -u "${DEPLOY_RECORD_FILE}")
       - echo "[INFO] deploy completed"
