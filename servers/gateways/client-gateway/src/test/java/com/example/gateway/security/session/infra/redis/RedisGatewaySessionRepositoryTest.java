@@ -40,6 +40,7 @@ class RedisGatewaySessionRepositoryTest {
         properties.setRedisKeyPrefix("gateway:sess:");
         properties.setUserSessionsKeyPrefix("gateway:user:sessions:");
         properties.setStatusField("status");
+        properties.setActiveStatus("ACTIVE");
         properties.setRevokedStatus("REVOKED");
 
         repository = new RedisGatewaySessionRepository(redisTemplate, properties);
@@ -63,6 +64,19 @@ class RedisGatewaySessionRepositoryTest {
         repository.indexUserSession(11L, "sid-11").block();
 
         verify(setOperations).add("gateway:user:sessions:11", "sid-11");
+    }
+
+    @Test
+    void activateSession_setsActiveStatusAndIndexesUserSession() {
+        when(redisTemplate.opsForHash()).thenReturn(hashOperations);
+        when(redisTemplate.opsForSet()).thenReturn(setOperations);
+        when(hashOperations.put("gateway:sess:sid-21", "status", "ACTIVE")).thenReturn(Mono.just(true));
+        when(setOperations.add("gateway:user:sessions:21", "sid-21")).thenReturn(Mono.just(1L));
+
+        repository.activateSession(21L, "sid-21").block();
+
+        verify(hashOperations).put("gateway:sess:sid-21", "status", "ACTIVE");
+        verify(setOperations).add("gateway:user:sessions:21", "sid-21");
     }
 
     @Test
@@ -101,7 +115,10 @@ class RedisGatewaySessionRepositoryTest {
     void indexUserSession_returnsWithoutRedisCallWhenInputInvalid() {
         repository.indexUserSession(null, "sid-14").block();
         repository.indexUserSession(14L, " ").block();
+        repository.activateSession(null, "sid-14").block();
+        repository.activateSession(14L, " ").block();
 
         verifyNoInteractions(setOperations);
+        verifyNoInteractions(hashOperations);
     }
 }

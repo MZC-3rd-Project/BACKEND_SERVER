@@ -174,6 +174,43 @@ class SessionHeaderRelayGlobalFilterTest {
     }
 
     @Test
+    void filter_allowsOptionalAuthPathWhenSessionClaimHasNoNumericUserId() {
+        SessionHeaderRelayGlobalFilter filter = createFilter("gw-internal-token", null);
+        MockServerHttpRequest request = MockServerHttpRequest.get("/api/products/101").build();
+        ServerWebExchange exchange = authenticatedExchange(
+                request,
+                Map.of("userId", "not-a-number", "roles", List.of("ROLE_USER")),
+                List.of("ROLE_USER")
+        );
+        CapturingChain chain = new CapturingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertThat(chain.called).isTrue();
+        ServerHttpRequest forwardedRequest = chain.exchange.getRequest();
+        assertThat(forwardedRequest.getHeaders().containsKey(HttpHeaderNames.USER_ID)).isFalse();
+        assertThat(forwardedRequest.getHeaders().containsKey(HttpHeaderNames.USER_ROLES)).isFalse();
+        assertThat(forwardedRequest.getHeaders().getFirst(HttpHeaderNames.GATEWAY_AUTH)).isEqualTo("gw-internal-token");
+    }
+
+    @Test
+    void filter_returns401ForAuthRequiredPathWhenSessionClaimHasNoNumericUserId() {
+        SessionHeaderRelayGlobalFilter filter = createFilter("gw-internal-token", null);
+        MockServerHttpRequest request = MockServerHttpRequest.get("/api/v1/chat/rooms").build();
+        ServerWebExchange exchange = authenticatedExchange(
+                request,
+                Map.of("userId", "not-a-number", "roles", List.of("ROLE_USER")),
+                List.of("ROLE_USER")
+        );
+        CapturingChain chain = new CapturingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertThat(chain.called).isFalse();
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
     void filter_returns401WhenProductWriteRequestHasNoSession() {
         SessionHeaderRelayGlobalFilter filter = createFilter("gw-internal-token", null);
         MockServerHttpRequest request = MockServerHttpRequest.post("/api/products")
@@ -323,7 +360,16 @@ class SessionHeaderRelayGlobalFilterTest {
                 .map(SimpleGrantedAuthority::new)
                 .toList();
 
-        DefaultOAuth2User oauth2User = new DefaultOAuth2User(grantedAuthorities, claims, "userId");
+        String nameAttributeKey;
+        if (claims.containsKey("userId")) {
+            nameAttributeKey = "userId";
+        } else if (claims.containsKey("sub")) {
+            nameAttributeKey = "sub";
+        } else {
+            nameAttributeKey = claims.keySet().stream().findFirst().orElse("userId");
+        }
+
+        DefaultOAuth2User oauth2User = new DefaultOAuth2User(grantedAuthorities, claims, nameAttributeKey);
         Authentication authentication = new UsernamePasswordAuthenticationToken(
                 oauth2User,
                 "N/A",

@@ -3,6 +3,7 @@ package com.example.funding.service.query;
 import com.example.core.exception.BusinessException;
 import com.example.core.pagination.CursorResponse;
 import com.example.core.pagination.CursorUtils;
+import com.example.data.entity.datasource.UseWriteDataSource;
 import com.example.funding.dto.campaign.response.CampaignResponse;
 import com.example.funding.dto.campaign.response.StatusHistoryResponse;
 import com.example.funding.entity.FundingCampaign;
@@ -25,12 +26,14 @@ public class CampaignQueryService {
     private final FundingCampaignRepository campaignRepository;
     private final FundingStatusHistoryRepository statusHistoryRepository;
 
+    @UseWriteDataSource
     public CampaignResponse findById(Long campaignId) {
         FundingCampaign campaign = campaignRepository.findById(campaignId)
                 .orElseThrow(() -> new BusinessException(FundingErrorCode.CAMPAIGN_NOT_FOUND));
         return CampaignResponse.from(campaign);
     }
 
+    @UseWriteDataSource
     public CampaignResponse findByItemId(Long itemId) {
         FundingCampaign campaign = campaignRepository.findByItemId(itemId)
                 .orElseThrow(() -> new BusinessException(FundingErrorCode.CAMPAIGN_NOT_FOUND));
@@ -63,6 +66,7 @@ public class CampaignQueryService {
         return CursorResponse.of(content, nextCursor);
     }
 
+    @UseWriteDataSource
     public List<StatusHistoryResponse> findStatusHistory(Long campaignId) {
         if (!campaignRepository.existsById(campaignId)) {
             throw new BusinessException(FundingErrorCode.CAMPAIGN_NOT_FOUND);

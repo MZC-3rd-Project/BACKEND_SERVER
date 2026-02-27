@@ -1,5 +1,6 @@
 package com.example.product.service.query;
 
+import com.example.data.entity.datasource.UseWriteDataSource;
 import com.example.product.dto.item.response.StatusHistoryResponse;
 import com.example.product.repository.ItemStatusHistoryRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +16,7 @@ public class ItemStatusQueryService {
 
     private final ItemStatusHistoryRepository statusHistoryRepository;
 
+    @UseWriteDataSource
     public List<StatusHistoryResponse> getHistory(Long itemId) {
         return statusHistoryRepository.findByItemIdOrderByCreatedAtDesc(itemId).stream()
                 .map(StatusHistoryResponse::from).toList();

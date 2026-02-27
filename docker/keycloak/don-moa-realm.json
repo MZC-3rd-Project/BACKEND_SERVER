@@ -483,29 +483,7 @@
   "webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister": false,
   "webAuthnPolicyPasswordlessAcceptableAaguids": [],
   "webAuthnPolicyPasswordlessExtraOrigins": [],
-  "users": [
-    {
-      "id": "bb34b2f5-c2ae-4e88-97c1-38ab71c21866",
-      "createdTimestamp": 1771915150229,
-      "username": "service-account-don-moa-admin",
-      "enabled": true,
-      "totp": false,
-      "emailVerified": false,
-      "serviceAccountClientId": "don-moa-admin",
-      "disableableCredentialTypes": [],
-      "requiredActions": [],
-      "realmRoles": [
-        "default-roles-don-moa"
-      ],
-      "clientRoles": {
-        "realm-management": [
-          "manage-users"
-        ]
-      },
-      "notBefore": 0,
-      "groups": []
-    }
-  ],
+  "users": [],
   "scopeMappings": [
     {
       "clientScope": "offline_access",

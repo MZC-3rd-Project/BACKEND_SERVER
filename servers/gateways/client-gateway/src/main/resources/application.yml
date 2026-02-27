@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: client-gateway
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:localhost}}
+      port: ${SPRING_DATA_REDIS_PORT:${REDIS_PORT:6379}}
   cloud:
     gateway:
       server:
@@ -53,6 +57,7 @@ gateway:
   security:
     internal-auth-header: ${GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}
     internal-auth-token: ${GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
+    allow-client-identity-headers: ${GATEWAY_SECURITY_ALLOW_CLIENT_IDENTITY_HEADERS:false}
     relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/v1/search,/api/v1/media,/api/v1/chat,/ws/chat,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications}
     require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:/api/v1/chat,/ws/chat}
     require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/bff/v1,/api/v1/media,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications}

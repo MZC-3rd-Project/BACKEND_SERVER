@@ -3,6 +3,7 @@ package com.example.product.service.query;
 import com.example.core.exception.BusinessException;
 import com.example.core.pagination.CursorResponse;
 import com.example.core.pagination.CursorUtils;
+import com.example.data.entity.datasource.UseWriteDataSource;
 import com.example.product.dto.item.response.ItemContentSnapshot;
 import com.example.product.dto.performance.response.PerformanceDetailResponse;
 import com.example.product.dto.performance.response.PerformanceListResponse;
@@ -58,6 +59,7 @@ public class PerformanceQueryService {
         return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers, contentSnapshot, images);
     }
 
+    @UseWriteDataSource
     public PerformanceDetailResponse findSellerById(Long itemId, Long sellerId) {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));

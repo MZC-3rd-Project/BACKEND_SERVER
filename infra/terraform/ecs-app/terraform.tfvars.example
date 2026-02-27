@@ -1,0 +1,290 @@
+aws_region   = "ap-northeast-2"
+environment  = "dev"
+name_prefix  = "donmoa"
+
+cluster_arn             = "arn:aws:ecs:ap-northeast-2:123456789012:cluster/donmoa-dev"
+task_execution_role_arn = "arn:aws:iam::123456789012:role/donmoa-ecs-task-execution-role"
+task_role_arn           = "arn:aws:iam::123456789012:role/donmoa-ecs-task-role"
+
+subnet_ids = [
+  "subnet-aaaaaaaa",
+  "subnet-bbbbbbbb"
+]
+
+security_group_ids = [
+  "sg-aaaaaaaa"
+]
+
+default_tags = {
+  Team    = "backend"
+  Managed = "terraform"
+}
+
+services = {
+  "client-gateway" = {
+    image          = "123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/client-gateway:latest"
+    cpu            = 512
+    memory         = 1024
+    container_port = 8080
+    desired_count  = 1
+
+    target_group_arn = "arn:aws:elasticloadbalancing:ap-northeast-2:123456789012:targetgroup/donmoa-gateway-tg/abcde12345"
+
+    environment = {
+      SERVER_PORT                                    = "8080"
+      SPRING_PROFILES_ACTIVE                         = "bff-auth"
+      GATEWAY_AUTH_ENABLED                           = "true"
+      GATEWAY_OAUTH2_ISSUER_URI                      = "http://keycloak.internal:8080/realms/don-moa"
+      GATEWAY_OAUTH2_CLIENT_ID                       = "don-moa-gateway"
+      GATEWAY_OAUTH2_CLIENT_AUTHENTICATION_METHOD    = "client_secret_basic"
+      GATEWAY_OAUTH2_SCOPES                          = "openid,profile,email"
+      GATEWAY_SECURITY_INTERNAL_AUTH_HEADER          = "X-Gateway-Auth"
+      GATEWAY_SESSION_ENABLED                        = "false"
+      GATEWAY_SESSION_TRUSTED_HEADER_AUTH_ENABLED    = "false"
+      APP_SECURITY_CONTEXT_MAX_AGE_MILLIS            = "300000"
+      ANALYTICS_DASHBOARD_SERVICE_URL                = "http://analytics-dashboard.internal:8095"
+      REDIS_HOST                                     = "donmoa-redis.xxxxxx.apn2.cache.amazonaws.com"
+      REDIS_PORT                                     = "6379"
+      SPRING_DATA_REDIS_HOST                         = "donmoa-redis.xxxxxx.apn2.cache.amazonaws.com"
+      SPRING_DATA_REDIS_PORT                         = "6379"
+    }
+
+    secrets = {
+      APP_SECURITY_CONTEXT_SIGNING_KEY       = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/common-AbCdE:APP_SECURITY_CONTEXT_SIGNING_KEY::"
+      GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN   = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/common-AbCdE:GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN::"
+      GATEWAY_OAUTH2_CLIENT_SECRET           = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/common-AbCdE:GATEWAY_OAUTH2_CLIENT_SECRET::"
+      GATEWAY_SESSION_REFRESH_TOKEN_HASH_PEPPER = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/common-AbCdE:GATEWAY_SESSION_REFRESH_TOKEN_HASH_PEPPER::"
+      GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_TOKEN = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/common-AbCdE:GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_TOKEN::"
+    }
+  }
+
+  keycloak = {
+    image          = "123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/keycloak:latest"
+    cpu            = 512
+    memory         = 1024
+    container_port = 8080
+    desired_count  = 1
+
+    command = ["start-dev", "--import-realm"]
+
+    environment = {
+      KC_DB                = "postgres"
+      KC_DB_URL            = "jdbc:postgresql://donmoa-rds.cluster-xxxx.ap-northeast-2.rds.amazonaws.com:5432/keycloak_db"
+      KC_DB_USERNAME       = "keycloak_user"
+      KC_HTTP_ENABLED      = "true"
+      KC_PROXY_HEADERS     = "xforwarded"
+      KC_HOSTNAME_STRICT   = "false"
+      KC_HEALTH_ENABLED    = "true"
+      KC_METRICS_ENABLED   = "true"
+      KEYCLOAK_ADMIN       = "admin"
+    }
+
+    secrets = {
+      KC_DB_PASSWORD         = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/keycloak-db-AbCdE:password::"
+      KEYCLOAK_ADMIN_PASSWORD = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/keycloak-admin-AbCdE:password::"
+    }
+  }
+
+  product = {
+    image          = "123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/product-service:latest"
+    cpu            = 512
+    memory         = 1024
+    container_port = 8084
+    desired_count  = 1
+
+    environment = {
+      SERVER_PORT                    = "8084"
+      SPRING_PROFILES_ACTIVE         = "develop"
+      DB_URL                         = "jdbc:postgresql://donmoa-rds.cluster-xxxx.ap-northeast-2.rds.amazonaws.com:5432/product_db"
+      APP_DATASOURCE_READ_URL        = "jdbc:postgresql://donmoa-rds.cluster-ro-xxxx.ap-northeast-2.rds.amazonaws.com:5432/product_db"
+      DB_USERNAME                    = "product_user"
+      APP_DATASOURCE_READ_USERNAME   = "product_user"
+      APP_DATASOURCE_READ_WRITE_ROUTING_ENABLED = "true"
+      REDIS_HOST                     = "donmoa-redis.xxxxxx.apn2.cache.amazonaws.com"
+      REDIS_PORT                     = "6379"
+      KAFKA_BOOTSTRAP_SERVERS        = "localhost:9092"
+      SPRING_KAFKA_LISTENER_AUTO_STARTUP = "false"
+      MEDIA_SERVICE_URL              = "http://media-api.internal:8094"
+      APP_GATEWAY_SECURITY_ENABLED   = "true"
+      APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED = "true"
+      APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER = "X-Gateway-Auth"
+      APP_GATEWAY_SECURITY_USER_ID_HEADER       = "X-User-Id"
+    }
+
+    secrets = {
+      DB_PASSWORD                          = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/product-db-AbCdE:password::"
+      APP_SECURITY_CONTEXT_SIGNING_KEY     = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/common-AbCdE:APP_SECURITY_CONTEXT_SIGNING_KEY::"
+      APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/common-AbCdE:APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN::"
+    }
+  }
+
+  stock = {
+    image          = "123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/stock-service:latest"
+    cpu            = 512
+    memory         = 1024
+    container_port = 8085
+    desired_count  = 1
+
+    environment = {
+      SERVER_PORT                    = "8085"
+      SPRING_PROFILES_ACTIVE         = "develop"
+      DB_URL                         = "jdbc:postgresql://donmoa-rds.cluster-xxxx.ap-northeast-2.rds.amazonaws.com:5432/stock_db"
+      APP_DATASOURCE_READ_URL        = "jdbc:postgresql://donmoa-rds.cluster-ro-xxxx.ap-northeast-2.rds.amazonaws.com:5432/stock_db"
+      DB_USERNAME                    = "stock_user"
+      APP_DATASOURCE_READ_USERNAME   = "stock_user"
+      APP_DATASOURCE_READ_WRITE_ROUTING_ENABLED = "true"
+      REDIS_HOST                     = "donmoa-redis.xxxxxx.apn2.cache.amazonaws.com"
+      REDIS_PORT                     = "6379"
+      KAFKA_BOOTSTRAP_SERVERS        = "localhost:9092"
+      SPRING_KAFKA_LISTENER_AUTO_STARTUP = "false"
+      APP_GATEWAY_SECURITY_ENABLED   = "true"
+      APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED = "true"
+      APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER = "X-Gateway-Auth"
+      APP_GATEWAY_SECURITY_USER_ID_HEADER       = "X-User-Id"
+    }
+
+    secrets = {
+      DB_PASSWORD                          = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/stock-db-AbCdE:password::"
+      APP_SECURITY_CONTEXT_SIGNING_KEY     = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/common-AbCdE:APP_SECURITY_CONTEXT_SIGNING_KEY::"
+      APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/common-AbCdE:APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN::"
+    }
+  }
+
+  search = {
+    image          = "123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/search-service:latest"
+    cpu            = 512
+    memory         = 1024
+    container_port = 8088
+    desired_count  = 1
+
+    environment = {
+      SERVER_PORT                    = "8088"
+      SPRING_PROFILES_ACTIVE         = "develop"
+      DB_URL                         = "jdbc:postgresql://donmoa-rds.cluster-xxxx.ap-northeast-2.rds.amazonaws.com:5432/search_db"
+      APP_DATASOURCE_READ_URL        = "jdbc:postgresql://donmoa-rds.cluster-ro-xxxx.ap-northeast-2.rds.amazonaws.com:5432/search_db"
+      DB_USERNAME                    = "search_user"
+      APP_DATASOURCE_READ_USERNAME   = "search_user"
+      APP_DATASOURCE_READ_WRITE_ROUTING_ENABLED = "true"
+      REDIS_HOST                     = "donmoa-redis.xxxxxx.apn2.cache.amazonaws.com"
+      REDIS_PORT                     = "6379"
+      KAFKA_BOOTSTRAP_SERVERS        = "localhost:9092"
+      SPRING_KAFKA_LISTENER_AUTO_STARTUP = "false"
+      ELASTICSEARCH_URIS             = "http://donmoa-elasticsearch.internal:9200"
+      MEDIA_SERVICE_URL              = "http://media-api.internal:8094"
+      STOCK_SERVICE_URL              = "http://stock-service.internal:8085"
+      APP_GATEWAY_SECURITY_ENABLED   = "true"
+      APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED = "true"
+      APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER = "X-Gateway-Auth"
+      APP_GATEWAY_SECURITY_USER_ID_HEADER       = "X-User-Id"
+    }
+
+    secrets = {
+      DB_PASSWORD                          = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/search-db-AbCdE:password::"
+      APP_SECURITY_CONTEXT_SIGNING_KEY     = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/common-AbCdE:APP_SECURITY_CONTEXT_SIGNING_KEY::"
+      APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/common-AbCdE:APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN::"
+    }
+  }
+
+  funding = {
+    image          = "123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/funding-service:latest"
+    cpu            = 512
+    memory         = 1024
+    container_port = 8086
+    desired_count  = 1
+
+    environment = {
+      SERVER_PORT                    = "8086"
+      SPRING_PROFILES_ACTIVE         = "develop"
+      DB_URL                         = "jdbc:postgresql://donmoa-rds.cluster-xxxx.ap-northeast-2.rds.amazonaws.com:5432/funding_db"
+      APP_DATASOURCE_READ_URL        = "jdbc:postgresql://donmoa-rds.cluster-ro-xxxx.ap-northeast-2.rds.amazonaws.com:5432/funding_db"
+      DB_USERNAME                    = "funding_user"
+      APP_DATASOURCE_READ_USERNAME   = "funding_user"
+      APP_DATASOURCE_READ_WRITE_ROUTING_ENABLED = "true"
+      REDIS_HOST                     = "donmoa-redis.xxxxxx.apn2.cache.amazonaws.com"
+      REDIS_PORT                     = "6379"
+      KAFKA_BOOTSTRAP_SERVERS        = "localhost:9092"
+      SPRING_KAFKA_LISTENER_AUTO_STARTUP = "false"
+      STOCK_SERVICE_URL              = "http://stock-service.internal:8085"
+      APP_GATEWAY_SECURITY_ENABLED   = "true"
+      APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED = "true"
+      APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER = "X-Gateway-Auth"
+      APP_GATEWAY_SECURITY_USER_ID_HEADER       = "X-User-Id"
+    }
+
+    secrets = {
+      DB_PASSWORD                          = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/funding-db-AbCdE:password::"
+      APP_SECURITY_CONTEXT_SIGNING_KEY     = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/common-AbCdE:APP_SECURITY_CONTEXT_SIGNING_KEY::"
+      APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/common-AbCdE:APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN::"
+    }
+  }
+
+  "hot-deal" = {
+    image          = "123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/hot-deal-service:latest"
+    cpu            = 512
+    memory         = 1024
+    container_port = 8089
+    desired_count  = 1
+
+    environment = {
+      SERVER_PORT                    = "8089"
+      SPRING_PROFILES_ACTIVE         = "develop"
+      DB_URL                         = "jdbc:postgresql://donmoa-rds.cluster-xxxx.ap-northeast-2.rds.amazonaws.com:5432/hotdeal_db"
+      APP_DATASOURCE_READ_URL        = "jdbc:postgresql://donmoa-rds.cluster-ro-xxxx.ap-northeast-2.rds.amazonaws.com:5432/hotdeal_db"
+      DB_USERNAME                    = "hotdeal_user"
+      APP_DATASOURCE_READ_USERNAME   = "hotdeal_user"
+      APP_DATASOURCE_READ_WRITE_ROUTING_ENABLED = "true"
+      REDIS_HOST                     = "donmoa-redis.xxxxxx.apn2.cache.amazonaws.com"
+      REDIS_PORT                     = "6379"
+      KAFKA_BOOTSTRAP_SERVERS        = "localhost:9092"
+      SPRING_KAFKA_LISTENER_AUTO_STARTUP = "false"
+      PRODUCT_SERVICE_URL            = "http://product-service.internal:8084"
+      STOCK_SERVICE_URL              = "http://stock-service.internal:8085"
+      APP_GATEWAY_SECURITY_ENABLED   = "true"
+      APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED = "true"
+      APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER = "X-Gateway-Auth"
+      APP_GATEWAY_SECURITY_USER_ID_HEADER       = "X-User-Id"
+    }
+
+    secrets = {
+      DB_PASSWORD                          = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/hotdeal-db-AbCdE:password::"
+      APP_SECURITY_CONTEXT_SIGNING_KEY     = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/common-AbCdE:APP_SECURITY_CONTEXT_SIGNING_KEY::"
+      APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/common-AbCdE:APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN::"
+    }
+  }
+
+  "analytics-dashboard" = {
+    image          = "123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/analytics-dashboard-service:latest"
+    cpu            = 512
+    memory         = 1024
+    container_port = 8095
+    desired_count  = 1
+
+    environment = {
+      SERVER_PORT                    = "8095"
+      SPRING_PROFILES_ACTIVE         = "develop"
+      DB_URL                         = "jdbc:postgresql://donmoa-rds.cluster-xxxx.ap-northeast-2.rds.amazonaws.com:5432/analytics_db"
+      APP_DATASOURCE_READ_URL        = "jdbc:postgresql://donmoa-rds.cluster-ro-xxxx.ap-northeast-2.rds.amazonaws.com:5432/analytics_db"
+      DB_USERNAME                    = "analytics_user"
+      APP_DATASOURCE_READ_USERNAME   = "analytics_user"
+      APP_DATASOURCE_READ_WRITE_ROUTING_ENABLED = "true"
+      REDIS_HOST                     = "donmoa-redis.xxxxxx.apn2.cache.amazonaws.com"
+      REDIS_PORT                     = "6379"
+      KAFKA_BOOTSTRAP_SERVERS        = "localhost:9092"
+      SPRING_KAFKA_LISTENER_AUTO_STARTUP = "false"
+      PRODUCT_SERVICE_URL            = "http://product-service.internal:8084"
+      STOCK_SERVICE_URL              = "http://stock-service.internal:8085"
+      SALES_SERVICE_URL              = "http://sales-service.internal:8087"
+      SEARCH_SERVICE_URL             = "http://search-service.internal:8088"
+      APP_GATEWAY_SECURITY_ENABLED   = "true"
+      APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED = "true"
+      APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER = "X-Gateway-Auth"
+      APP_GATEWAY_SECURITY_USER_ID_HEADER       = "X-User-Id"
+    }
+
+    secrets = {
+      DB_PASSWORD                          = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/analytics-db-AbCdE:password::"
+      APP_SECURITY_CONTEXT_SIGNING_KEY     = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/common-AbCdE:APP_SECURITY_CONTEXT_SIGNING_KEY::"
+      APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/common-AbCdE:APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN::"
+    }
+  }
+}

@@ -1,6 +1,7 @@
 package com.example.product.service.query;
 
 import com.example.core.exception.BusinessException;
+import com.example.data.entity.datasource.UseWriteDataSource;
 import com.example.product.dto.item.response.ItemSummaryResponse;
 import com.example.product.entity.image.ItemImage;
 import com.example.product.entity.item.Item;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@UseWriteDataSource
 public class InternalItemQueryService {
 
     private final ItemRepository itemRepository;

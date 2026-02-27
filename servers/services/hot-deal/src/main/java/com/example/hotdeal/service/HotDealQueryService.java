@@ -1,6 +1,7 @@
 package com.example.hotdeal.service;
 
 import com.example.core.exception.BusinessException;
+import com.example.data.entity.datasource.UseWriteDataSource;
 import com.example.hotdeal.dto.HotDealDetailResponse;
 import com.example.hotdeal.dto.HotDealListResponse;
 import com.example.hotdeal.entity.HotDeal;
@@ -39,6 +40,7 @@ public class HotDealQueryService {
                 .toList();
     }
 
+    @UseWriteDataSource
     public HotDealDetailResponse getDetail(Long hotDealId) {
         String cacheKey = CACHE_KEY_PREFIX + hotDealId;
 
