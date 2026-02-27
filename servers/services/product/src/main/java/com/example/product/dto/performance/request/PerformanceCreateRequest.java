@@ -1,5 +1,6 @@
 package com.example.product.dto.performance.request;
 
+import com.example.product.dto.item.request.ItemDetailSectionRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
@@ -23,9 +24,21 @@ public class PerformanceCreateRequest {
     @Min(value = 0, message = "가격은 0 이상이어야 합니다")
     private Long price;
 
+    @NotNull(message = "가게 ID는 필수입니다")
+    @Positive(message = "가게 ID는 양수여야 합니다")
+    private Long storeId;
+
     private Long categoryId;
 
-    private String thumbnailUrl;
+    @Positive(message = "썸네일 미디어 ID는 양수여야 합니다")
+    private Long thumbnailMediaId;
+
+    private List<@Size(max = 50) String> tags;
+
+    private List<@Size(max = 200) String> features;
+
+    @Valid
+    private List<ItemDetailSectionRequest> detailSections;
 
     @NotBlank(message = "공연장소는 필수입니다")
     private String venue;

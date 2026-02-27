@@ -15,11 +15,13 @@ public enum ProductErrorCode implements DomainErrorCode {
     INVALID_ITEM_STATUS_TRANSITION("PRODUCT-003", "유효하지 않은 상품 상태 전이입니다", HttpStatus.BAD_REQUEST),
     ITEM_NOT_EDITABLE("PRODUCT-004", "수정할 수 없는 상태의 상품입니다", HttpStatus.BAD_REQUEST),
     ITEM_NOT_DELETABLE("PRODUCT-005", "삭제할 수 없는 상태의 상품입니다", HttpStatus.BAD_REQUEST),
+    ITEM_TYPE_MISMATCH("PRODUCT-006", "요청한 상품 타입과 실제 상품 타입이 일치하지 않습니다", HttpStatus.BAD_REQUEST),
 
     // Category
     CATEGORY_NOT_FOUND("PRODUCT-101", "카테고리를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
     CATEGORY_DEPTH_EXCEEDED("PRODUCT-102", "카테고리 최대 깊이를 초과했습니다", HttpStatus.BAD_REQUEST),
     CATEGORY_HAS_CHILDREN("PRODUCT-103", "하위 카테고리가 있어 삭제할 수 없습니다", HttpStatus.CONFLICT),
+    CATEGORY_IN_USE("PRODUCT-104", "연결된 상품이 있어 카테고리를 삭제할 수 없습니다", HttpStatus.CONFLICT),
 
     // Performance
     PERFORMANCE_NOT_FOUND("PRODUCT-201", "공연 정보를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
@@ -39,9 +41,15 @@ public enum ProductErrorCode implements DomainErrorCode {
 
     // Image
     IMAGE_NOT_FOUND("PRODUCT-601", "이미지를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
+    INVALID_MEDIA_REFERENCE("PRODUCT-602", "유효하지 않은 미디어 참조입니다", HttpStatus.BAD_REQUEST),
+    MEDIA_SERVICE_ERROR("PRODUCT-603", "미디어 서비스 호출에 실패했습니다", HttpStatus.BAD_GATEWAY),
+    INVALID_IMAGE_REORDER_REQUEST("PRODUCT-604", "이미지 순서 요청이 유효하지 않습니다", HttpStatus.BAD_REQUEST),
+    INVALID_THUMBNAIL_UPDATE_REQUEST("PRODUCT-605", "썸네일 변경 요청이 유효하지 않습니다", HttpStatus.BAD_REQUEST),
+    DUPLICATE_IMAGE_MEDIA_ID("PRODUCT-606", "중복된 이미지 미디어 ID입니다", HttpStatus.BAD_REQUEST),
 
     // Authorization
-    UNAUTHORIZED_ACCESS("PRODUCT-901", "해당 상품에 대한 권한이 없습니다", HttpStatus.FORBIDDEN);
+    UNAUTHORIZED_ACCESS("PRODUCT-901", "해당 상품에 대한 권한이 없습니다", HttpStatus.FORBIDDEN),
+    STORE_OWNERSHIP_MISMATCH("PRODUCT-902", "요청한 가게 정보와 인증 가게 정보가 일치하지 않습니다", HttpStatus.FORBIDDEN);
 
     private final String code;
     private final String message;

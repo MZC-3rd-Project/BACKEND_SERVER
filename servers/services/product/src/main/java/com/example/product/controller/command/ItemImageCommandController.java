@@ -4,7 +4,7 @@ import com.example.api.response.ApiResponse;
 import com.example.product.controller.api.command.ItemImageCommandApi;
 import com.example.product.dto.image.request.ItemImageRequest;
 import com.example.product.dto.image.response.ItemImageResponse;
-import com.example.product.service.command.ItemImageCommandService;
+import com.example.product.service.command.image.ItemImageCommandService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;

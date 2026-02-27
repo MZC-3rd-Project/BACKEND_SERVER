@@ -11,6 +11,11 @@ import org.springframework.context.annotation.Bean;
 public class OpenApiAutoConfiguration {
 
     @Bean
+    @ConditionalOnProperty(
+            prefix = "app.openapi",
+            name = "expose-gateway-headers",
+            havingValue = "true"
+    )
     public CommonHeaderOperationCustomizer commonHeaderOperationCustomizer() {
         return new CommonHeaderOperationCustomizer();
     }

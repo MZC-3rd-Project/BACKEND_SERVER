@@ -1,0 +1,112 @@
+server:
+  port: ${SERVER_PORT:8093}
+
+spring:
+  application:
+    name: chat-service
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  # ─── DataSource ───────────────────────────────
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/chat_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  # ─── JPA ──────────────────────────────────────
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_batch_fetch_size: 100
+    show-sql: ${JPA_SHOW_SQL:false}
+    open-in-view: false
+
+  # ─── Redis ────────────────────────────────────
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  # ─── Kafka ────────────────────────────────────
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+    consumer:
+      group-id: chat-service-group
+      auto-offset-reset: earliest
+
+chat:
+  realtime:
+    redis-topic: ${CHAT_REALTIME_REDIS_TOPIC:chat-room-events}
+    redis-fanout-enabled: ${CHAT_REALTIME_REDIS_FANOUT_ENABLED:true}
+    replay-batch-size: ${CHAT_REALTIME_REPLAY_BATCH_SIZE:100}
+    heartbeat-timeout-seconds: ${CHAT_REALTIME_HEARTBEAT_TIMEOUT_SECONDS:60}
+    heartbeat-check-interval-ms: ${CHAT_REALTIME_HEARTBEAT_CHECK_INTERVAL_MS:10000}
+    presence-ttl-seconds: ${CHAT_REALTIME_PRESENCE_TTL_SECONDS:120}
+  rate-limit:
+    per-second: ${CHAT_RATE_LIMIT_PER_SECOND:8}
+    per-minute: ${CHAT_RATE_LIMIT_PER_MINUTE:100}
+    key-ttl-seconds: ${CHAT_RATE_LIMIT_KEY_TTL_SECONDS:120}
+  retention:
+    days: ${CHAT_RETENTION_DAYS:365}
+    cleanup-cron: ${CHAT_RETENTION_CLEANUP_CRON:0 15 4 * * *}
+
+# ─── Snowflake ID ────────────────────────────
+app:
+  security:
+    context:
+      signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}
+      max-age-millis: ${APP_SECURITY_CONTEXT_MAX_AGE_MILLIS:300000}
+
+  gateway-security:
+    enabled: ${APP_GATEWAY_SECURITY_ENABLED:true}
+    gateway-auth-enabled: ${APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED:${CHAT_SECURITY_GATEWAY_AUTH_ENABLED:true}}
+    internal-auth-header: ${APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:${CHAT_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}}
+    internal-auth-token: ${APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:${CHAT_SECURITY_INTERNAL_AUTH_TOKEN:}}
+    user-id-header: ${APP_GATEWAY_SECURITY_USER_ID_HEADER:${CHAT_SECURITY_USER_ID_HEADER:X-User-Id}}
+    required-paths:
+      - /api/v1/chat/**
+      - /ws/chat
+      - /ws/chat/**
+    excluded-paths:
+      - /actuator/**
+      - /v3/api-docs/**
+      - /swagger-ui/**
+
+  snowflake:
+    datacenter-id: ${SNOWFLAKE_DATACENTER_ID:1}
+    worker-id: ${SNOWFLAKE_WORKER_ID:10}
+
+  # ─── Service URLs ────────────────────────────
+  service:
+    product-url: ${PRODUCT_SERVICE_URL:http://localhost:8084}
+    funding-url: ${FUNDING_SERVICE_URL:http://localhost:8086}
+    notification-url: ${NOTIFICATION_SERVICE_URL:http://localhost:8092}
+
+  # ─── OpenAPI ──────────────────────────────────
+  openapi:
+    enabled: ${OPENAPI_ENABLED:true}
+    title: "Chat Service API"
+    version: "1.0.0"
+    description: |
+      상품 문의 1:1 채팅과 펀딩 단체 채팅 실시간 서비스
+
+# ─── Actuator ─────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${ACTUATOR_ENDPOINTS:health,info,metrics,prometheus}
+  endpoint:
+    health:
+      show-details: always
+
+# ─── Logging ──────────────────────────────────
+logging:
+  level:
+    com.example: ${LOG_LEVEL:INFO}
+    org.springframework.kafka: INFO

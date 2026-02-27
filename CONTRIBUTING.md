@@ -41,7 +41,7 @@ ci(#799): GitHub Actions CI 빌드/테스트 파이프라인 구축
 
 ## PR 규칙
 
-1. `dev` 브랜치 대상으로 PR 생성
+1. `devlop` 브랜치 대상으로 PR 생성
 2. CI (Build & Test, Code Style) 통과 필수
 3. PR 본문에 `Closes #{issue-number}` 포함
 4. 제목은 커밋 컨벤션과 동일한 형식 사용

@@ -16,6 +16,7 @@ public class OpenApiProperties {
     private String title = "Project03 API";
     private String version = "1.0.0";
     private String description = "Project03 Backend API Documentation";
+    private boolean exposeGatewayHeaders = false;
     private Contact contact = new Contact();
     private List<Server> servers = new ArrayList<>();
 

@@ -151,6 +151,216 @@ BEGIN
 END
 $$;
 
+DO $$
+BEGIN
+    IF to_regclass('public.items') IS NULL THEN
+        RAISE NOTICE 'items table not found, skip thumbnail_url drop';
+    ELSE
+        ALTER TABLE items
+            DROP COLUMN IF EXISTS thumbnail_url;
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF to_regclass('public.item_images') IS NULL THEN
+        RAISE NOTICE 'item_images table not found, skip image_url drop';
+    ELSE
+        ALTER TABLE item_images
+            DROP COLUMN IF EXISTS image_url;
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF to_regclass('public.item_media_link_sync_tasks') IS NULL THEN
+        CREATE TABLE item_media_link_sync_tasks (
+            id BIGINT PRIMARY KEY,
+            item_id BIGINT NOT NULL,
+            thumbnail_media_id BIGINT,
+            gallery_media_ids VARCHAR(5000) NOT NULL DEFAULT '',
+            status VARCHAR(20) NOT NULL,
+            retry_count INTEGER NOT NULL DEFAULT 0,
+            next_retry_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            last_error VARCHAR(500),
+            created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            deleted_at TIMESTAMP WITHOUT TIME ZONE
+        );
+    ELSE
+        ALTER TABLE item_media_link_sync_tasks
+            ADD COLUMN IF NOT EXISTS item_id BIGINT,
+            ADD COLUMN IF NOT EXISTS thumbnail_media_id BIGINT,
+            ADD COLUMN IF NOT EXISTS gallery_media_ids VARCHAR(5000),
+            ADD COLUMN IF NOT EXISTS status VARCHAR(20),
+            ADD COLUMN IF NOT EXISTS retry_count INTEGER,
+            ADD COLUMN IF NOT EXISTS next_retry_at TIMESTAMP WITHOUT TIME ZONE,
+            ADD COLUMN IF NOT EXISTS last_error VARCHAR(500),
+            ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITHOUT TIME ZONE,
+            ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITHOUT TIME ZONE,
+            ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITHOUT TIME ZONE;
+    END IF;
+
+    UPDATE item_media_link_sync_tasks
+    SET gallery_media_ids = ''
+    WHERE gallery_media_ids IS NULL;
+
+    UPDATE item_media_link_sync_tasks
+    SET status = 'PENDING'
+    WHERE status IS NULL OR status = '';
+
+    UPDATE item_media_link_sync_tasks
+    SET retry_count = 0
+    WHERE retry_count IS NULL;
+
+    UPDATE item_media_link_sync_tasks
+    SET next_retry_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)
+    WHERE next_retry_at IS NULL;
+
+    UPDATE item_media_link_sync_tasks
+    SET created_at = CURRENT_TIMESTAMP
+    WHERE created_at IS NULL;
+
+    UPDATE item_media_link_sync_tasks
+    SET updated_at = created_at
+    WHERE updated_at IS NULL;
+
+    ALTER TABLE item_media_link_sync_tasks
+        ALTER COLUMN item_id SET NOT NULL,
+        ALTER COLUMN gallery_media_ids SET DEFAULT '',
+        ALTER COLUMN gallery_media_ids SET NOT NULL,
+        ALTER COLUMN status SET NOT NULL,
+        ALTER COLUMN retry_count SET DEFAULT 0,
+        ALTER COLUMN retry_count SET NOT NULL,
+        ALTER COLUMN next_retry_at SET DEFAULT CURRENT_TIMESTAMP,
+        ALTER COLUMN next_retry_at SET NOT NULL,
+        ALTER COLUMN created_at SET NOT NULL,
+        ALTER COLUMN updated_at SET NOT NULL;
+
+    CREATE UNIQUE INDEX IF NOT EXISTS uk_item_media_link_sync_tasks_item
+        ON item_media_link_sync_tasks (item_id);
+
+    CREATE INDEX IF NOT EXISTS idx_item_media_link_sync_tasks_status_next
+        ON item_media_link_sync_tasks (status, next_retry_at);
+
+    CREATE INDEX IF NOT EXISTS idx_item_media_link_sync_tasks_status_updated
+        ON item_media_link_sync_tasks (status, updated_at);
+END
+$$;
+
+DO $$
+BEGIN
+    IF to_regclass('public.item_images') IS NULL THEN
+        RAISE NOTICE 'item_images table not found, skip';
+    ELSE
+        CREATE UNIQUE INDEX IF NOT EXISTS uk_item_images_item_sort_active
+            ON item_images (item_id, sort_order)
+            WHERE deleted_at IS NULL;
+    END IF;
+END
+$$;
+
+\echo [schema-repair] media_db: media_links guardrails
+\connect media_db
+
+DO $$
+BEGIN
+    IF to_regclass('public.media_links') IS NULL THEN
+        RAISE NOTICE 'media_links table not found, skip';
+    ELSE
+        CREATE UNIQUE INDEX IF NOT EXISTS uk_media_links_owner_media_active
+            ON media_links (owner_type, owner_id, media_id)
+            WHERE deleted_at IS NULL;
+
+        CREATE UNIQUE INDEX IF NOT EXISTS uk_media_links_owner_thumbnail_single_active
+            ON media_links (owner_type, owner_id)
+            WHERE deleted_at IS NULL AND usage_type = 'THUMBNAIL';
+
+        CREATE UNIQUE INDEX IF NOT EXISTS uk_media_links_owner_usage_sort_active
+            ON media_links (owner_type, owner_id, usage_type, sort_order)
+            WHERE deleted_at IS NULL;
+    END IF;
+END
+$$;
+
+\echo [schema-repair] search_db: thumbnail enrichment tasks
+\connect search_db
+
+DO $$
+BEGIN
+    IF to_regclass('public.search_thumbnail_enrichment_tasks') IS NULL THEN
+        CREATE TABLE search_thumbnail_enrichment_tasks (
+            id BIGSERIAL PRIMARY KEY,
+            item_id BIGINT NOT NULL,
+            thumbnail_media_id BIGINT NOT NULL,
+            media_version BIGINT NOT NULL,
+            status VARCHAR(20) NOT NULL,
+            retry_count INTEGER NOT NULL DEFAULT 0,
+            next_retry_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            last_error VARCHAR(500),
+            created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            deleted_at TIMESTAMP WITHOUT TIME ZONE
+        );
+    ELSE
+        ALTER TABLE search_thumbnail_enrichment_tasks
+            ADD COLUMN IF NOT EXISTS item_id BIGINT,
+            ADD COLUMN IF NOT EXISTS thumbnail_media_id BIGINT,
+            ADD COLUMN IF NOT EXISTS media_version BIGINT,
+            ADD COLUMN IF NOT EXISTS status VARCHAR(20),
+            ADD COLUMN IF NOT EXISTS retry_count INTEGER,
+            ADD COLUMN IF NOT EXISTS next_retry_at TIMESTAMP WITHOUT TIME ZONE,
+            ADD COLUMN IF NOT EXISTS last_error VARCHAR(500),
+            ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITHOUT TIME ZONE,
+            ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITHOUT TIME ZONE,
+            ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP WITHOUT TIME ZONE;
+    END IF;
+
+    UPDATE search_thumbnail_enrichment_tasks
+    SET status = 'PENDING'
+    WHERE status IS NULL OR status = '';
+
+    UPDATE search_thumbnail_enrichment_tasks
+    SET retry_count = 0
+    WHERE retry_count IS NULL;
+
+    UPDATE search_thumbnail_enrichment_tasks
+    SET next_retry_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)
+    WHERE next_retry_at IS NULL;
+
+    UPDATE search_thumbnail_enrichment_tasks
+    SET created_at = CURRENT_TIMESTAMP
+    WHERE created_at IS NULL;
+
+    UPDATE search_thumbnail_enrichment_tasks
+    SET updated_at = created_at
+    WHERE updated_at IS NULL;
+
+    ALTER TABLE search_thumbnail_enrichment_tasks
+        ALTER COLUMN item_id SET NOT NULL,
+        ALTER COLUMN thumbnail_media_id SET NOT NULL,
+        ALTER COLUMN media_version SET NOT NULL,
+        ALTER COLUMN status SET NOT NULL,
+        ALTER COLUMN retry_count SET DEFAULT 0,
+        ALTER COLUMN retry_count SET NOT NULL,
+        ALTER COLUMN next_retry_at SET DEFAULT CURRENT_TIMESTAMP,
+        ALTER COLUMN next_retry_at SET NOT NULL,
+        ALTER COLUMN created_at SET NOT NULL,
+        ALTER COLUMN updated_at SET NOT NULL;
+
+    CREATE UNIQUE INDEX IF NOT EXISTS uk_search_thumb_tasks_item
+        ON search_thumbnail_enrichment_tasks (item_id);
+
+    CREATE INDEX IF NOT EXISTS idx_search_thumb_tasks_status_next
+        ON search_thumbnail_enrichment_tasks (status, next_retry_at);
+
+    CREATE INDEX IF NOT EXISTS idx_search_thumb_tasks_status_updated
+        ON search_thumbnail_enrichment_tasks (status, updated_at);
+END
+$$;
+
 \echo [schema-repair] stock_db: outbox_messages
 \connect stock_db
 
@@ -219,6 +429,75 @@ BEGIN
 
         CREATE UNIQUE INDEX IF NOT EXISTS idx_outbox_event_id
             ON outbox_messages (event_id);
+    END IF;
+END
+$$;
+
+\echo [schema-repair] notification_db: notification type checks
+\connect notification_db
+
+DO $$
+BEGIN
+    IF to_regclass('public.notifications') IS NULL THEN
+        RAISE NOTICE 'notifications table not found, skip';
+    ELSE
+        ALTER TABLE notifications
+            DROP CONSTRAINT IF EXISTS notifications_type_check;
+        ALTER TABLE notifications
+            ADD CONSTRAINT notifications_type_check
+                CHECK (type IN (
+                    'FUNDING_SUCCESS',
+                    'FUNDING_FAIL',
+                    'PAYMENT',
+                    'HOTDEAL',
+                    'STOCK_DEPLETED',
+                    'CHAT_MESSAGE',
+                    'GENERAL'
+                ));
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF to_regclass('public.notification_settings') IS NULL THEN
+        RAISE NOTICE 'notification_settings table not found, skip';
+    ELSE
+        ALTER TABLE notification_settings
+            DROP CONSTRAINT IF EXISTS notification_settings_type_check;
+        ALTER TABLE notification_settings
+            ADD CONSTRAINT notification_settings_type_check
+                CHECK (type IN (
+                    'FUNDING_SUCCESS',
+                    'FUNDING_FAIL',
+                    'PAYMENT',
+                    'HOTDEAL',
+                    'STOCK_DEPLETED',
+                    'CHAT_MESSAGE',
+                    'GENERAL'
+                ));
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF to_regclass('public.notification_templates') IS NULL THEN
+        RAISE NOTICE 'notification_templates table not found, skip';
+    ELSE
+        ALTER TABLE notification_templates
+            DROP CONSTRAINT IF EXISTS notification_templates_type_check;
+        ALTER TABLE notification_templates
+            ADD CONSTRAINT notification_templates_type_check
+                CHECK (type IN (
+                    'FUNDING_SUCCESS',
+                    'FUNDING_FAIL',
+                    'PAYMENT',
+                    'HOTDEAL',
+                    'STOCK_DEPLETED',
+                    'CHAT_MESSAGE',
+                    'GENERAL'
+                ));
     END IF;
 END
 $$;

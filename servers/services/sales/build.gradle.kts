@@ -15,6 +15,8 @@ dependencies {
 
     // Data
     implementation(project(":libs:data:entity"))
+    implementation(project(":libs:clients:product-client"))
+    implementation(project(":libs:clients:stock-client"))
 
     // Config
     implementation(project(":libs:config:kafka"))
@@ -28,6 +30,9 @@ dependencies {
 
     // OpenAPI
     implementation(project(":libs:openapi:config"))
+
+    // Security
+    implementation(project(":libs:security:security-starter"))
 
     // ─── Spring Boot ─────────────────────────────────
     // JPA

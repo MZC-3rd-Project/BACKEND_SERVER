@@ -13,6 +13,7 @@ import org.hibernate.annotations.SQLRestriction;
 @Entity
 @Table(name = "items", indexes = {
         @Index(name = "idx_items_seller_id", columnList = "seller_id"),
+        @Index(name = "idx_items_store_id", columnList = "store_id"),
         @Index(name = "idx_items_category_id", columnList = "category_id"),
         @Index(name = "idx_items_item_type", columnList = "item_type"),
         @Index(name = "idx_items_status", columnList = "status")
@@ -49,11 +50,15 @@ public class Item extends BaseEntity {
     @Column(name = "seller_id", nullable = false)
     private Long sellerId;
 
-    @Column(name = "thumbnail_url", length = 500)
-    private String thumbnailUrl;
+    @Column(name = "store_id")
+    private Long storeId;
+
+    @Column(name = "thumbnail_media_id")
+    private Long thumbnailMediaId;
 
     public static Item create(String title, String description, Long price,
-                              ItemType itemType, Long categoryId, Long sellerId, String thumbnailUrl) {
+                              ItemType itemType, Long categoryId, Long sellerId, Long storeId,
+                              Long thumbnailMediaId) {
         Item item = new Item();
         item.title = title;
         item.description = description;
@@ -62,16 +67,26 @@ public class Item extends BaseEntity {
         item.status = ItemStatus.DRAFT;
         item.categoryId = categoryId;
         item.sellerId = sellerId;
-        item.thumbnailUrl = thumbnailUrl;
+        item.storeId = storeId;
+        item.thumbnailMediaId = thumbnailMediaId;
         return item;
     }
 
-    public void update(String title, String description, Long price, Long categoryId, String thumbnailUrl) {
+    public void update(String title, String description, Long price, Long categoryId,
+                       Long thumbnailMediaId) {
         if (title != null) this.title = title;
         if (description != null) this.description = description;
         if (price != null) this.price = price;
         if (categoryId != null) this.categoryId = categoryId;
-        if (thumbnailUrl != null) this.thumbnailUrl = thumbnailUrl;
+        if (thumbnailMediaId != null) this.thumbnailMediaId = thumbnailMediaId;
+    }
+
+    public void updateThumbnail(Long thumbnailMediaId) {
+        this.thumbnailMediaId = thumbnailMediaId;
+    }
+
+    public void clearThumbnail() {
+        this.thumbnailMediaId = null;
     }
 
     public void changeStatus(ItemStatus newStatus) {

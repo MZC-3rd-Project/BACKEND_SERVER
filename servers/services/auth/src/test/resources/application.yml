@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: auth-service-test
+
+  datasource:
+    url: jdbc:h2:mem:auth_test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  flyway:
+    enabled: false
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+keycloak:
+  admin:
+    server-url: http://localhost:43217
+    realm: don-moa
+    client-id: don-moa-admin
+    client-secret: test-secret
+    direct-grant-client-id: don-moa-gateway
+
+profile:
+  service:
+    base-url: http://localhost:8082
+
+app:
+  snowflake:
+    datacenter-id: 1
+    worker-id: 1
+  gateway-security:
+    enabled: false

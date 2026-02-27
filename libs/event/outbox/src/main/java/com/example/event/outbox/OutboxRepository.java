@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,6 +25,7 @@ public interface OutboxRepository extends JpaRepository<OutboxMessage, Long> {
             @Param("limit") int limit);
 
     @Modifying
+    @Transactional
     @Query("UPDATE OutboxMessage o SET o.status = :newStatus, o.updatedAt = CURRENT_TIMESTAMP " +
             "WHERE o.id = :id AND o.status = :currentStatus")
     int updateStatusById(@Param("id") Long id,
@@ -31,6 +33,7 @@ public interface OutboxRepository extends JpaRepository<OutboxMessage, Long> {
                          @Param("newStatus") OutboxStatus newStatus);
 
     @Modifying
+    @Transactional
     @Query("UPDATE OutboxMessage o SET o.status = :newStatus, o.publishedAt = :publishedAt, o.updatedAt = CURRENT_TIMESTAMP " +
             "WHERE o.id = :id AND o.status = :currentStatus")
     int markAsPublishedById(@Param("id") Long id,
@@ -39,6 +42,7 @@ public interface OutboxRepository extends JpaRepository<OutboxMessage, Long> {
                             @Param("publishedAt") LocalDateTime publishedAt);
 
     @Modifying
+    @Transactional
     @Query("UPDATE OutboxMessage o SET o.updatedAt = :claimedAt " +
             "WHERE o.id = :id AND o.status = :status AND o.updatedAt <= :staleBefore")
     int claimStaleSendingMessage(@Param("id") Long id,
@@ -52,6 +56,7 @@ public interface OutboxRepository extends JpaRepository<OutboxMessage, Long> {
             OutboxStatus status, LocalDateTime updatedAt);
 
     @Modifying
+    @Transactional
     @Query("DELETE FROM OutboxMessage o WHERE o.status = :status AND o.createdAt < :before")
     int deleteByStatusAndCreatedBefore(
             @Param("status") OutboxStatus status,
