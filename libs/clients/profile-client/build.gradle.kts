@@ -13,16 +13,8 @@ tasks.jar {
 }
 
 dependencies {
-    implementation(project(":libs:config:resilience"))
+    api("com.fasterxml.jackson.core:jackson-databind")
     implementation(project(":libs:config:webclient"))
-
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("org.springframework.boot:spring-boot-autoconfigure")
-
-    compileOnly("org.projectlombok:lombok")
-    annotationProcessor("org.projectlombok:lombok")
-
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("io.projectreactor:reactor-test")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
