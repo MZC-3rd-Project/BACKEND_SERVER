@@ -1,6 +1,6 @@
 package com.example.auth.service;
 
-import com.example.auth.client.ProfileServiceClient;
+import com.example.auth.client.ProfileServicePort;
 import com.example.auth.dto.request.ChangeEmailRequest;
 import com.example.auth.dto.request.ChangePasswordRequest;
 import com.example.auth.dto.request.SignupRequest;
@@ -31,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -39,7 +40,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final UserStatusHistoryRepository statusHistoryRepository;
     private final Keycloak keycloakAdminClient;
-    private final ProfileServiceClient profileServiceClient;
+    private final ProfileServicePort profileServiceClient;
     private final EventPublisher eventPublisher;
     private final String realm;
     private final String keycloakServerUrl;
@@ -48,7 +49,7 @@ public class AuthService {
     public AuthService(UserRepository userRepository,
                        UserStatusHistoryRepository statusHistoryRepository,
                        Keycloak keycloakAdminClient,
-                       ProfileServiceClient profileServiceClient,
+                       ProfileServicePort profileServiceClient,
                        EventPublisher eventPublisher,
                        @Value("${keycloak.admin.realm}") String realm,
                        @Value("${keycloak.admin.server-url}") String keycloakServerUrl,
@@ -76,19 +77,22 @@ public class AuthService {
         String keycloakUserId = createKeycloakUser(request.email(), request.password());
 
         try {
-            // 3. DB 저장
+            // 3. DB 저장 (Snowflake ID 자동 생성)
             User user = User.create(keycloakUserId, request.email(), request.nickname());
             userRepository.save(user);
 
-            // 4. 상태 이력 기록
+            // 4. Keycloak 사용자에 snowflakeId 속성 설정 (JWT 토큰에 포함시키기 위함)
+            updateKeycloakUserSnowflakeId(keycloakUserId, user.getId());
+
+            // 5. 상태 이력 기록
             UserStatusHistory history = UserStatusHistory.create(
                     user.getId(), null, UserStatus.ACTIVE, "회원가입", user.getId());
             statusHistoryRepository.save(history);
 
-            // 5. Profile Service 동기 호출
+            // 6. Profile Service 동기 호출
             profileServiceClient.createProfile(user.getId(), user.getEmail(), request.nickname());
 
-            // 6. Outbox 이벤트 발행
+            // 7. Outbox 이벤트 발행
             eventPublisher.publish(
                     new UserCreatedEvent(user.getId(), user.getEmail()),
                     EventMetadata.of("USER", String.valueOf(user.getId()))
@@ -176,6 +180,23 @@ public class AuthService {
         log.info("User withdrawn: userId={}", userId);
     }
 
+    // ─── 이메일 인증 재발송 ────────────────────────────────────
+
+    public void resendVerificationEmail(String email) {
+        try {
+            List<org.keycloak.representations.idm.UserRepresentation> users =
+                    keycloakAdminClient.realm(realm).users().searchByEmail(email, true);
+            if (users.isEmpty()) {
+                throw new BusinessException(AuthErrorCode.USER_NOT_FOUND);
+            }
+            sendKeycloakVerificationEmailSafely(users.get(0).getId());
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("Keycloak 인증 메일 재발송 실패 (Admin 설정 확인): email={}, error={}", email, e.getMessage());
+        }
+    }
+
     // ─── 중복 확인 ────────────────────────────────────────────
 
     @Transactional(readOnly = true)
@@ -205,7 +226,8 @@ public class AuthService {
             kcUser.setUsername(email);
             kcUser.setEmail(email);
             kcUser.setEnabled(true);
-            kcUser.setEmailVerified(true);
+            kcUser.setEmailVerified(false);
+            kcUser.setRequiredActions(List.of("VERIFY_EMAIL"));
 
             CredentialRepresentation credential = new CredentialRepresentation();
             credential.setType(CredentialRepresentation.PASSWORD);
@@ -288,6 +310,21 @@ public class AuthService {
         }
     }
 
+    private void updateKeycloakUserSnowflakeId(String keycloakId, Long snowflakeId) {
+        try {
+            UserRepresentation kcUser = keycloakAdminClient.realm(realm)
+                    .users().get(keycloakId).toRepresentation();
+            kcUser.setAttributes(Map.of("snowflakeId", List.of(String.valueOf(snowflakeId))));
+            keycloakAdminClient.realm(realm).users().get(keycloakId).update(kcUser);
+            log.info("Keycloak user snowflakeId set: keycloakId={}, snowflakeId={}", keycloakId, snowflakeId);
+        } catch (Exception e) {
+            log.error("Failed to set snowflakeId on Keycloak user: keycloakId={}, snowflakeId={}",
+                    keycloakId, snowflakeId, e);
+            throw new TechnicalException(AuthErrorCode.KEYCLOAK_COMMUNICATION_ERROR,
+                    "Keycloak 사용자 snowflakeId 설정 실패", e);
+        }
+    }
+
     private void disableKeycloakUser(String keycloakId) {
         try {
             UserRepresentation kcUser = keycloakAdminClient.realm(realm)
@@ -307,6 +344,19 @@ public class AuthService {
             log.info("Keycloak user rolled back (deleted): keycloakId={}", keycloakUserId);
         } catch (Exception e) {
             log.error("Failed to rollback Keycloak user: keycloakId={}", keycloakUserId, e);
+        }
+    }
+
+    // ─── Keycloak 이메일 인증 ─────────────────────────────────
+
+    private void sendKeycloakVerificationEmailSafely(String keycloakUserId) {
+        try {
+            keycloakAdminClient.realm(realm).users().get(keycloakUserId)
+                    .executeActionsEmail(List.of("VERIFY_EMAIL"));
+            log.info("Keycloak verification email sent: keycloakId={}", keycloakUserId);
+        } catch (Exception e) {
+            log.warn("Keycloak verification email failed (SMTP 설정 확인 필요): keycloakId={}, error={}",
+                    keycloakUserId, e.getMessage());
         }
     }
 
