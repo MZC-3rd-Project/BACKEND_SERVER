@@ -1517,7 +1517,7 @@
           "config": {
             "user.attribute": "snowflakeId",
             "claim.name": "snowflakeId",
-            "jsonType.label": "long",
+            "jsonType.label": "String",
             "id.token.claim": "true",
             "access.token.claim": "true",
             "userinfo.token.claim": "true",
