@@ -73,6 +73,18 @@ resource "aws_security_group" "db" {
     security_groups = [aws_security_group.ecs_service.id]
   }
 
+  dynamic "ingress" {
+    for_each = var.enable_ec2_bastion ? [aws_security_group.ec2_bastion[0].id] : []
+
+    content {
+      description     = "PostgreSQL from Bastion host"
+      from_port       = 5432
+      to_port         = 5432
+      protocol        = "tcp"
+      security_groups = [ingress.value]
+    }
+  }
+
   egress {
     from_port   = 0
     to_port     = 0

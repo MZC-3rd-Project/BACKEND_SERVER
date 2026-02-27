@@ -1,6 +1,6 @@
 
 CREATE TABLE IF NOT EXISTS profiles (
-    id BIGINT PRIMARY KEY, --- snowflake id,
+    id BIGINT PRIMARY KEY, -- snowflake id,
     user_id BIGINT NOT NULL,
     email               VARCHAR(255) NOT NULL,                                  -- Keycloak에서 복제 (내부 조회용)
     nickname            VARCHAR(100),

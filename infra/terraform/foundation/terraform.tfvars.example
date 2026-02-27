@@ -65,6 +65,13 @@ enable_ec2_kafka          = true
 ec2_kafka_instance_type   = "t3.small"
 ec2_kafka_ebs_volume_size = 30
 
+# Bastion EC2 (for local DB tools via SSH tunnel)
+enable_ec2_bastion          = false
+ec2_bastion_instance_type   = "t3.micro"
+ec2_bastion_ebs_volume_size = 20
+ec2_bastion_key_name        = "<existing-keypair-name>"
+ec2_bastion_ingress_cidrs   = ["<your-ip>/32"]
+
 # Optional EC2 single-node Elasticsearch (MVP)
 enable_ec2_elasticsearch          = false
 ec2_elasticsearch_instance_type   = "t3.small"

@@ -340,6 +340,58 @@ variable "ec2_kafka_ami_id" {
   default     = null
 }
 
+variable "enable_ec2_bastion" {
+  description = "Whether to create Bastion EC2 for SSH tunneling from local DB tools"
+  type        = bool
+  default     = false
+}
+
+variable "ec2_bastion_instance_type" {
+  description = "EC2 instance type for Bastion host"
+  type        = string
+  default     = "t3.micro"
+}
+
+variable "ec2_bastion_ebs_volume_size" {
+  description = "Root EBS volume size for Bastion EC2 in GiB"
+  type        = number
+  default     = 20
+}
+
+variable "ec2_bastion_subnet_id" {
+  description = "Optional subnet id override for Bastion EC2 (defaults to first public subnet)"
+  type        = string
+  default     = null
+}
+
+variable "ec2_bastion_key_name" {
+  description = "EC2 key pair name for Bastion SSH access"
+  type        = string
+  default     = null
+
+  validation {
+    condition     = !var.enable_ec2_bastion || var.ec2_bastion_key_name != null
+    error_message = "ec2_bastion_key_name must be set when enable_ec2_bastion=true."
+  }
+}
+
+variable "ec2_bastion_ami_id" {
+  description = "Optional AMI id override for Bastion EC2"
+  type        = string
+  default     = null
+}
+
+variable "ec2_bastion_ingress_cidrs" {
+  description = "CIDRs allowed to SSH into Bastion EC2"
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition     = !var.enable_ec2_bastion || length(var.ec2_bastion_ingress_cidrs) > 0
+    error_message = "ec2_bastion_ingress_cidrs must contain at least one CIDR when enable_ec2_bastion=true."
+  }
+}
+
 variable "enable_ec2_elasticsearch" {
   description = "Whether to create single-node Elasticsearch on EC2"
   type        = bool

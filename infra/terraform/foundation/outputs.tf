@@ -94,6 +94,22 @@ output "ec2_kafka_bootstrap_server" {
   value = var.enable_ec2_kafka ? "${aws_instance.ec2_kafka[0].private_dns}:9092" : null
 }
 
+output "ec2_bastion_instance_id" {
+  value = var.enable_ec2_bastion ? aws_instance.ec2_bastion[0].id : null
+}
+
+output "ec2_bastion_public_ip" {
+  value = var.enable_ec2_bastion ? aws_instance.ec2_bastion[0].public_ip : null
+}
+
+output "ec2_bastion_public_dns" {
+  value = var.enable_ec2_bastion ? aws_instance.ec2_bastion[0].public_dns : null
+}
+
+output "ec2_bastion_security_group_id" {
+  value = var.enable_ec2_bastion ? aws_security_group.ec2_bastion[0].id : null
+}
+
 output "ec2_elasticsearch_instance_id" {
   value = var.enable_ec2_elasticsearch ? aws_instance.ec2_elasticsearch[0].id : null
 }
