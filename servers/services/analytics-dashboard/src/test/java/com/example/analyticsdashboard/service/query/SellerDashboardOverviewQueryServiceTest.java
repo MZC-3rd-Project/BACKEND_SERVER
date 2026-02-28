@@ -22,6 +22,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -107,7 +110,7 @@ class SellerDashboardOverviewQueryServiceTest {
                 .occurredAt(now.minusHours(1))
                 .ingestedAt(now.minusHours(1))
                 .build();
-        when(rawSalesEventRepository.findByStoreIdAndOccurredAtBetween(anyLong(), any(), any()))
+        when(rawSalesEventRepository.findByStoreIdAndSellerIdAndOccurredAtBetween(anyLong(), anyLong(), any(), any()))
                 .thenReturn(List.of(created, cancelled));
 
         AnalyticsRawSearchEvent searchExecuted = AnalyticsRawSearchEvent.builder()
@@ -126,9 +129,9 @@ class SellerDashboardOverviewQueryServiceTest {
                 .occurredAt(now.minusMinutes(30))
                 .ingestedAt(now.minusMinutes(30))
                 .build();
-        when(rawSearchEventRepository.findByStoreIdAndOccurredAtBetween(anyLong(), any(), any()))
+        when(rawSearchEventRepository.findByStoreIdAndSellerIdAndOccurredAtBetween(anyLong(), anyLong(), any(), any()))
                 .thenReturn(List.of(searchExecuted, clicked));
-        when(dimItemSnapshotRepository.findByStoreId(anyLong())).thenReturn(List.of());
+        when(dimItemSnapshotRepository.findByStoreIdAndSellerId(anyLong(), anyLong())).thenReturn(List.of());
 
         SellerDashboardOverviewQuery query = SellerDashboardOverviewQuery.of(
                 "DAILY",
@@ -149,6 +152,47 @@ class SellerDashboardOverviewQueryServiceTest {
         assertThat(response.getSearch().getSearchCount()).isEqualTo(1L);
         assertThat(response.getSearch().getClickCount()).isEqualTo(1L);
         assertThat(response.getSearch().getCtr()).isEqualTo(1.0d);
+    }
+
+    @Test
+    void getOverview_bySeller_usesSellerRepositories() {
+        stubEmptyRepos();
+        SellerDashboardOverviewQuery query = SellerDashboardOverviewQuery.of(
+                "DAILY",
+                "2026-02-26",
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        service.getOverview(100L, query);
+
+        verify(rawSalesEventRepository).findBySellerIdAndOccurredAtBetween(anyLong(), any(), any());
+        verify(rawSearchEventRepository).findBySellerIdAndOccurredAtBetween(anyLong(), any(), any());
+        verify(dimItemSnapshotRepository).findBySellerId(anyLong());
+        verify(rawSalesEventRepository, never()).findByStoreIdAndOccurredAtBetween(anyLong(), any(), any());
+    }
+
+    @Test
+    void getOverviewByStore_withoutSellerFilter_usesStoreRepositories() {
+        stubEmptyRepos();
+        SellerDashboardOverviewQuery query = SellerDashboardOverviewQuery.of(
+                "DAILY",
+                "2026-02-26",
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        service.getOverviewByStore(10L, null, query);
+
+        verify(rawSalesEventRepository).findByStoreIdAndOccurredAtBetween(anyLong(), any(), any());
+        verify(rawSearchEventRepository).findByStoreIdAndOccurredAtBetween(anyLong(), any(), any());
+        verify(dimItemSnapshotRepository).findByStoreId(anyLong());
     }
 
     @Test
@@ -194,10 +238,20 @@ class SellerDashboardOverviewQueryServiceTest {
     }
 
     private void stubEmptyRepos() {
-        when(rawSalesEventRepository.findByStoreIdAndOccurredAtBetween(anyLong(), any(), any()))
+        lenient().when(rawSalesEventRepository.findByStoreIdAndOccurredAtBetween(anyLong(), any(), any()))
                 .thenReturn(List.of());
-        when(rawSearchEventRepository.findByStoreIdAndOccurredAtBetween(anyLong(), any(), any()))
+        lenient().when(rawSalesEventRepository.findBySellerIdAndOccurredAtBetween(anyLong(), any(), any()))
                 .thenReturn(List.of());
-        when(dimItemSnapshotRepository.findByStoreId(anyLong())).thenReturn(List.of());
+        lenient().when(rawSalesEventRepository.findByStoreIdAndSellerIdAndOccurredAtBetween(anyLong(), anyLong(), any(), any()))
+                .thenReturn(List.of());
+        lenient().when(rawSearchEventRepository.findByStoreIdAndOccurredAtBetween(anyLong(), any(), any()))
+                .thenReturn(List.of());
+        lenient().when(rawSearchEventRepository.findBySellerIdAndOccurredAtBetween(anyLong(), any(), any()))
+                .thenReturn(List.of());
+        lenient().when(rawSearchEventRepository.findByStoreIdAndSellerIdAndOccurredAtBetween(anyLong(), anyLong(), any(), any()))
+                .thenReturn(List.of());
+        lenient().when(dimItemSnapshotRepository.findByStoreId(anyLong())).thenReturn(List.of());
+        lenient().when(dimItemSnapshotRepository.findBySellerId(anyLong())).thenReturn(List.of());
+        lenient().when(dimItemSnapshotRepository.findByStoreIdAndSellerId(anyLong(), anyLong())).thenReturn(List.of());
     }
 }
