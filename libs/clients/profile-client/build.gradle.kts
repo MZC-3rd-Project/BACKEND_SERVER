@@ -17,4 +17,7 @@ dependencies {
     implementation(project(":libs:config:webclient"))
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("org.springframework.boot:spring-boot-autoconfigure")
+
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("org.springframework:spring-webflux")
 }

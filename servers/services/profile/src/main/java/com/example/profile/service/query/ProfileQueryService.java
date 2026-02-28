@@ -8,6 +8,9 @@ import com.example.profile.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Slf4j
 @Service
@@ -20,5 +23,10 @@ public class ProfileQueryService {
             .orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_NOT_FOUND));
 
         return ProfileResponse.from(profile);
+    }
+
+    @Transactional
+    public List<Profiles> getProfileList(List<Long> userIds){
+        return profileRepository.findAllByUserIdIn(userIds);
     }
 }

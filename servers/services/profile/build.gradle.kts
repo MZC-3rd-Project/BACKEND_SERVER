@@ -42,4 +42,7 @@ dependencies {
 
     implementation (project(":libs:clients:auth-client"))
 
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("org.springframework:spring-webflux")
+
 }
