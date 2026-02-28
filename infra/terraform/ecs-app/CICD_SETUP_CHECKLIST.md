@@ -28,6 +28,7 @@ Set these in `Settings -> Secrets and variables -> Actions -> Variables`:
       "sales": "donmoa-dev-sales-deploy",
       "funding": "donmoa-dev-funding-deploy",
       "hot-deal": "donmoa-dev-hotdeal-deploy",
+      "chat": "donmoa-dev-chat-deploy",
       "analytics-dashboard": "donmoa-dev-analytics-dashboard-deploy"
     }
     ```

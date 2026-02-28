@@ -36,6 +36,15 @@ resource "aws_ecs_task_definition" "service" {
   execution_role_arn       = var.task_execution_role_arn
   task_role_arn            = var.task_role_arn
 
+  dynamic "runtime_platform" {
+    for_each = upper(each.value.launch_type) == "FARGATE" ? [1] : []
+
+    content {
+      cpu_architecture        = upper(each.value.cpu_architecture)
+      operating_system_family = upper(each.value.operating_system_family)
+    }
+  }
+
   container_definitions = jsonencode([
     merge(
       {

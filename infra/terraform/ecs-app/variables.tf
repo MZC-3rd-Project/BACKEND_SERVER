@@ -68,6 +68,8 @@ variable "services" {
     assign_public_ip                   = optional(bool, false)
     enable_execute_command             = optional(bool, true)
     platform_version                   = optional(string, "1.4.0")
+    cpu_architecture                   = optional(string, "X86_64")
+    operating_system_family            = optional(string, "LINUX")
     deployment_minimum_healthy_percent = optional(number, 50)
     deployment_maximum_percent         = optional(number, 200)
     health_check_grace_period_seconds  = optional(number, 30)
@@ -86,5 +88,12 @@ variable "services" {
       for svc in values(var.services) : contains(["FARGATE", "EC2"], upper(svc.launch_type))
     ])
     error_message = "service.launch_type must be FARGATE or EC2."
+  }
+
+  validation {
+    condition = alltrue([
+      for svc in values(var.services) : contains(["X86_64", "ARM64"], upper(svc.cpu_architecture))
+    ])
+    error_message = "service.cpu_architecture must be X86_64 or ARM64."
   }
 }

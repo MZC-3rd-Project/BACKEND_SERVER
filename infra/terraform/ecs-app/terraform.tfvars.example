@@ -252,6 +252,39 @@ services = {
     }
   }
 
+  chat = {
+    image          = "123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/chat-service:latest"
+    cpu            = 512
+    memory         = 1024
+    cpu_architecture = "X86_64"
+    container_port = 8093
+    desired_count  = 1
+
+    environment = {
+      SERVER_PORT                    = "8093"
+      SPRING_PROFILES_ACTIVE         = "develop"
+      DB_URL                         = "jdbc:postgresql://donmoa-rds.cluster-xxxx.ap-northeast-2.rds.amazonaws.com:5432/chat_db"
+      DB_USERNAME                    = "chat_user"
+      REDIS_HOST                     = "donmoa-redis.xxxxxx.apn2.cache.amazonaws.com"
+      REDIS_PORT                     = "6379"
+      KAFKA_BOOTSTRAP_SERVERS        = "localhost:9092"
+      SPRING_KAFKA_LISTENER_AUTO_STARTUP = "false"
+      PRODUCT_SERVICE_URL            = "http://product-service.internal:8084"
+      FUNDING_SERVICE_URL            = "http://funding-service.internal:8086"
+      NOTIFICATION_SERVICE_URL       = "http://notification-service.internal:8092"
+      APP_GATEWAY_SECURITY_ENABLED   = "true"
+      APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED = "true"
+      APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER = "X-Gateway-Auth"
+      APP_GATEWAY_SECURITY_USER_ID_HEADER       = "X-User-Id"
+    }
+
+    secrets = {
+      DB_PASSWORD                          = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/chat-db-AbCdE:password::"
+      APP_SECURITY_CONTEXT_SIGNING_KEY     = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/common-AbCdE:APP_SECURITY_CONTEXT_SIGNING_KEY::"
+      APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN = "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/common-AbCdE:APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN::"
+    }
+  }
+
   "analytics-dashboard" = {
     image          = "123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/analytics-dashboard-service:latest"
     cpu            = 512

@@ -2,7 +2,7 @@ name: Trigger CodePipeline
 
 on:
   push:
-    branches: [develop]
+    branches: [prod]
   workflow_dispatch:
     inputs:
       target:
