@@ -24,9 +24,7 @@ public class ProfileQueryController implements ProfileQueryAPI{
 
     @Override
     public ApiResponse<ProfileResponse> getMyProfile(Long userId) {
-        ProfileResponse response = profileQueryService.getProfile(userId);
-
-        return ApiResponse.success(response);
+        return ApiResponse.success(profileQueryService.getProfile(userId));
     }
 
 }
