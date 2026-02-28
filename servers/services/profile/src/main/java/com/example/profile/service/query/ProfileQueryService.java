@@ -35,8 +35,11 @@ public class ProfileQueryService {
     }
 
     @Transactional(readOnly = true)
-    public ProfileAddressResponse getProfileOfDeliveryAddress(Long userId){
-        return ProfileAddressResponse.from(profileAddressRepository.findProfileAddressByProfileId(userId));
+    public List<ProfileAddressResponse> getProfileOfDeliveryAddress(Long userId){
+        return profileAddressRepository.findProfileAddressByProfileId(userId)
+            .stream()
+            .map(ProfileAddressResponse::from)
+            .toList();
     }
 
 }

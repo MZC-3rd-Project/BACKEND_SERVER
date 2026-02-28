@@ -20,5 +20,5 @@ public interface ProfileInternalAPI {
     ApiResponse<ProfileResponse> findProfile(@PathVariable("userId") Long userId);
 
     @GetMapping("/profile_delivery/{userId}")
-    ApiResponse<ProfileAddressResponse> findDelivery(@PathVariable("userId") Long userId);
+    ApiResponse<List<ProfileAddressResponse>> findDelivery(@PathVariable("userId") Long userId);
 }

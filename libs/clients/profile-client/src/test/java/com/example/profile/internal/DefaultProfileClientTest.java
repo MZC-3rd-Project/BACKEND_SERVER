@@ -88,4 +88,82 @@ public class DefaultProfileClientTest {
             .hasMessageContaining("profile lookup failed");
     }
 
+    // ✅ findProfile 성공
+    @Test
+    void findProfile_성공() {
+        mockWebServer.enqueue(new MockResponse()
+            .setBody("""
+                        {
+                          "success": true,
+                          "data": {
+                            "userId": 1,
+                            "nickname": "홍길동",
+                            "email": "test@test.com",
+                            "phone": "010-1234-5678"
+                          }
+                        }
+                        """)
+            .addHeader("Content-Type", "application/json"));
+
+        JsonNode result =   client.findProfile(1L);
+
+        assertThat(result.path("userId").asLong()).isEqualTo(1L);
+        assertThat(result.path("nickname").asText()).isEqualTo("홍길동");
+    }
+
+    // ❌ findProfile 실패 - success false
+    @Test
+    void findProfile_실패_success_false() {
+        mockWebServer.enqueue(new MockResponse()
+            .setBody("""
+                        {
+                          "success": false
+                        }
+                        """)
+            .addHeader("Content-Type", "application/json"));
+
+        assertThatThrownBy(() -> client.findProfile(1L))
+            .isInstanceOf(ProfileClientException.class)
+            .hasMessageContaining("Can't find profile List");
+    }
+
+    @Test
+    void findProfileOfDeliveryAddress_성공() {
+        mockWebServer.enqueue(new MockResponse()
+            .setBody("""
+                        {
+                          "success": true,
+                          "data": {
+                            "profileId": 1,
+                            "deliveryName": "집",
+                            "zipcode": "12345",
+                            "sido": "서울",
+                            "sigungu": "강남구"
+                          }
+                        }
+                        """)
+            .addHeader("Content-Type", "application/json"));
+
+        JsonNode result = client.findProfileOfDeliveryAddress(1L);
+
+        assertThat(result.path("profileId").asLong()).isEqualTo(1L);
+        assertThat(result.path("deliveryName").asText()).isEqualTo("집");
+    }
+
+    @Test
+    void findProfileOfDeliveryAddress_실패_빈데이터() {
+        mockWebServer.enqueue(new MockResponse()
+            .setBody("""
+                        {
+                          "success": true,
+                          "data": null
+                        }
+                        """)
+            .addHeader("Content-Type", "application/json"));
+
+        assertThatThrownBy(() -> client.findProfileOfDeliveryAddress(1L))
+            .isInstanceOf(ProfileClientException.class)
+            .hasMessageContaining("profile lookup returned empty data");
+    }
+
 }

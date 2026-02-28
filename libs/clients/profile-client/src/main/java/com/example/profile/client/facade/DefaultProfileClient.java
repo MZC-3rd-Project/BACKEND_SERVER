@@ -53,11 +53,43 @@ public class DefaultProfileClient implements ProfileClientFacade{
 
     @Override
     public JsonNode findProfile(Long userId) {
-        return null;
+        JsonNode response = webClient.get()
+            .uri("/internal/v1/query/profile/{userId}", userId)
+            .retrieve()
+            .bodyToMono(JsonNode.class)
+            .block();
+
+        if (response == null || !response.path("success").asBoolean()) {
+            throw new ProfileClientException("Can't find profile List, try again");
+        }
+
+        JsonNode data = response.path("data");
+        if (data.isMissingNode() || data.isNull()) {
+            throw new ProfileClientException("profile lookup returned empty data");
+        }
+
+        return data;
     }
 
     @Override
     public JsonNode findProfileOfDeliveryAddress(Long userId) {
-        return null;
+        JsonNode response = webClient.get()
+            .uri("/internal/v1/query/profile/profile_list/{userId}", userId)
+            .retrieve()
+            .bodyToMono(JsonNode.class)
+            .block();
+
+        if (response == null || !response.path("success").asBoolean()) {
+            throw new ProfileClientException("Can't find profile List, try again");
+        }
+
+        JsonNode data = response.path("data");
+        if (data.isMissingNode() || data.isNull()) {
+            throw new ProfileClientException("profile lookup returned empty data");
+        }
+
+        return data;
+
     }
+
 }

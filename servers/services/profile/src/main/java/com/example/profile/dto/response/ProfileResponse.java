@@ -12,7 +12,6 @@ public class ProfileResponse {
 
     private String phone;
     private String email;
-    private String delivery;
     private String nickname;
 
     public static ProfileResponse from(Profiles profile) {

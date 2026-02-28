@@ -32,7 +32,7 @@ public class ProfileInternalQueryController implements ProfileInternalAPI {
     }
 
     @Override
-    public ApiResponse<ProfileAddressResponse> findDelivery(Long userId) {
+    public ApiResponse<List<ProfileAddressResponse>> findDelivery(Long userId) {
         return ApiResponse.success(profileQueryService.getProfileOfDeliveryAddress(userId));
     }
 }
