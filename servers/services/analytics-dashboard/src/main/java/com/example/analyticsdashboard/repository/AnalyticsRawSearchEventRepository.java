@@ -16,4 +16,17 @@ public interface AnalyticsRawSearchEventRepository extends JpaRepository<Analyti
             LocalDateTime from,
             LocalDateTime to
     );
+
+    List<AnalyticsRawSearchEvent> findBySellerIdAndOccurredAtBetween(
+            Long sellerId,
+            LocalDateTime from,
+            LocalDateTime to
+    );
+
+    List<AnalyticsRawSearchEvent> findByStoreIdAndSellerIdAndOccurredAtBetween(
+            Long storeId,
+            Long sellerId,
+            LocalDateTime from,
+            LocalDateTime to
+    );
 }
