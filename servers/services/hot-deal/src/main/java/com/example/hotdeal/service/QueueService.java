@@ -11,6 +11,7 @@ import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -32,26 +33,31 @@ public class QueueService {
     public QueueEnterResponse enter(Long hotDealId, Long userId) {
         String queueKey = QUEUE_KEY_PREFIX + hotDealId;
         String memberKey = userId.toString();
+        String token = resolveOrIssueToken(hotDealId, userId);
 
-        // 이미 대기열에 있는지 확인
+        // 이미 대기열에 있으면 멱등 응답 (재진입으로 순번이 뒤로 밀리지 않음)
         Long existingRank = redisTemplate.opsForZSet().rank(queueKey, memberKey);
         if (existingRank != null) {
-            throw new BusinessException(HotDealErrorCode.QUEUE_ALREADY_ENTERED);
+            long position = existingRank + 1;
+            return QueueEnterResponse.builder()
+                    .token(token)
+                    .position(position)
+                    .estimatedWaitSeconds(position * ESTIMATED_PROCESS_SECONDS_PER_USER)
+                    .build();
         }
 
-        // 이미 입장 허용된 사용자인지 확인
+        // 이미 입장 허용된 사용자도 멱등 응답
         if (isAdmitted(hotDealId, userId)) {
-            throw new BusinessException(HotDealErrorCode.QUEUE_ALREADY_ENTERED);
+            return QueueEnterResponse.builder()
+                    .token(token)
+                    .position(0L)
+                    .estimatedWaitSeconds(0L)
+                    .build();
         }
 
         // ZADD (score = timestamp)
         double score = System.currentTimeMillis();
         redisTemplate.opsForZSet().add(queueKey, memberKey, score);
-
-        // 토큰 생성
-        String token = UUID.randomUUID().toString();
-        String tokenKey = TOKEN_KEY_PREFIX + hotDealId + ":" + userId;
-        redisTemplate.opsForValue().set(tokenKey, token, TOKEN_TTL_MINUTES, TimeUnit.MINUTES);
 
         Long position = redisTemplate.opsForZSet().rank(queueKey, memberKey);
         long pos = position != null ? position + 1 : 1;
@@ -89,29 +95,49 @@ public class QueueService {
     /**
      * 상위 N명 입장 허용 (스케줄러에서 호출)
      */
-    public void admitUsers(Long hotDealId, int count) {
+    public Set<Long> admitUsers(Long hotDealId, int count) {
         String queueKey = QUEUE_KEY_PREFIX + hotDealId;
 
         Set<ZSetOperations.TypedTuple<Object>> topUsers =
                 redisTemplate.opsForZSet().popMin(queueKey, count);
 
         if (topUsers == null || topUsers.isEmpty()) {
-            return;
+            return Set.of();
         }
 
+        Set<Long> admittedUserIds = new HashSet<>();
         for (ZSetOperations.TypedTuple<Object> user : topUsers) {
             Object value = user.getValue();
             if (value != null) {
                 String admittedKey = ADMITTED_KEY_PREFIX + hotDealId + ":" + value;
                 redisTemplate.opsForValue().set(admittedKey, "true", ADMITTED_TTL_MINUTES, TimeUnit.MINUTES);
                 log.debug("User admitted: hotDealId={}, userId={}", hotDealId, value);
+                try {
+                    admittedUserIds.add(Long.parseLong(String.valueOf(value)));
+                } catch (NumberFormatException e) {
+                    log.warn("Failed to parse admitted user id. hotDealId={}, rawUserId={}", hotDealId, value);
+                }
             }
         }
+
+        return admittedUserIds;
     }
 
     public boolean isAdmitted(Long hotDealId, Long userId) {
         String admittedKey = ADMITTED_KEY_PREFIX + hotDealId + ":" + userId;
         return Boolean.TRUE.equals(redisTemplate.hasKey(admittedKey));
+    }
+
+    private String resolveOrIssueToken(Long hotDealId, Long userId) {
+        String tokenKey = TOKEN_KEY_PREFIX + hotDealId + ":" + userId;
+        Object stored = redisTemplate.opsForValue().get(tokenKey);
+        if (stored instanceof String storedToken && StringUtils.hasText(storedToken)) {
+            return storedToken;
+        }
+
+        String issued = UUID.randomUUID().toString();
+        redisTemplate.opsForValue().set(tokenKey, issued, TOKEN_TTL_MINUTES, TimeUnit.MINUTES);
+        return issued;
     }
 
     /**

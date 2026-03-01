@@ -91,3 +91,10 @@ logging:
   level:
     com.example: ${LOG_LEVEL:INFO}
     org.springframework.kafka: INFO
+
+hotdeal:
+  queue:
+    sse:
+      timeout-ms: ${HOTDEAL_QUEUE_SSE_TIMEOUT_MS:600000}
+      heartbeat-interval-ms: ${HOTDEAL_QUEUE_SSE_HEARTBEAT_INTERVAL_MS:5000}
+      topic: ${HOTDEAL_QUEUE_SSE_TOPIC:hotdeal-queue-sse-events}

@@ -2,6 +2,7 @@ package com.example.hotdeal.scheduler;
 
 import com.example.hotdeal.entity.HotDealStatus;
 import com.example.hotdeal.repository.HotDealRepository;
+import com.example.hotdeal.service.QueueSseEventPublisher;
 import com.example.hotdeal.service.QueueService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -9,12 +10,15 @@ import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.Set;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class QueueAdmissionScheduler {
 
     private final QueueService queueService;
+    private final QueueSseEventPublisher queueSseEventPublisher;
     private final HotDealRepository hotDealRepository;
 
     private static final int ADMIT_COUNT = 10;
@@ -28,7 +32,8 @@ public class QueueAdmissionScheduler {
         hotDealRepository.findByStatus(HotDealStatus.ACTIVE)
                 .forEach(hotDeal -> {
                     try {
-                        queueService.admitUsers(hotDeal.getId(), ADMIT_COUNT);
+                        Set<Long> admittedUsers = queueService.admitUsers(hotDeal.getId(), ADMIT_COUNT);
+                        queueSseEventPublisher.publishAdmittedUsers(hotDeal.getId(), admittedUsers);
                     } catch (Exception e) {
                         log.error("Queue admission failed: hotDealId={}", hotDeal.getId(), e);
                     }
