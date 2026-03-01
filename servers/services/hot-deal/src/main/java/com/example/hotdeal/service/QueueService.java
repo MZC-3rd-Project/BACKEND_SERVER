@@ -11,6 +11,7 @@ import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -94,24 +95,32 @@ public class QueueService {
     /**
      * 상위 N명 입장 허용 (스케줄러에서 호출)
      */
-    public void admitUsers(Long hotDealId, int count) {
+    public Set<Long> admitUsers(Long hotDealId, int count) {
         String queueKey = QUEUE_KEY_PREFIX + hotDealId;
 
         Set<ZSetOperations.TypedTuple<Object>> topUsers =
                 redisTemplate.opsForZSet().popMin(queueKey, count);
 
         if (topUsers == null || topUsers.isEmpty()) {
-            return;
+            return Set.of();
         }
 
+        Set<Long> admittedUserIds = new HashSet<>();
         for (ZSetOperations.TypedTuple<Object> user : topUsers) {
             Object value = user.getValue();
             if (value != null) {
                 String admittedKey = ADMITTED_KEY_PREFIX + hotDealId + ":" + value;
                 redisTemplate.opsForValue().set(admittedKey, "true", ADMITTED_TTL_MINUTES, TimeUnit.MINUTES);
                 log.debug("User admitted: hotDealId={}, userId={}", hotDealId, value);
+                try {
+                    admittedUserIds.add(Long.parseLong(String.valueOf(value)));
+                } catch (NumberFormatException e) {
+                    log.warn("Failed to parse admitted user id. hotDealId={}, rawUserId={}", hotDealId, value);
+                }
             }
         }
+
+        return admittedUserIds;
     }
 
     public boolean isAdmitted(Long hotDealId, Long userId) {

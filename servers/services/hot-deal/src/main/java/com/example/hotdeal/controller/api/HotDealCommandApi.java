@@ -6,7 +6,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Tag(name = "Hot-Deal Command", description = "핫딜 구매/대기열 API")
 public interface HotDealCommandApi {
@@ -33,6 +35,12 @@ public interface HotDealCommandApi {
     @Operation(summary = "대기열 상태 조회")
     @GetMapping("/{hotDealId}/queue")
     ApiResponse<QueueStatusResponse> getQueueStatus(
+            @PathVariable Long hotDealId,
+            @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long userId);
+
+    @Operation(summary = "대기열 실시간 스트림(SSE)")
+    @GetMapping(value = "/{hotDealId}/queue/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    SseEmitter streamQueue(
             @PathVariable Long hotDealId,
             @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long userId);
 }
