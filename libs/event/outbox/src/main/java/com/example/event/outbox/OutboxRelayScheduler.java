@@ -54,8 +54,11 @@ public class OutboxRelayScheduler {
 
     public List<OutboxMessage> fetchPendingMessages(LocalDateTime before) {
         int batchSize = Math.max(1, outboxProperties.getRelay().getBatchSize());
+        long baseRetryDelaySeconds = Math.max(1, outboxProperties.getRelay().getBaseRetryDelaySeconds());
+        long maxRetryDelaySeconds = Math.max(baseRetryDelaySeconds, outboxProperties.getRelay().getMaxRetryDelaySeconds());
+        LocalDateTime now = LocalDateTime.now();
         return transactionTemplate.execute(status -> outboxRepository.findPendingMessagesForRelay(
-                OutboxStatus.PENDING.name(), before, batchSize));
+                OutboxStatus.PENDING.name(), before, now, baseRetryDelaySeconds, maxRetryDelaySeconds, batchSize));
     }
 
     private void recoverStaleSendingMessages() {

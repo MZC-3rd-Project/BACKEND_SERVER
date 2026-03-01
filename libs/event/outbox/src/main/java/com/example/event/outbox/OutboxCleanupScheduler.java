@@ -3,7 +3,6 @@ package com.example.event.outbox;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -18,17 +17,28 @@ public class OutboxCleanupScheduler {
     private final OutboxProperties outboxProperties;
 
     @Scheduled(cron = "${app.outbox.cleanup.cron:0 0 3 * * *}")
-    @Transactional
     public void cleanupPublishedMessages() {
         int retentionDays = Math.max(1, outboxProperties.getCleanup().getRetentionDays());
+        int batchSize = Math.max(1, outboxProperties.getCleanup().getBatchSize());
         LocalDateTime cutoff = LocalDateTime.now().minusDays(retentionDays);
 
-        int deletedPublished = outboxRepository.deleteByStatusAndCreatedBefore(OutboxStatus.PUBLISHED, cutoff);
-        int deletedFailed = outboxRepository.deleteByStatusAndCreatedBefore(OutboxStatus.FAILED, cutoff);
+        int deletedPublished = deleteInBatches(OutboxStatus.PUBLISHED, cutoff, batchSize);
+        int deletedFailed = deleteInBatches(OutboxStatus.FAILED, cutoff, batchSize);
 
         if (deletedPublished > 0 || deletedFailed > 0) {
             log.info("[OutboxCleanup] Deleted {} published and {} failed messages older than {} days",
                     deletedPublished, deletedFailed, retentionDays);
+        }
+    }
+
+    private int deleteInBatches(OutboxStatus status, LocalDateTime cutoff, int batchSize) {
+        int totalDeleted = 0;
+        while (true) {
+            int deleted = outboxRepository.deleteTopByStatusAndCreatedBefore(status.name(), cutoff, batchSize);
+            totalDeleted += deleted;
+            if (deleted < batchSize) {
+                return totalDeleted;
+            }
         }
     }
 }

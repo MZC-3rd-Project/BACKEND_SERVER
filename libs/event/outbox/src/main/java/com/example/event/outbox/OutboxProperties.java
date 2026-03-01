@@ -43,6 +43,8 @@ public class OutboxProperties {
         private int maxErrorMessageLength = 240;
         private long sendingStaleThresholdSeconds = 120;
         private long fetchBeforeSeconds = 5;
+        private long baseRetryDelaySeconds = 5;
+        private long maxRetryDelaySeconds = 300;
 
         public boolean isEnabled() {
             return enabled;
@@ -107,12 +109,29 @@ public class OutboxProperties {
         public void setFetchBeforeSeconds(long fetchBeforeSeconds) {
             this.fetchBeforeSeconds = fetchBeforeSeconds;
         }
+
+        public long getBaseRetryDelaySeconds() {
+            return baseRetryDelaySeconds;
+        }
+
+        public void setBaseRetryDelaySeconds(long baseRetryDelaySeconds) {
+            this.baseRetryDelaySeconds = baseRetryDelaySeconds;
+        }
+
+        public long getMaxRetryDelaySeconds() {
+            return maxRetryDelaySeconds;
+        }
+
+        public void setMaxRetryDelaySeconds(long maxRetryDelaySeconds) {
+            this.maxRetryDelaySeconds = maxRetryDelaySeconds;
+        }
     }
 
     public static class Cleanup {
         private boolean enabled = true;
         private String cron = "0 0 3 * * *";
         private int retentionDays = 7;
+        private int batchSize = 1000;
 
         public boolean isEnabled() {
             return enabled;
@@ -136,6 +155,14 @@ public class OutboxProperties {
 
         public void setCron(String cron) {
             this.cron = cron;
+        }
+
+        public int getBatchSize() {
+            return batchSize;
+        }
+
+        public void setBatchSize(int batchSize) {
+            this.batchSize = batchSize;
         }
     }
 }
