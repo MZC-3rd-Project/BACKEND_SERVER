@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.Set;
 import java.util.UUID;
@@ -111,5 +112,22 @@ public class QueueService {
     public boolean isAdmitted(Long hotDealId, Long userId) {
         String admittedKey = ADMITTED_KEY_PREFIX + hotDealId + ":" + userId;
         return Boolean.TRUE.equals(redisTemplate.hasKey(admittedKey));
+    }
+
+    /**
+     * 하위 호환:
+     * - 저장된 토큰이 없으면(과거 클라이언트/만료) true
+     * - 저장된 토큰이 있으면 제공 토큰과 일치해야 true
+     */
+    public boolean isTokenValid(Long hotDealId, Long userId, String token) {
+        String tokenKey = TOKEN_KEY_PREFIX + hotDealId + ":" + userId;
+        Object stored = redisTemplate.opsForValue().get(tokenKey);
+        if (stored == null) {
+            return true;
+        }
+        if (!StringUtils.hasText(token)) {
+            return false;
+        }
+        return token.trim().equals(String.valueOf(stored));
     }
 }

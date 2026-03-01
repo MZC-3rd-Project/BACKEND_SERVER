@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: client-gateway
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:localhost}}
@@ -101,8 +103,18 @@ gateway:
     keycloak-logout-url: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_URL:}
     keycloak-logout-auth-header: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_HEADER:Authorization}
     keycloak-logout-auth-token: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_TOKEN:}
+  deployment:
+    fail-fast-enabled: ${GATEWAY_DEPLOYMENT_FAIL_FAST_ENABLED:true}
+    enforced-profiles: ${GATEWAY_DEPLOYMENT_ENFORCED_PROFILES:prod,production,stg,stage}
+    require-explicit-auth-session-env: ${GATEWAY_DEPLOYMENT_REQUIRE_EXPLICIT_AUTH_SESSION_ENV:true}
+    require-auth-or-session-enabled: ${GATEWAY_DEPLOYMENT_REQUIRE_AUTH_OR_SESSION_ENABLED:true}
 
 app:
+  webclient:
+    connect-timeout: ${GATEWAY_DOWNSTREAM_CONNECT_TIMEOUT_MS:5000}
+    read-timeout: ${GATEWAY_DOWNSTREAM_READ_TIMEOUT_MS:10000}
+    write-timeout: ${GATEWAY_DOWNSTREAM_WRITE_TIMEOUT_MS:10000}
+    max-in-memory-size: ${GATEWAY_DOWNSTREAM_MAX_IN_MEMORY_BYTES:2097152}
   service:
     analytics-dashboard-url: ${ANALYTICS_DASHBOARD_SERVICE_URL:http://localhost:8095}
   security:

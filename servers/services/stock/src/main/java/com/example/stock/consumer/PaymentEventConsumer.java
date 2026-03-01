@@ -27,6 +27,10 @@ public class PaymentEventConsumer {
                 log.error("[PaymentConsumer] eventId 또는 eventType이 null입니다. message={}", message);
                 return;
             }
+            if (event.getReservationId() == null) {
+                log.error("[PaymentConsumer] reservationId가 null입니다. message={}", message);
+                return;
+            }
 
             idempotentConsumerService.executeIdempotent(event.getEventId(), "PAYMENT_EVENT", () -> {
                 switch (event.getEventType()) {
