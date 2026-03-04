@@ -40,4 +40,9 @@ dependencies {
     implementation("org.flywaydb:flyway-core")
     runtimeOnly("org.flywaydb:flyway-database-postgresql")
 
+    implementation (project(":libs:clients:auth-client"))
+
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("org.springframework:spring-webflux")
+
 }

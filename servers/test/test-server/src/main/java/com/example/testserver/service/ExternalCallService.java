@@ -100,7 +100,7 @@ public class ExternalCallService {
 
     /**
      * [사용법] Slow Call 시뮬레이션
-     * 지연이 있는 엔드포인트 호출
+     * 지연이 있는 엔드포인트 호출-
      * slowCallDurationThreshold(3초) 초과 시 slow call로 기록
      */
     public Map<String, Object> callSlowEndpoint(long delayMs) {

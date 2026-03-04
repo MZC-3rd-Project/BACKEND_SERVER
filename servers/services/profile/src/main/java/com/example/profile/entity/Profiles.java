@@ -1,13 +1,18 @@
 package com.example.profile.entity;
 
+import com.example.clients.auth.dto.profile.AuthSyncQuery;
 import com.example.core.id.jpa.SnowflakeGenerated;
 import com.example.data.entity.BaseEntity;
+import com.example.profile.dto.request.ProfileCreateRequest;
+import com.example.profile.dto.request.ProfileRequest;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
+
+import java.util.Objects;
 
 @Entity
 @Builder
@@ -30,21 +35,27 @@ public class Profiles extends BaseEntity {
     @Column(name = "nickname", length = 100)
     private String nickname;
 
-    @Column(name = "phone", length = 15)
-    private String phone;
+    @Column(name = "phone_number", length = 15)
+    private String phoneNumber;
 
-    @Column(name = "delivery", length = 100)
-    private String delivery; // 테이블 따로 만들어야 될거 같음
-
-    public void updateProfile(String email,
-                              String nickname,
-                              String phone,
-                              String delivery
-                              ){
-
-       if(email != null) this.email= email;
-       if(nickname != null) this.nickname = nickname;
-       if(phone != null) this.phone = phone;
-       if(delivery != null) this.delivery = delivery;
+    public void updateProfile(ProfileRequest profile
+    ){
+        if (profile.getEmail() != null && !Objects.equals(this.email, profile.getEmail()))
+            this.email = profile.getEmail();
+        if (profile.getNickname() != null && !Objects.equals(this.nickname, profile.getNickname()))
+            this.nickname = profile.getNickname();
+        if (profile.getPhone() != null && !Objects.equals(this.phoneNumber, profile.getPhone()))
+            this.phoneNumber = profile.getPhone();
     }
+
+    public static Profiles create(AuthSyncQuery req){
+        return Profiles.builder()
+            .userId(req.profileInfo().userId())
+            .email(req.profileInfo().email())
+            .nickname(req.profileInfo().nickname())
+            .phoneNumber(req.profileInfo().phoneNumber())
+            .build();
+    }
+
+
 }
