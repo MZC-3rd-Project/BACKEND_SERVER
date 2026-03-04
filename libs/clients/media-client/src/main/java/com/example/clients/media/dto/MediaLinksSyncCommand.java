@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Objects;
 
 public record MediaLinksSyncCommand(
-        String ownerType,
+        MediaOwnerType ownerType,
         Long ownerId,
         List<MediaUsageSet> sets
 ) {
@@ -16,7 +16,7 @@ public record MediaLinksSyncCommand(
     }
 
     public record MediaUsageSet(
-            String usageType,
+            MediaUsageType usageType,
             List<Long> mediaIds
     ) {
         public MediaUsageSet {

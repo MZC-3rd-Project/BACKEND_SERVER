@@ -5,6 +5,8 @@ import com.example.clients.media.exception.MediaClientException;
 import com.example.clients.media.facade.MediaClientFacade;
 import com.example.clients.media.impl.MediaClientValidator;
 import com.example.clients.media.dto.MediaLinksSyncCommand;
+import com.example.clients.media.dto.MediaOwnerType;
+import com.example.clients.media.dto.MediaUsageType;
 import com.example.core.exception.BusinessException;
 import com.example.product.exception.ProductErrorCode;
 import org.junit.jupiter.api.BeforeEach;
@@ -81,13 +83,13 @@ class MediaReferenceServiceTest {
         verify(mediaClientFacade).syncLinks(commandCaptor.capture());
 
         MediaLinksSyncCommand command = commandCaptor.getValue();
-        assertThat(command.ownerType()).isEqualTo("ITEM");
+        assertThat(command.ownerType()).isEqualTo(MediaOwnerType.ITEM);
         assertThat(command.ownerId()).isEqualTo(100L);
         assertThat(command.sets()).hasSize(2);
 
-        assertThat(command.sets().get(0).usageType()).isEqualTo("THUMBNAIL");
+        assertThat(command.sets().get(0).usageType()).isEqualTo(MediaUsageType.THUMBNAIL);
         assertThat(command.sets().get(0).mediaIds()).containsExactly(10L);
-        assertThat(command.sets().get(1).usageType()).isEqualTo("GALLERY");
+        assertThat(command.sets().get(1).usageType()).isEqualTo(MediaUsageType.GALLERY);
         assertThat(command.sets().get(1).mediaIds()).containsExactly(20L, 21L);
     }
 

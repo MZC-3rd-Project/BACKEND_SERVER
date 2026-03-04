@@ -6,11 +6,13 @@ import com.example.auth.dto.request.WithdrawRequest;
 import com.example.auth.dto.response.SignupResponse;
 import com.example.auth.entity.User;
 import com.example.auth.entity.UserStatusHistory;
+import com.example.auth.event.UserCreatedEvent;
 import com.example.auth.exception.AuthErrorCode;
 import com.example.auth.repository.UserRepository;
 import com.example.auth.repository.UserStatusHistoryRepository;
 import com.example.core.exception.BusinessException;
 import com.example.core.exception.TechnicalException;
+import com.example.event.DomainEvent;
 import com.example.event.EventPublisher;
 import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +25,7 @@ import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.resource.UserResource;
 import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -65,7 +68,8 @@ class AuthServiceTest {
                 eventPublisher,
                 "don-moa",
                 "http://localhost:43217",
-                "don-moa-gateway"
+                "don-moa-gateway",
+                true
         );
     }
 
@@ -108,7 +112,60 @@ class AuthServiceTest {
             // then
             assertThat(response.email()).isEqualTo("test@example.com");
             verify(profileServiceClient).createProfile(any(), eq("test@example.com"), eq("테스터"));
-            verify(eventPublisher).publish(any(), any());
+            ArgumentCaptor<DomainEvent> eventCaptor = ArgumentCaptor.forClass(DomainEvent.class);
+            verify(eventPublisher).publish(eventCaptor.capture(), any());
+            assertThat(eventCaptor.getValue()).isInstanceOf(UserCreatedEvent.class);
+            assertThat(eventCaptor.getValue().getPayload())
+                    .containsEntry("userId", response.userId())
+                    .containsEntry("email", "test@example.com")
+                    .containsEntry("nickname", "테스터");
+        }
+
+        @Test
+        @DisplayName("성공 - 동기 profile 생성 feature flag OFF 시 이벤트만 발행")
+        void signup_success_whenSyncProfileCreateFlagOff() {
+            // given
+            AuthService asyncOnlyAuthService = new AuthService(
+                    userRepository,
+                    statusHistoryRepository,
+                    keycloakAdminClient,
+                    profileServiceClient,
+                    eventPublisher,
+                    "don-moa",
+                    "http://localhost:43217",
+                    "don-moa-gateway",
+                    false
+            );
+
+            SignupRequest request = new SignupRequest("flag-off@example.com", "password123", "플래그오프");
+            when(userRepository.existsByEmail("flag-off@example.com")).thenReturn(false);
+
+            RealmResource realmResource = mock(RealmResource.class);
+            UsersResource usersResource = mock(UsersResource.class);
+            UserResource userResource = mock(UserResource.class);
+            Response kcResponse = mock(Response.class);
+
+            when(keycloakAdminClient.realm("don-moa")).thenReturn(realmResource);
+            when(realmResource.users()).thenReturn(usersResource);
+            when(usersResource.create(any(UserRepresentation.class))).thenReturn(kcResponse);
+            when(kcResponse.getStatus()).thenReturn(201);
+            when(kcResponse.getHeaderString("Location"))
+                    .thenReturn("http://localhost/users/kc-user-id-flag-off");
+            when(usersResource.get(anyString())).thenReturn(userResource);
+            when(userResource.toRepresentation()).thenReturn(new UserRepresentation());
+
+            when(userRepository.save(any(User.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+            when(statusHistoryRepository.save(any(UserStatusHistory.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+
+            // when
+            SignupResponse response = asyncOnlyAuthService.signup(request);
+
+            // then
+            assertThat(response.email()).isEqualTo("flag-off@example.com");
+            verify(profileServiceClient, never()).createProfile(any(), anyString(), anyString());
+            verify(eventPublisher).publish(any(DomainEvent.class), any());
         }
 
         @Test

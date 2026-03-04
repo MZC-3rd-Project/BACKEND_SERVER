@@ -1,6 +1,8 @@
 package com.example.clients.media.impl;
 
 import com.example.clients.media.dto.MediaLinksSyncCommand;
+import com.example.clients.media.dto.MediaOwnerType;
+import com.example.clients.media.dto.MediaUsageType;
 import com.example.clients.media.exception.InvalidMediaReferenceException;
 import org.junit.jupiter.api.Test;
 
@@ -37,9 +39,9 @@ class MediaClientValidatorTest {
     @Test
     void normalizeSyncCommand_normalizesSetMediaIds() {
         MediaLinksSyncCommand command = new MediaLinksSyncCommand(
-                "ITEM",
+                MediaOwnerType.ITEM,
                 100L,
-                List.of(new MediaLinksSyncCommand.MediaUsageSet("GALLERY", List.of(20L, 21L, 20L)))
+                List.of(new MediaLinksSyncCommand.MediaUsageSet(MediaUsageType.GALLERY, List.of(20L, 21L, 20L)))
         );
 
         MediaLinksSyncCommand normalized = validator.normalizeSyncCommand(command);

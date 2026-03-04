@@ -45,6 +45,7 @@ public class AuthService {
     private final String realm;
     private final String keycloakServerUrl;
     private final String directGrantClientId;
+    private final boolean syncProfileCreateOnSignup;
 
     public AuthService(UserRepository userRepository,
                        UserStatusHistoryRepository statusHistoryRepository,
@@ -53,7 +54,8 @@ public class AuthService {
                        EventPublisher eventPublisher,
                        @Value("${keycloak.admin.realm}") String realm,
                        @Value("${keycloak.admin.server-url}") String keycloakServerUrl,
-                       @Value("${keycloak.admin.direct-grant-client-id}") String directGrantClientId) {
+                       @Value("${keycloak.admin.direct-grant-client-id}") String directGrantClientId,
+                       @Value("${feature.sync-profile-create-on-signup:true}") boolean syncProfileCreateOnSignup) {
         this.userRepository = userRepository;
         this.statusHistoryRepository = statusHistoryRepository;
         this.keycloakAdminClient = keycloakAdminClient;
@@ -62,6 +64,7 @@ public class AuthService {
         this.realm = realm;
         this.keycloakServerUrl = keycloakServerUrl;
         this.directGrantClientId = directGrantClientId;
+        this.syncProfileCreateOnSignup = syncProfileCreateOnSignup;
     }
 
     // ─── 회원가입 ──────────────────────────────────────────────
@@ -89,12 +92,16 @@ public class AuthService {
                     user.getId(), null, UserStatus.ACTIVE, "회원가입", user.getId());
             statusHistoryRepository.save(history);
 
-            // 6. Profile Service 동기 호출
-            profileServiceClient.createProfile(user.getId(), user.getEmail(), request.nickname());
+            // 6. Profile Service 동기 호출 (feature flag)
+            if (syncProfileCreateOnSignup) {
+                profileServiceClient.createProfile(user.getId(), user.getEmail(), request.nickname());
+            } else {
+                log.info("Sync profile create disabled by feature flag. userId={}", user.getId());
+            }
 
             // 7. Outbox 이벤트 발행
             eventPublisher.publish(
-                    new UserCreatedEvent(user.getId(), user.getEmail()),
+                    new UserCreatedEvent(user.getId(), user.getEmail(), user.getNickname()),
                     EventMetadata.of("USER", String.valueOf(user.getId()))
             );
 
