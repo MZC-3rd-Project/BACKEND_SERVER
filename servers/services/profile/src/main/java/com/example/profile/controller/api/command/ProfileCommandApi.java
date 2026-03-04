@@ -19,23 +19,4 @@ public interface ProfileCommandApi {
         @RequestHeader("X-User-Id") Long userId
     );
 
-    /*
-    put
-    profile 1
-        mediaId : null
-
-        -> mediaId :1
-
-    profile 1
-        mediaId : 1
-
-       -> 이미지 변경
-            mediaId:2
-
-        mediaId : null
-            patch ->  이미지변경x vs 이미지 삭제 ?
-           put -> 이미지 삭제
-
-
-     */
 }

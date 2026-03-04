@@ -14,4 +14,10 @@ public interface MediaDerivativeRepository extends JpaRepository<MediaDerivative
             MediaDerivativeProfile derivativeProfile,
             MediaDerivativeStatus status
     );
+
+    List<MediaDerivative> findByMediaIdInAndDerivativeProfileInAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
+            List<Long> mediaIds,
+            List<MediaDerivativeProfile> derivativeProfiles,
+            MediaDerivativeStatus status
+    );
 }

@@ -47,6 +47,10 @@ profile:
   service:
     base-url: ${PROFILE_SERVICE_URL:http://localhost:8082}
 
+# ─── Feature Flags ───────────────────────────
+feature:
+  sync-profile-create-on-signup: ${FEATURE_SYNC_PROFILE_CREATE_ON_SIGNUP:true}
+
 # ─── App ───────────────────────────────────────
 app:
   snowflake:
@@ -89,4 +93,3 @@ logging:
   level:
     com.example: ${LOG_LEVEL:DEBUG}
     org.keycloak: ${KC_LOG_LEVEL:INFO}
-

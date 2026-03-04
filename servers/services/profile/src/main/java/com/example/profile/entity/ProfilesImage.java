@@ -16,19 +16,27 @@ public class ProfilesImage extends BaseEntity {
     @Column(name = "user_id")
     private Long userId;
 
-    @MapsId
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", referencedColumnName = "user_id", nullable = false, insertable = false, updatable = false)
     private Profiles profile;
 
-    @Column(name = "media_id", nullable = false, length = 500)
+    @Column(name = "media_id", length = 500)
     private Long mediaId;
 
     @Column(name = "sort_order")
+    @Builder.Default
     private Integer sortOrder = 0;
 
     public void updateMediaId(Long mediaId) {
         this.mediaId = mediaId;
+    }
+
+    public static ProfilesImage createDefault(Profiles profile) {
+        return ProfilesImage.builder()
+            .userId(profile.getUserId())
+            .profile(profile)
+            .mediaId(null)
+            .build();
     }
 
 

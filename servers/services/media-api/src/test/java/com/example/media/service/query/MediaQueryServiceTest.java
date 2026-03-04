@@ -88,9 +88,9 @@ class MediaQueryServiceTest {
 
         when(mediaFileRepository.findById(101L)).thenReturn(Optional.of(mediaFile));
         when(mediaLinkRepository.findTopByMediaIdOrderByCreatedAtDesc(101L)).thenReturn(Optional.of(mediaLink));
-        when(mediaDerivativeRepository.findByMediaIdInAndDerivativeProfileAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
+        when(mediaDerivativeRepository.findByMediaIdInAndDerivativeProfileInAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
                 List.of(101L),
-                MediaDerivativeProfile.THUMBNAIL_WEBP,
+                List.of(MediaDerivativeProfile.THUMBNAIL_WEBP, MediaDerivativeProfile.DISPLAY_WEBP),
                 MediaDerivativeStatus.READY
         )).thenReturn(List.of());
 
@@ -127,9 +127,9 @@ class MediaQueryServiceTest {
 
         when(mediaFileRepository.findById(102L)).thenReturn(Optional.of(mediaFile));
         when(mediaLinkRepository.findTopByMediaIdOrderByCreatedAtDesc(102L)).thenReturn(Optional.empty());
-        when(mediaDerivativeRepository.findByMediaIdInAndDerivativeProfileAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
+        when(mediaDerivativeRepository.findByMediaIdInAndDerivativeProfileInAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
                 List.of(102L),
-                MediaDerivativeProfile.THUMBNAIL_WEBP,
+                List.of(MediaDerivativeProfile.THUMBNAIL_WEBP, MediaDerivativeProfile.DISPLAY_WEBP),
                 MediaDerivativeStatus.READY
         )).thenReturn(List.of());
 
@@ -206,9 +206,9 @@ class MediaQueryServiceTest {
                 .thenReturn(List.of(confirmed, pending));
         when(mediaLinkRepository.findByMediaIdInOrderByMediaIdAscCreatedAtDesc(List.of(201L, 202L, 999L)))
                 .thenReturn(List.of(link));
-        when(mediaDerivativeRepository.findByMediaIdInAndDerivativeProfileAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
+        when(mediaDerivativeRepository.findByMediaIdInAndDerivativeProfileInAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
                 List.of(201L, 202L, 999L),
-                MediaDerivativeProfile.THUMBNAIL_WEBP,
+                List.of(MediaDerivativeProfile.THUMBNAIL_WEBP, MediaDerivativeProfile.DISPLAY_WEBP),
                 MediaDerivativeStatus.READY
         )).thenReturn(List.of());
 
@@ -248,9 +248,9 @@ class MediaQueryServiceTest {
                 .thenReturn(List.of(confirmed));
         when(mediaLinkRepository.findByMediaIdInOrderByMediaIdAscCreatedAtDesc(List.of(301L)))
                 .thenReturn(List.of(link));
-        when(mediaDerivativeRepository.findByMediaIdInAndDerivativeProfileAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
+        when(mediaDerivativeRepository.findByMediaIdInAndDerivativeProfileInAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
                 List.of(301L),
-                MediaDerivativeProfile.THUMBNAIL_WEBP,
+                List.of(MediaDerivativeProfile.THUMBNAIL_WEBP, MediaDerivativeProfile.DISPLAY_WEBP),
                 MediaDerivativeStatus.READY
         )).thenReturn(List.of(derivative));
 
@@ -259,6 +259,56 @@ class MediaQueryServiceTest {
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).getObjectKey()).isEqualTo(derivative.getObjectKey());
         assertThat(responses.get(0).getMediaUrl()).contains("/derived/");
+    }
+
+    @Test
+    void getMediaUrls_prefersDisplayDerivativeForNonThumbnailUsage() {
+        MediaFile confirmed = MediaFile.createPending(
+                100L,
+                "ready-display.jpg",
+                "team2-donmoa-media/raw/2026/01/01/ready-display.jpg",
+                "team2-donmoa-media-raw",
+                "image/jpeg",
+                1024L,
+                null,
+                null,
+                null,
+                null,
+                "upload-token-display",
+                LocalDateTime.now().plusMinutes(1)
+        );
+        ReflectionTestUtils.setField(confirmed, "id", 401L);
+        confirmed.confirm(1024L, "image/jpeg", "etag-display", LocalDateTime.now());
+
+        MediaLink link = MediaLink.create(401L, MediaOwnerType.ITEM, 888L, MediaUsageType.GALLERY, 0);
+        MediaDerivative displayDerivative = MediaDerivative.createReady(
+                401L,
+                MediaDerivativeProfile.DISPLAY_WEBP,
+                1L,
+                "team2-donmoa-media/derived/2026/01/01/ready-display_display_webp_v1.webp",
+                "https://cdn.example.com/team2-donmoa-media/derived/2026/01/01/ready-display_display_webp_v1.webp",
+                1280,
+                720,
+                "image/webp",
+                22345L
+        );
+        ReflectionTestUtils.setField(displayDerivative, "id", 9002L);
+
+        when(mediaFileRepository.findAllById(List.of(401L)))
+                .thenReturn(List.of(confirmed));
+        when(mediaLinkRepository.findByMediaIdInOrderByMediaIdAscCreatedAtDesc(List.of(401L)))
+                .thenReturn(List.of(link));
+        when(mediaDerivativeRepository.findByMediaIdInAndDerivativeProfileInAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
+                List.of(401L),
+                List.of(MediaDerivativeProfile.THUMBNAIL_WEBP, MediaDerivativeProfile.DISPLAY_WEBP),
+                MediaDerivativeStatus.READY
+        )).thenReturn(List.of(displayDerivative));
+
+        List<MediaUrlResponse> responses = mediaQueryService.getMediaUrls(List.of(401L), 100L);
+
+        assertThat(responses).hasSize(1);
+        assertThat(responses.get(0).getObjectKey()).isEqualTo(displayDerivative.getObjectKey());
+        assertThat(responses.get(0).getUsageType()).isEqualTo("GALLERY");
     }
 
     private MediaDerivative createReadyDerivative(Long mediaId, String objectKey) {

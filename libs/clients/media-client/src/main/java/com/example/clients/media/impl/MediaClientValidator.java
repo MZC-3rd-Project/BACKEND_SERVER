@@ -2,7 +2,6 @@ package com.example.clients.media.impl;
 
 import com.example.clients.media.dto.MediaLinksSyncCommand;
 import com.example.clients.media.exception.InvalidMediaReferenceException;
-import org.springframework.util.StringUtils;
 
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -31,14 +30,14 @@ public class MediaClientValidator {
     }
 
     public MediaLinksSyncCommand normalizeSyncCommand(MediaLinksSyncCommand command) {
-        if (command == null || !StringUtils.hasText(command.ownerType()) || command.ownerId() == null || command.ownerId() <= 0) {
+        if (command == null || command.ownerType() == null || command.ownerId() == null || command.ownerId() <= 0) {
             throw new InvalidMediaReferenceException("syncLinks command is invalid");
         }
 
         List<MediaLinksSyncCommand.MediaUsageSet> normalizedSets = command.sets().stream()
                 .filter(Objects::nonNull)
                 .map(set -> {
-                    if (!StringUtils.hasText(set.usageType())) {
+                    if (set.usageType() == null) {
                         throw new InvalidMediaReferenceException("usageType is required");
                     }
                     return new MediaLinksSyncCommand.MediaUsageSet(

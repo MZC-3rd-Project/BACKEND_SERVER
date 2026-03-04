@@ -3,14 +3,16 @@ package com.example.profile.entity;
 import com.example.clients.auth.dto.profile.AuthSyncQuery;
 import com.example.core.id.jpa.SnowflakeGenerated;
 import com.example.data.entity.BaseEntity;
-import com.example.profile.dto.request.ProfileCreateRequest;
 import com.example.profile.dto.request.ProfileRequest;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.*;
 import org.hibernate.annotations.SQLRestriction;
+import org.springframework.util.StringUtils;
 
 import java.util.Objects;
 
@@ -38,6 +40,9 @@ public class Profiles extends BaseEntity {
     @Column(name = "phone_number", length = 15)
     private String phoneNumber;
 
+    @OneToOne(mappedBy = "profile", fetch = FetchType.LAZY)
+    private ProfilesImage profileImage;
+
     public void updateProfile(ProfileRequest profile
     ){
         if (profile.getEmail() != null && !Objects.equals(this.email, profile.getEmail()))
@@ -57,5 +62,30 @@ public class Profiles extends BaseEntity {
             .build();
     }
 
+    public static Profiles createProjection(Long userId, String email, String nickname) {
+        return Profiles.builder()
+            .userId(userId)
+            .email(email)
+            .nickname(nickname)
+            .build();
+    }
 
+    public void applyUserCreatedProjection(String email, String nickname) {
+        if (StringUtils.hasText(email) && !Objects.equals(this.email, email)) {
+            this.email = email;
+        }
+        if (StringUtils.hasText(nickname) && !Objects.equals(this.nickname, nickname)) {
+            this.nickname = nickname;
+        }
+    }
+
+    public void applyEmailChangedProjection(String newEmail) {
+        if (StringUtils.hasText(newEmail) && !Objects.equals(this.email, newEmail)) {
+            this.email = newEmail;
+        }
+    }
+
+    public ProfilesImage getProfileImage() {
+        return profileImage;
+    }
 }

@@ -66,7 +66,7 @@ public class S3MediaDerivativeProcessor implements MediaDerivativeProcessor {
         );
 
         BufferedImage sourceImage = decodeImage(sourceBytes.asByteArray());
-        DerivativeImageResult derivativeImage = toThumbnailImage(sourceImage);
+        DerivativeImageResult derivativeImage = transformByProfile(sourceImage, task.getDerivativeProfile());
         String objectKey = buildDerivativeObjectKey(mediaFileRecord.getObjectKey(), task, derivativeImage.extension());
         uploadDerivative(mediaFileRecord.getBucketName(), objectKey, derivativeImage);
 
@@ -104,6 +104,13 @@ public class S3MediaDerivativeProcessor implements MediaDerivativeProcessor {
         }
     }
 
+    private DerivativeImageResult transformByProfile(BufferedImage sourceImage, MediaDerivativeProfile derivativeProfile) {
+        if (derivativeProfile == MediaDerivativeProfile.THUMBNAIL_WEBP) {
+            return toThumbnailImage(sourceImage);
+        }
+        return toDisplayImage(sourceImage);
+    }
+
     private BufferedImage decodeImage(byte[] bytes) {
         try (ByteArrayInputStream input = new ByteArrayInputStream(bytes)) {
             BufferedImage sourceImage = ImageIO.read(input);
@@ -138,6 +145,10 @@ public class S3MediaDerivativeProcessor implements MediaDerivativeProcessor {
         }
 
         return encodeImage(resized);
+    }
+
+    private DerivativeImageResult toDisplayImage(BufferedImage sourceImage) {
+        return encodeImage(sourceImage);
     }
 
     private int[] calculateTargetSize(int sourceWidth, int sourceHeight, int maxWidth, int maxHeight) {

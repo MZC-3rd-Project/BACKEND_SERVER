@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
@@ -28,6 +29,9 @@ import java.util.stream.Collectors;
 public class MediaQueryService {
 
     private static final MediaDerivativeProfile THUMBNAIL_PROFILE = MediaDerivativeProfile.THUMBNAIL_WEBP;
+    private static final MediaDerivativeProfile DISPLAY_PROFILE = MediaDerivativeProfile.DISPLAY_WEBP;
+    private static final List<MediaDerivativeProfile> SERVING_DERIVATIVE_PROFILES =
+            List.of(THUMBNAIL_PROFILE, DISPLAY_PROFILE);
 
     private final MediaFileRepository mediaFileRepository;
     private final MediaLinkRepository mediaLinkRepository;
@@ -43,8 +47,9 @@ public class MediaQueryService {
         validateStatus(mediaFile);
 
         MediaLink link = mediaLinkRepository.findTopByMediaIdOrderByCreatedAtDesc(mediaId).orElse(null);
-        MediaDerivative derivative = findThumbnailDerivative(mediaId);
-        return toMediaUrlResponse(mediaFile, link, derivative);
+        Map<MediaDerivativeProfile, MediaDerivative> derivativeByProfile =
+                findLatestReadyDerivativesByMediaId(List.of(mediaId)).getOrDefault(mediaId, Map.of());
+        return toMediaUrlResponse(mediaFile, link, derivativeByProfile);
     }
 
     @Transactional(readOnly = true)
@@ -70,14 +75,8 @@ public class MediaQueryService {
                 .stream()
                 .collect(Collectors.toMap(MediaLink::getMediaId, Function.identity(), (left, right) -> left));
 
-        Map<Long, MediaDerivative> latestThumbnailDerivativeByMediaId = mediaDerivativeRepository
-                .findByMediaIdInAndDerivativeProfileAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
-                        uniqueIds,
-                        THUMBNAIL_PROFILE,
-                        MediaDerivativeStatus.READY
-                )
-                .stream()
-                .collect(Collectors.toMap(MediaDerivative::getMediaId, Function.identity(), (left, right) -> left));
+        Map<Long, Map<MediaDerivativeProfile, MediaDerivative>> derivativeByMediaAndProfile =
+                findLatestReadyDerivativesByMediaId(uniqueIds);
 
         return uniqueIds.stream()
                 .map(mediaFileMap::get)
@@ -86,7 +85,7 @@ public class MediaQueryService {
                 .map(mediaFile -> toMediaUrlResponse(
                         mediaFile,
                         latestLinkByMediaId.get(mediaFile.getId()),
-                        latestThumbnailDerivativeByMediaId.get(mediaFile.getId())
+                        derivativeByMediaAndProfile.getOrDefault(mediaFile.getId(), Map.of())
                 ))
                 .toList();
     }
@@ -113,21 +112,34 @@ public class MediaQueryService {
         }
     }
 
-    private MediaDerivative findThumbnailDerivative(Long mediaId) {
-        return mediaDerivativeRepository
-                .findByMediaIdInAndDerivativeProfileAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
-                        List.of(mediaId),
-                        THUMBNAIL_PROFILE,
+    private Map<Long, Map<MediaDerivativeProfile, MediaDerivative>> findLatestReadyDerivativesByMediaId(List<Long> mediaIds) {
+        if (mediaIds == null || mediaIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<MediaDerivative> readyDerivatives = mediaDerivativeRepository
+                .findByMediaIdInAndDerivativeProfileInAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
+                        mediaIds,
+                        SERVING_DERIVATIVE_PROFILES,
                         MediaDerivativeStatus.READY
-                )
-                .stream()
-                .findFirst()
-                .orElse(null);
+                );
+
+        Map<Long, Map<MediaDerivativeProfile, MediaDerivative>> result = new LinkedHashMap<>();
+        for (MediaDerivative derivative : readyDerivatives) {
+            Map<MediaDerivativeProfile, MediaDerivative> derivativeByProfile = result.computeIfAbsent(
+                    derivative.getMediaId(),
+                    ignored -> new LinkedHashMap<>()
+            );
+            derivativeByProfile.putIfAbsent(derivative.getDerivativeProfile(), derivative);
+        }
+        return result;
     }
 
-    private MediaUrlResponse toMediaUrlResponse(MediaFile mediaFile, MediaLink link, MediaDerivative derivative) {
-        String resolvedObjectKey = resolveObjectKey(mediaFile, link, derivative);
-        MediaUsageType resolvedUsageType = resolveUsageType(link, derivative);
+    private MediaUrlResponse toMediaUrlResponse(MediaFile mediaFile,
+                                                MediaLink link,
+                                                Map<MediaDerivativeProfile, MediaDerivative> derivativeByProfile) {
+        String resolvedObjectKey = resolveObjectKey(mediaFile, link, derivativeByProfile);
+        MediaUsageType resolvedUsageType = resolveUsageType(link);
         MediaUrlPolicyService.MediaUrlContract urlContract = mediaUrlPolicyService.resolve(
                 resolvedObjectKey,
                 resolvedUsageType
@@ -144,21 +156,37 @@ public class MediaQueryService {
                 .build();
     }
 
-    private String resolveObjectKey(MediaFile mediaFile, MediaLink link, MediaDerivative derivative) {
-        if (derivative != null && shouldUseThumbnailDerivative(link)) {
-            return derivative.getObjectKey();
+    private String resolveObjectKey(MediaFile mediaFile,
+                                    MediaLink link,
+                                    Map<MediaDerivativeProfile, MediaDerivative> derivativeByProfile) {
+        MediaDerivative preferredDerivative = resolvePreferredDerivative(link, derivativeByProfile);
+        if (preferredDerivative != null) {
+            return preferredDerivative.getObjectKey();
         }
         return mediaFile.getObjectKey();
     }
 
-    private MediaUsageType resolveUsageType(MediaLink link, MediaDerivative derivative) {
+    private MediaUsageType resolveUsageType(MediaLink link) {
         if (link != null) {
             return link.getUsageType();
         }
         return null;
     }
 
-    private boolean shouldUseThumbnailDerivative(MediaLink link) {
-        return link != null && link.getUsageType() == MediaUsageType.THUMBNAIL;
+    private MediaDerivative resolvePreferredDerivative(MediaLink link,
+                                                       Map<MediaDerivativeProfile, MediaDerivative> derivativeByProfile) {
+        if (derivativeByProfile == null || derivativeByProfile.isEmpty()) {
+            return null;
+        }
+
+        MediaUsageType usageType = resolveUsageType(link);
+        if (usageType == MediaUsageType.THUMBNAIL) {
+            MediaDerivative thumbnail = derivativeByProfile.get(THUMBNAIL_PROFILE);
+            if (thumbnail != null) {
+                return thumbnail;
+            }
+        }
+
+        return derivativeByProfile.get(DISPLAY_PROFILE);
     }
 }

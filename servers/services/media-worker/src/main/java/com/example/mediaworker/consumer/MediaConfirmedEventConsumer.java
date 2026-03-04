@@ -29,18 +29,24 @@ public class MediaConfirmedEventConsumer {
                 log.warn("[MediaWorker] invalid event payload. payload={}", payload);
                 return;
             }
-            MediaDerivativeTask task = mediaDerivativeTaskService.enqueuePending(
+            MediaDerivativeTask thumbnailTask = mediaDerivativeTaskService.enqueuePending(
                     event.getMediaId(),
                     normalizeMediaVersion(event.getMediaVersion()),
                     MediaDerivativeProfile.THUMBNAIL_WEBP,
                     event.getEventId()
             );
+            MediaDerivativeTask displayTask = mediaDerivativeTaskService.enqueuePending(
+                    event.getMediaId(),
+                    normalizeMediaVersion(event.getMediaVersion()),
+                    MediaDerivativeProfile.DISPLAY_WEBP,
+                    event.getEventId()
+            );
             log.info(
-                    "[MediaWorker] confirmed event accepted. taskId={}, mediaId={}, profile={}, version={}, ownerType={}, ownerId={}, usageType={}, objectKey={}",
-                    task.getId(),
-                    task.getMediaId(),
-                    task.getDerivativeProfile(),
-                    task.getMediaVersion(),
+                    "[MediaWorker] confirmed event accepted. mediaId={}, thumbnailTaskId={}, displayTaskId={}, version={}, ownerType={}, ownerId={}, usageType={}, objectKey={}",
+                    event.getMediaId(),
+                    thumbnailTask.getId(),
+                    displayTask.getId(),
+                    thumbnailTask.getMediaVersion(),
                     event.getOwnerType(),
                     event.getOwnerId(),
                     event.getUsageType(),
