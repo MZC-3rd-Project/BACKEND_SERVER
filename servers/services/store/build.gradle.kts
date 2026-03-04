@@ -36,8 +36,8 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
     testRuntimeOnly("com.h2database:h2")
 
-//    // flyway
-//    implementation("org.flywaydb:flyway-core")
-//    runtimeOnly("org.flywaydb:flyway-database-postgresql")
+    // flyway
+    implementation("org.flywaydb:flyway-core")
+    runtimeOnly("org.flywaydb:flyway-database-postgresql")
 
 }
