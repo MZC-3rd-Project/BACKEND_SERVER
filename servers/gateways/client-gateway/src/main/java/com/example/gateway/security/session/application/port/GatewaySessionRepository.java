@@ -8,6 +8,8 @@ public interface GatewaySessionRepository {
 
     Mono<String> findStatusBySid(String sessionId);
 
+    Mono<Void> activateSession(Long userId, String sessionId);
+
     Mono<Void> indexUserSession(Long userId, String sessionId);
 
     Flux<GatewaySessionView> findSessionsByUserId(Long userId);

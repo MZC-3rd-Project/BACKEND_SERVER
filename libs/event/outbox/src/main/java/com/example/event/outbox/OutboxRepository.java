@@ -17,11 +17,18 @@ public interface OutboxRepository extends JpaRepository<OutboxMessage, Long> {
             @Param("before") LocalDateTime before);
 
     @Query(value = "SELECT * FROM outbox_messages WHERE status = :status AND created_at < :before " +
+            "AND (retry_count = 0 OR EXTRACT(EPOCH FROM (:now - updated_at)) >= LEAST(" +
+            "CAST(:maxRetryDelaySeconds AS DOUBLE PRECISION), " +
+            "CAST(:baseRetryDelaySeconds AS DOUBLE PRECISION) * POWER(2, GREATEST(retry_count - 1, 0))" +
+            ")) " +
             "ORDER BY created_at ASC LIMIT :limit FOR UPDATE SKIP LOCKED",
             nativeQuery = true)
     List<OutboxMessage> findPendingMessagesForRelay(
             @Param("status") String status,
             @Param("before") LocalDateTime before,
+            @Param("now") LocalDateTime now,
+            @Param("baseRetryDelaySeconds") long baseRetryDelaySeconds,
+            @Param("maxRetryDelaySeconds") long maxRetryDelaySeconds,
             @Param("limit") int limit);
 
     @Modifying
@@ -61,4 +68,16 @@ public interface OutboxRepository extends JpaRepository<OutboxMessage, Long> {
     int deleteByStatusAndCreatedBefore(
             @Param("status") OutboxStatus status,
             @Param("before") LocalDateTime before);
+
+    @Modifying
+    @Transactional
+    @Query(value = "DELETE FROM outbox_messages WHERE id IN (" +
+            "SELECT id FROM outbox_messages WHERE status = :status AND created_at < :before " +
+            "ORDER BY created_at ASC LIMIT :limit" +
+            ")",
+            nativeQuery = true)
+    int deleteTopByStatusAndCreatedBefore(
+            @Param("status") String status,
+            @Param("before") LocalDateTime before,
+            @Param("limit") int limit);
 }

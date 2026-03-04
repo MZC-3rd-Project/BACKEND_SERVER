@@ -4,10 +4,31 @@ server:
 spring:
   application:
     name: client-gateway
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:localhost}}
+      port: ${SPRING_DATA_REDIS_PORT:${REDIS_PORT:6379}}
   cloud:
     gateway:
       server:
         webflux:
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedOrigins:
+                  - "http://donmoa-dev-alb-214468272.ap-northeast-2.elb.amazonaws.com"
+                  - "http://localhost:3000"
+                allowedMethods:
+                  - GET
+                  - POST
+                  - PUT
+                  - DELETE
+                  - OPTIONS
+                  - PATCH
+                allowedHeaders: "*"
+                allowCredentials: true
           routes:
             - id: search-service
               uri: ${app.service.search-url:http://localhost:8088}
@@ -53,6 +74,7 @@ gateway:
   security:
     internal-auth-header: ${GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}
     internal-auth-token: ${GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
+    allow-client-identity-headers: ${GATEWAY_SECURITY_ALLOW_CLIENT_IDENTITY_HEADERS:false}
     relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/v1/search,/api/v1/media,/api/v1/chat,/ws/chat,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications}
     require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:/api/v1/chat,/ws/chat}
     require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/bff/v1,/api/v1/media,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications}
@@ -81,8 +103,18 @@ gateway:
     keycloak-logout-url: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_URL:}
     keycloak-logout-auth-header: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_HEADER:Authorization}
     keycloak-logout-auth-token: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_TOKEN:}
+  deployment:
+    fail-fast-enabled: ${GATEWAY_DEPLOYMENT_FAIL_FAST_ENABLED:true}
+    enforced-profiles: ${GATEWAY_DEPLOYMENT_ENFORCED_PROFILES:prod,production,stg,stage}
+    require-explicit-auth-session-env: ${GATEWAY_DEPLOYMENT_REQUIRE_EXPLICIT_AUTH_SESSION_ENV:true}
+    require-auth-or-session-enabled: ${GATEWAY_DEPLOYMENT_REQUIRE_AUTH_OR_SESSION_ENABLED:true}
 
 app:
+  webclient:
+    connect-timeout: ${GATEWAY_DOWNSTREAM_CONNECT_TIMEOUT_MS:5000}
+    read-timeout: ${GATEWAY_DOWNSTREAM_READ_TIMEOUT_MS:10000}
+    write-timeout: ${GATEWAY_DOWNSTREAM_WRITE_TIMEOUT_MS:10000}
+    max-in-memory-size: ${GATEWAY_DOWNSTREAM_MAX_IN_MEMORY_BYTES:2097152}
   service:
     analytics-dashboard-url: ${ANALYTICS_DASHBOARD_SERVICE_URL:http://localhost:8095}
   security:

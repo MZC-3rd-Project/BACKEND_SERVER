@@ -10,4 +10,6 @@ public interface AnalyticsDimItemSnapshotRepository extends JpaRepository<Analyt
     List<AnalyticsDimItemSnapshot> findByStoreId(Long storeId);
 
     List<AnalyticsDimItemSnapshot> findBySellerId(Long sellerId);
+
+    List<AnalyticsDimItemSnapshot> findByStoreIdAndSellerId(Long storeId, Long sellerId);
 }

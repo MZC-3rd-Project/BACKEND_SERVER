@@ -18,6 +18,7 @@ import com.example.analyticsdashboard.repository.AnalyticsDimItemSnapshotReposit
 import com.example.analyticsdashboard.repository.AnalyticsRawSalesEventRepository;
 import com.example.analyticsdashboard.repository.AnalyticsRawSearchEventRepository;
 import com.example.core.exception.BusinessException;
+import com.example.data.entity.datasource.UseWriteDataSource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,7 @@ import java.util.stream.Stream;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@UseWriteDataSource
 public class SellerDashboardOverviewQueryService {
 
     private static final String API_VERSION = "v1";
@@ -45,34 +47,71 @@ public class SellerDashboardOverviewQueryService {
     private final AnalyticsDimItemSnapshotRepository dimItemSnapshotRepository;
 
     public SellerDashboardOverviewResponse getOverview(Long sellerId, SellerDashboardOverviewQuery query) {
-        return getOverviewByStore(sellerId, sellerId, query);
+        validateSellerId(sellerId);
+
+        QueryRangeContext queryRangeContext = resolveRange(query);
+        List<AnalyticsRawSalesEvent> rawSalesEvents = rawSalesEventRepository.findBySellerIdAndOccurredAtBetween(
+                sellerId,
+                queryRangeContext.fromDateTime(),
+                queryRangeContext.toDateTime()
+        );
+        List<AnalyticsRawSearchEvent> rawSearchEvents = rawSearchEventRepository.findBySellerIdAndOccurredAtBetween(
+                sellerId,
+                queryRangeContext.fromDateTime(),
+                queryRangeContext.toDateTime()
+        );
+        List<AnalyticsDimItemSnapshot> itemSnapshots = dimItemSnapshotRepository.findBySellerId(sellerId);
+
+        return buildOverviewResponse(query, queryRangeContext, rawSalesEvents, rawSearchEvents, itemSnapshots);
     }
 
     public SellerDashboardOverviewResponse getOverviewByStore(Long storeId,
                                                               Long sellerId,
                                                               SellerDashboardOverviewQuery query) {
-        if (storeId == null || storeId <= 0) {
-            throw new BusinessException(
-                    AnalyticsDashboardErrorCode.INVALID_DASHBOARD_QUERY_PARAMETER,
-                    "storeId는 1 이상이어야 합니다."
-            );
-        }
+        validateStoreId(storeId);
 
         QueryRangeContext queryRangeContext = resolveRange(query);
+        List<AnalyticsRawSalesEvent> rawSalesEvents;
+        List<AnalyticsRawSearchEvent> rawSearchEvents;
+        List<AnalyticsDimItemSnapshot> itemSnapshots;
+
+        if (hasPositiveId(sellerId)) {
+            rawSalesEvents = rawSalesEventRepository.findByStoreIdAndSellerIdAndOccurredAtBetween(
+                    storeId,
+                    sellerId,
+                    queryRangeContext.fromDateTime(),
+                    queryRangeContext.toDateTime()
+            );
+            rawSearchEvents = rawSearchEventRepository.findByStoreIdAndSellerIdAndOccurredAtBetween(
+                    storeId,
+                    sellerId,
+                    queryRangeContext.fromDateTime(),
+                    queryRangeContext.toDateTime()
+            );
+            itemSnapshots = dimItemSnapshotRepository.findByStoreIdAndSellerId(storeId, sellerId);
+        } else {
+            rawSalesEvents = rawSalesEventRepository.findByStoreIdAndOccurredAtBetween(
+                    storeId,
+                    queryRangeContext.fromDateTime(),
+                    queryRangeContext.toDateTime()
+            );
+            rawSearchEvents = rawSearchEventRepository.findByStoreIdAndOccurredAtBetween(
+                    storeId,
+                    queryRangeContext.fromDateTime(),
+                    queryRangeContext.toDateTime()
+            );
+            itemSnapshots = dimItemSnapshotRepository.findByStoreId(storeId);
+        }
+
+        return buildOverviewResponse(query, queryRangeContext, rawSalesEvents, rawSearchEvents, itemSnapshots);
+    }
+
+    private SellerDashboardOverviewResponse buildOverviewResponse(SellerDashboardOverviewQuery query,
+                                                                  QueryRangeContext queryRangeContext,
+                                                                  List<AnalyticsRawSalesEvent> rawSalesEvents,
+                                                                  List<AnalyticsRawSearchEvent> rawSearchEvents,
+                                                                  List<AnalyticsDimItemSnapshot> itemSnapshots) {
         SellerDashboardQueryRangeResponse queryRange = toQueryRange(queryRangeContext, query.timezone().getId());
-
-        List<AnalyticsRawSalesEvent> rawSalesEvents = rawSalesEventRepository.findByStoreIdAndOccurredAtBetween(
-                storeId,
-                queryRangeContext.fromDateTime(),
-                queryRangeContext.toDateTime()
-        );
-        List<AnalyticsRawSearchEvent> rawSearchEvents = rawSearchEventRepository.findByStoreIdAndOccurredAtBetween(
-                storeId,
-                queryRangeContext.fromDateTime(),
-                queryRangeContext.toDateTime()
-        );
-        List<AnalyticsDimItemSnapshot> itemSnapshots = dimItemSnapshotRepository.findByStoreId(storeId);
-
         SellerDashboardSalesKpiResponse sales = toSalesKpi(rawSalesEvents);
         SellerDashboardSearchKpiResponse search = toSearchKpi(rawSearchEvents);
         SellerDashboardItemKpiResponse item = toItemKpi(itemSnapshots);
@@ -98,6 +137,28 @@ public class SellerDashboardOverviewQueryService {
                 .apiVersion(API_VERSION)
                 .extensions(extensions)
                 .build();
+    }
+
+    private void validateStoreId(Long storeId) {
+        if (!hasPositiveId(storeId)) {
+            throw new BusinessException(
+                    AnalyticsDashboardErrorCode.INVALID_DASHBOARD_QUERY_PARAMETER,
+                    "storeId는 1 이상이어야 합니다."
+            );
+        }
+    }
+
+    private void validateSellerId(Long sellerId) {
+        if (!hasPositiveId(sellerId)) {
+            throw new BusinessException(
+                    AnalyticsDashboardErrorCode.INVALID_DASHBOARD_QUERY_PARAMETER,
+                    "sellerId는 1 이상이어야 합니다."
+            );
+        }
+    }
+
+    private boolean hasPositiveId(Long value) {
+        return value != null && value > 0;
     }
 
     private SellerDashboardQueryRangeResponse toQueryRange(QueryRangeContext queryRangeContext, String timezone) {

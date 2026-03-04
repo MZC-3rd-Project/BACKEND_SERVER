@@ -1,0 +1,5 @@
+bucket         = "donmoa-terraform-state"
+key            = "ecs-app/dev/terraform.tfstate"
+region         = "ap-northeast-2"
+dynamodb_table = "donmoa-terraform-lock"
+encrypt        = true

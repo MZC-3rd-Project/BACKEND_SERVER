@@ -1,0 +1,92 @@
+aws_region  = "ap-northeast-2"
+environment = "dev"
+name_prefix = "donmoa"
+
+default_tags = {
+  Team    = "backend"
+  Managed = "terraform"
+}
+
+vpc_cidr = "10.30.0.0/16"
+
+public_subnet_cidrs = [
+  "10.30.0.0/20",
+  "10.30.16.0/20"
+]
+
+private_subnet_cidrs = [
+  "10.30.128.0/20",
+  "10.30.144.0/20"
+]
+
+enable_nat_gateway = true
+single_nat_gateway = true
+
+create_alb              = true
+gateway_container_port  = 8080
+gateway_health_check_path = "/actuator/health"
+
+# Core app image repositories
+# Actual repository name = {name_prefix}-{environment}-{suffix}
+ecr_repositories = [
+  "client-gateway",
+  "keycloak",
+  "product-service",
+  "stock-service",
+  "search-service",
+  "sales-service",
+  "funding-service",
+  "hot-deal-service",
+  "analytics-dashboard-service"
+]
+
+# Aurora PostgreSQL (writer + reader)
+enable_aurora                = true
+aurora_engine_version        = "16.11"
+aurora_database_name         = "commerce"
+aurora_master_username       = "postgres"
+aurora_instance_class        = "db.t4g.medium"
+aurora_reader_instance_count = 1
+aurora_backup_retention_days = 7
+
+# Set only if you need deterministic password value.
+# aurora_master_password = "<strong-password>"
+
+# Redis (cost optimized default: single node)
+enable_redis                      = true
+redis_engine_version              = "7.1"
+redis_node_type                   = "cache.t4g.small"
+redis_num_cache_clusters          = 1
+redis_at_rest_encryption_enabled  = true
+redis_transit_encryption_enabled  = false
+
+# EC2 single-node Kafka (MVP, cost-optimized)
+enable_ec2_kafka          = true
+ec2_kafka_instance_type   = "t3.small"
+ec2_kafka_ebs_volume_size = 30
+
+# Bastion EC2 (for local DB tools via SSH tunnel)
+enable_ec2_bastion          = false
+ec2_bastion_instance_type   = "t3.micro"
+ec2_bastion_ebs_volume_size = 20
+ec2_bastion_key_name        = "<existing-keypair-name>"
+ec2_bastion_ingress_cidrs   = ["<your-ip>/32"]
+
+# Optional EC2 single-node Elasticsearch (MVP)
+enable_ec2_elasticsearch          = false
+ec2_elasticsearch_instance_type   = "t3.small"
+ec2_elasticsearch_ebs_volume_size = 30
+ec2_elasticsearch_heap_size       = "512m"
+
+# Optional managed stateful platform (cost heavy)
+enable_msk        = false
+enable_opensearch = false
+
+# Example when enabling managed components
+# enable_msk = true
+# msk_broker_node_count = 2
+# msk_instance_type = "kafka.t3.small"
+#
+# enable_opensearch = true
+# opensearch_instance_type = "t3.small.search"
+# opensearch_instance_count = 1

@@ -19,6 +19,10 @@ import com.example.event.EventPublisher;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.RedisCallback;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +30,8 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -49,6 +55,7 @@ public class HotDealCommandService {
     private static final String ADMITTED_KEY_PREFIX = "hotdeal:admitted:";
     private static final String PURCHASED_KEY_PREFIX = "hotdeal:purchased:";
     private static final String RESERVATION_KEY_PREFIX = "hotdeal:reservation:";
+    private static final String DETAIL_CACHE_KEY_PREFIX = "hotdeal:detail:";
 
     /**
      * 판매자가 직접 핫딜 생성 — HTTP 조회 후 트랜잭션 시작
@@ -112,6 +119,7 @@ public class HotDealCommandService {
         runAfterCommit(() -> {
             stringRedisTemplate.opsForValue().set(STOCK_KEY_PREFIX + hotDealId, String.valueOf(maxQuantity));
             stringRedisTemplate.opsForValue().set(MAX_PER_USER_KEY_PREFIX + hotDealId, String.valueOf(maxPerUser));
+            clearDetailCache(hotDealId);
         });
 
         // 이벤트 발행
@@ -154,7 +162,10 @@ public class HotDealCommandService {
         statusHistoryRepository.save(
                 HotDealStatusHistory.create(hotDeal.getId(), from, HotDealStatus.ENDED, "시간 만료"));
 
-        runAfterCommit(() -> clearRedisKeys(hotDealId));
+        runAfterCommit(() -> {
+            clearRedisKeys(hotDealId);
+            clearDetailCache(hotDealId);
+        });
 
         eventPublisher.publish(
                 new HotDealEndedEvent(
@@ -178,13 +189,44 @@ public class HotDealCommandService {
         deleteKeysByPattern(RESERVATION_KEY_PREFIX + hotDealId + ":*");
     }
 
+    private void clearDetailCache(Long hotDealId) {
+        stringRedisTemplate.delete(DETAIL_CACHE_KEY_PREFIX + hotDealId);
+    }
+
     private void deleteKeysByPattern(String pattern) {
-        Set<String> keys = stringRedisTemplate.keys(pattern);
+        Set<String> keys = scanKeys(pattern);
         if (keys == null || keys.isEmpty()) {
             return;
         }
 
         stringRedisTemplate.delete(keys);
+    }
+
+    private Set<String> scanKeys(String pattern) {
+        Set<String> keys = new HashSet<>();
+        ScanOptions options = ScanOptions.scanOptions()
+                .match(pattern)
+                .count(500)
+                .build();
+        stringRedisTemplate.execute((RedisCallback<Void>) connection -> {
+            collectMatchedKeys(connection, options, keys, pattern);
+            return null;
+        });
+        return keys;
+    }
+
+    private void collectMatchedKeys(RedisConnection connection,
+                                    ScanOptions options,
+                                    Set<String> keys,
+                                    String pattern) {
+        try (Cursor<byte[]> cursor = connection.scan(options)) {
+            while (cursor.hasNext()) {
+                byte[] keyBytes = cursor.next();
+                keys.add(new String(keyBytes, StandardCharsets.UTF_8));
+            }
+        } catch (Exception e) {
+            log.warn("Failed to scan Redis keys for pattern={}", pattern, e);
+        }
     }
 
     private void runAfterCommit(Runnable action) {

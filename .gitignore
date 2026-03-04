@@ -119,3 +119,22 @@ CLAUDE.md
 ### Agent docs ###
 AGENTS.md
 .kiro/
+
+### Terraform ###
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+infra/terraform/**/backend.hcl
+infra/terraform/**/terraform.tfvars
+infra/terraform/**/terraform.tfvars.json
+infra/terraform/ecs-app/foundation.generated.tfvars
+
+### Local-only scripts ###
+scripts/
+docker/scripts/

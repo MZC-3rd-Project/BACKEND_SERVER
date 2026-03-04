@@ -40,6 +40,9 @@ spring:
       auto-offset-reset: earliest
 
 app:
+  outbox:
+    enabled: ${APP_OUTBOX_ENABLED:false}
+
   security:
     context:
       signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}

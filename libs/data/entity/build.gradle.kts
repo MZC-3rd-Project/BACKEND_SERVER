@@ -15,6 +15,7 @@ tasks.jar {
 dependencies {
     // Spring Data JPA
     api("org.springframework.boot:spring-boot-starter-data-jpa")
+    api("org.springframework.boot:spring-boot-starter-aop")
 
     // Lombok
     compileOnly("org.projectlombok:lombok")

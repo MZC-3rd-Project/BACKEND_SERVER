@@ -1,0 +1,241 @@
+name: Trigger CodePipeline
+
+on:
+  push:
+    branches: [prod]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Select deploy pipeline target"
+        type: choice
+        required: true
+        options:
+          - dev
+          - prod
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: codepipeline-trigger-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve Pipeline Name
+        id: resolve
+        env:
+          DEV_PIPELINE: ${{ vars.AWS_CODEPIPELINE_DEV_NAME }}
+          PROD_PIPELINE: ${{ vars.AWS_CODEPIPELINE_PROD_NAME }}
+          DEV_SERVICE_MAP: ${{ vars.AWS_CODEPIPELINE_DEV_SERVICE_MAP }}
+          PROD_CD_ENABLED: ${{ vars.AWS_PROD_CD_ENABLED }}
+        run: |
+          set -euo pipefail
+          should_trigger="true"
+          reason="ok"
+          deploy_targets=""
+          pipelines=()
+
+          dedupe_and_output() {
+            local tmp_file
+            tmp_file="$(mktemp)"
+            printf '%s\n' "$@" | awk 'NF > 0 && !seen[$0]++' > "$tmp_file"
+
+            echo "pipelines<<EOF" >> "$GITHUB_OUTPUT"
+            cat "$tmp_file" >> "$GITHUB_OUTPUT"
+            echo "EOF" >> "$GITHUB_OUTPUT"
+          }
+
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            case "${{ github.event.inputs.target }}" in
+              dev)
+                if [[ -z "${DEV_PIPELINE}" ]]; then
+                  echo "::error::AWS_CODEPIPELINE_DEV_NAME is empty."
+                  exit 1
+                fi
+                pipelines+=("${DEV_PIPELINE}")
+                ;;
+              prod)
+                if [[ "${PROD_CD_ENABLED}" != "true" ]]; then
+                  should_trigger="false"
+                  reason="prod trigger disabled by AWS_PROD_CD_ENABLED"
+                else
+                  if [[ -z "${PROD_PIPELINE}" ]]; then
+                    echo "::error::AWS_CODEPIPELINE_PROD_NAME is empty."
+                    exit 1
+                  fi
+                  pipelines+=("${PROD_PIPELINE}")
+                fi
+                ;;
+              *)
+                echo "::error::Unsupported target: ${{ github.event.inputs.target }}"
+                exit 1
+                ;;
+            esac
+          else
+            base="${{ github.event.before }}"
+            head="${{ github.sha }}"
+
+            if [[ -z "${base}" || "${base}" =~ ^0+$ ]]; then
+              base="$(git rev-parse HEAD~1)"
+            fi
+
+            changed_files="$(git diff --name-only "${base}" "${head}" || true)"
+            if [[ -z "${changed_files}" ]]; then
+              should_trigger="false"
+              reason="no file changes detected"
+            else
+              full_deploy="false"
+              declare -A changed_services=()
+
+              while IFS= read -r file; do
+                [[ -z "${file}" ]] && continue
+
+                case "${file}" in
+                  libs/*|gradle/*|build.gradle.kts|settings.gradle.kts|gradlew|init/*|infra/terraform/ecs-app/*|.github/workflows/*)
+                    full_deploy="true"
+                    ;;
+                  servers/services/*)
+                    service_name="$(echo "${file}" | cut -d/ -f3)"
+                    [[ -n "${service_name}" ]] && changed_services["${service_name}"]=1
+                    ;;
+                  servers/gateways/client-gateway/*)
+                    changed_services["client-gateway"]=1
+                    ;;
+                esac
+              done <<< "${changed_files}"
+
+              if [[ "${full_deploy}" == "true" ]]; then
+                if [[ -z "${DEV_PIPELINE}" ]]; then
+                  echo "::error::AWS_CODEPIPELINE_DEV_NAME is empty."
+                  exit 1
+                fi
+                pipelines+=("${DEV_PIPELINE}")
+              else
+                if [[ "${#changed_services[@]}" -eq 0 ]]; then
+                  should_trigger="false"
+                  reason="no deployable service/gateway changes"
+                else
+                  mapfile -t changed_service_list < <(printf '%s\n' "${!changed_services[@]}" | sort)
+                  deploy_targets="$(IFS=,; echo "${changed_service_list[*]}")"
+
+                  if [[ -z "${DEV_SERVICE_MAP}" || "${DEV_SERVICE_MAP}" == "{}" ]]; then
+                    if [[ -z "${DEV_PIPELINE}" ]]; then
+                      echo "::error::AWS_CODEPIPELINE_DEV_NAME is empty."
+                      exit 1
+                    fi
+                    pipelines+=("${DEV_PIPELINE}")
+                  else
+                    missing_mapping="false"
+                    for svc in "${!changed_services[@]}"; do
+                      mapped_pipeline="$(echo "${DEV_SERVICE_MAP}" | jq -r --arg svc "${svc}" '.[$svc] // empty')"
+                      if [[ -z "${mapped_pipeline}" ]]; then
+                        missing_mapping="true"
+                        break
+                      fi
+                      pipelines+=("${mapped_pipeline}")
+                    done
+
+                    if [[ "${missing_mapping}" == "true" ]]; then
+                      if [[ -z "${DEV_PIPELINE}" ]]; then
+                        echo "::error::AWS_CODEPIPELINE_DEV_NAME is empty."
+                        exit 1
+                      fi
+                      pipelines=("${DEV_PIPELINE}")
+                    fi
+                  fi
+                fi
+              fi
+            fi
+          fi
+
+          if [[ "${should_trigger}" == "true" && "${#pipelines[@]}" -eq 0 ]]; then
+            echo "::error::No pipeline resolved while should_trigger=true."
+            exit 1
+          fi
+
+          echo "should_trigger=${should_trigger}" >> "$GITHUB_OUTPUT"
+          echo "reason=${reason}" >> "$GITHUB_OUTPUT"
+          echo "deploy_targets=${deploy_targets}" >> "$GITHUB_OUTPUT"
+          dedupe_and_output "${pipelines[@]}"
+
+          echo "should trigger: ${should_trigger}"
+          echo "reason: ${reason}"
+          echo "deploy targets: ${deploy_targets:-<full>}"
+          printf 'resolved pipelines:\n%s\n' "${pipelines[@]}"
+
+      - name: Configure AWS Credentials (OIDC)
+        if: steps.resolve.outputs.should_trigger == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Trigger Pipeline
+        id: trigger
+        if: steps.resolve.outputs.should_trigger == 'true'
+        run: |
+          set -euo pipefail
+          summary_file="$(mktemp)"
+          pipelines="${{ steps.resolve.outputs.pipelines }}"
+          deploy_targets="${{ steps.resolve.outputs.deploy_targets }}"
+
+          while IFS= read -r pipeline; do
+            [[ -z "${pipeline}" ]] && continue
+
+            if [[ -n "${deploy_targets}" ]]; then
+              set +e
+              execution_id="$(aws codepipeline start-pipeline-execution \
+                --name "${pipeline}" \
+                --variables name=deployTargets,value="${deploy_targets}" \
+                --query "pipelineExecutionId" \
+                --output text 2>/tmp/codepipeline_start.err)"
+              start_rc=$?
+              set -e
+
+              if [[ "${start_rc}" -ne 0 ]]; then
+                echo "[WARN] start-pipeline-execution with variables failed for ${pipeline}; fallback to default execution"
+                cat /tmp/codepipeline_start.err >&2 || true
+                execution_id="$(aws codepipeline start-pipeline-execution \
+                  --name "${pipeline}" \
+                  --query "pipelineExecutionId" \
+                  --output text)"
+              fi
+            else
+              execution_id="$(aws codepipeline start-pipeline-execution \
+                --name "${pipeline}" \
+                --query "pipelineExecutionId" \
+                --output text)"
+            fi
+
+            echo "${pipeline}|${execution_id}" >> "${summary_file}"
+            echo "pipeline execution started: ${pipeline} -> ${execution_id}"
+          done <<< "${pipelines}"
+
+          echo "executions<<EOF" >> "$GITHUB_OUTPUT"
+          cat "${summary_file}" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Print Execution Link
+        if: steps.resolve.outputs.should_trigger == 'true'
+        run: |
+          set -euo pipefail
+          while IFS='|' read -r pipeline execution_id; do
+            [[ -z "${pipeline}" || -z "${execution_id}" ]] && continue
+            echo "https://${{ vars.AWS_REGION }}.console.aws.amazon.com/codesuite/codepipeline/pipelines/${pipeline}/executions/${execution_id}/timeline?region=${{ vars.AWS_REGION }}"
+          done <<< "${{ steps.trigger.outputs.executions }}"
+
+      - name: Skip Message
+        if: steps.resolve.outputs.should_trigger != 'true'
+        run: |
+          echo "Skip deploy: ${{ steps.resolve.outputs.reason }}"
