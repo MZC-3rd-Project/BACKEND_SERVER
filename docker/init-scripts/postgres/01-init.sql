@@ -59,3 +59,8 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- chat_db 초기 설정
 \c chat_db;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- order_db 초기 설정
+CREATE DATABASE order_db;
+\c order_db;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
