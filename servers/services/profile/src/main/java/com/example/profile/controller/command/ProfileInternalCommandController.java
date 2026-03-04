@@ -1,29 +1,31 @@
 package com.example.profile.controller.command;
 
-
 import com.example.api.response.ApiResponse;
-import com.example.clients.auth.dto.profile.AuthSyncQuery;
-import com.example.profile.controller.api.query.ProfileInternalAPI;
-import com.example.profile.dto.request.ProfileCreateRequest;
-import com.example.profile.entity.ProfileAddress;
-import com.example.profile.entity.Profiles;
-import com.example.profile.service.command.ProfileCommandService;
+import com.example.profile.dto.request.InternalProfileCreateRequest;
+import com.example.profile.service.command.ProfileProjectionSyncService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
-@RestController("/internal/v1/profile")
+@Slf4j
+@RestController
+@RequestMapping({"/internal/v1/profiles", "/internal/v1/profile"})
 @RequiredArgsConstructor
 public class ProfileInternalCommandController {
-    private final ProfileCommandService profileCommandService;
+
+    private final ProfileProjectionSyncService profileProjectionSyncService;
 
     @PostMapping
-    public ApiResponse<Void> createProfile(AuthSyncQuery req)
-    {
-        profileCommandService.createProfile(req);
+    public ApiResponse<Void> createProfile(@RequestBody InternalProfileCreateRequest request) {
+        profileProjectionSyncService.upsertFromUserCreated(
+                request.userId(),
+                request.email(),
+                request.nickname()
+        );
+        log.info("[ProfileInternalCommand] profile projection upsert requested. userId={}", request.userId());
         return ApiResponse.success();
     }
-
 }

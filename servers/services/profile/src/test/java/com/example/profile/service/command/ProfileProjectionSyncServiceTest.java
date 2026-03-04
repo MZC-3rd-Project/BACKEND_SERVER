@@ -4,6 +4,7 @@ import com.example.profile.entity.Profiles;
 import com.example.profile.entity.ProfilesImage;
 import com.example.profile.repository.ProfileImageRepository;
 import com.example.profile.repository.ProfileRepository;
+import com.example.event.EventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +32,9 @@ class ProfileProjectionSyncServiceTest {
     @Mock
     private ProfileMediaReferenceService profileMediaReferenceService;
 
+    @Mock
+    private EventPublisher eventPublisher;
+
     private ProfileProjectionSyncService profileProjectionSyncService;
 
     @BeforeEach
@@ -38,7 +42,8 @@ class ProfileProjectionSyncServiceTest {
         profileProjectionSyncService = new ProfileProjectionSyncService(
                 profileRepository,
                 profileImageRepository,
-                profileMediaReferenceService
+                profileMediaReferenceService,
+                eventPublisher
         );
     }
 
@@ -57,6 +62,7 @@ class ProfileProjectionSyncServiceTest {
 
         verify(profileRepository).save(any(Profiles.class));
         verify(profileImageRepository).save(any(ProfilesImage.class));
+        verify(eventPublisher).publish(any(), any());
     }
 
     @Test
@@ -83,6 +89,7 @@ class ProfileProjectionSyncServiceTest {
         assertThat(existing.getNickname()).isEqualTo("updated-nick");
         verify(profileRepository, never()).save(any(Profiles.class));
         verify(profileImageRepository, never()).save(any(ProfilesImage.class));
+        verify(eventPublisher, never()).publish(any(), any());
     }
 
     @Test

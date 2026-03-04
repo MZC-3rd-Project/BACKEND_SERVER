@@ -2,8 +2,11 @@ package com.example.profile.service.command;
 
 import com.example.profile.entity.Profiles;
 import com.example.profile.entity.ProfilesImage;
+import com.example.profile.event.ProfileCreatedEvent;
 import com.example.profile.repository.ProfileImageRepository;
 import com.example.profile.repository.ProfileRepository;
+import com.example.event.EventMetadata;
+import com.example.event.EventPublisher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,18 +20,30 @@ public class ProfileProjectionSyncService {
     private final ProfileRepository profileRepository;
     private final ProfileImageRepository profileImageRepository;
     private final ProfileMediaReferenceService profileMediaReferenceService;
+    private final EventPublisher eventPublisher;
 
     @Transactional
     public void upsertFromUserCreated(Long userId, String email, String nickname) {
-        Profiles profile = profileRepository.findByUserId(userId)
-                .map(existing -> {
-                    existing.applyUserCreatedProjection(email, nickname);
-                    return existing;
-                })
-                .orElseGet(() -> profileRepository.save(Profiles.createProjection(userId, email, nickname)));
+        Profiles profile = profileRepository.findByUserId(userId).orElse(null);
+        boolean created = false;
 
+        if (profile == null) {
+            profile = profileRepository.save(Profiles.createProjection(userId, email, nickname));
+            created = true;
+        } else {
+            profile.applyUserCreatedProjection(email, nickname);
+        }
+
+        Profiles targetProfile = profile;
         profileImageRepository.findByUserId(userId)
-                .orElseGet(() -> profileImageRepository.save(ProfilesImage.createDefault(profile)));
+                .orElseGet(() -> profileImageRepository.save(ProfilesImage.createDefault(targetProfile)));
+
+        if (created) {
+            eventPublisher.publish(
+                    new ProfileCreatedEvent(profile.getId(), userId, profile.getEmail(), profile.getNickname()),
+                    EventMetadata.of("PROFILE", String.valueOf(profile.getId()))
+            );
+        }
 
         log.info("[ProfileProjectionSync] user projection upsert completed. userId={}", userId);
     }

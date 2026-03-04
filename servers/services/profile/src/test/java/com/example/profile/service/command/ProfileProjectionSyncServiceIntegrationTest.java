@@ -1,5 +1,6 @@
 package com.example.profile.service.command;
 
+import com.example.event.EventPublisher;
 import com.example.profile.entity.Profiles;
 import com.example.profile.repository.ProfileImageRepository;
 import com.example.profile.repository.ProfileRepository;
@@ -42,6 +43,9 @@ class ProfileProjectionSyncServiceIntegrationTest {
 
     @MockBean
     private ProfileMediaReferenceService profileMediaReferenceService;
+
+    @MockBean
+    private EventPublisher eventPublisher;
 
     @Test
     void upsertFromUserCreated_updatesExistingProjectionConsistently() {
