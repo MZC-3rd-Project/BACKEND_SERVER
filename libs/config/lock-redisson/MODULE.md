@@ -1,36 +1,23 @@
 # Module: `libs/config/lock-redisson`
 
-## 한눈에 보기
-- 역할: `DistributedLockExecutor`의 Redisson 구현체를 제공합니다.
-- 사용 시점: `:libs:config:lock`의 `@DistributedLock`를 Redis 기반으로 실행할 때 사용합니다.
+## 이 모듈이 해결하는 문제
+`config/lock`의 락 계약을 실제 Redis 기반으로 실행하려면 구현체가 필요합니다.
+`lock-redisson`은 Redisson 기반 `DistributedLockExecutor`를 제공합니다.
 
-## 모듈이 필요한 이유
-락 코어(`lock`)와 저장소 구현체(`lock-redisson`)를 분리해, 락 전략 교체와 의존성 방향을 명확히 합니다.
+## 언제 사용하면 되나요?
+- `@DistributedLock`를 실제 운영 환경에서 사용하려고 할 때
+- Redis를 분산락 저장소로 사용할 때
 
-## 적용 순서
-1. `build.gradle.kts`에 `:libs:config:lock`, `:libs:config:lock-redisson`을 추가합니다.
-2. `spring.data.redis.*` 설정을 채웁니다.
+## 빠른 시작
+```text
+implementation(project(":libs:config:lock"))
+implementation(project(":libs:config:lock-redisson"))
+```
 
-## application.yml 설정
 ```yaml
 spring:
   data:
     redis:
       host: localhost
       port: 6379
-      username: ${REDIS_USERNAME:}
-      password: ${REDIS_PASSWORD:}
-      database: 0
-      ssl:
-        enabled: false
-```
-
-- `password`, `username`은 비어 있으면 적용하지 않습니다.
-- `database`는 기본 `0`입니다.
-- `ssl.enabled=true`면 `rediss://`로 연결합니다.
-
-## 간단 예시
-```text
-implementation(project(":libs:config:lock"))
-implementation(project(":libs:config:lock-redisson"))
 ```

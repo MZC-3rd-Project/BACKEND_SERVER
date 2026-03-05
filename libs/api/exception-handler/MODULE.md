@@ -1,20 +1,18 @@
 # Module: `libs/api/exception-handler`
 
-## 한눈에 보기
-- 역할: 전역 예외 처리(@RestControllerAdvice)를 제공합니다.
-- 사용 시점: 서비스별 예외 포맷 중복을 제거할 때 사용합니다.
+## 이 모듈이 해결하는 문제
+서비스마다 `@RestControllerAdvice`를 따로 구현하면 예외 코드/메시지 포맷이 자주 달라집니다.
+`exception-handler`는 공통 예외를 표준 응답으로 변환해 API 일관성을 유지합니다.
 
-## 모듈이 필요한 이유
-공통 기능을 서비스마다 다시 만들면 구현이 조금씩 달라지고 유지보수 포인트가 급격히 늘어납니다.
-이 모듈은 팀 공통 정책을 한 곳으로 모아 "중복 제거 + 일관성 유지 + 변경 비용 절감"을 만드는 목적입니다.
+## 언제 사용하면 되나요?
+- `BusinessException`, `TechnicalException`을 공통 규칙으로 응답하고 싶을 때
+- 서비스마다 중복된 예외 처리 코드를 줄이고 싶을 때
 
-## 적용 순서
-1. `build.gradle.kts`에 모듈 의존성을 추가합니다.
-2. 필요한 설정 키를 `application.yml`에 채웁니다.
-3. 기존 중복 코드를 모듈 API로 대체합니다.
-
-## 간단 예시
+## 빠른 시작
 ```text
 implementation(project(":libs:api:exception-handler"))
-BusinessException/TechnicalException 자동 매핑
 ```
+
+## 알아두면 좋은 점
+- 이 모듈은 `:libs:api:response`에 의존합니다.
+- 신규 서비스는 보통 `:libs:api:rest-starter` 하나만 추가하면 충분합니다.

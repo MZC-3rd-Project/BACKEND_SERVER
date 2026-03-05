@@ -1,16 +1,15 @@
 # Module: `libs/security/security-starter`
 
-## 한눈에 보기
-- 역할: Security starter 레거시 경로 호환용 wrapper 모듈입니다.
-- 사용 시점: 기존 `:libs:security:security-starter` 의존성을 즉시 변경하기 어려운 경우 사용합니다.
+## 이 모듈은 무엇인가요?
+`security-starter`는 레거시 경로 호환용 wrapper입니다.
+기존 서비스가 바로 깨지지 않도록 servlet/webflux starter를 묶어 제공합니다.
 
 ## 내부 위임
 - `:libs:security:security-starter-servlet`
 - `:libs:security:security-starter-webflux`
 
-## 권장
-신규 코드에서는 런타임 타입에 맞는 모듈을 직접 사용하세요.
+## 신규 코드 권장
 ```text
-implementation(project(":libs:security:security-starter-servlet"))  // MVC
-implementation(project(":libs:security:security-starter-webflux"))  // Gateway/WebFlux
+implementation(project(":libs:security:security-starter-servlet"))  // MVC 서비스
+implementation(project(":libs:security:security-starter-webflux"))  // Gateway(WebFlux)
 ```

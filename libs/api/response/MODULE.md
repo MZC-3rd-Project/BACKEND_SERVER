@@ -1,20 +1,22 @@
 # Module: `libs/api/response`
 
-## 한눈에 보기
-- 역할: ApiResponse/ErrorResponse 공통 응답 모델을 제공합니다.
-- 사용 시점: 컨트롤러 응답 구조를 일관되게 유지할 때 사용합니다.
+## 이 모듈이 해결하는 문제
+서비스마다 응답 JSON 형식이 달라지면, 프론트/클라이언트가 API마다 다른 파싱 로직을 가져야 합니다.
+`response` 모듈은 `ApiResponse`/`ErrorResponse`를 공통으로 제공해 응답 형식을 통일합니다.
 
-## 모듈이 필요한 이유
-공통 기능을 서비스마다 다시 만들면 구현이 조금씩 달라지고 유지보수 포인트가 급격히 늘어납니다.
-이 모듈은 팀 공통 정책을 한 곳으로 모아 "중복 제거 + 일관성 유지 + 변경 비용 절감"을 만드는 목적입니다.
+## 언제 사용하면 되나요?
+- Controller 응답을 공통 포맷으로 감싸고 싶을 때
+- 성공/실패 응답 스키마를 서비스 전체에서 일관되게 유지하고 싶을 때
 
-## 적용 순서
-1. `build.gradle.kts`에 모듈 의존성을 추가합니다.
-2. 필요한 설정 키를 `application.yml`에 채웁니다.
-3. 기존 중복 코드를 모듈 API로 대체합니다.
-
-## 간단 예시
+## 빠른 시작
 ```text
 implementation(project(":libs:api:response"))
+```
+
+```java
 return ApiResponse.success(data);
 ```
+
+## 보통 같이 쓰는 모듈
+- `:libs:api:exception-handler` (예외도 같은 포맷으로 맞춤)
+- `:libs:api:rest-starter` (두 모듈을 한 번에 사용)

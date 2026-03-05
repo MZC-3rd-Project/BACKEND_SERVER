@@ -1,15 +1,14 @@
 # Module: `libs/event/outbox`
 
-## 한눈에 보기
-- 역할: Outbox 레거시 경로 호환용 wrapper 모듈입니다.
-- 사용 시점: 기존 `:libs:event:outbox` 의존성을 당장 바꾸기 어려운 서비스에서 사용합니다.
+## 이 모듈은 무엇인가요?
+`outbox`는 레거시 경로 호환용 wrapper 모듈입니다.
+기존 서비스 의존성을 즉시 바꾸기 어려울 때 호환성을 유지합니다.
 
 ## 내부 위임
 - `:libs:event:outbox-api`
 - `:libs:event:outbox-jpa-kafka`
 
-## 권장
-신규 코드에서는 아래를 직접 사용하세요.
+## 신규 코드 권장
 ```text
 implementation(project(":libs:event:outbox-api"))
 implementation(project(":libs:event:outbox-jpa-kafka"))

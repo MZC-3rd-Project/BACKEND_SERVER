@@ -1,15 +1,18 @@
 # Module: `libs/config/locking`
 
-## 한눈에 보기
-- 역할: 분산락 공통 조합(`lock` + `lock-redisson`)을 제공합니다.
-- 사용 시점: 서비스에서 동시성 제어를 해야 하지만 의존성을 매번 따로 적기 싫을 때 사용합니다.
+## 이 모듈이 해결하는 문제
+`lock` + `lock-redisson`을 항상 함께 추가해야 해서 의존성 누락이 자주 발생합니다.
+`locking`은 분산락 기본 조합을 starter처럼 제공합니다.
 
-## 포함 모듈
+## 포함된 모듈
 - `:libs:config:lock`
 - `:libs:config:lock-redisson`
 
-## 간단 예시
+## 언제 사용하면 되나요?
+- 신규 서비스에서 분산락을 빠르게 적용할 때
+- 의존성 누락 실수를 줄이고 싶을 때
+
+## 빠른 시작
 ```text
 implementation(project(":libs:config:locking"))
-@DistributedLock(key = "'stock:' + #request.stockItemId")
 ```
