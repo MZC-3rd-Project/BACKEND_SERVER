@@ -85,6 +85,7 @@ public class UserEventConsumer {
                 () -> profileProjectionSyncService.withdrawProjection(event.userId()));
     }
 
+
     private JsonNode parsePayload(String message) {
         try {
             return JsonUtils.fromJson(message, JsonNode.class);
