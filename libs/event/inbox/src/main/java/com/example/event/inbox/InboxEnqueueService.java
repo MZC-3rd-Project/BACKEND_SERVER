@@ -9,10 +9,16 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
+import java.sql.SQLException;
+import java.util.Locale;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class InboxEnqueueService {
+
+    private static final String DUPLICATE_EVENT_CONSTRAINT = "uk_inbox_consumer_event";
+    private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
 
     private final InboxRepository inboxRepository;
     private final InboxSignalPublisher inboxSignalPublisher;
@@ -30,9 +36,12 @@ public class InboxEnqueueService {
         try {
             inboxRepository.save(InboxMessage.createPending(consumerName, eventId, eventType, payload));
         } catch (DataIntegrityViolationException e) {
-            log.debug("[InboxEnqueue] duplicate ignored. consumerName={}, eventId={}, eventType={}",
-                    consumerName, eventId, eventType);
-            return false;
+            if (isDuplicateEvent(e)) {
+                log.debug("[InboxEnqueue] duplicate ignored. consumerName={}, eventId={}, eventType={}",
+                        consumerName, eventId, eventType);
+                return false;
+            }
+            throw e;
         }
 
         triggerAfterCommit(consumerName);
@@ -55,5 +64,22 @@ public class InboxEnqueueService {
         }
 
         inboxSignalPublisher.signal(consumerName);
+    }
+
+    private boolean isDuplicateEvent(DataIntegrityViolationException exception) {
+        Throwable current = exception;
+        while (current != null) {
+            String message = current.getMessage();
+            if (message != null && message.toLowerCase(Locale.ROOT).contains(DUPLICATE_EVENT_CONSTRAINT)) {
+                return true;
+            }
+
+            if (current instanceof SQLException sqlException
+                    && UNIQUE_VIOLATION_SQL_STATE.equals(sqlException.getSQLState())) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 }
