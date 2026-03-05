@@ -1,7 +1,7 @@
 package com.example.gateway.security;
 
 import com.example.contracts.http.HttpHeaderNames;
-import com.example.security.gateway.GatewayContextHeaderCodec;
+import com.example.security.starter.webflux.GatewayContextHeaderCodec;
 import com.example.security.signature.HmacSigner;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;

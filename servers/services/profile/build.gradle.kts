@@ -1,3 +1,7 @@
+import com.example.buildlogic.applyServiceCommonModuleDependencies
+
+applyServiceCommonModuleDependencies(includePagination = false, includeSecurityStarter = false)
+
 dependencies {
     // Web
     implementation("org.springframework.boot:spring-boot-starter-web")
@@ -5,25 +9,14 @@ dependencies {
     implementation("io.micrometer:micrometer-registry-prometheus")
 
     // Common libs
-    implementation(project(":libs:core:exception"))
-    implementation(project(":libs:core:util"))
-    implementation(project(":libs:api:response"))
-    implementation(project(":libs:api:exception-handler"))
-    implementation(project(":libs:data:entity"))
-    implementation(project(":libs:core:id"))
     implementation(project(":libs:security:crypto"))
 
     // OpenAPI
-    implementation(project(":libs:openapi:config"))
 
     // Config
-    implementation(project(":libs:config:kafka"))
-    implementation(project(":libs:config:redis"))
     implementation(project(":libs:config:resilience"))
 
     // Event
-    implementation(project(":libs:event:domain"))
-    implementation(project(":libs:event:outbox"))
     implementation(project(":libs:event:inbox"))
 
     // JPA

@@ -7,7 +7,7 @@ import com.example.media.dto.command.request.UploadIntentRequest;
 import com.example.media.dto.command.response.MediaLinksSyncResponse;
 import com.example.media.dto.command.response.UploadConfirmResponse;
 import com.example.media.dto.command.response.UploadIntentResponse;
-import com.example.security.gateway.CurrentUserId;
+import com.example.security.starter.servlet.annotation.CurrentUserId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

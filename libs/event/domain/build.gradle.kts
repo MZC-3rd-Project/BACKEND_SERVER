@@ -4,18 +4,13 @@ plugins {
     id("io.spring.dependency-management")
 }
 
-tasks.bootJar {
-    enabled = false
-}
+tasks.findByName("bootJar")?.enabled = false
 
 tasks.jar {
     enabled = true
 }
 
 dependencies {
-    // Core modules
-    api(project(":libs:core:util"))
-
     // Lombok
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")

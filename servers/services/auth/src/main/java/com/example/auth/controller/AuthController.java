@@ -9,7 +9,7 @@ import com.example.auth.dto.request.WithdrawRequest;
 import com.example.auth.dto.response.CheckAvailableResponse;
 import com.example.auth.dto.response.SignupResponse;
 import com.example.auth.service.AuthService;
-import com.example.security.gateway.CurrentUserId;
+import com.example.security.starter.servlet.annotation.CurrentUserId;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

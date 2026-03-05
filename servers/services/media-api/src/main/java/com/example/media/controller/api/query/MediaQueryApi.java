@@ -2,7 +2,7 @@ package com.example.media.controller.api.query;
 
 import com.example.api.response.ApiResponse;
 import com.example.media.dto.query.response.MediaUrlResponse;
-import com.example.security.gateway.CurrentUserId;
+import com.example.security.starter.servlet.annotation.CurrentUserId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;

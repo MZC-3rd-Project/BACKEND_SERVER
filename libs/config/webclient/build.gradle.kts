@@ -4,7 +4,7 @@ plugins {
     id("io.spring.dependency-management")
 }
 
-tasks.bootJar { enabled = false }
+tasks.findByName("bootJar")?.enabled = false
 tasks.jar { enabled = true }
 
 dependencies {

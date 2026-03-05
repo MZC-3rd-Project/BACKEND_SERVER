@@ -4,37 +4,15 @@ plugins {
     id("io.spring.dependency-management")
 }
 
-tasks.bootJar {
-    enabled = false
-}
+tasks.findByName("bootJar")?.enabled = false
 
 tasks.jar {
     enabled = true
 }
 
 dependencies {
-    // Event domain
-    api(project(":libs:event:domain"))
-    api(project(":libs:config:kafka"))
-    api(project(":libs:data:entity"))
-
-    // Spring Data JPA
-    api("org.springframework.boot:spring-boot-starter-data-jpa")
-
-    // Kafka
-    api("org.springframework.kafka:spring-kafka")
-
-    // Scheduling
-    api("org.springframework.boot:spring-boot-starter")
-    implementation("org.springframework.boot:spring-boot-autoconfigure")
-    annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
-
-    // Lombok
-    compileOnly("org.projectlombok:lombok")
-    annotationProcessor("org.projectlombok:lombok")
-
-    // Testing
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testRuntimeOnly("com.h2database:h2")
+    // Backward-compatible aggregator:
+    // keep legacy module path while delegating to split modules.
+    api(project(":libs:event:outbox-api"))
+    api(project(":libs:event:outbox-jpa-kafka"))
 }

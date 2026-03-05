@@ -1,3 +1,5 @@
+import io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension
+
 plugins {
     java
     id("org.springframework.boot") version "3.5.10" apply false
@@ -14,10 +16,19 @@ allprojects {
 }
 
 subprojects {
+    val isLeafServerModule = path.startsWith(":servers:") && childProjects.isEmpty()
 
     apply(plugin = "java")
-    apply(plugin = "org.springframework.boot")
     apply(plugin = "io.spring.dependency-management")
+    if (isLeafServerModule) {
+        apply(plugin = "org.springframework.boot")
+    }
+
+    extensions.configure<DependencyManagementExtension> {
+        imports {
+            mavenBom("org.springframework.boot:spring-boot-dependencies:3.5.10")
+        }
+    }
 
 
     java {
@@ -27,7 +38,9 @@ subprojects {
     }
 
     dependencies {
-        implementation("org.springframework.boot:spring-boot-starter")
+        if (isLeafServerModule) {
+            implementation("org.springframework.boot:spring-boot-starter")
+        }
         testImplementation("org.springframework.boot:spring-boot-starter-test")
         testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     }
@@ -40,6 +53,3 @@ subprojects {
 tasks.jar {
     enabled = false
 }
-
-
-

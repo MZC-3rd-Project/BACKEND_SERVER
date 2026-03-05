@@ -1,31 +1,23 @@
+import com.example.buildlogic.applyServiceCommonModuleDependencies
+
+applyServiceCommonModuleDependencies(includePagination = false, includeSecurityStarter = false)
+
 dependencies {
     // Web
     implementation("org.springframework.boot:spring-boot-starter-web")
 
-    // ─── 공통 모듈 (전체) ────────────────────────────
     // Core
-    implementation(project(":libs:core:exception"))
-    implementation(project(":libs:core:util"))
-    implementation(project(":libs:core:id"))
 
     // API
-    implementation(project(":libs:api:response"))
-    implementation(project(":libs:api:exception-handler"))
 
     // Data
-    implementation(project(":libs:data:entity"))
 
     // Config
-    implementation(project(":libs:config:kafka"))
-    implementation(project(":libs:config:redis"))
     implementation(project(":libs:config:resilience"))
 
     // Event
-    implementation(project(":libs:event:domain"))
-    implementation(project(":libs:event:outbox"))
 
     // OpenAPI
-    implementation(project(":libs:openapi:config"))
 
     // WebClient (for self-calling circuit breaker test)
     implementation("org.springframework.boot:spring-boot-starter-webflux")

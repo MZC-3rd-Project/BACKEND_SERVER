@@ -9,7 +9,7 @@ import com.example.gateway.bff.dto.BffItemUpdateCommandRequest;
 import com.example.gateway.security.GatewaySessionPrincipal;
 import com.example.gateway.security.SessionClaimParseException;
 import com.example.gateway.security.session.application.GatewaySessionPrincipalResolver;
-import com.example.security.gateway.GatewayContextHeaderCodec;
+import com.example.security.starter.webflux.GatewayContextHeaderCodec;
 import com.example.security.signature.HmacSigner;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

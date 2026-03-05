@@ -19,9 +19,7 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-tasks.bootJar {
-    enabled = false
-}
+tasks.findByName("bootJar")?.enabled = false
 
 tasks.jar {
     enabled = true

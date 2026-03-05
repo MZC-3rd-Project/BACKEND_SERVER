@@ -4,9 +4,7 @@ plugins {
     id("io.spring.dependency-management")
 }
 
-tasks.bootJar {
-    enabled = false
-}
+tasks.findByName("bootJar")?.enabled = false
 
 tasks.jar {
     enabled = true
@@ -28,6 +26,7 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok")
 
     // Testing
+    testImplementation("org.springframework.boot:spring-boot-starter-data-jpa")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

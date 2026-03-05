@@ -1,24 +1,19 @@
+import com.example.buildlogic.applyServiceCommonModuleDependencies
+
+applyServiceCommonModuleDependencies(includePagination = false, includeRedis = false, includeOpenApi = false, includeApiResponse = false)
+
 dependencies {
     // Core
-    implementation(project(":libs:core:exception"))
-    implementation(project(":libs:core:util"))
-    implementation(project(":libs:core:id"))
 
     // API
-    implementation(project(":libs:api:exception-handler"))
 
     // Data
-    implementation(project(":libs:data:entity"))
 
     // Config
-    implementation(project(":libs:config:kafka"))
 
     // Event
-    implementation(project(":libs:event:domain"))
-    implementation(project(":libs:event:outbox"))
 
     // Security
-    implementation(project(":libs:security:security-starter"))
 
     // Spring Boot
     implementation("org.springframework.boot:spring-boot-starter")

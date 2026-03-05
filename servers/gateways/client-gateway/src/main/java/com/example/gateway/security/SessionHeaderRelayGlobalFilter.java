@@ -7,7 +7,7 @@ import com.example.gateway.security.session.application.GatewaySessionPrincipalR
 import com.example.gateway.security.session.application.port.GatewaySessionValidator;
 import com.example.gateway.security.session.domain.SessionValidationResult;
 import com.example.security.signature.HmacSigner;
-import com.example.security.gateway.GatewayContextHeaderCodec;
+import com.example.security.starter.webflux.GatewayContextHeaderCodec;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;

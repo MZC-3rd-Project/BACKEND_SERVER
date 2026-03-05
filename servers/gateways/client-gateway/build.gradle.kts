@@ -9,7 +9,7 @@ dependencies {
 
     // Shared modules
     implementation(project(":libs:contracts:http"))
-    implementation(project(":libs:security:security-starter"))
+    implementation(project(":libs:security:security-starter-webflux"))
 
     // Lombok
     compileOnly("org.projectlombok:lombok")

@@ -4,25 +4,18 @@ plugins {
     id("io.spring.dependency-management")
 }
 
-tasks.bootJar {
-    enabled = false
-}
+tasks.findByName("bootJar")?.enabled = false
 
 tasks.jar {
     enabled = true
 }
 
 dependencies {
-    // Spring Data JPA
-    api("org.springframework.boot:spring-boot-starter-data-jpa")
-    api("org.springframework.boot:spring-boot-starter-aop")
+    // Backward-compatible aggregator:
+    // keep legacy module path while delegating to split modules.
+    api(project(":libs:data:jpa-base"))
+    api(project(":libs:data:rw-routing"))
 
-    // Lombok
-    compileOnly("org.projectlombok:lombok")
-    annotationProcessor("org.projectlombok:lombok")
-
-    // Testing
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    // Legacy tests in this module still instantiate routing DataSource with H2
     testRuntimeOnly("com.h2database:h2")
 }
