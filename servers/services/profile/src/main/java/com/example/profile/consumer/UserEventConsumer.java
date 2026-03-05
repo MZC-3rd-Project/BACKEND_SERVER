@@ -1,10 +1,11 @@
 package com.example.profile.consumer;
 
-import com.example.config.kafka.IdempotentConsumerService;
 import com.example.core.util.JsonDeserializationException;
+import com.example.core.util.JsonSerializationException;
 import com.example.core.util.JsonUtils;
-import com.example.profile.service.command.ProfileProjectionSyncService;
+import com.example.event.inbox.InboxEnqueueService;
 import com.fasterxml.jackson.databind.JsonNode;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -17,17 +18,18 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class UserEventConsumer {
 
-    private static final String IDEMPOTENT_EVENT_TYPE = "USER_EVENT";
-    private static final String USER_CREATED_EVENT_TYPE = "UserCreated";
-    private static final String USER_EMAIL_CHANGED_EVENT_TYPE = "UserEmailChanged";
-    private static final String USER_WITHDRAWN_EVENT_TYPE = "UserWithdrawn";
-
-    private final IdempotentConsumerService idempotentConsumerService;
-    private final ProfileProjectionSyncService profileProjectionSyncService;
+    private final InboxEnqueueService inboxEnqueueService;
+    private final ProfileUserEventProcessor profileUserEventProcessor;
+    private final ProfileUserEventRoutingProperties profileUserEventRoutingProperties;
 
     @KafkaListener(topics = "user-events", groupId = "${spring.kafka.consumer.group-id}")
     @Transactional
-    public void consume(String message) {
+    public void consume(ConsumerRecord<String, Object> record) {
+        String message = normalizePayload(record == null ? null : record.value());
+        if (message == null) {
+            return;
+        }
+
         JsonNode payload = parsePayload(message);
         if (payload == null) {
             return;
@@ -39,50 +41,42 @@ public class UserEventConsumer {
             return;
         }
 
-        switch (eventType) {
-            case USER_CREATED_EVENT_TYPE -> consumeUserCreated(message, eventId, eventType);
-            case USER_EMAIL_CHANGED_EVENT_TYPE -> consumeUserEmailChanged(message, eventId, eventType);
-            case USER_WITHDRAWN_EVENT_TYPE -> consumeUserWithdrawn(message, eventId, eventType);
-            default -> log.debug("[ProfileUserEventConsumer] ignore unsupported type. eventId={}, eventType={}", eventId, eventType);
-        }
-    }
-
-    private void consumeUserCreated(String message, String eventId, String rawEventType) {
-        UserCreatedEventDto event = parseEvent(message, UserCreatedEventDto.class, rawEventType);
-        if (event == null || event.userId() == null
-                || !StringUtils.hasText(event.email())
-                || !StringUtils.hasText(event.nickname())) {
-            log.warn("[ProfileUserEventConsumer] skip invalid payload. eventId={}, eventType={}, userId={}",
-                    eventId, rawEventType, event == null ? null : event.userId());
+        if (!profileUserEventProcessor.supports(eventType)) {
+            log.debug("[ProfileUserEventConsumer] ignore unsupported type. eventId={}, eventType={}", eventId, eventType);
             return;
         }
 
-        executeIdempotent(eventId, rawEventType, event.userId(),
-                () -> profileProjectionSyncService.upsertFromUserCreated(event.userId(), event.email(), event.nickname()));
-    }
-
-    private void consumeUserEmailChanged(String message, String eventId, String rawEventType) {
-        UserEmailChangedEventDto event = parseEvent(message, UserEmailChangedEventDto.class, rawEventType);
-        if (event == null || event.userId() == null || !StringUtils.hasText(event.newEmail())) {
-            log.warn("[ProfileUserEventConsumer] skip invalid payload. eventId={}, eventType={}, userId={}",
-                    eventId, rawEventType, event == null ? null : event.userId());
+        if (profileUserEventRoutingProperties.isInboxMode()) {
+            boolean enqueued = inboxEnqueueService.enqueue(
+                    ProfileUserEventInboxHandler.CONSUMER_NAME,
+                    eventId,
+                    eventType,
+                    message
+            );
+            if (!enqueued) {
+                log.debug("[ProfileUserEventConsumer] inbox enqueue skipped. eventId={}, eventType={}", eventId, eventType);
+            }
             return;
         }
 
-        executeIdempotent(eventId, rawEventType, event.userId(),
-                () -> profileProjectionSyncService.applyUserEmailChanged(event.userId(), event.newEmail()));
+        profileUserEventProcessor.process(message, eventId, eventType);
     }
 
-    private void consumeUserWithdrawn(String message, String eventId, String rawEventType) {
-        UserWithdrawnEventDto event = parseEvent(message, UserWithdrawnEventDto.class, rawEventType);
-        if (event == null || event.userId() == null) {
-            log.warn("[ProfileUserEventConsumer] skip invalid payload. eventId={}, eventType={}, userId={}",
-                    eventId, rawEventType, event == null ? null : event.userId());
-            return;
+    private String normalizePayload(Object rawMessage) {
+        if (rawMessage == null) {
+            log.warn("[ProfileUserEventConsumer] skip null payload");
+            return null;
         }
-
-        executeIdempotent(eventId, rawEventType, event.userId(),
-                () -> profileProjectionSyncService.withdrawProjection(event.userId()));
+        if (rawMessage instanceof String text) {
+            return text;
+        }
+        try {
+            return JsonUtils.toJson(rawMessage);
+        } catch (JsonSerializationException e) {
+            log.warn("[ProfileUserEventConsumer] skip unsupported payload type. payloadType={}",
+                    rawMessage.getClass().getName());
+            return null;
+        }
     }
 
     private JsonNode parsePayload(String message) {
@@ -90,15 +84,6 @@ public class UserEventConsumer {
             return JsonUtils.fromJson(message, JsonNode.class);
         } catch (JsonDeserializationException e) {
             log.warn("[ProfileUserEventConsumer] skip malformed message. payload={}", message);
-            return null;
-        }
-    }
-
-    private <T> T parseEvent(String message, Class<T> clazz, String eventType) {
-        try {
-            return JsonUtils.fromJson(message, clazz);
-        } catch (JsonDeserializationException e) {
-            log.warn("[ProfileUserEventConsumer] payload parse failed. eventType={}, payload={}", eventType, message);
             return null;
         }
     }
@@ -116,20 +101,5 @@ public class UserEventConsumer {
             return null;
         }
         return payload.path(field).asText(null);
-    }
-
-    private void executeIdempotent(String eventId, String rawEventType, Long userId, Runnable action) {
-        try {
-            idempotentConsumerService.executeIdempotent(eventId, IDEMPOTENT_EVENT_TYPE, () -> {
-                action.run();
-                log.info("[ProfileUserEventConsumer] projection synced. eventId={}, eventType={}, userId={}",
-                        eventId, rawEventType, userId);
-                return null;
-            });
-        } catch (Exception e) {
-            log.error("[ProfileUserEventConsumer] consume failed. eventId={}, eventType={}, userId={}",
-                    eventId, rawEventType, userId, e);
-            throw e;
-        }
     }
 }

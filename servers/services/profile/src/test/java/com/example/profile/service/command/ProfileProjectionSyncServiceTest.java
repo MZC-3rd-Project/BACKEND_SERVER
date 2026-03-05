@@ -79,7 +79,6 @@ class ProfileProjectionSyncServiceTest {
                 .profile(existing)
                 .mediaId(100L)
                 .build();
-
         when(profileRepository.findByUserId(userId)).thenReturn(Optional.of(existing));
         when(profileImageRepository.findByUserId(userId)).thenReturn(Optional.of(existingImage));
 

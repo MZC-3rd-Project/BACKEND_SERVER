@@ -34,10 +34,7 @@ public class ProfilesImage extends BaseEntity {
     public static ProfilesImage createDefault(Profiles profile) {
         return ProfilesImage.builder()
             .userId(profile.getUserId())
-            .profile(profile)
             .mediaId(null)
             .build();
     }
-
-
 }

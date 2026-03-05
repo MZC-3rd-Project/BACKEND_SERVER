@@ -2,9 +2,11 @@ package com.example.profile.entity;
 
 import com.example.clients.auth.dto.profile.AuthSyncQuery;
 import com.example.core.id.jpa.SnowflakeGenerated;
+import com.example.profile.crypto.EncryptedStringAttributeConverter;
 import com.example.data.entity.BaseEntity;
 import com.example.profile.dto.request.ProfileRequest;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
@@ -31,13 +33,15 @@ public class Profiles extends BaseEntity {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "email", nullable = false, length = 255)
+    @Convert(converter = EncryptedStringAttributeConverter.class)
+    @Column(name = "email", nullable = false, length = 512)
     private String email;
 
     @Column(name = "nickname", length = 100)
     private String nickname;
 
-    @Column(name = "phone_number", length = 15)
+    @Convert(converter = EncryptedStringAttributeConverter.class)
+    @Column(name = "phone_number", length = 256)
     private String phoneNumber;
 
     @OneToOne(mappedBy = "profile", fetch = FetchType.LAZY)
