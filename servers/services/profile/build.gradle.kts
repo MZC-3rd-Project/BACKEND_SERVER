@@ -1,6 +1,8 @@
 dependencies {
     // Web
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("io.micrometer:micrometer-registry-prometheus")
 
     // Common libs
     implementation(project(":libs:core:exception"))
@@ -9,6 +11,7 @@ dependencies {
     implementation(project(":libs:api:exception-handler"))
     implementation(project(":libs:data:entity"))
     implementation(project(":libs:core:id"))
+    implementation(project(":libs:security:crypto"))
 
     // OpenAPI
     implementation(project(":libs:openapi:config"))
@@ -21,6 +24,7 @@ dependencies {
     // Event
     implementation(project(":libs:event:domain"))
     implementation(project(":libs:event:outbox"))
+    implementation(project(":libs:event:inbox"))
 
     // JPA
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
