@@ -1,8 +1,10 @@
 package com.example.profile.consumer;
 
-public record UserEmailChangedPayload(
+public record UserEmailChangedEventDto(
+        String eventId,
+        String eventType,
         Long userId,
         String oldEmail,
         String newEmail
-) implements UserProjectionPayload {
+) {
 }

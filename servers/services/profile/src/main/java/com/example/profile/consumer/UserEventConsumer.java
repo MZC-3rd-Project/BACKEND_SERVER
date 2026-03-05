@@ -3,8 +3,8 @@ package com.example.profile.consumer;
 import com.example.config.kafka.IdempotentConsumerService;
 import com.example.core.util.JsonDeserializationException;
 import com.example.core.util.JsonUtils;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.example.profile.service.command.ProfileProjectionSyncService;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -12,7 +12,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.Map;
 import java.util.Locale;
 
 @Slf4j
@@ -21,9 +20,9 @@ import java.util.Locale;
 public class UserEventConsumer {
 
     private static final String IDEMPOTENT_EVENT_TYPE = "USER_EVENT";
-    private static final String USER_CREATED_EVENT_TYPE = "USERCREATED";
-    private static final String USER_EMAIL_CHANGED_EVENT_TYPE = "USEREMAILCHANGED";
-    private static final String USER_WITHDRAWN_EVENT_TYPE = "USERWITHDRAWN";
+    private static final String USER_CREATED_EVENT_TYPE = "USER_CREATED";
+    private static final String USER_EMAIL_CHANGED_EVENT_TYPE = "USER_EMAIL_CHANGED";
+    private static final String USER_WITHDRAWN_EVENT_TYPE = "USER_WITHDRAWN";
 
     private final IdempotentConsumerService idempotentConsumerService;
     private final ProfileProjectionSyncService profileProjectionSyncService;
@@ -31,107 +30,100 @@ public class UserEventConsumer {
     @KafkaListener(topics = "user-events", groupId = "${spring.kafka.consumer.group-id}")
     @Transactional
     public void consume(String message) {
-        Map<String, Object> messageMap = parseMessageMap(message);
-        if (messageMap == null) {
+        JsonNode payload = parsePayload(message);
+        if (payload == null) {
             return;
         }
 
-        UserEventEnvelope envelope = parseEnvelope(messageMap);
-        if (!hasRequiredEnvelope(envelope)) {
+        String eventId = readText(payload, "eventId");
+        String rawEventType = readText(payload, "eventType");
+        if (!hasRequiredMetadata(eventId, rawEventType)) {
             return;
         }
 
-        String normalizedEventType = normalizeEventType(envelope.eventType());
+        String normalizedEventType = normalizeEventType(rawEventType);
         if (!isSupportedType(normalizedEventType)) {
-            log.debug("[ProfileUserEventConsumer] ignore unsupported type. eventId={}, eventType={}",
-                    envelope.eventId(), envelope.eventType());
+            log.debug("[ProfileUserEventConsumer] ignore unsupported type. eventId={}, eventType={}", eventId, rawEventType);
             return;
         }
 
-        UserProjectionPayload payload = parsePayload(messageMap, normalizedEventType);
-        if (!hasRequiredPayload(payload, normalizedEventType)) {
-            log.warn("[ProfileUserEventConsumer] skip invalid payload. eventId={}, eventType={}, userId={}",
-                    envelope.eventId(), envelope.eventType(), payload == null ? null : payload.userId());
-            return;
-        }
-
-        try {
-            idempotentConsumerService.executeIdempotent(envelope.eventId(), IDEMPOTENT_EVENT_TYPE, () -> {
-                routeProjectionEvent(payload, normalizedEventType);
-                log.info("[ProfileUserEventConsumer] projection synced. eventId={}, eventType={}, userId={}",
-                        envelope.eventId(), envelope.eventType(), payload.userId());
-                return null;
-            });
-        } catch (Exception e) {
-            log.error("[ProfileUserEventConsumer] consume failed. eventId={}, eventType={}, userId={}",
-                    envelope.eventId(), envelope.eventType(), payload.userId(), e);
-            throw e;
+        switch (normalizedEventType) {
+            case USER_CREATED_EVENT_TYPE -> consumeUserCreated(message, eventId, rawEventType);
+            case USER_EMAIL_CHANGED_EVENT_TYPE -> consumeUserEmailChanged(message, eventId, rawEventType);
+            case USER_WITHDRAWN_EVENT_TYPE -> consumeUserWithdrawn(message, eventId, rawEventType);
+            default -> throw new IllegalArgumentException("Unsupported event type: " + normalizedEventType);
         }
     }
 
-    private Map<String, Object> parseMessageMap(String message) {
+    private void consumeUserCreated(String message, String eventId, String rawEventType) {
+        UserCreatedEventDto event = parseEvent(message, UserCreatedEventDto.class, rawEventType);
+        if (event == null || event.userId() == null
+                || !StringUtils.hasText(event.email())
+                || !StringUtils.hasText(event.nickname())) {
+            log.warn("[ProfileUserEventConsumer] skip invalid payload. eventId={}, eventType={}, userId={}",
+                    eventId, rawEventType, event == null ? null : event.userId());
+            return;
+        }
+
+        executeIdempotent(eventId, rawEventType, event.userId(),
+                () -> profileProjectionSyncService.upsertFromUserCreated(event.userId(), event.email(), event.nickname()));
+    }
+
+    private void consumeUserEmailChanged(String message, String eventId, String rawEventType) {
+        UserEmailChangedEventDto event = parseEvent(message, UserEmailChangedEventDto.class, rawEventType);
+        if (event == null || event.userId() == null || !StringUtils.hasText(event.newEmail())) {
+            log.warn("[ProfileUserEventConsumer] skip invalid payload. eventId={}, eventType={}, userId={}",
+                    eventId, rawEventType, event == null ? null : event.userId());
+            return;
+        }
+
+        executeIdempotent(eventId, rawEventType, event.userId(),
+                () -> profileProjectionSyncService.applyUserEmailChanged(event.userId(), event.newEmail()));
+    }
+
+    private void consumeUserWithdrawn(String message, String eventId, String rawEventType) {
+        UserWithdrawnEventDto event = parseEvent(message, UserWithdrawnEventDto.class, rawEventType);
+        if (event == null || event.userId() == null) {
+            log.warn("[ProfileUserEventConsumer] skip invalid payload. eventId={}, eventType={}, userId={}",
+                    eventId, rawEventType, event == null ? null : event.userId());
+            return;
+        }
+
+        executeIdempotent(eventId, rawEventType, event.userId(),
+                () -> profileProjectionSyncService.withdrawProjection(event.userId()));
+    }
+
+    private JsonNode parsePayload(String message) {
         try {
-            return JsonUtils.fromJson(message, new TypeReference<>() {
-            });
+            return JsonUtils.fromJson(message, JsonNode.class);
         } catch (JsonDeserializationException e) {
             log.warn("[ProfileUserEventConsumer] skip malformed message. payload={}", message);
             return null;
         }
     }
 
-    private UserEventEnvelope parseEnvelope(Map<String, Object> messageMap) {
+    private <T> T parseEvent(String message, Class<T> clazz, String eventType) {
         try {
-            return JsonUtils.fromMap(messageMap, UserEventEnvelope.class);
-        } catch (IllegalArgumentException e) {
-            log.warn("[ProfileUserEventConsumer] skip message. envelope parse failed. payload={}", messageMap);
+            return JsonUtils.fromJson(message, clazz);
+        } catch (JsonDeserializationException e) {
+            log.warn("[ProfileUserEventConsumer] payload parse failed. eventType={}, payload={}", eventType, message);
             return null;
         }
     }
 
-    private boolean hasRequiredEnvelope(UserEventEnvelope envelope) {
-        if (envelope == null) {
-            return false;
-        }
-        if (!StringUtils.hasText(envelope.eventId()) || !StringUtils.hasText(envelope.eventType())) {
-            log.warn("[ProfileUserEventConsumer] skip invalid envelope. eventId={}, eventType={}",
-                    envelope.eventId(), envelope.eventType());
+    private boolean hasRequiredMetadata(String eventId, String eventType) {
+        if (!StringUtils.hasText(eventId) || !StringUtils.hasText(eventType)) {
+            log.warn("[ProfileUserEventConsumer] skip invalid metadata. eventId={}, eventType={}", eventId, eventType);
             return false;
         }
         return true;
     }
 
-    private UserProjectionPayload parsePayload(Map<String, Object> messageMap, String normalizedEventType) {
-        try {
-            return switch (normalizedEventType) {
-                case USER_CREATED_EVENT_TYPE -> JsonUtils.fromMap(messageMap, UserCreatedPayload.class);
-                case USER_EMAIL_CHANGED_EVENT_TYPE -> JsonUtils.fromMap(messageMap, UserEmailChangedPayload.class);
-                case USER_WITHDRAWN_EVENT_TYPE -> JsonUtils.fromMap(messageMap, UserWithdrawnPayload.class);
-                default -> null;
-            };
-        } catch (IllegalArgumentException e) {
-            log.warn("[ProfileUserEventConsumer] payload parse failed. eventType={}, payload={}",
-                    normalizedEventType, messageMap);
+    private String readText(JsonNode payload, String field) {
+        if (payload == null || !payload.hasNonNull(field)) {
             return null;
         }
-    }
-
-    private boolean hasRequiredPayload(UserProjectionPayload payload, String normalizedEventType) {
-        if (payload == null || payload.userId() == null) {
-            return false;
-        }
-
-        return switch (normalizedEventType) {
-            case USER_CREATED_EVENT_TYPE -> {
-                UserCreatedPayload userCreated = (UserCreatedPayload) payload;
-                yield StringUtils.hasText(userCreated.email()) && StringUtils.hasText(userCreated.nickname());
-            }
-            case USER_EMAIL_CHANGED_EVENT_TYPE -> {
-                UserEmailChangedPayload emailChanged = (UserEmailChangedPayload) payload;
-                yield StringUtils.hasText(emailChanged.newEmail());
-            }
-            case USER_WITHDRAWN_EVENT_TYPE -> true;
-            default -> false;
-        };
+        return payload.path(field).asText(null);
     }
 
     private boolean isSupportedType(String normalizedEventType) {
@@ -140,27 +132,36 @@ public class UserEventConsumer {
                 || USER_WITHDRAWN_EVENT_TYPE.equals(normalizedEventType);
     }
 
-    private void routeProjectionEvent(UserProjectionPayload payload, String normalizedEventType) {
-        switch (normalizedEventType) {
-            case USER_CREATED_EVENT_TYPE -> {
-                UserCreatedPayload userCreated = (UserCreatedPayload) payload;
-                profileProjectionSyncService.upsertFromUserCreated(
-                        userCreated.userId(), userCreated.email(), userCreated.nickname()
-                );
-            }
-            case USER_EMAIL_CHANGED_EVENT_TYPE -> {
-                UserEmailChangedPayload emailChanged = (UserEmailChangedPayload) payload;
-                profileProjectionSyncService.applyUserEmailChanged(
-                        emailChanged.userId(), emailChanged.newEmail()
-                );
-            }
-            case USER_WITHDRAWN_EVENT_TYPE ->
-                    profileProjectionSyncService.withdrawProjection(payload.userId());
-            default -> throw new IllegalArgumentException("Unsupported event type: " + normalizedEventType);
+    private void executeIdempotent(String eventId, String rawEventType, Long userId, Runnable action) {
+        try {
+            idempotentConsumerService.executeIdempotent(eventId, IDEMPOTENT_EVENT_TYPE, () -> {
+                action.run();
+                log.info("[ProfileUserEventConsumer] projection synced. eventId={}, eventType={}, userId={}",
+                        eventId, rawEventType, userId);
+                return null;
+            });
+        } catch (Exception e) {
+            log.error("[ProfileUserEventConsumer] consume failed. eventId={}, eventType={}, userId={}",
+                    eventId, rawEventType, userId, e);
+            throw e;
         }
     }
 
     private String normalizeEventType(String eventType) {
-        return eventType == null ? "" : eventType.trim().toUpperCase(Locale.ROOT);
+        if (!StringUtils.hasText(eventType)) {
+            return "";
+        }
+        String normalized = eventType.trim()
+                .replace('-', '_')
+                .replace(' ', '_')
+                .replaceAll("([a-z0-9])([A-Z])", "$1_$2")
+                .replaceAll("_+", "_")
+                .toUpperCase(Locale.ROOT);
+        return switch (normalized) {
+            case "USERCREATED" -> USER_CREATED_EVENT_TYPE;
+            case "USEREMAILCHANGED" -> USER_EMAIL_CHANGED_EVENT_TYPE;
+            case "USERWITHDRAWN" -> USER_WITHDRAWN_EVENT_TYPE;
+            default -> normalized;
+        };
     }
 }
