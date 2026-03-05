@@ -1,6 +1,7 @@
 package com.example.profile.service.command;
 
 import com.example.core.exception.BusinessException;
+import com.example.event.EventPublisher;
 import com.example.profile.dto.request.ProfileRequest;
 import com.example.profile.entity.Profiles;
 import com.example.profile.entity.ProfilesImage;
@@ -39,6 +40,9 @@ class ProfileCommandServiceTest {
     @Mock
     private ProfileMediaReferenceService profileMediaReferenceService;
 
+    @Mock
+    private EventPublisher eventPublisher;
+
     private ProfileCommandService profileCommandService;
 
     @BeforeEach
@@ -47,7 +51,8 @@ class ProfileCommandServiceTest {
             profileImageRepository,
             profileRepository,
             profileAddressRepository,
-            profileMediaReferenceService
+            profileMediaReferenceService,
+            eventPublisher
         );
     }
 
@@ -76,6 +81,7 @@ class ProfileCommandServiceTest {
         assertThat(profile.getNickname()).isEqualTo("newNick");
         verify(profileMediaReferenceService).validateReadableMedia(777L);
         verify(profileMediaReferenceService).syncProfileImageLink(userId, 777L);
+        verify(eventPublisher).publish(any(), any());
     }
 
     @Test
@@ -100,6 +106,7 @@ class ProfileCommandServiceTest {
         assertThat(image.getMediaId()).isNull();
         verify(profileMediaReferenceService).validateReadableMedia(null);
         verify(profileMediaReferenceService).syncProfileImageLink(userId, null);
+        verify(eventPublisher).publish(any(), any());
     }
 
     @Test
@@ -120,6 +127,7 @@ class ProfileCommandServiceTest {
 
         verify(profileImageRepository).save(any(ProfilesImage.class));
         verify(profileMediaReferenceService).syncProfileImageLink(userId, 888L);
+        verify(eventPublisher).publish(any(), any());
     }
 
     @Test
@@ -140,6 +148,7 @@ class ProfileCommandServiceTest {
 
         verify(profileMediaReferenceService).resolveCanonicalMediaId(null, "media-4321");
         verify(profileMediaReferenceService).syncProfileImageLink(userId, 4321L);
+        verify(eventPublisher).publish(any(), any());
     }
 
     @Test
@@ -163,6 +172,7 @@ class ProfileCommandServiceTest {
             .isEqualTo(ProfileErrorCode.PROFILE_ALREADY_NICKNAME);
 
         verify(profileMediaReferenceService, never()).syncProfileImageLink(eq(userId), any());
+        verify(eventPublisher, never()).publish(any(), any());
     }
 
     private Profiles createProfile(Long userId, String email, String nickname) {

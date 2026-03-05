@@ -2,10 +2,13 @@ package com.example.profile.service.command;
 
 import com.example.clients.auth.dto.profile.AuthSyncQuery;
 import com.example.core.exception.BusinessException;
+import com.example.event.EventMetadata;
+import com.example.event.EventPublisher;
 import com.example.profile.dto.request.ProfileRequest;
 import com.example.profile.entity.ProfileAddress;
 import com.example.profile.entity.Profiles;
 import com.example.profile.entity.ProfilesImage;
+import com.example.profile.event.ProfileUpdatedEvent;
 import com.example.profile.exception.ProfileErrorCode;
 import com.example.profile.repository.ProfileAddressRepository;
 import com.example.profile.repository.ProfileImageRepository;
@@ -28,6 +31,7 @@ public class ProfileCommandService {
     private final ProfileRepository profileRepository;
     private final ProfileAddressRepository profileAddressRepository;
     private final ProfileMediaReferenceService profileMediaReferenceService;
+    private final EventPublisher eventPublisher;
 
     @Transactional
     public void createProfile(AuthSyncQuery req) {
@@ -61,6 +65,18 @@ public class ProfileCommandService {
         validateNicknameAvailability(req, profile);
         profile.updateProfile(req);
         profileMediaReferenceService.syncProfileImageLink(userId, canonicalMediaId);
+
+        eventPublisher.publish(
+            new ProfileUpdatedEvent(
+                profile.getId(),
+                profile.getUserId(),
+                profile.getEmail(),
+                profile.getNickname(),
+                profile.getPhoneNumber(),
+                canonicalMediaId
+            ),
+            EventMetadata.of("PROFILE", String.valueOf(profile.getId()))
+        );
     }
 
     private void validateNicknameAvailability(ProfileRequest req, Profiles profile) {
