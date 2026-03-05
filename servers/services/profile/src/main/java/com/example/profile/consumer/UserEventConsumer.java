@@ -12,17 +12,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.Locale;
-
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class UserEventConsumer {
 
     private static final String IDEMPOTENT_EVENT_TYPE = "USER_EVENT";
-    private static final String USER_CREATED_EVENT_TYPE = "USER_CREATED";
-    private static final String USER_EMAIL_CHANGED_EVENT_TYPE = "USER_EMAIL_CHANGED";
-    private static final String USER_WITHDRAWN_EVENT_TYPE = "USER_WITHDRAWN";
+    private static final String USER_CREATED_EVENT_TYPE = "UserCreated";
+    private static final String USER_EMAIL_CHANGED_EVENT_TYPE = "UserEmailChanged";
+    private static final String USER_WITHDRAWN_EVENT_TYPE = "UserWithdrawn";
 
     private final IdempotentConsumerService idempotentConsumerService;
     private final ProfileProjectionSyncService profileProjectionSyncService;
@@ -36,22 +34,16 @@ public class UserEventConsumer {
         }
 
         String eventId = readText(payload, "eventId");
-        String rawEventType = readText(payload, "eventType");
-        if (!hasRequiredMetadata(eventId, rawEventType)) {
+        String eventType = readText(payload, "eventType");
+        if (!hasRequiredMetadata(eventId, eventType)) {
             return;
         }
 
-        String normalizedEventType = normalizeEventType(rawEventType);
-        if (!isSupportedType(normalizedEventType)) {
-            log.debug("[ProfileUserEventConsumer] ignore unsupported type. eventId={}, eventType={}", eventId, rawEventType);
-            return;
-        }
-
-        switch (normalizedEventType) {
-            case USER_CREATED_EVENT_TYPE -> consumeUserCreated(message, eventId, rawEventType);
-            case USER_EMAIL_CHANGED_EVENT_TYPE -> consumeUserEmailChanged(message, eventId, rawEventType);
-            case USER_WITHDRAWN_EVENT_TYPE -> consumeUserWithdrawn(message, eventId, rawEventType);
-            default -> throw new IllegalArgumentException("Unsupported event type: " + normalizedEventType);
+        switch (eventType) {
+            case USER_CREATED_EVENT_TYPE -> consumeUserCreated(message, eventId, eventType);
+            case USER_EMAIL_CHANGED_EVENT_TYPE -> consumeUserEmailChanged(message, eventId, eventType);
+            case USER_WITHDRAWN_EVENT_TYPE -> consumeUserWithdrawn(message, eventId, eventType);
+            default -> log.debug("[ProfileUserEventConsumer] ignore unsupported type. eventId={}, eventType={}", eventId, eventType);
         }
     }
 
@@ -126,12 +118,6 @@ public class UserEventConsumer {
         return payload.path(field).asText(null);
     }
 
-    private boolean isSupportedType(String normalizedEventType) {
-        return USER_CREATED_EVENT_TYPE.equals(normalizedEventType)
-                || USER_EMAIL_CHANGED_EVENT_TYPE.equals(normalizedEventType)
-                || USER_WITHDRAWN_EVENT_TYPE.equals(normalizedEventType);
-    }
-
     private void executeIdempotent(String eventId, String rawEventType, Long userId, Runnable action) {
         try {
             idempotentConsumerService.executeIdempotent(eventId, IDEMPOTENT_EVENT_TYPE, () -> {
@@ -145,23 +131,5 @@ public class UserEventConsumer {
                     eventId, rawEventType, userId, e);
             throw e;
         }
-    }
-
-    private String normalizeEventType(String eventType) {
-        if (!StringUtils.hasText(eventType)) {
-            return "";
-        }
-        String normalized = eventType.trim()
-                .replace('-', '_')
-                .replace(' ', '_')
-                .replaceAll("([a-z0-9])([A-Z])", "$1_$2")
-                .replaceAll("_+", "_")
-                .toUpperCase(Locale.ROOT);
-        return switch (normalized) {
-            case "USERCREATED" -> USER_CREATED_EVENT_TYPE;
-            case "USEREMAILCHANGED" -> USER_EMAIL_CHANGED_EVENT_TYPE;
-            case "USERWITHDRAWN" -> USER_WITHDRAWN_EVENT_TYPE;
-            default -> normalized;
-        };
     }
 }
