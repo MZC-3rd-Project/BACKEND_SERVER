@@ -40,11 +40,5 @@ dependencies {
     implementation("org.flywaydb:flyway-core")
     runtimeOnly("org.flywaydb:flyway-database-postgresql")
 
-    // Test
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testRuntimeOnly("com.h2database:h2")
-    testCompileOnly("org.projectlombok:lombok")
-    testAnnotationProcessor("org.projectlombok:lombok")
-
 }
 
