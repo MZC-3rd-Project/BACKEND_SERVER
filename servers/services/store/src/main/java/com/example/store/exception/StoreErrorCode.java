@@ -1,7 +1,6 @@
 package com.example.store.exception;
 
 import com.example.core.exception.DomainErrorCode;
-import com.example.core.exception.ErrorCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
