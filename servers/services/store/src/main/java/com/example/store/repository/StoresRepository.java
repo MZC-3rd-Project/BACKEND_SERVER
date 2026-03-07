@@ -54,6 +54,7 @@ public interface StoresRepository extends JpaRepository<Stores, Long> {
                     ON sp.store.id = s.id
                  LEFT JOIN StoreAddress sa
                     ON sa.store.id = s.id
+                        AND sa.isDefault = true
                         AND sa.deletedAt IS NULL
             WHERE s.id = :storeId
                 AND s.deletedAt is null

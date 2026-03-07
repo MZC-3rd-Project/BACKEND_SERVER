@@ -1,4 +1,4 @@
-package com.example.store.service;
+package com.example.store.service.test;
 
 import com.example.store.dto.response.StoreListResponse;
 import com.example.store.entity.StoreStatus;
@@ -38,12 +38,13 @@ class StoreQueryServiceTest {
 
     private StoreListResponse storeListResponse() {
         return new StoreListResponse(
-            1L,
-            "테스트 가게",
-            StoreStatus.ACTIVE,
-            "맛있는 음식점입니다.",
-            "서울시 강남구 테헤란로 1길",
-            "010-1234-5678"
+            1L,                          // id
+            2L,                          // userId
+            "테스트 가게",                // storeName
+            StoreStatus.ACTIVE,          // status
+            "맛있는 음식점입니다.",        // description
+            "010-1234-5678",             // contactValue
+            "서울시 강남구 테헤란로 1길"  // address
         );
     }
 
@@ -72,6 +73,8 @@ class StoreQueryServiceTest {
             assertThat(result.getContent()).hasSize(1);
             assertThat(result.getContent().get(0).storeName()).isEqualTo("테스트 가게");
             assertThat(result.getContent().get(0).status()).isEqualTo(StoreStatus.ACTIVE);
+            assertThat(result.getContent().get(0).contactValue()).isEqualTo("010-1234-5678");
+            assertThat(result.getContent().get(0).address()).isEqualTo("서울시 강남구 테헤란로 1길");
 
             then(storesRepository).should(times(1)).findStoreList(pageable);
         }
@@ -102,11 +105,11 @@ class StoreQueryServiceTest {
         @DisplayName("페이지 정보 검증 - page, size가 결과에 올바르게 반영된다")
         void success_page_metadata_is_correct() {
             // given
-            Pageable pageable = PageRequest.of(1, 5);   // 2번째 페이지, size=5
+            Pageable pageable = PageRequest.of(1, 5);
             List<StoreListResponse> content = List.of(
                 storeListResponse(), storeListResponse()
             );
-            Page<StoreListResponse> page = new PageImpl<>(content, pageable, 12L); // 전체 12건
+            Page<StoreListResponse> page = new PageImpl<>(content, pageable, 12L);
 
             given(storesRepository.findStoreList(pageable)).willReturn(page);
 
@@ -114,15 +117,15 @@ class StoreQueryServiceTest {
             Page<StoreListResponse> result = storeQueryService.getStoreListInfo(pageable);
 
             // then
-            assertThat(result.getNumber()).isEqualTo(1);        // 현재 페이지
-            assertThat(result.getSize()).isEqualTo(5);          // 페이지 크기
+            assertThat(result.getNumber()).isEqualTo(1);         // 현재 페이지
+            assertThat(result.getSize()).isEqualTo(5);           // 페이지 크기
             assertThat(result.getTotalElements()).isEqualTo(12); // 전체 건수
-            assertThat(result.getTotalPages()).isEqualTo(3);    // 전체 페이지 수 (12 / 5 = 3)
+            assertThat(result.getTotalPages()).isEqualTo(3);     // ceil(12/5) = 3
         }
 
         @Test
-        @DisplayName("Repository 호출 횟수 검증 - 정확히 1번만 호출된다")
-        void repository_called_exactly_once() {
+        @DisplayName("Repository 호출 횟수 검증 - 서비스 호출 횟수만큼 repository도 호출된다")
+        void repository_called_same_times_as_service() {
             // given
             Pageable pageable = PageRequest.of(0, 20);
             given(storesRepository.findStoreList(pageable))
@@ -132,7 +135,7 @@ class StoreQueryServiceTest {
             storeQueryService.getStoreListInfo(pageable);
             storeQueryService.getStoreListInfo(pageable);
 
-            // then - 2번 호출 시 repository도 2번 호출되는지 확인
+            // then
             then(storesRepository).should(times(2)).findStoreList(pageable);
         }
     }
