@@ -10,12 +10,12 @@ import org.springframework.http.HttpStatus;
 public enum StoreErrorCode implements DomainErrorCode {
 
     // Merchant
-    MERCHANT_NOT_FOUND("STORE-001", "가게를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
-    MERCHANT_ALREADY_EXISTS("STORE-002", "이미 등록된 가게입니다", HttpStatus.CONFLICT),
-    MERCHANT_SUSPENDED("STORE-003", "정지된 가게입니다", HttpStatus.FORBIDDEN),
-    MERCHANT_INACTIVE("STORE-004", "비활성화된 가게입니다", HttpStatus.FORBIDDEN),
-    MERCHANT_USER_ALREADY_REGISTERED("STORE-005", "해당 유저는 이미 가게를 보유하고 있습니다", HttpStatus.CONFLICT),
-    INVALID_MERCHANT_STATUS("STORE-006", "유효하지 않은 가게 상태입니다", HttpStatus.BAD_REQUEST),
+    STORE_NOT_FOUND("STORE-001", "가게를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
+    STORE_ALREADY_EXISTS("STORE-002", "이미 등록된 가게입니다", HttpStatus.CONFLICT),
+    STORE_SUSPENDED("STORE-003", "정지된 가게입니다", HttpStatus.FORBIDDEN),
+    STORE_INACTIVE("STORE-004", "비활성화된 가게입니다", HttpStatus.FORBIDDEN),
+    STORE_USER_ALREADY_REGISTERED("STORE-005", "해당 유저는 이미 가게를 보유하고 있습니다", HttpStatus.CONFLICT),
+    INVALID_STORE_STATUS("STORE-006", "유효하지 않은 가게 상태입니다", HttpStatus.BAD_REQUEST),
 
     // Address
     ADDRESS_NOT_FOUND("STORE-101", "주소를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
