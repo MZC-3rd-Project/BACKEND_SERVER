@@ -4,7 +4,9 @@ import com.example.core.exception.BusinessException;
 import com.example.core.exception.CommonErrorCode;
 import com.example.core.exception.ErrorCode;
 import com.example.core.exception.TechnicalException;
+import com.example.store.dto.response.StoreDetailResponse;
 import com.example.store.dto.response.StoreListResponse;
+import com.example.store.exception.StoreErrorCode;
 import com.example.store.repository.StoresRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +35,12 @@ public class StoreQueryService {
         } catch (TechnicalException e){
             throw new TechnicalException(CommonErrorCode.INTERNAL_ERROR);
         }
+    }
+
+    public StoreDetailResponse getStoreDetail(Long storeId){
+        return storesRepository.findByStoreId(storeId)
+            .map(StoreDetailResponse::of)
+            .orElseThrow(() -> new BusinessException(STORE_NOT_FOUND));
     }
 
 

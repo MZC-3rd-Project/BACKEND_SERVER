@@ -2,9 +2,8 @@ package com.example.store.dto.response;
 
 import com.example.store.entity.StoreStatus;
 
-import java.util.List;
-
 public record StoreListResponse(
+    Long id,
     Long userId,
     String storeName,
     StoreStatus status,

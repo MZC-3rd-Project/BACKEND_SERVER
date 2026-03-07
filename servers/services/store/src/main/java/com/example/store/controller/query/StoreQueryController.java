@@ -2,11 +2,13 @@ package com.example.store.controller.query;
 
 import com.example.api.response.ApiResponse;
 import com.example.store.controller.api.query.StoreQueryApi;
+import com.example.store.dto.response.StoreDetailResponse;
 import com.example.store.dto.response.StoreListResponse;
 import com.example.store.service.query.StoreQueryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,8 +34,8 @@ public class StoreQueryController implements StoreQueryApi {
     }
 
     @Override
-    public ApiResponse<?> getStoreQueryDetail(Long storeId) {
-        return null;
+    public ApiResponse<StoreDetailResponse> getStoreQueryDetail(@PathVariable Long storeId) {
+        return ApiResponse.success(storeQueryService.getStoreDetail(storeId));
     }
 
 
