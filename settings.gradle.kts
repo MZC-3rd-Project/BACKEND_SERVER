@@ -31,6 +31,7 @@ include(":libs:config:shedlock")
 
 // 이벤트 모듈
 include(":libs:event:domain")
+include(":libs:event:consumer")
 include(":libs:event:outbox")
 include(":libs:event:inbox")
 

@@ -1,46 +1,31 @@
 package com.example.chat.consumer;
 
-import com.example.chat.service.command.ChatFundingSyncService;
-import com.example.config.kafka.IdempotentConsumerService;
-import com.example.core.util.JsonUtils;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import com.example.event.consumer.ConsumerRoutingMode;
+import com.example.event.consumer.RoutedEventConsumer;
+import com.example.event.inbox.AbstractProcessorRoutingConsumer;
+import com.example.event.inbox.InboxRoutingSupport;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-@Slf4j
 @Component
-@RequiredArgsConstructor
-public class FundingEventConsumer {
+@RoutedEventConsumer(
+        consumerName = ChatFundingEventProcessor.CONSUMER_NAME,
+        defaultMode = ConsumerRoutingMode.INBOX
+)
+public class FundingEventConsumer extends AbstractProcessorRoutingConsumer {
 
-    private final ChatFundingSyncService chatFundingSyncService;
-    private final IdempotentConsumerService idempotentConsumerService;
+    public FundingEventConsumer(
+            InboxRoutingSupport inboxRoutingSupport,
+            ChatFundingEventProcessor chatFundingEventProcessor
+    ) {
+        super(inboxRoutingSupport, chatFundingEventProcessor);
+    }
 
     @KafkaListener(topics = "funding-events", groupId = "${spring.kafka.consumer.group-id}")
     @Transactional
-    public void consume(String message) {
-        try {
-            FundingEventMessage event = JsonUtils.fromJson(message, FundingEventMessage.class);
-
-            if (event.getEventId() == null || event.getEventType() == null) {
-                log.error("[ChatFundingConsumer] eventId/eventType is null. message={}", message);
-                return;
-            }
-
-            idempotentConsumerService.executeIdempotent(event.getEventId(), "FUNDING_EVENT", () -> {
-                switch (event.getEventType()) {
-                    case "FUNDING_CREATED" -> chatFundingSyncService.syncFundingCreated(event);
-                    case "FUNDING_PARTICIPATED" -> chatFundingSyncService.syncFundingParticipated(event);
-                    case "FUNDING_REFUNDED" -> chatFundingSyncService.syncFundingRefunded(event);
-                    case "FUNDING_SUCCEEDED", "FUNDING_FAILED" -> chatFundingSyncService.syncFundingClosed(event);
-                    default -> log.debug("Ignore funding event type: {}", event.getEventType());
-                }
-                return null;
-            });
-        } catch (Exception e) {
-            log.error("[ChatFundingConsumer] failed to process funding event. message={}", message, e);
-            throw e;
-        }
+    public void consume(ConsumerRecord<String, Object> record) {
+        consumeRecord(record);
     }
 }

@@ -22,6 +22,7 @@ dependencies {
     implementation(project(":libs:config:resilience"))
 
     // Event
+    implementation(project(":libs:event:consumer"))
     implementation(project(":libs:event:domain"))
     implementation(project(":libs:event:outbox"))
     implementation(project(":libs:event:inbox"))

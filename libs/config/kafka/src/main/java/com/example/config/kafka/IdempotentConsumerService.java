@@ -2,7 +2,6 @@ package com.example.config.kafka;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
@@ -46,23 +45,26 @@ public class IdempotentConsumerService {
             }
         }
 
-        try {
-            processedEventRepository.save(ProcessedEvent.create(eventId, eventType));
-            processedEventRepository.flush();
+        int inserted = processedEventRepository.insertProcessingIgnoreDuplicate(
+                eventId,
+                eventType,
+                ProcessedEvent.ProcessingStatus.PROCESSING.name()
+        );
+        if (inserted > 0) {
             return true;
-        } catch (DataIntegrityViolationException e) {
-            int updated = processedEventRepository.updateStatusIfCurrent(
-                    eventId,
-                    ProcessedEvent.ProcessingStatus.FAILED,
-                    ProcessedEvent.ProcessingStatus.PROCESSING
-            );
-            if (updated > 0) {
-                log.info("Retrying previously failed event after duplicate insert race: {}", eventId);
-                return true;
-            }
-            log.debug("Concurrent duplicate event detected: {}", eventId);
-            return false;
         }
+
+        int updated = processedEventRepository.updateStatusIfCurrent(
+                eventId,
+                ProcessedEvent.ProcessingStatus.FAILED,
+                ProcessedEvent.ProcessingStatus.PROCESSING
+        );
+        if (updated > 0) {
+            log.info("Retrying previously failed event after duplicate insert race: {}", eventId);
+            return true;
+        }
+        log.debug("Concurrent duplicate event detected: {}", eventId);
+        return false;
     }
 
     @Transactional

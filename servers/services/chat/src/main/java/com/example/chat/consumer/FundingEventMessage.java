@@ -1,11 +1,12 @@
 package com.example.chat.consumer;
 
+import com.example.event.consumer.EventEnvelope;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
-public class FundingEventMessage {
+public class FundingEventMessage implements EventEnvelope {
 
     private String eventId;
     private String eventType;

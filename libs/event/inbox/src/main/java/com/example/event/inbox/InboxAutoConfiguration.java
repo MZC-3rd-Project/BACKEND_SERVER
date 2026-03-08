@@ -1,8 +1,12 @@
 package com.example.event.inbox;
 
+import com.example.event.consumer.EventConsumerAutoConfiguration;
+import com.example.event.consumer.EventMessageProcessor;
+import com.example.event.consumer.EventConsumerRoutingResolver;
 import jakarta.persistence.EntityManagerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.AutoConfigureAfter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -17,6 +21,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.util.List;
 
 @AutoConfiguration
+@AutoConfigureAfter(EventConsumerAutoConfiguration.class)
 @ConditionalOnClass(EntityManagerFactory.class)
 @ConditionalOnProperty(prefix = "app.inbox", name = "enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(InboxProperties.class)
@@ -26,9 +31,13 @@ public class InboxAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    public InboxHandlerRegistry inboxHandlerRegistry(ObjectProvider<List<InboxEventHandler>> handlerProvider) {
+    public InboxHandlerRegistry inboxHandlerRegistry(
+            ObjectProvider<List<InboxEventHandler>> handlerProvider,
+            ObjectProvider<List<EventMessageProcessor>> processorProvider
+    ) {
         List<InboxEventHandler> handlers = handlerProvider.getIfAvailable(List::of);
-        return new InboxHandlerRegistry(handlers);
+        List<EventMessageProcessor> processors = processorProvider.getIfAvailable(List::of);
+        return new InboxHandlerRegistry(InboxHandlerAdapters.merge(handlers, processors));
     }
 
     @Bean
@@ -74,9 +83,18 @@ public class InboxAutoConfiguration {
     @ConditionalOnMissingBean
     public InboxEnqueueService inboxEnqueueService(
             InboxRepository inboxRepository,
-            InboxSignalPublisher inboxSignalPublisher,
+            ObjectProvider<InboxSignalPublisher> inboxSignalPublisherProvider,
             InboxProperties inboxProperties
     ) {
-        return new InboxEnqueueService(inboxRepository, inboxSignalPublisher, inboxProperties);
+        return new InboxEnqueueService(inboxRepository, inboxSignalPublisherProvider, inboxProperties);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public InboxRoutingSupport inboxRoutingSupport(
+            InboxEnqueueService inboxEnqueueService,
+            EventConsumerRoutingResolver eventConsumerRoutingResolver
+    ) {
+        return new InboxRoutingSupport(inboxEnqueueService, eventConsumerRoutingResolver);
     }
 }

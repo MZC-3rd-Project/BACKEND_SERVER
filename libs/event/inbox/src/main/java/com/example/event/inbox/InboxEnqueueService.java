@@ -2,26 +2,20 @@ package com.example.event.inbox;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
-import java.sql.SQLException;
-import java.util.Locale;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class InboxEnqueueService {
 
-    private static final String DUPLICATE_EVENT_CONSTRAINT = "uk_inbox_consumer_event";
-    private static final String UNIQUE_VIOLATION_SQL_STATE = "23505";
-
     private final InboxRepository inboxRepository;
-    private final InboxSignalPublisher inboxSignalPublisher;
+    private final ObjectProvider<InboxSignalPublisher> inboxSignalPublisherProvider;
     private final InboxProperties inboxProperties;
 
     @Transactional
@@ -33,15 +27,17 @@ public class InboxEnqueueService {
             return false;
         }
 
-        try {
-            inboxRepository.save(InboxMessage.createPending(consumerName, eventId, eventType, payload));
-        } catch (DataIntegrityViolationException e) {
-            if (isDuplicateEvent(e)) {
-                log.debug("[InboxEnqueue] duplicate ignored. consumerName={}, eventId={}, eventType={}",
-                        consumerName, eventId, eventType);
-                return false;
-            }
-            throw e;
+        int inserted = inboxRepository.insertPendingIgnoreDuplicate(
+                consumerName,
+                eventId,
+                eventType,
+                payload,
+                InboxStatus.PENDING.name()
+        );
+        if (inserted == 0) {
+            log.debug("[InboxEnqueue] duplicate ignored. consumerName={}, eventId={}, eventType={}",
+                    consumerName, eventId, eventType);
+            return false;
         }
 
         triggerAfterCommit(consumerName);
@@ -57,29 +53,20 @@ public class InboxEnqueueService {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                 @Override
                 public void afterCommit() {
-                    inboxSignalPublisher.signal(consumerName);
+                    signalNow(consumerName);
                 }
             });
             return;
         }
 
-        inboxSignalPublisher.signal(consumerName);
+        signalNow(consumerName);
     }
 
-    private boolean isDuplicateEvent(DataIntegrityViolationException exception) {
-        Throwable current = exception;
-        while (current != null) {
-            String message = current.getMessage();
-            if (message != null && message.toLowerCase(Locale.ROOT).contains(DUPLICATE_EVENT_CONSTRAINT)) {
-                return true;
-            }
-
-            if (current instanceof SQLException sqlException
-                    && UNIQUE_VIOLATION_SQL_STATE.equals(sqlException.getSQLState())) {
-                return true;
-            }
-            current = current.getCause();
+    private void signalNow(String consumerName) {
+        InboxSignalPublisher inboxSignalPublisher = inboxSignalPublisherProvider.getIfAvailable();
+        if (inboxSignalPublisher == null) {
+            return;
         }
-        return false;
+        inboxSignalPublisher.signal(consumerName);
     }
 }

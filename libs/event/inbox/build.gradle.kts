@@ -14,6 +14,7 @@ tasks.jar {
 
 dependencies {
     api(project(":libs:event:domain"))
+    implementation(project(":libs:event:consumer"))
     api(project(":libs:data:entity"))
 
     api("org.springframework.boot:spring-boot-starter-data-jpa")

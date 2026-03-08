@@ -1,6 +1,6 @@
 package com.example.search.service.index;
 
-import com.example.search.consumer.ItemEventMessage;
+import com.example.search.consumer.item.ItemEventMessage;
 import com.example.search.dto.index.response.IndexingFailureRetryResponse;
 import com.example.search.entity.SearchIndexingFailure;
 import com.example.search.entity.SearchIndexingFailureStatus;

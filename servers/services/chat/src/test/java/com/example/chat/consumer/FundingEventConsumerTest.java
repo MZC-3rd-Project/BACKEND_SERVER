@@ -1,93 +1,115 @@
 package com.example.chat.consumer;
 
-import com.example.chat.service.command.ChatFundingSyncService;
-import com.example.config.kafka.IdempotentConsumerService;
+import com.example.event.consumer.ConsumerRoutingMode;
+import com.example.event.consumer.EventConsumerRoutingProperties;
+import com.example.event.consumer.EventConsumerRoutingResolver;
+import com.example.event.inbox.InboxEnqueueService;
+import com.example.event.inbox.InboxRoutingSupport;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Optional;
-import java.util.function.Supplier;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class FundingEventConsumerTest {
 
     @Mock
-    private ChatFundingSyncService chatFundingSyncService;
+    private InboxEnqueueService inboxEnqueueService;
 
     @Mock
-    private IdempotentConsumerService idempotentConsumerService;
+    private ChatFundingEventProcessor chatFundingEventProcessor;
 
-    @InjectMocks
+    private EventConsumerRoutingProperties routingProperties;
     private FundingEventConsumer fundingEventConsumer;
 
-    @Test
-    void consume_routesFundingCreatedToSyncService() {
-        stubIdempotentExecution();
-
-        String message = """
-                {
-                  "eventId": "evt-funding-1",
-                  "eventType": "FUNDING_CREATED",
-                  "campaignId": 100,
-                  "itemId": 200,
-                  "sellerId": 300
-                }
-                """;
-
-        fundingEventConsumer.consume(message);
-
-        verify(chatFundingSyncService).syncFundingCreated(any(FundingEventMessage.class));
+    @BeforeEach
+    void setUp() {
+        routingProperties = new EventConsumerRoutingProperties();
+        fundingEventConsumer = new FundingEventConsumer(
+                new InboxRoutingSupport(inboxEnqueueService, new EventConsumerRoutingResolver(routingProperties)),
+                chatFundingEventProcessor
+        );
     }
 
     @Test
-    void consume_routesFundingClosedEventsToReadOnlySync() {
-        stubIdempotentExecution();
-
+    void consume_directMode_dispatchesToProcessor() {
+        configureDirectMode();
         String message = """
-                {
-                  "eventId": "evt-funding-2",
-                  "eventType": "FUNDING_FAILED",
-                  "campaignId": 100,
-                  "itemId": 200,
-                  "sellerId": 300
-                }
+                {"eventId":"evt-1","eventType":"FUNDING_CREATED","campaignId":100,"itemId":200,"sellerId":300}
                 """;
+        when(chatFundingEventProcessor.supports("FUNDING_CREATED")).thenReturn(true);
 
-        fundingEventConsumer.consume(message);
+        fundingEventConsumer.consume(recordOf(message));
 
-        verify(chatFundingSyncService).syncFundingClosed(any(FundingEventMessage.class));
+        verify(chatFundingEventProcessor).process(message, "evt-1", "FUNDING_CREATED");
+        verifyNoInteractions(inboxEnqueueService);
     }
 
     @Test
-    void consume_ignoresInvalidEvent() {
+    void consume_inboxMode_enqueuesMessage() {
         String message = """
-                {
-                  "eventType": "FUNDING_CREATED",
-                  "campaignId": 100
-                }
+                {"eventId":"evt-2","eventType":"FUNDING_FAILED","campaignId":100,"itemId":200,"sellerId":300}
                 """;
+        when(chatFundingEventProcessor.supports("FUNDING_FAILED")).thenReturn(true);
+        when(inboxEnqueueService.enqueue(
+                ChatFundingEventProcessor.CONSUMER_NAME,
+                "evt-2",
+                "FUNDING_FAILED",
+                message
+        )).thenReturn(true);
 
-        fundingEventConsumer.consume(message);
+        fundingEventConsumer.consume(recordOf(message));
 
-        verify(idempotentConsumerService, never()).executeIdempotent(anyString(), anyString(), any());
-        verify(chatFundingSyncService, never()).syncFundingCreated(any(FundingEventMessage.class));
+        verify(inboxEnqueueService).enqueue(
+                ChatFundingEventProcessor.CONSUMER_NAME,
+                "evt-2",
+                "FUNDING_FAILED",
+                message
+        );
+        verify(chatFundingEventProcessor, never()).process(message, "evt-2", "FUNDING_FAILED");
     }
 
-    private void stubIdempotentExecution() {
-        when(idempotentConsumerService.executeIdempotent(anyString(), anyString(), any()))
-                .thenAnswer(invocation -> {
-                    @SuppressWarnings("unchecked")
-                    Supplier<Object> supplier = invocation.getArgument(2);
-                    return Optional.ofNullable(supplier.get());
-                });
+    @Test
+    void consume_skipsInvalidEnvelope() {
+        String message = """
+                {"eventType":"FUNDING_CREATED","campaignId":100}
+                """;
+
+        fundingEventConsumer.consume(recordOf(message));
+
+        verifyNoInteractions(chatFundingEventProcessor);
+        verifyNoInteractions(inboxEnqueueService);
+    }
+
+    @Test
+    void consume_skipsUnsupportedType() {
+        configureDirectMode();
+        String message = """
+                {"eventId":"evt-3","eventType":"FUNDING_UNKNOWN","campaignId":100}
+                """;
+        when(chatFundingEventProcessor.supports("FUNDING_UNKNOWN")).thenReturn(false);
+
+        fundingEventConsumer.consume(recordOf(message));
+
+        verify(chatFundingEventProcessor).supports("FUNDING_UNKNOWN");
+        verify(chatFundingEventProcessor, never()).process(message, "evt-3", "FUNDING_UNKNOWN");
+        verifyNoInteractions(inboxEnqueueService);
+    }
+
+    private ConsumerRecord<String, Object> recordOf(Object value) {
+        return new ConsumerRecord<>("funding-events", 0, 0L, null, value);
+    }
+
+    private void configureDirectMode() {
+        EventConsumerRoutingProperties.RoutingProperties routing = new EventConsumerRoutingProperties.RoutingProperties();
+        routing.setMode(ConsumerRoutingMode.DIRECT);
+        routingProperties.getRouting().put(ChatFundingEventProcessor.CONSUMER_NAME, routing);
     }
 }
