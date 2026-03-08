@@ -1,8 +1,8 @@
 package com.example.analyticsdashboard.service.ingest;
 
-import com.example.analyticsdashboard.consumer.AnalyticsItemEventMessage;
-import com.example.analyticsdashboard.consumer.AnalyticsSalesEventMessage;
-import com.example.analyticsdashboard.consumer.AnalyticsSearchEventMessage;
+import com.example.analyticsdashboard.consumer.item.AnalyticsItemEventMessage;
+import com.example.analyticsdashboard.consumer.sales.AnalyticsSalesEventMessage;
+import com.example.analyticsdashboard.consumer.search.AnalyticsSearchEventMessage;
 import com.example.analyticsdashboard.entity.AnalyticsDimItemSnapshot;
 import com.example.analyticsdashboard.entity.AnalyticsRawSalesEvent;
 import com.example.analyticsdashboard.entity.AnalyticsRawSearchEvent;
