@@ -33,12 +33,12 @@ public class StoreAddress extends BaseEntity {
     @Column(name = "is_default", nullable = false)
     private Boolean isDefault = false;
 
-    public static StoreAddress create(Stores store, AddressType addressType, String address, boolean isDefault) {
-        StoreAddress sa = new StoreAddress();
-        sa.store = store;
-        sa.addressType = addressType;
-        sa.address = address;
-        sa.isDefault = isDefault;
-        return sa;
+    public static StoreAddress of(Stores store, AddressType addressType, String address) {
+        return StoreAddress.builder()
+            .store(store)
+            .addressType(addressType)
+            .address(address)
+            .isDefault(true)
+            .build();
     }
 }

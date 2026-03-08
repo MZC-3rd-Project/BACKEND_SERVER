@@ -34,13 +34,13 @@ public class StoreContact extends BaseEntity {
     private Boolean isPrimary = false;
 
 
-    public static StoreContact create(Stores store, ContactType contactType, String contactValue, boolean isPrimary) {
-        StoreContact sc = new StoreContact();
-        sc.store = store;
-        sc.contactType = contactType;
-        sc.contactValue = contactValue;
-        sc.isPrimary = isPrimary;
-        return sc;
+    public static StoreContact of(Stores store, ContactType contactType, String contactValue, boolean isPrimary) {
+        return  StoreContact.builder()
+            .store(store)
+            .contactType(contactType)
+            .contactValue(contactValue)
+            .isPrimary(isPrimary)
+            .build();
     }
 
 }

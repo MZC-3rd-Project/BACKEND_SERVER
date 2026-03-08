@@ -4,6 +4,7 @@ package com.example.store.entity;
 import com.example.core.id.jpa.SnowflakeGenerated;
 import jakarta.persistence.*;
 import lombok.*;
+import org.apache.catalina.Store;
 import org.hibernate.annotations.SQLRestriction;
 
 @SQLRestriction("deleted_at IS NULL")
@@ -26,18 +27,18 @@ public class StoreImage {
     @Column(name = "image_type", nullable = false, length = 30)
     private ImageType imageType;
 
-    @Column(name = "media_id", nullable = false, length = 500)
+    @Column(name = "media_id", nullable = true)
     private String mediaId;
 
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder = 0;
 
-    public static StoreImage create(Stores store, ImageType imageType, String mediaId, int sortOrder) {
-        StoreImage si = new StoreImage();
-        si.store = store;
-        si.imageType = imageType;
-        si.mediaId = mediaId;
-        si.sortOrder = sortOrder;
-        return si;
+    public static StoreImage of(Stores store, ImageType imageType, String mediaId, int sortOrder) {
+       return StoreImage.builder()
+           .store(store)
+           .mediaId(mediaId)
+           .imageType(imageType)
+           .sortOrder(sortOrder)
+           .build();
     }
 }

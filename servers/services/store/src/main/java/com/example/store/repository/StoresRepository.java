@@ -61,4 +61,8 @@ public interface StoresRepository extends JpaRepository<Stores, Long> {
     """)
     Optional<StoreDetailResponse> findByStoreId(@Param("storeId") Long storeId);//storeId = id(pk)
 
+    boolean existsByUserIdAndDeletedAtIsNull(Long userId);
+
+    Optional<Stores> findByIdAndDeletedAtIsNull(Long storeId);
+
 }

@@ -25,11 +25,11 @@ public class StoreProfile extends BaseEntity {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    public static StoreProfile create(Stores store, String description) {
-        StoreProfile sp = new StoreProfile();
-        sp.store = store;
-        sp.description = description;
-        return sp;
+    public static StoreProfile of(Stores store, String description) {
+        return StoreProfile.builder()
+            .store(store)
+            .description(description)
+            .build();
     }
 
     public void updateDescription(String description) {

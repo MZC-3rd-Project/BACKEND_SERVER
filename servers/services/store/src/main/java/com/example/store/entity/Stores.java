@@ -14,6 +14,7 @@ import org.hibernate.annotations.SQLRestriction;
 @Builder
 @AllArgsConstructor
 public class Stores extends BaseEntity {
+
     @Id
     @SnowflakeGenerated
     private Long id;
@@ -27,12 +28,12 @@ public class Stores extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private StoreStatus status;
 
-    public static Stores create(Long userId, String storeName) {
-        Stores store = new Stores();
-        store.userId = userId;
-        store.storeName = storeName;
-        store.status = StoreStatus.INACTIVE;
-        return store;
+    public static Stores of(Long userId, String storeName) {
+        return Stores.builder()
+            .userId(userId)
+            .storeName(storeName)
+            .status(StoreStatus.ACTIVE)
+            .build();
     }
 
 }
