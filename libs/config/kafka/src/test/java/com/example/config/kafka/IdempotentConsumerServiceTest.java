@@ -5,14 +5,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,12 +25,20 @@ class IdempotentConsumerServiceTest {
     @Test
     void markAsProcessing_createsNewRecordWhenEventIsFirstSeen() {
         when(processedEventRepository.findByEventId("evt-1")).thenReturn(Optional.empty());
+        when(processedEventRepository.insertProcessingIgnoreDuplicate(
+                "evt-1",
+                "PAYMENT_EVENT",
+                "PROCESSING"
+        )).thenReturn(1);
 
         boolean result = service.markAsProcessing("evt-1", "PAYMENT_EVENT");
 
         assertTrue(result);
-        verify(processedEventRepository).save(any(ProcessedEvent.class));
-        verify(processedEventRepository).flush();
+        verify(processedEventRepository).insertProcessingIgnoreDuplicate(
+                "evt-1",
+                "PAYMENT_EVENT",
+                "PROCESSING"
+        );
     }
 
     @Test
@@ -66,8 +71,11 @@ class IdempotentConsumerServiceTest {
     @Test
     void markAsProcessing_retriesFailedEventAfterInsertRace() {
         when(processedEventRepository.findByEventId("evt-1")).thenReturn(Optional.empty());
-        doThrow(new DataIntegrityViolationException("duplicate key"))
-                .when(processedEventRepository).save(any(ProcessedEvent.class));
+        when(processedEventRepository.insertProcessingIgnoreDuplicate(
+                "evt-1",
+                "PAYMENT_EVENT",
+                "PROCESSING"
+        )).thenReturn(0);
         when(processedEventRepository.updateStatusIfCurrent(
                 "evt-1",
                 ProcessedEvent.ProcessingStatus.FAILED,

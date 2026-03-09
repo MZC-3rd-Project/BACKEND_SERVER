@@ -2,10 +2,10 @@ package com.example.search.service.index;
 
 import com.example.core.exception.BusinessException;
 import com.example.core.util.JsonUtils;
-import com.example.search.consumer.FundingEventMessage;
-import com.example.search.consumer.HotDealEventMessage;
-import com.example.search.consumer.ItemEventMessage;
-import com.example.search.consumer.StockEventMessage;
+import com.example.search.consumer.funding.FundingEventMessage;
+import com.example.search.consumer.hotdeal.HotDealEventMessage;
+import com.example.search.consumer.item.ItemEventMessage;
+import com.example.search.consumer.stock.StockEventMessage;
 import com.example.search.dto.index.response.IndexingFailureRetryResponse;
 import com.example.search.entity.SearchIndexingFailure;
 import com.example.search.entity.SearchIndexingFailureStatus;

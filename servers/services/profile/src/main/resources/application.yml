@@ -77,10 +77,11 @@ app:
       max-retry-delay-seconds: ${APP_INBOX_WORKER_MAX_RETRY_DELAY_SECONDS:300}
       stale-recovery-batch-size: ${APP_INBOX_WORKER_STALE_RECOVERY_BATCH_SIZE:100}
       max-drain-loops: ${APP_INBOX_WORKER_MAX_DRAIN_LOOPS:10}
-
-profile:
-  user-events:
-    routing-mode: ${PROFILE_USER_EVENTS_ROUTING_MODE:INBOX}
+  event:
+    consumer:
+      routing:
+        profile-user-events-consumer:
+          mode: ${PROFILE_USER_EVENTS_ROUTING_MODE:INBOX}
 # ─── Actuator ─────────────────────────────────
 management:
   endpoints:

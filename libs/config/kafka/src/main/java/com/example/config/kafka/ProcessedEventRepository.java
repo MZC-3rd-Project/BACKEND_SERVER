@@ -13,6 +13,28 @@ public interface ProcessedEventRepository extends JpaRepository<ProcessedEvent, 
 
     boolean existsByEventId(String eventId);
 
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            INSERT INTO processed_events (
+                event_id,
+                event_type,
+                status,
+                processed_at,
+                error_message
+            )
+            VALUES (
+                :eventId,
+                :eventType,
+                :status,
+                NULL,
+                NULL
+            )
+            ON CONFLICT (event_id) DO NOTHING
+            """, nativeQuery = true)
+    int insertProcessingIgnoreDuplicate(@Param("eventId") String eventId,
+                                        @Param("eventType") String eventType,
+                                        @Param("status") String status);
+
     @Modifying
     @Query("UPDATE ProcessedEvent p SET p.status = :newStatus, p.errorMessage = null, p.processedAt = null " +
             "WHERE p.eventId = :eventId AND p.status = :currentStatus")
