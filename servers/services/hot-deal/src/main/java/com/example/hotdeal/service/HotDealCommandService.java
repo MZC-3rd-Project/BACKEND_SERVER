@@ -53,6 +53,7 @@ public class HotDealCommandService {
     private static final String QUEUE_KEY_PREFIX = "hotdeal:queue:";
     private static final String TOKEN_KEY_PREFIX = "hotdeal:token:";
     private static final String ADMITTED_KEY_PREFIX = "hotdeal:admitted:";
+    private static final String ADMITTED_SLOT_KEY_PREFIX = "hotdeal:admitted:slots:";
     private static final String PURCHASED_KEY_PREFIX = "hotdeal:purchased:";
     private static final String RESERVATION_KEY_PREFIX = "hotdeal:reservation:";
     private static final String DETAIL_CACHE_KEY_PREFIX = "hotdeal:detail:";
@@ -183,6 +184,7 @@ public class HotDealCommandService {
         stringRedisTemplate.delete(STOCK_KEY_PREFIX + hotDealId);
         stringRedisTemplate.delete(MAX_PER_USER_KEY_PREFIX + hotDealId);
         stringRedisTemplate.delete(QUEUE_KEY_PREFIX + hotDealId);
+        stringRedisTemplate.delete(ADMITTED_SLOT_KEY_PREFIX + hotDealId);
         deleteKeysByPattern(ADMITTED_KEY_PREFIX + hotDealId + ":*");
         deleteKeysByPattern(TOKEN_KEY_PREFIX + hotDealId + ":*");
         deleteKeysByPattern(PURCHASED_KEY_PREFIX + hotDealId + ":*");

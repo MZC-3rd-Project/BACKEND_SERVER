@@ -17,6 +17,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -167,6 +169,7 @@ public class HotDealPurchaseService {
             );
 
             stringRedisTemplate.delete(DETAIL_CACHE_KEY_PREFIX + hotDealId);
+            releaseAdmissionSlotAfterCommit(hotDealId, userId, purchasedKey, maxPerUser);
 
             log.info("Hot deal purchased: hotDealId={}, userId={}, quantity={}", hotDealId, userId, request.getQuantity());
 
@@ -191,6 +194,46 @@ public class HotDealPurchaseService {
         } catch (Exception e) {
             // 보상 실패는 운영자가 추적할 수 있도록 별도 로그를 남긴다.
             log.error("Failed to compensate hot-deal reservation: reservationKey={}", reservationKey, e);
+        }
+    }
+
+    private void releaseAdmissionSlotAfterCommit(Long hotDealId, Long userId, String purchasedKey, int maxPerUser) {
+        Runnable action = () -> {
+            String purchasedValue = stringRedisTemplate.opsForValue().get(purchasedKey);
+            if (!hasReachedMaxPerUser(purchasedValue, maxPerUser)) {
+                return;
+            }
+
+            try {
+                queueService.releaseAdmissionSlot(hotDealId, userId);
+            } catch (Exception e) {
+                log.warn("Failed to release queue admission slot: hotDealId={}, userId={}", hotDealId, userId, e);
+            }
+        };
+
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    action.run();
+                }
+            });
+            return;
+        }
+
+        action.run();
+    }
+
+    private boolean hasReachedMaxPerUser(String purchasedValue, int maxPerUser) {
+        if (purchasedValue == null) {
+            return false;
+        }
+
+        try {
+            return Integer.parseInt(purchasedValue) >= maxPerUser;
+        } catch (NumberFormatException e) {
+            log.warn("Failed to parse purchased quantity for slot release. purchasedValue={}", purchasedValue);
+            return false;
         }
     }
 }
