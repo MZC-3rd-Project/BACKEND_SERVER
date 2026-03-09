@@ -4,14 +4,21 @@ import com.example.core.exception.BusinessException;
 import com.example.core.exception.CommonErrorCode;
 import com.example.core.exception.TechnicalException;
 import com.example.store.dto.request.StoreCreateRequest;
+import com.example.store.dto.request.StoreUpdateRequest;
 import com.example.store.dto.response.StoreCreateResponse;
+import com.example.store.dto.response.StoreUpdateResponse;
 import com.example.store.entity.*;
 import com.example.store.exception.StoreErrorCode;
 import com.example.store.repository.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import javax.xml.validation.Validator;
+import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -127,6 +134,64 @@ public class StoreCommandService {
             log.error("[StoreImage] 저장 실패 - code: {}, message: {}, storeId: {}",
                 CommonErrorCode.INTERNAL_ERROR.getCode(), CommonErrorCode.INTERNAL_ERROR.getMessage(), store.getId(), e);
             throw new TechnicalException(CommonErrorCode.INTERNAL_ERROR);
+        }
+    }
+
+    public StoreUpdateResponse update(Long userId, Long storeId, StoreUpdateRequest request){
+        Stores findStore = storesRepository.findByIdAndDeletedAtIsNull(storeId)
+            .orElseThrow(() -> new BusinessException(StoreErrorCode.STORE_NOT_FOUND));
+
+        validatorOwner(findStore.getUserId(), userId);
+
+        findStore.updateStore(request.storeName(), request.status());
+
+        StoreAddress storeAddress = storeAddressRepository.findByStoreIdAndIsDefaultTrueAndDeletedAtIsNull(storeId)
+            .orElseThrow(() -> new BusinessException(StoreErrorCode.ADDRESS_NOT_FOUND));
+        storeAddress.updateStoreAddress(request.address(), request.addressType());
+
+        storeProfileRepository.findByStoreId(storeId)
+            .ifPresentOrElse(
+                p ->p.updateDescription(request.description()),
+                () -> storeProfileRepository.save(StoreProfile.of(findStore, request.description()))
+            );
+
+        StoreContact storeContact = storeContactRepository.findByStoreIdAndIsPrimaryTrueAndDeletedAtIsNull(storeId)
+            .orElseThrow(() -> new BusinessException(StoreErrorCode.CONTACT_NOT_FOUND));
+        storeContact.updateStoreContact(request.contactValue(), request.contactType());
+        // 이벤트 발행 추가
+        if (request.images() != null) {
+            storeImageRepository.saveAll(
+                Optional.ofNullable(request.images())
+                    .orElse(List.of())
+                    .stream()
+                    .map(img -> StoreImage.of(img.imageType(), img.mediaId(), img.sortOrder()))
+                    .toList()
+            );
+        }
+        List<StoreUpdateResponse.StoreImageResponse> imgList = Optional.ofNullable(request.images())
+            .orElse(List.of())
+            .stream()
+            .map(img -> new StoreUpdateResponse.StoreImageResponse(img.imageType(), img.sortOrder(), img.mediaId()))
+            .toList();
+
+
+        return new StoreUpdateResponse(
+            findStore.getId(),
+            findStore.getUserId(),
+            findStore.getStoreName(),
+            findStore.getStatus(),
+            request.description(),
+            storeAddress.getAddress(),
+            storeAddress.getAddressType(),
+            storeContact.getContactValue(),
+            storeContact.getContactType(),
+            imgList
+        );
+    }
+
+    private void validatorOwner(Long storeId, Long userId){
+        if(!storeId.equals(userId)){
+            throw new BusinessException(StoreErrorCode.STORE_ACCESS_DENIED);
         }
     }
 

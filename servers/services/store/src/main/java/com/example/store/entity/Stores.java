@@ -35,5 +35,11 @@ public class Stores extends BaseEntity {
             .status(StoreStatus.ACTIVE)
             .build();
     }
+    public void updateStore(String storeName, StoreStatus status) {
+        if(storeName != null)this.storeName = storeName;
+        if(status != null) this.status = status;
+    }
+
+
 
 }

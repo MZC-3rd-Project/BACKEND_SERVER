@@ -43,4 +43,9 @@ public class StoreContact extends BaseEntity {
             .build();
     }
 
+    public void updateStoreContact(String contactValue, ContactType contactType) {
+        if (contactValue != null) this.contactValue = contactValue;
+        if (contactType != null)  this.contactType = contactType;
+    }
+
 }

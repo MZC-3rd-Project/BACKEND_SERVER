@@ -41,4 +41,8 @@ public class StoreAddress extends BaseEntity {
             .isDefault(true)
             .build();
     }
+    public void updateStoreAddress(String address, AddressType addressType) {
+        if (address != null)     this.address = address;
+        if (addressType != null) this.addressType = addressType;
+    }
 }

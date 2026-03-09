@@ -2,6 +2,7 @@ package com.example.store.entity;
 
 
 import com.example.core.id.jpa.SnowflakeGenerated;
+import com.example.store.repository.StoreImageRepository;
 import jakarta.persistence.*;
 import lombok.*;
 import org.apache.catalina.Store;
@@ -28,12 +29,12 @@ public class StoreImage {
     private ImageType imageType;
 
     @Column(name = "media_id", nullable = true)
-    private String mediaId;
+    private Long mediaId;
 
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder = 0;
 
-    public static StoreImage of(Stores store, ImageType imageType, String mediaId, int sortOrder) {
+    public static StoreImage of(Stores store, ImageType imageType, Long mediaId, int sortOrder) {
        return StoreImage.builder()
            .store(store)
            .mediaId(mediaId)
@@ -41,4 +42,13 @@ public class StoreImage {
            .sortOrder(sortOrder)
            .build();
     }
+
+    public static StoreImage of(ImageType imageType, Long mediaId, int sortOrder) {
+        return StoreImage.builder()
+            .mediaId(mediaId)
+            .imageType(imageType)
+            .sortOrder(sortOrder)
+            .build();
+    }
+
 }
