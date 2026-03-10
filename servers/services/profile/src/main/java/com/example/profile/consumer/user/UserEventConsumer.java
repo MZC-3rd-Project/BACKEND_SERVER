@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @RoutedEventConsumer(
         consumerName = ProfileUserEventProcessor.CONSUMER_NAME,
-        defaultMode = ConsumerRoutingMode.DIRECT
+        defaultMode = ConsumerRoutingMode.INBOX
 )
 public class UserEventConsumer extends AbstractProcessorRoutingConsumer {
 

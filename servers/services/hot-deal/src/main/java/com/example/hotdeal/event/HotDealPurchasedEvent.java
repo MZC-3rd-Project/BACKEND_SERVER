@@ -10,15 +10,17 @@ import java.util.Map;
 public class HotDealPurchasedEvent extends DomainEvent {
 
     private final Long hotDealId;
+    private final Long orderId;
     private final Long userId;
     private final Long itemId;
     private final Integer quantity;
     private final Long totalAmount;
 
-    public HotDealPurchasedEvent(Long hotDealId, Long userId, Long itemId,
+    public HotDealPurchasedEvent(Long hotDealId, Long orderId, Long userId, Long itemId,
                                   Integer quantity, Long totalAmount) {
         super("hotdeal-events");
         this.hotDealId = hotDealId;
+        this.orderId = orderId;
         this.userId = userId;
         this.itemId = itemId;
         this.quantity = quantity;
@@ -34,6 +36,7 @@ public class HotDealPurchasedEvent extends DomainEvent {
     public Map<String, Object> getPayload() {
         Map<String, Object> payload = new HashMap<>();
         payload.put("hotDealId", hotDealId);
+        payload.put("orderId", orderId);
         payload.put("userId", userId);
         payload.put("itemId", itemId);
         payload.put("quantity", quantity);

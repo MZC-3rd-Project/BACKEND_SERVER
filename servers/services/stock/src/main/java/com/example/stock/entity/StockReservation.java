@@ -46,13 +46,17 @@ public class StockReservation extends BaseEntity {
     private LocalDateTime expiredAt;
 
     public static StockReservation create(Long stockItemId, Long userId, Long orderId, int quantity, int ttlMinutes) {
+        return create(stockItemId, userId, orderId, quantity, LocalDateTime.now().plusMinutes(ttlMinutes));
+    }
+
+    public static StockReservation create(Long stockItemId, Long userId, Long orderId, int quantity, LocalDateTime expiredAt) {
         StockReservation reservation = new StockReservation();
         reservation.stockItemId = stockItemId;
         reservation.userId = userId;
         reservation.orderId = orderId;
         reservation.quantity = quantity;
         reservation.status = ReservationStatus.RESERVED;
-        reservation.expiredAt = LocalDateTime.now().plusMinutes(ttlMinutes);
+        reservation.expiredAt = expiredAt;
         return reservation;
     }
 

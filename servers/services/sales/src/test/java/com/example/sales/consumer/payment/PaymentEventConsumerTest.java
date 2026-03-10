@@ -42,7 +42,7 @@ class PaymentEventConsumerTest {
     void consume_directMode_dispatchesToProcessor() {
         configureDirectMode();
         String message = """
-                {"eventId":"evt-1","eventType":"PAYMENT_CANCELLED","purchaseId":11,"paymentId":22,"userId":33}
+                {"eventId":"evt-1","eventType":"PAYMENT_CANCELLED","orderId":101,"paymentId":22,"userId":33}
                 """;
         when(salesPaymentEventProcessor.supports("PAYMENT_CANCELLED")).thenReturn(true);
 
@@ -68,7 +68,7 @@ class PaymentEventConsumerTest {
     @Test
     void consume_inboxMode_enqueuesMessage() {
         String message = """
-                {"eventId":"evt-2","eventType":"PAYMENT_COMPLETED","purchaseId":11,"paymentId":22,"userId":33}
+                {"eventId":"evt-2","eventType":"PAYMENT_COMPLETED","orderId":101,"paymentId":22,"userId":33}
                 """;
         when(salesPaymentEventProcessor.supports("PAYMENT_COMPLETED")).thenReturn(true);
         when(inboxEnqueueService.enqueue(

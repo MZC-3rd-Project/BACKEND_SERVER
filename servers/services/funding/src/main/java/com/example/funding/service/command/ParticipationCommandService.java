@@ -64,8 +64,8 @@ public class ParticipationCommandService {
     }
 
     public void refund(Long participationId, Long userId) {
-        Long reservationId = transactionTemplate.execute(status -> refundInTransaction(participationId, userId));
-        cancelReservationAfterCommit(participationId, reservationId);
+        Long orderId = transactionTemplate.execute(status -> refundInTransaction(participationId, userId));
+        cancelReservationAfterCommit(participationId, orderId);
     }
 
     private Long refundInTransaction(Long participationId, Long userId) {
@@ -93,21 +93,21 @@ public class ParticipationCommandService {
                 EventMetadata.of("FundingCampaign", String.valueOf(campaign.getId()))
         );
 
-        return participation.getReservationId();
+        return participation.getOrderId();
     }
 
-    private void cancelReservationAfterCommit(Long participationId, Long reservationId) {
-        if (reservationId == null) {
+    private void cancelReservationAfterCommit(Long participationId, Long orderId) {
+        if (orderId == null) {
             return;
         }
 
         try {
-            stockClient.cancelReservation(reservationId);
+            stockClient.cancelReservationsByOrderId(orderId);
         } catch (Exception e) {
             // Local refund has been committed. Keep it and alert for stock reconciliation.
-            log.error("Participation refunded but stock reservation cancel failed: participationId={}, reservationId={}",
-                    participationId, reservationId, e);
-            stockCancelRetryService.enqueue(participationId, reservationId, e.getMessage());
+            log.error("Participation refunded but stock reservation cancel failed: participationId={}, orderId={}",
+                    participationId, orderId, e);
+            stockCancelRetryService.enqueue(participationId, orderId, e.getMessage());
         }
     }
 
@@ -122,7 +122,7 @@ public class ParticipationCommandService {
 
         FundingParticipation participation = FundingParticipation.create(
                 campaign.getId(), userId, request.getAmount(),
-                1, null, null, orderId, null
+                1, null, null, orderId
         );
 
         participationRepository.save(participation);
@@ -158,10 +158,9 @@ public class ParticipationCommandService {
 
         // HTTP calls OUTSIDE transaction
         Long stockItemId;
-        Long reservationId;
         try {
             stockItemId = stockClient.findStockItemId(campaign.getItemId(), referenceId);
-            reservationId = stockClient.reserveStock(stockItemId, userId, quantity, orderId);
+            stockClient.reserveStock(stockItemId, userId, quantity, orderId);
         } catch (StockClientConflictException e) {
             throw new BusinessException(FundingErrorCode.STOCK_INSUFFICIENT);
         } catch (StockClientException e) {
@@ -183,7 +182,7 @@ public class ParticipationCommandService {
 
                 FundingParticipation participation = FundingParticipation.create(
                         c.getId(), userId, request.getAmount(),
-                        quantity, request.getSeatGradeId(), request.getItemOptionId(), orderId, reservationId
+                        quantity, request.getSeatGradeId(), request.getItemOptionId(), orderId
                 );
 
                 participationRepository.save(participation);
@@ -202,20 +201,20 @@ public class ParticipationCommandService {
             });
         } catch (RuntimeException e) {
             try {
-                stockClient.cancelReservation(reservationId);
+                stockClient.cancelReservationsByOrderId(orderId);
             } catch (Exception cancelError) {
-                log.error("Failed to cancel stock reservation after participation rollback: orderId={}, reservationId={}",
-                        orderId, reservationId, cancelError);
+                log.error("Failed to cancel stock reservations after participation rollback: orderId={}",
+                        orderId, cancelError);
                 try {
                     // No participation row can remain after rollback; use orderId as durable correlation key.
                     stockCancelRetryService.enqueue(
                             orderId,
-                            reservationId,
+                            orderId,
                             "Rollback stock cancel failed: " + cancelError.getMessage()
                     );
                 } catch (Exception enqueueError) {
-                    log.error("Failed to enqueue stock cancel retry after participation rollback: orderId={}, reservationId={}",
-                            orderId, reservationId, enqueueError);
+                    log.error("Failed to enqueue stock cancel retry after participation rollback: orderId={}",
+                            orderId, enqueueError);
                 }
             }
             throw e;

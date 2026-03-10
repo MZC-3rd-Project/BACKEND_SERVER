@@ -49,9 +49,6 @@ public class Purchase extends BaseEntity {
     @Column(name = "order_id", nullable = false)
     private Long orderId;
 
-    @Column(name = "reservation_id")
-    private Long reservationId;
-
     @Column(name = "payment_id")
     private Long paymentId;
 
@@ -62,7 +59,7 @@ public class Purchase extends BaseEntity {
     public static Purchase create(Long userId, Long itemId, Long stockItemId,
                                    Long referenceId, Integer quantity,
                                    Long unitPrice, Long totalAmount,
-                                   Long orderId, Long reservationId) {
+                                   Long orderId) {
         Purchase purchase = new Purchase();
         purchase.userId = userId;
         purchase.itemId = itemId;
@@ -72,7 +69,6 @@ public class Purchase extends BaseEntity {
         purchase.unitPrice = unitPrice;
         purchase.totalAmount = totalAmount;
         purchase.orderId = orderId;
-        purchase.reservationId = reservationId;
         purchase.status = PurchaseStatus.RESERVED;
         return purchase;
     }

@@ -21,7 +21,7 @@ public interface FundingParticipationRepository extends JpaRepository<FundingPar
 
     long countByCampaignIdAndStatusIn(Long campaignId, List<ParticipationStatus> statuses);
 
-    Optional<FundingParticipation> findByReservationId(Long reservationId);
+    Optional<FundingParticipation> findByOrderId(Long orderId);
 
     List<FundingParticipation> findByCampaignIdAndStatus(Long campaignId, ParticipationStatus status);
 }

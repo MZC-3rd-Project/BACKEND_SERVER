@@ -10,6 +10,7 @@ public class PaymentEventMessage implements EventEnvelope {
 
     private String eventId;
     private String eventType;
+    private Long orderId;
     private Long purchaseId;
     private Long paymentId;
     private Long userId;

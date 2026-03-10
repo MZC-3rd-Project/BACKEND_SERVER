@@ -52,16 +52,12 @@ public class FundingParticipation extends BaseEntity {
     @Column(name = "order_id", nullable = false)
     private Long orderId;
 
-    @Column(name = "reservation_id")
-    private Long reservationId;
-
     @Column(name = "payment_id")
     private Long paymentId;
 
     public static FundingParticipation create(Long campaignId, Long userId, Long amount,
                                                Integer quantity, Long seatGradeId,
-                                               Long itemOptionId, Long orderId,
-                                               Long reservationId) {
+                                               Long itemOptionId, Long orderId) {
         FundingParticipation p = new FundingParticipation();
         p.campaignId = campaignId;
         p.userId = userId;
@@ -70,7 +66,6 @@ public class FundingParticipation extends BaseEntity {
         p.seatGradeId = seatGradeId;
         p.itemOptionId = itemOptionId;
         p.orderId = orderId;
-        p.reservationId = reservationId;
         p.status = ParticipationStatus.PENDING;
         return p;
     }

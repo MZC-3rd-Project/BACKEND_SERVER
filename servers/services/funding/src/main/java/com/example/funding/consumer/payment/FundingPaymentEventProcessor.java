@@ -31,17 +31,17 @@ public class FundingPaymentEventProcessor extends AbstractIdempotentEventSpecPro
         this.eventSpecs = Map.of(
                 "PAYMENT_COMPLETED", EventSpec.of(
                         PaymentEventMessage.class,
-                        this::hasParticipationId,
+                        this::hasOrderOrParticipationId,
                         this::handlePaymentCompleted
                 ),
                 "PAYMENT_CANCELLED", EventSpec.of(
                         PaymentEventMessage.class,
-                        this::hasParticipationId,
+                        this::hasOrderOrParticipationId,
                         this::handlePaymentFailed
                 ),
                 "PAYMENT_TIMED_OUT", EventSpec.of(
                         PaymentEventMessage.class,
-                        this::hasParticipationId,
+                        this::hasOrderOrParticipationId,
                         this::handlePaymentFailed
                 )
         );
@@ -54,7 +54,7 @@ public class FundingPaymentEventProcessor extends AbstractIdempotentEventSpecPro
 
     @Override
     protected <T extends EventEnvelope> void onInvalidPayload(T event, String message, String eventId, String eventType) {
-        log.error("[PaymentConsumer] participationId가 null입니다. message={}", message);
+        log.error("[PaymentConsumer] orderId/participationId가 모두 null입니다. message={}", message);
     }
 
     @Override
@@ -79,29 +79,41 @@ public class FundingPaymentEventProcessor extends AbstractIdempotentEventSpecPro
         return eventSpecs;
     }
 
-    private boolean hasParticipationId(PaymentEventMessage event) {
-        return event.getParticipationId() != null;
+    private boolean hasOrderOrParticipationId(PaymentEventMessage event) {
+        return event.getOrderId() != null || event.getParticipationId() != null;
     }
 
     private void handlePaymentCompleted(PaymentEventMessage event) {
-        FundingParticipation participation = participationRepository.findById(event.getParticipationId()).orElse(null);
+        FundingParticipation participation = findParticipation(event);
         if (participation == null) {
-            log.warn("[PaymentConsumer] 참여 내역 없음: participationId={}", event.getParticipationId());
+            log.warn("[PaymentConsumer] 참여 내역 없음: orderId={}, participationId={}",
+                    event.getOrderId(), event.getParticipationId());
             return;
         }
         participation.confirm(event.getPaymentId());
-        log.info("[PaymentConsumer] 참여 확정: participationId={}, paymentId={}",
-                event.getParticipationId(), event.getPaymentId());
+        log.info("[PaymentConsumer] 참여 확정: orderId={}, participationId={}, paymentId={}",
+                participation.getOrderId(), participation.getId(), event.getPaymentId());
     }
 
     private void handlePaymentFailed(PaymentEventMessage event) {
-        FundingParticipation participation = participationRepository.findById(event.getParticipationId()).orElse(null);
+        FundingParticipation participation = findParticipation(event);
         if (participation == null) {
-            log.warn("[PaymentConsumer] 참여 내역 없음: participationId={}", event.getParticipationId());
+            log.warn("[PaymentConsumer] 참여 내역 없음: orderId={}, participationId={}",
+                    event.getOrderId(), event.getParticipationId());
             return;
         }
         participation.refund();
-        log.info("[PaymentConsumer] 참여 환불 처리: participationId={}, eventType={}",
-                event.getParticipationId(), event.getEventType());
+        log.info("[PaymentConsumer] 참여 환불 처리: orderId={}, participationId={}, eventType={}",
+                participation.getOrderId(), participation.getId(), event.getEventType());
+    }
+
+    private FundingParticipation findParticipation(PaymentEventMessage event) {
+        if (event.getOrderId() != null) {
+            return participationRepository.findByOrderId(event.getOrderId()).orElse(null);
+        }
+        if (event.getParticipationId() != null) {
+            return participationRepository.findById(event.getParticipationId()).orElse(null);
+        }
+        return null;
     }
 }

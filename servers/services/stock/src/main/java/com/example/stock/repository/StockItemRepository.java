@@ -16,6 +16,20 @@ public interface StockItemRepository extends JpaRepository<StockItem, Long> {
     Optional<StockItem> findByItemIdAndStockItemTypeAndReferenceId(Long itemId, StockItemType stockItemType, Long referenceId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT s
+            FROM StockItem s
+            WHERE s.itemId = :itemId
+              AND s.stockItemType = :stockItemType
+              AND s.referenceId = :referenceId
+            """)
+    Optional<StockItem> findByItemIdAndStockItemTypeAndReferenceIdWithLock(
+            @Param("itemId") Long itemId,
+            @Param("stockItemType") StockItemType stockItemType,
+            @Param("referenceId") Long referenceId
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM StockItem s WHERE s.id = :id")
     Optional<StockItem> findByIdWithLock(@Param("id") Long id);
 

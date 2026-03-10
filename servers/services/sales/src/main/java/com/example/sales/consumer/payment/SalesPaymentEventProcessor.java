@@ -29,9 +29,9 @@ public class SalesPaymentEventProcessor extends AbstractIdempotentEventSpecProce
         super(idempotentConsumerService);
         this.purchaseRepository = purchaseRepository;
         this.eventSpecs = Map.of(
-                "PAYMENT_COMPLETED", EventSpec.of(PaymentEventMessage.class, this::hasPurchaseId, this::handlePaymentCompleted),
-                "PAYMENT_CANCELLED", EventSpec.of(PaymentEventMessage.class, this::hasPurchaseId, this::handlePaymentFailed),
-                "PAYMENT_TIMED_OUT", EventSpec.of(PaymentEventMessage.class, this::hasPurchaseId, this::handlePaymentFailed)
+                "PAYMENT_COMPLETED", EventSpec.of(PaymentEventMessage.class, this::hasOrderOrPurchaseId, this::handlePaymentCompleted),
+                "PAYMENT_CANCELLED", EventSpec.of(PaymentEventMessage.class, this::hasOrderOrPurchaseId, this::handlePaymentFailed),
+                "PAYMENT_TIMED_OUT", EventSpec.of(PaymentEventMessage.class, this::hasOrderOrPurchaseId, this::handlePaymentFailed)
         );
     }
 
@@ -42,7 +42,7 @@ public class SalesPaymentEventProcessor extends AbstractIdempotentEventSpecProce
 
     @Override
     protected <T extends EventEnvelope> void onInvalidPayload(T event, String message, String eventId, String eventType) {
-        log.error("[PaymentConsumer] purchaseId가 null입니다. message={}", message);
+        log.error("[PaymentConsumer] orderId/purchaseId가 모두 null입니다. message={}", message);
     }
 
     @Override
@@ -67,29 +67,41 @@ public class SalesPaymentEventProcessor extends AbstractIdempotentEventSpecProce
         return eventSpecs;
     }
 
-    private boolean hasPurchaseId(PaymentEventMessage event) {
-        return event.getPurchaseId() != null;
+    private boolean hasOrderOrPurchaseId(PaymentEventMessage event) {
+        return event.getOrderId() != null || event.getPurchaseId() != null;
     }
 
     private void handlePaymentCompleted(PaymentEventMessage event) {
-        Purchase purchase = purchaseRepository.findById(event.getPurchaseId()).orElse(null);
+        Purchase purchase = findPurchase(event);
         if (purchase == null) {
-            log.warn("[PaymentConsumer] 구매 내역 없음: purchaseId={}", event.getPurchaseId());
+            log.warn("[PaymentConsumer] 구매 내역 없음: orderId={}, purchaseId={}",
+                    event.getOrderId(), event.getPurchaseId());
             return;
         }
         purchase.confirm(event.getPaymentId());
-        log.info("[PaymentConsumer] 구매 확정: purchaseId={}, paymentId={}",
-                event.getPurchaseId(), event.getPaymentId());
+        log.info("[PaymentConsumer] 구매 확정: orderId={}, purchaseId={}, paymentId={}",
+                purchase.getOrderId(), purchase.getId(), event.getPaymentId());
     }
 
     private void handlePaymentFailed(PaymentEventMessage event) {
-        Purchase purchase = purchaseRepository.findById(event.getPurchaseId()).orElse(null);
+        Purchase purchase = findPurchase(event);
         if (purchase == null) {
-            log.warn("[PaymentConsumer] 구매 내역 없음: purchaseId={}", event.getPurchaseId());
+            log.warn("[PaymentConsumer] 구매 내역 없음: orderId={}, purchaseId={}",
+                    event.getOrderId(), event.getPurchaseId());
             return;
         }
         purchase.cancel();
-        log.info("[PaymentConsumer] 구매 취소 처리: purchaseId={}, eventType={}",
-                event.getPurchaseId(), event.getEventType());
+        log.info("[PaymentConsumer] 구매 취소 처리: orderId={}, purchaseId={}, eventType={}",
+                purchase.getOrderId(), purchase.getId(), event.getEventType());
+    }
+
+    private Purchase findPurchase(PaymentEventMessage event) {
+        if (event.getOrderId() != null) {
+            return purchaseRepository.findByOrderId(event.getOrderId()).orElse(null);
+        }
+        if (event.getPurchaseId() != null) {
+            return purchaseRepository.findById(event.getPurchaseId()).orElse(null);
+        }
+        return null;
     }
 }

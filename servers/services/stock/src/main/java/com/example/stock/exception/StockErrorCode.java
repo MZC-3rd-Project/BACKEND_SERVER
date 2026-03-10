@@ -14,6 +14,7 @@ public enum StockErrorCode implements DomainErrorCode {
     INSUFFICIENT_STOCK("STOCK-002", "재고가 부족합니다.", HttpStatus.CONFLICT),
     STOCK_ALREADY_EXISTS("STOCK-003", "이미 재고가 등록되어 있습니다.", HttpStatus.CONFLICT),
     STOCK_OVERFLOW("STOCK-004", "재고 수량이 총 수량을 초과합니다.", HttpStatus.BAD_REQUEST),
+    STOCK_ITEM_NOT_FOUND("STOCK-005", "요청한 조건에 해당하는 재고 항목을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
 
     // ─── 예약 ────────────────────────────────
     RESERVATION_NOT_FOUND("STOCK-101", "예약 정보를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),

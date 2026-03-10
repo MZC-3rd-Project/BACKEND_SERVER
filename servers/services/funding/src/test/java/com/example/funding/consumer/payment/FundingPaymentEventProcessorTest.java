@@ -39,9 +39,9 @@ class FundingPaymentEventProcessorTest {
     }
 
     @Test
-    void process_paymentCompleted_confirmsParticipation() {
+    void process_paymentCompleted_confirmsParticipationByOrderId() {
         String message = """
-                {"eventId":"evt-1","eventType":"PAYMENT_COMPLETED","participationId":11,"paymentId":22,"userId":33}
+                {"eventId":"evt-1","eventType":"PAYMENT_COMPLETED","orderId":101,"paymentId":22,"userId":33}
                 """;
         when(idempotentConsumerService.executeIdempotent(eq("evt-1"), eq("PAYMENT_EVENT"), any()))
                 .thenAnswer(invocation -> {
@@ -49,7 +49,7 @@ class FundingPaymentEventProcessorTest {
                     supplier.get();
                     return Optional.empty();
                 });
-        when(participationRepository.findById(11L)).thenReturn(Optional.of(participation));
+        when(participationRepository.findByOrderId(101L)).thenReturn(Optional.of(participation));
 
         processor.process(message, "evt-1", "PAYMENT_COMPLETED");
 
@@ -59,7 +59,7 @@ class FundingPaymentEventProcessorTest {
     @Test
     void process_invalidEnvelope_skipsProcessing() {
         String message = """
-                {"eventType":"PAYMENT_COMPLETED","participationId":11,"paymentId":22,"userId":33}
+                {"eventType":"PAYMENT_COMPLETED","orderId":101,"paymentId":22,"userId":33}
                 """;
 
         processor.process(message, null, "PAYMENT_COMPLETED");
@@ -69,7 +69,7 @@ class FundingPaymentEventProcessorTest {
     }
 
     @Test
-    void process_missingParticipationId_skipsProcessing() {
+    void process_missingOrderIdAndParticipationId_skipsProcessing() {
         String message = """
                 {"eventId":"evt-2","eventType":"PAYMENT_CANCELLED","paymentId":22,"userId":33}
                 """;
@@ -78,5 +78,24 @@ class FundingPaymentEventProcessorTest {
 
         verifyNoInteractions(idempotentConsumerService);
         verify(participationRepository, never()).findById(any());
+        verify(participationRepository, never()).findByOrderId(any());
+    }
+
+    @Test
+    void process_whenOrderIdMissing_fallsBackToParticipationId() {
+        String message = """
+                {"eventId":"evt-3","eventType":"PAYMENT_CANCELLED","participationId":11,"paymentId":22,"userId":33}
+                """;
+        when(idempotentConsumerService.executeIdempotent(eq("evt-3"), eq("PAYMENT_EVENT"), any()))
+                .thenAnswer(invocation -> {
+                    Supplier<?> supplier = invocation.getArgument(2);
+                    supplier.get();
+                    return Optional.empty();
+                });
+        when(participationRepository.findById(11L)).thenReturn(Optional.of(participation));
+
+        processor.process(message, "evt-3", "PAYMENT_CANCELLED");
+
+        verify(participation).refund();
     }
 }

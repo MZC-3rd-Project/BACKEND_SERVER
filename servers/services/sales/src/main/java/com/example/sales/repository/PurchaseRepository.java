@@ -14,8 +14,6 @@ public interface PurchaseRepository extends JpaRepository<Purchase, Long> {
 
     Optional<Purchase> findByOrderId(Long orderId);
 
-    Optional<Purchase> findByReservationId(Long reservationId);
-
     long countByItemIdAndStatusIn(Long itemId, List<PurchaseStatus> statuses);
 
     @Query("""

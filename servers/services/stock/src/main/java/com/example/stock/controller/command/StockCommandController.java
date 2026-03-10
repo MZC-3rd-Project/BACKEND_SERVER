@@ -4,6 +4,7 @@ import com.example.api.response.ApiResponse;
 import com.example.stock.controller.api.command.StockCommandApi;
 import com.example.stock.dto.request.*;
 import com.example.stock.dto.response.ReservationResponse;
+import com.example.stock.dto.response.ReserveOrderStockResponse;
 import com.example.stock.dto.response.StockResponse;
 import com.example.stock.service.command.StockCommandService;
 import jakarta.validation.Valid;
@@ -33,6 +34,11 @@ public class StockCommandController implements StockCommandApi {
     }
 
     @Override
+    public ApiResponse<ReserveOrderStockResponse> reserveOrderStock(@Valid @RequestBody ReserveOrderStockRequest request) {
+        return ApiResponse.success(stockCommandService.reserveOrderStock(request));
+    }
+
+    @Override
     public ApiResponse<ReservationResponse> confirmReservation(@Valid @RequestBody ConfirmReservationRequest request) {
         return ApiResponse.success(stockCommandService.confirmReservation(request));
     }
@@ -40,6 +46,13 @@ public class StockCommandController implements StockCommandApi {
     @Override
     public ApiResponse<ReservationResponse> cancelReservation(@Valid @RequestBody CancelReservationRequest request) {
         return ApiResponse.success(stockCommandService.cancelReservation(request.getReservationId()));
+    }
+
+    @Override
+    public ApiResponse<java.util.List<ReservationResponse>> cancelReservationsByOrder(
+            @Valid @RequestBody CancelReservationsByOrderRequest request
+    ) {
+        return ApiResponse.success(stockCommandService.cancelReservationsByOrderId(request.getOrderId()));
     }
 
     @Override

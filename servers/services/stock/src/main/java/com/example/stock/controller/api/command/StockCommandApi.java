@@ -3,6 +3,7 @@ package com.example.stock.controller.api.command;
 import com.example.api.response.ApiResponse;
 import com.example.stock.dto.request.*;
 import com.example.stock.dto.response.ReservationResponse;
+import com.example.stock.dto.response.ReserveOrderStockResponse;
 import com.example.stock.dto.response.StockResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -29,6 +30,10 @@ public interface StockCommandApi {
     @PostMapping("/internal/v1/stock/reserve")
     ApiResponse<ReservationResponse> reserveStock(@RequestBody ReserveStockRequest request);
 
+    @Operation(summary = "orderId 발급 포함 주문 단위 재고 예약")
+    @PostMapping("/internal/v1/stock/orders/reserve")
+    ApiResponse<ReserveOrderStockResponse> reserveOrderStock(@RequestBody ReserveOrderStockRequest request);
+
     @Operation(summary = "예약 확정 (TCC Confirm)")
     @PostMapping("/internal/v1/stock/confirm")
     ApiResponse<ReservationResponse> confirmReservation(@RequestBody ConfirmReservationRequest request);
@@ -36,6 +41,11 @@ public interface StockCommandApi {
     @Operation(summary = "예약 취소 (TCC Cancel)")
     @PostMapping("/internal/v1/stock/cancel")
     ApiResponse<ReservationResponse> cancelReservation(@RequestBody CancelReservationRequest request);
+
+    @Operation(summary = "orderId 기반 예약 묶음 취소")
+    @PostMapping("/internal/v1/stock/orders/cancel")
+    ApiResponse<java.util.List<ReservationResponse>> cancelReservationsByOrder(
+            @RequestBody CancelReservationsByOrderRequest request);
 
     @Operation(summary = "재고 초기화")
     @PostMapping("/internal/v1/stock/initialize")
