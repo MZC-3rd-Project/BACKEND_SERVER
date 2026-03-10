@@ -19,16 +19,8 @@ public enum FundingErrorCode implements DomainErrorCode {
 
     // ─── 참여 ────────────────────────────────
     PARTICIPATION_NOT_FOUND("FUNDING-101", "참여 내역을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
-    GOAL_QUANTITY_EXCEEDED("FUNDING-102", "펀딩 목표 수량을 초과했습니다.", HttpStatus.CONFLICT),
-    BELOW_MIN_AMOUNT("FUNDING-103", "최소 참여 금액 이상이어야 합니다.", HttpStatus.BAD_REQUEST),
-    ALREADY_PARTICIPATED("FUNDING-104", "이미 참여한 펀딩입니다.", HttpStatus.CONFLICT),
-    INVALID_PARTICIPATION_STATUS("FUNDING-105", "유효하지 않은 참여 상태 변경입니다.", HttpStatus.BAD_REQUEST),
-
-    // ─── 외부 서비스 ────────────────────────────────
-    PRODUCT_SERVICE_ERROR("FUNDING-201", "상품 서비스 호출에 실패했습니다.", HttpStatus.SERVICE_UNAVAILABLE),
-    STOCK_SERVICE_ERROR("FUNDING-202", "재고 서비스 호출에 실패했습니다.", HttpStatus.SERVICE_UNAVAILABLE),
-    PAYMENT_SERVICE_ERROR("FUNDING-203", "결제 서비스 호출에 실패했습니다.", HttpStatus.SERVICE_UNAVAILABLE),
-    STOCK_INSUFFICIENT("FUNDING-204", "재고가 부족합니다.", HttpStatus.CONFLICT),
+    INVALID_PARTICIPATION_STATUS("FUNDING-102", "유효하지 않은 참여 상태 변경입니다.", HttpStatus.BAD_REQUEST),
+    PARTICIPATION_CHECKOUT_MOVED("FUNDING-103", "펀딩 구매는 sales checkout을 통해 진행해야 합니다.", HttpStatus.GONE),
 
     // ─── 권한 ────────────────────────────────
     UNAUTHORIZED_ACCESS("FUNDING-901", "접근 권한이 없습니다.", HttpStatus.FORBIDDEN);

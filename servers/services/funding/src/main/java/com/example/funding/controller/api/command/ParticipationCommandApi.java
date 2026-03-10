@@ -13,12 +13,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 
-@Tag(name = "Participation Command", description = "펀딩 참여 API (쓰기)")
+@Tag(name = "Participation Command", description = "펀딩 참여 API (현재는 sales checkout으로 이관됨)")
 public interface ParticipationCommandApi {
 
-    @Operation(summary = "펀딩 참여")
+    @Operation(summary = "펀딩 참여", description = "직접 참여 시작은 더 이상 funding에서 처리하지 않고 sales checkout으로 이관되었습니다.")
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "참여 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "410", description = "sales checkout으로 이관됨"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "캠페인 없음"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "재고 부족")
