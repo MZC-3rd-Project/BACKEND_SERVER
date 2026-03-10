@@ -6,6 +6,22 @@
 
 ---
 
+## 작업 계획 요약 (2/20 ~ 3/18)
+
+2/20부터 프로젝트 관리 기반을 먼저 잡기 위해 Jira 프로젝트 구축에 착수했다. Jira Cloud에 MZC-Project03-Backend 프로젝트를 생성하고, 에픽/스토리/작업 계층 구조와 칸반 보드 워크플로우를 설계했다. 이후 GitHub Actions 기반으로 GitHub Issue가 생성되면 Jira 이슈가 자동으로 생성되고, 타이틀 태그([EPIC]/[STORY]/[BUGFIX])에 따라 이슈 타입이 자동 매핑되도록 sync-to-jira.yml 워크플로우를 구현했다. 이슈 상태 변경(종료/재오픈)과 담당자 변경 시에도 Jira에 자동 동기화되도록 하여, 팀 전체의 프로젝트 관리 자동화 파이프라인을 완성했다 (2/20~2/26).
+
+Jira 구축과 병행하여 Keycloak 기반 Auth 서비스 구현에 들어갔다. Keycloak Docker 환경을 구성하고, User Entity/Repository, 요청/응답 DTO, 에러코드를 설계한 뒤 Keycloak Admin API를 활용해 회원가입/로그인/비밀번호 변경/이메일 변경/탈퇴 기능을 구현했다. 서비스 간 통신을 위한 내부 API와 Gateway 외부 API를 함께 작업하고, ProfileServiceClient(WebClient), Outbox 패턴 이벤트, auth-client 라이브러리 facade 리팩토링까지 마무리했다. 닉네임/이메일 중복 확인과 이메일 인증(SMTP) 기능도 이 시기에 완성했다 (2/20~2/26).
+
+2/27부터는 Auth 서비스 안정화에 집중했다. 로컬 개발 환경에서 회원가입 플로우를 End-to-End로 검증하고, Gateway에서 CORS를 중앙 집중 관리하도록 리팩토링하여 다운스트림 서비스와의 헤더 중복 문제를 해결했다. AuthServiceTest도 ProfileServicePort 리팩토링에 맞춰 수정 완료했다 (2/27~3/3).
+
+3/4부터 Order 서비스 구현에 착수했다. Order/OrderItem Entity, OrderStatus 상태 머신(CREATED→PAID→COMPLETED/CANCELLED/REFUND), DB 설정, SecurityConfig 등 서비스 스캐폴딩을 완료했다. 현재는 주문 생성/조회 API, 주문 정보 저장 API(orderId + 배송지/수령인/메모), Stock validate 연동, Flyway 마이그레이션을 진행 중이다. 이어서 3/11~3/12에는 Payment 이벤트 소비(PAYMENT_COMPLETED/CANCELLED/TIMED_OUT)와 주문 상태 확정(confirm/cancel), Outbox 이벤트 발행, 단위 테스트를 완료할 예정이다 (3/4~3/14).
+
+3/11부터는 Order 서비스 이벤트 작업과 병행하여 Payment 서비스 구현을 시작한다. Payment 서비스 스캐폴딩 후 결제 요청 API(orderId 기반)를 만들고, Order 서비스의 validate를 호출하여 금액/상태를 확인한 뒤 Toss Payments 승인 API를 연동한다. 결제 결과에 따라 PAYMENT_COMPLETED/CANCELLED/TIMED_OUT 이벤트를 Outbox 패턴으로 발행한다. 3/15~3/16에는 결제 조회/취소/환불 API, 멱등성 보장(orderId 기반 중복 결제 방지), 단위 테스트를 진행한다 (3/11~3/16).
+
+마지막으로 3/15~3/18에는 전체 플로우 통합 테스트를 수행한다. Stock 예약 → 주문 생성 → 결제 → 상태 반영까지의 E2E 흐름을 검증하고, Hot Deal/Sales/Funding 도메인과의 연동, Kafka 이벤트 전파(Payment → Order/Stock/Sales)를 확인한다. Gateway 라우팅 설정, 배포 환경(Docker Compose, 환경변수, buildspec) 업데이트, 버그 수정 및 안정화로 마무리할 계획이다 (3/15~3/18).
+
+---
+
 ## 전체 타임라인 요약
 
 | 주차 | 기간 | 핵심 작업 |
