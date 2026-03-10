@@ -1,6 +1,6 @@
 # 프로젝트 작업 계획서 (2/20 ~ 3/18)
 
-> **담당 영역**: Auth(Keycloak) 서비스, Order 서비스, Payment 서비스(Toss 연동)
+> **담당 영역**: Jira 프로젝트 구축 및 자동화, Auth(Keycloak) 서비스, Order 서비스, Payment 서비스(Toss 연동)
 > **담당자**: hyein Heo
 > **프로젝트**: MZC 3rd Project — Backend Server
 
@@ -10,11 +10,29 @@
 
 | 주차 | 기간 | 핵심 작업 |
 |------|------|-----------|
+| Week 0 | 2/20 ~ 2/25 | Jira 프로젝트 구축 및 GitHub-Jira 자동화 |
 | Week 1 | 2/20 ~ 2/26 | Keycloak 기반 Auth 서비스 구현 |
 | Week 2 | 2/27 ~ 3/3 | Auth 서비스 안정화 / CORS / 테스트 |
 | Week 3 | 3/4 ~ 3/10 | Order 서비스 스캐폴딩 및 핵심 API |
 | Week 4 | 3/11 ~ 3/14 | Payment 서비스 (Toss 연동) 및 주문-결제 플로우 연결 |
 | Week 5 | 3/15 ~ 3/18 | 통합 테스트 / 버그 수정 / 마무리 |
+
+---
+
+## Phase 0: Jira 프로젝트 구축 및 GitHub-Jira 자동화 (2/20 ~ 2/26) ✅ 완료
+
+### Sprint 0 (2/20 ~ 2/26) — 프로젝트 관리 인프라 구축
+
+| 상태 | 작업 | 설명 |
+|------|------|------|
+| ✅ | Jira 프로젝트 생성 및 보드 구성 | MZC-Project03-Backend 프로젝트, 에픽/스토리/작업 이슈 타입 설정 |
+| ✅ | Jira 이슈 타입 및 워크플로우 설계 | 에픽 → 스토리 → 작업 계층 구조 정의, 상태 흐름 설정 |
+| ✅ | GitHub Issue → Jira 이슈 자동 동기화 | GitHub Actions 워크플로우 (sync-to-jira.yml) 구현 |
+| ✅ | 이슈 생성 시 Jira 자동 생성 + 링크 연결 | Issue opened → Jira 이슈 생성, 타이틀 태그 기반 이슈 타입 자동 매핑 ([EPIC]/[STORY]/[BUGFIX]) |
+| ✅ | 이슈 수정/종료/재오픈 시 Jira 상태 동기화 | GitHub Issue 상태 변경 → Jira 이슈 상태 자동 전이 |
+| ✅ | GitHub Issue 담당자 변경 시 Jira 담당자 자동 동기화 | GitHub assignee 변경 → Jira assignee 자동 매핑 (#772) |
+| ✅ | 상위 이슈(Parent) 자동 링크 | 본문 내 #번호 참조 시 Jira 상위 이슈 자동 연결 |
+| ✅ | 팀원 Jira 계정 매핑 설정 | GitHub username → Jira accountId 매핑 |
 
 ---
 
