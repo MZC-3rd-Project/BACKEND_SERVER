@@ -10,13 +10,12 @@ import com.example.store.dto.response.StoreUpdateResponse;
 import com.example.store.entity.*;
 import com.example.store.exception.StoreErrorCode;
 import com.example.store.repository.*;
-import jakarta.validation.constraints.NotBlank;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.xml.validation.Validator;
 import java.util.List;
 import java.util.Optional;
 
@@ -161,8 +160,7 @@ public class StoreCommandService {
         // 이벤트 발행 추가
         if (request.images() != null) {
             storeImageRepository.saveAll(
-                Optional.ofNullable(request.images())
-                    .orElse(List.of())
+                request.images()
                     .stream()
                     .map(img -> StoreImage.of(img.imageType(), img.mediaId(), img.sortOrder()))
                     .toList()
