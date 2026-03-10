@@ -53,11 +53,8 @@ public class PurchaseCommandService {
         Long totalAmount = unitPrice * request.getQuantity();
 
         Long orderId = snowflake.nextId();
-
-        Long reservationId;
         try {
-            reservationId = stockClient.reserveStock(
-                    request.getStockItemId(), userId, request.getQuantity(), orderId);
+            stockClient.reserveStock(request.getStockItemId(), userId, request.getQuantity(), orderId);
         } catch (StockClientConflictException e) {
             throw new BusinessException(SalesErrorCode.STOCK_INSUFFICIENT);
         } catch (StockClientException e) {
@@ -69,7 +66,7 @@ public class PurchaseCommandService {
                 Purchase purchase = Purchase.create(
                         userId, request.getItemId(), request.getStockItemId(),
                         request.getReferenceId(), request.getQuantity(),
-                        unitPrice, totalAmount, orderId, reservationId
+                        unitPrice, totalAmount, orderId
                 );
 
                 purchaseRepository.save(purchase);
@@ -85,14 +82,14 @@ public class PurchaseCommandService {
                 return PurchaseResponse.from(purchase);
             });
         } catch (RuntimeException txException) {
-            compensateReservedStockOnCreateFailure(orderId, reservationId, txException);
+            compensateReservedStockOnCreateFailure(orderId, txException);
             throw txException;
         }
     }
 
     public void cancel(Long purchaseId, Long userId) {
-        Long reservationId = transactionTemplate.execute(status -> cancelInTransaction(purchaseId, userId));
-        cancelReservationAfterCommit(purchaseId, reservationId);
+        Long orderId = transactionTemplate.execute(status -> cancelInTransaction(purchaseId, userId));
+        cancelReservationAfterCommit(purchaseId, orderId);
     }
 
     private Long cancelInTransaction(Long purchaseId, Long userId) {
@@ -108,47 +105,37 @@ public class PurchaseCommandService {
         eventPublisher.publish(
                 new PurchaseCancelledEvent(
                         purchase.getId(), purchase.getOrderId(),
-                        userId, purchase.getReservationId()
+                        userId
                 ),
                 EventMetadata.of("Purchase", String.valueOf(purchase.getId()))
         );
 
-        return purchase.getReservationId();
+        return purchase.getOrderId();
     }
 
-    private void cancelReservationAfterCommit(Long purchaseId, Long reservationId) {
-        if (reservationId == null) {
+    private void cancelReservationAfterCommit(Long purchaseId, Long orderId) {
+        if (orderId == null) {
             return;
         }
 
         try {
-            stockClient.cancelReservation(reservationId);
+            stockClient.cancelReservationsByOrderId(orderId);
         } catch (Exception e) {
             // Local cancellation has been committed. Keep it and alert for stock reconciliation.
-            log.error("Purchase cancelled but stock reservation cancel failed: purchaseId={}, reservationId={}",
-                    purchaseId, reservationId, e);
-            stockCancelRetryService.enqueue(purchaseId, reservationId, e.getMessage());
+            log.error("Purchase cancelled but stock reservation cancel failed: purchaseId={}, orderId={}",
+                    purchaseId, orderId, e);
+            stockCancelRetryService.enqueue(purchaseId, orderId, e.getMessage());
         }
     }
 
-    private void compensateReservedStockOnCreateFailure(Long orderId, Long reservationId, Throwable txException) {
-        if (reservationId == null) {
-            log.error("Purchase create failed after stock reserve but reservationId is null: orderId={}",
-                    orderId, txException);
-            return;
-        }
-
+    private void compensateReservedStockOnCreateFailure(Long orderId, Throwable txException) {
         try {
-            stockClient.cancelReservation(reservationId);
-            log.warn("Purchase create failed after stock reserve; reservation cancelled: orderId={}, reservationId={}",
-                    orderId, reservationId, txException);
+            stockClient.cancelReservationsByOrderId(orderId);
+            log.warn("Purchase create failed after stock reserve; order reservations cancelled: orderId={}",
+                    orderId, txException);
         } catch (Exception cancelException) {
             Long retryPurchaseId = orderId;
             String fallbackSource = "orderId";
-            if (retryPurchaseId == null) {
-                retryPurchaseId = reservationId;
-                fallbackSource = "reservationId";
-            }
             if (retryPurchaseId == null) {
                 retryPurchaseId = snowflake.nextId();
                 fallbackSource = "generatedSnowflake";
@@ -158,13 +145,13 @@ public class PurchaseCommandService {
                     + "), immediate cancel failed (" + safeErrorMessage(cancelException)
                     + "), fallbackPurchaseIdSource=" + fallbackSource;
 
-            log.error("Purchase create compensation failed; enqueue stock cancel retry: orderId={}, reservationId={}, retryPurchaseId={}, fallbackSource={}",
-                    orderId, reservationId, retryPurchaseId, fallbackSource, cancelException);
+            log.error("Purchase create compensation failed; enqueue stock cancel retry: orderId={}, retryPurchaseId={}, fallbackSource={}",
+                    orderId, retryPurchaseId, fallbackSource, cancelException);
             try {
-                stockCancelRetryService.enqueue(retryPurchaseId, reservationId, retryReason);
+                stockCancelRetryService.enqueue(retryPurchaseId, orderId, retryReason);
             } catch (Exception enqueueException) {
-                log.error("Failed to enqueue stock cancel retry after purchase create failure: orderId={}, reservationId={}, retryPurchaseId={}",
-                        orderId, reservationId, retryPurchaseId, enqueueException);
+                log.error("Failed to enqueue stock cancel retry after purchase create failure: orderId={}, retryPurchaseId={}",
+                        orderId, retryPurchaseId, enqueueException);
             }
         }
     }

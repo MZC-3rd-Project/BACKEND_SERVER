@@ -28,9 +28,9 @@ public class StockPaymentEventProcessor extends AbstractIdempotentEventSpecProce
         super(idempotentConsumerService);
         this.stockCommandService = stockCommandService;
         this.eventSpecs = Map.of(
-                "PAYMENT_COMPLETED", EventSpec.of(PaymentEventMessage.class, this::hasReservationId, this::handlePaymentCompleted),
-                "PAYMENT_CANCELLED", EventSpec.of(PaymentEventMessage.class, this::hasReservationId, this::handlePaymentCancelled),
-                "PAYMENT_TIMED_OUT", EventSpec.of(PaymentEventMessage.class, this::hasReservationId, this::handlePaymentTimedOut)
+                "PAYMENT_COMPLETED", EventSpec.of(PaymentEventMessage.class, this::hasOrderOrReservation, this::handlePaymentCompleted),
+                "PAYMENT_CANCELLED", EventSpec.of(PaymentEventMessage.class, this::hasOrderOrReservation, this::handlePaymentCancelled),
+                "PAYMENT_TIMED_OUT", EventSpec.of(PaymentEventMessage.class, this::hasOrderOrReservation, this::handlePaymentTimedOut)
         );
     }
 
@@ -41,7 +41,7 @@ public class StockPaymentEventProcessor extends AbstractIdempotentEventSpecProce
 
     @Override
     protected <T extends EventEnvelope> void onInvalidPayload(T event, String message, String eventId, String eventType) {
-        log.error("[PaymentConsumer] reservationId가 null입니다. message={}", message);
+        log.error("[PaymentConsumer] orderId/reservationId가 모두 null입니다. message={}", message);
     }
 
     @Override
@@ -66,21 +66,36 @@ public class StockPaymentEventProcessor extends AbstractIdempotentEventSpecProce
         return eventSpecs;
     }
 
-    private boolean hasReservationId(PaymentEventMessage event) {
-        return event.getReservationId() != null;
+    private boolean hasOrderOrReservation(PaymentEventMessage event) {
+        return event.getOrderId() != null || event.getReservationId() != null;
     }
 
     private void handlePaymentCompleted(PaymentEventMessage event) {
+        if (event.getOrderId() != null) {
+            log.info("결제 완료 -> order 예약 확정 처리: orderId={}", event.getOrderId());
+            stockCommandService.confirmReservationsByOrderId(event.getOrderId());
+            return;
+        }
         log.info("결제 완료 -> 예약 확정 처리: reservationId={}", event.getReservationId());
         stockCommandService.confirmReservationById(event.getReservationId());
     }
 
     private void handlePaymentCancelled(PaymentEventMessage event) {
+        if (event.getOrderId() != null) {
+            log.info("결제 취소 -> order 예약 취소 처리: orderId={}", event.getOrderId());
+            stockCommandService.cancelReservationsByOrderId(event.getOrderId());
+            return;
+        }
         log.info("결제 취소 -> 예약 취소 처리: reservationId={}", event.getReservationId());
         stockCommandService.cancelReservation(event.getReservationId());
     }
 
     private void handlePaymentTimedOut(PaymentEventMessage event) {
+        if (event.getOrderId() != null) {
+            log.info("결제 타임아웃 -> order 예약 취소 처리: orderId={}", event.getOrderId());
+            stockCommandService.cancelReservationsByOrderId(event.getOrderId());
+            return;
+        }
         log.info("결제 타임아웃 -> 예약 취소 처리: reservationId={}", event.getReservationId());
         stockCommandService.cancelReservation(event.getReservationId());
     }

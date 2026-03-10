@@ -35,9 +35,6 @@ public class ParticipationResponse {
     private Long orderId;
 
     @SnowflakeId
-    private Long reservationId;
-
-    @SnowflakeId
     private Long paymentId;
 
     private LocalDateTime createdAt;
@@ -54,7 +51,6 @@ public class ParticipationResponse {
                 .itemOptionId(p.getItemOptionId())
                 .status(p.getStatus().name())
                 .orderId(p.getOrderId())
-                .reservationId(p.getReservationId())
                 .paymentId(p.getPaymentId())
                 .createdAt(p.getCreatedAt())
                 .updatedAt(p.getUpdatedAt())

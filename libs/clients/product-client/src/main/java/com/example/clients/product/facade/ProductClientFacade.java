@@ -1,4 +1,8 @@
 package com.example.clients.product.facade;
 
-public interface ProductClientFacade extends ProductItemSummaryClientFacade, ProductEndingSoonClientFacade {
+public interface ProductClientFacade extends
+        ProductItemSummaryClientFacade,
+        ProductItemQueryClientFacade,
+        ProductQuoteClientFacade,
+        ProductEndingSoonClientFacade {
 }

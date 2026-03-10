@@ -29,9 +29,9 @@ public class StockCancelRetryService {
     @Value("${app.stock-cancel-retry.processing-stale-threshold-seconds:120}")
     private long processingStaleThresholdSeconds;
 
-    public void enqueue(Long purchaseId, Long reservationId, String errorMessage) {
+    public void enqueue(Long purchaseId, Long orderId, String errorMessage) {
         transactionTemplate.executeWithoutResult(status ->
-                retryRepository.save(StockCancelRetry.create(purchaseId, reservationId, errorMessage)));
+                retryRepository.save(StockCancelRetry.create(purchaseId, orderId, errorMessage)));
     }
 
     public void processDueRetries() {
@@ -83,12 +83,12 @@ public class StockCancelRetryService {
                     int nextRetryCount = task.getRetryCount() + 1;
                     if (nextRetryCount >= MAX_RETRY_COUNT) {
                         task.markFailed("Recovered stale PROCESSING and exceeded max retries");
-                        log.error("Sales retry moved stale PROCESSING to FAILED: retryId={}, reservationId={}, retry={}",
-                                retryId, task.getReservationId(), task.getRetryCount());
+                        log.error("Sales retry moved stale PROCESSING to FAILED: retryId={}, orderId={}, retry={}",
+                                retryId, task.getOrderId(), task.getRetryCount());
                     } else {
                         task.scheduleNextRetry("Recovered stale PROCESSING task", computeDelaySeconds(nextRetryCount));
-                        log.warn("Sales retry recovered stale PROCESSING to PENDING: retryId={}, reservationId={}, retry={}",
-                                retryId, task.getReservationId(), task.getRetryCount());
+                        log.warn("Sales retry recovered stale PROCESSING to PENDING: retryId={}, orderId={}, retry={}",
+                                retryId, task.getOrderId(), task.getRetryCount());
                     }
                 })
         );
@@ -115,7 +115,7 @@ public class StockCancelRetryService {
         }
 
         try {
-            stockClient.cancelReservation(retryTask.getReservationId());
+            stockClient.cancelReservationsByOrderId(retryTask.getOrderId());
 
             transactionTemplate.executeWithoutResult(status ->
                     retryRepository.findById(retryId).ifPresent(task -> {
@@ -125,8 +125,8 @@ public class StockCancelRetryService {
                     })
             );
 
-            log.info("Stock cancel retry succeeded: retryId={}, purchaseId={}, reservationId={}, retryCount={}",
-                    retryId, retryTask.getPurchaseId(), retryTask.getReservationId(), retryTask.getRetryCount());
+            log.info("Stock cancel retry succeeded: retryId={}, purchaseId={}, orderId={}, retryCount={}",
+                    retryId, retryTask.getPurchaseId(), retryTask.getOrderId(), retryTask.getRetryCount());
         } catch (Exception e) {
             transactionTemplate.executeWithoutResult(status ->
                     retryRepository.findById(retryId).ifPresent(task -> {
@@ -143,8 +143,8 @@ public class StockCancelRetryService {
                     })
             );
 
-            log.warn("Stock cancel retry failed: retryId={}, reservationId={}, error={}",
-                    retryId, retryTask.getReservationId(), e.getMessage());
+            log.warn("Stock cancel retry failed: retryId={}, orderId={}, error={}",
+                    retryId, retryTask.getOrderId(), e.getMessage());
         }
     }
 

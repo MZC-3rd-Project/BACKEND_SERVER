@@ -2,10 +2,12 @@ package com.example.stock.service.command;
 
 import com.example.config.lock.DistributedLock;
 import com.example.core.exception.BusinessException;
+import com.example.core.id.Snowflake;
 import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;
 import com.example.stock.dto.request.*;
 import com.example.stock.dto.response.ReservationResponse;
+import com.example.stock.dto.response.ReserveOrderStockResponse;
 import com.example.stock.dto.response.StockResponse;
 import com.example.stock.entity.*;
 import com.example.stock.event.ItemAvailableStockChangedEvent;
@@ -25,6 +27,11 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -40,6 +47,7 @@ public class StockCommandService {
     private final StockSyncVersionRepository stockSyncVersionRepository;
     private final StockCacheService stockCacheService;
     private final EventPublisher eventPublisher;
+    private final Snowflake snowflake;
 
     @DistributedLock(key = "'stock:' + #request.stockItemId")
     public StockResponse decreaseStock(StockDecreaseRequest request) {
@@ -108,10 +116,72 @@ public class StockCommandService {
         return ReservationResponse.from(reservation);
     }
 
+    public ReserveOrderStockResponse reserveOrderStock(ReserveOrderStockRequest request) {
+        Long orderId = snowflake.nextId();
+        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(RESERVATION_TTL_MINUTES);
+
+        List<ReserveOrderStockRequest.LineItem> sortedItems = request.getLineItems().stream()
+                .sorted(Comparator
+                        .comparing(ReserveOrderStockRequest.LineItem::getItemId)
+                        .thenComparing(ReserveOrderStockRequest.LineItem::getStockItemType)
+                        .thenComparing(ReserveOrderStockRequest.LineItem::getReferenceId))
+                .toList();
+
+        List<ReserveOrderStockResponse.ReservedLineItem> reservedItems = new ArrayList<>();
+        for (ReserveOrderStockRequest.LineItem lineItem : sortedItems) {
+            StockItem stockItem = stockItemRepository.findByItemIdAndStockItemTypeAndReferenceIdWithLock(
+                            lineItem.getItemId(), lineItem.getStockItemType(), lineItem.getReferenceId())
+                    .orElseThrow(() -> new BusinessException(StockErrorCode.STOCK_ITEM_NOT_FOUND));
+
+            if (stockItem.getAvailableQuantity() < lineItem.getQuantity()) {
+                throw new BusinessException(StockErrorCode.INSUFFICIENT_STOCK);
+            }
+
+            stockItem.reserve(lineItem.getQuantity());
+
+            StockReservation reservation = StockReservation.create(
+                    stockItem.getId(),
+                    request.getUserId(),
+                    orderId,
+                    lineItem.getQuantity(),
+                    expiresAt
+            );
+            stockReservationRepository.save(reservation);
+
+            stockHistoryRepository.save(StockHistory.create(
+                    stockItem.getId(),
+                    ChangeType.RESERVE,
+                    lineItem.getQuantity(),
+                    "주문 단위 예약 생성 (userId=" + request.getUserId() + ", orderId=" + orderId + ")",
+                    reservation.getId()
+            ));
+
+            stockCacheService.cacheStock(stockItem.getId(), stockItem.getAvailableQuantity());
+            publishItemStockSnapshotEvent(stockItem.getItemId());
+
+            reservedItems.add(ReserveOrderStockResponse.ReservedLineItem.builder()
+                    .itemId(lineItem.getItemId())
+                    .stockItemType(lineItem.getStockItemType().name())
+                    .referenceId(lineItem.getReferenceId())
+                    .quantity(lineItem.getQuantity())
+                    .build());
+        }
+
+        return ReserveOrderStockResponse.builder()
+                .orderId(orderId)
+                .expiresAt(expiresAt)
+                .reservedItems(reservedItems)
+                .build();
+    }
+
     // ─── TCC: Confirm ─────────────────────────
     @DistributedLock(key = "'stock:reservation:' + #request.reservationId")
     public ReservationResponse confirmReservation(ConfirmReservationRequest request) {
         StockReservation reservation = getReservationWithLock(request.getReservationId());
+        if (reservation.isExpired()) {
+            expireLockedReservation(reservation);
+            throw new BusinessException(StockErrorCode.RESERVATION_EXPIRED);
+        }
         reservation.confirm();
 
         StockItem stockItem = getStockItemWithLock(reservation.getStockItemId());
@@ -128,6 +198,10 @@ public class StockCommandService {
     @DistributedLock(key = "'stock:reservation:' + #reservationId")
     public ReservationResponse confirmReservationById(Long reservationId) {
         StockReservation reservation = getReservationWithLock(reservationId);
+        if (reservation.isExpired()) {
+            expireLockedReservation(reservation);
+            throw new BusinessException(StockErrorCode.RESERVATION_EXPIRED);
+        }
         reservation.confirm();
 
         StockItem stockItem = getStockItemWithLock(reservation.getStockItemId());
@@ -138,6 +212,40 @@ public class StockCommandService {
                 "예약 확정 (결제 완료)", reservation.getId()));
 
         return ReservationResponse.from(reservation);
+    }
+
+    @DistributedLock(key = "'stock:order:' + #orderId", waitTime = 5)
+    public List<ReservationResponse> confirmReservationsByOrderId(Long orderId) {
+        List<StockReservation> reservations = stockReservationRepository.findByOrderId(orderId);
+        if (reservations.isEmpty()) {
+            return List.of();
+        }
+
+        List<ReservationResponse> confirmedReservations = new ArrayList<>();
+        for (StockReservation reservationSummary : reservations) {
+            StockReservation reservation = getReservationWithLock(reservationSummary.getId());
+            if (reservation.getStatus() != ReservationStatus.RESERVED) {
+                continue;
+            }
+
+            if (reservation.isExpired()) {
+                expireLockedReservation(reservation);
+                continue;
+            }
+
+            reservation.confirm();
+
+            StockItem stockItem = getStockItemWithLock(reservation.getStockItemId());
+            stockItem.confirmReservation(reservation.getQuantity());
+
+            stockHistoryRepository.save(StockHistory.create(
+                    stockItem.getId(), ChangeType.CONFIRM, reservation.getQuantity(),
+                    "orderId 기반 예약 확정", reservation.getId()));
+
+            confirmedReservations.add(ReservationResponse.from(reservation));
+        }
+
+        return confirmedReservations;
     }
 
     // ─── TCC: Cancel ──────────────────────────
@@ -157,6 +265,37 @@ public class StockCommandService {
         publishItemStockSnapshotEvent(stockItem.getItemId());
 
         return ReservationResponse.from(reservation);
+    }
+
+    @DistributedLock(key = "'stock:order:' + #orderId", waitTime = 5)
+    public List<ReservationResponse> cancelReservationsByOrderId(Long orderId) {
+        List<StockReservation> reservations = stockReservationRepository.findByOrderId(orderId);
+        if (reservations.isEmpty()) {
+            return List.of();
+        }
+
+        List<ReservationResponse> cancelledReservations = new ArrayList<>();
+        for (StockReservation reservationSummary : reservations) {
+            StockReservation reservation = getReservationWithLock(reservationSummary.getId());
+            if (reservation.getStatus() != ReservationStatus.RESERVED) {
+                continue;
+            }
+
+            reservation.cancel();
+
+            StockItem stockItem = getStockItemWithLock(reservation.getStockItemId());
+            stockItem.cancelReservation(reservation.getQuantity());
+
+            stockHistoryRepository.save(StockHistory.create(
+                    stockItem.getId(), ChangeType.CANCEL, reservation.getQuantity(),
+                    "orderId 기반 예약 취소", reservation.getId()));
+
+            stockCacheService.cacheStock(stockItem.getId(), stockItem.getAvailableQuantity());
+            publishItemStockSnapshotEvent(stockItem.getItemId());
+            cancelledReservations.add(ReservationResponse.from(reservation));
+        }
+
+        return cancelledReservations;
     }
 
     public StockResponse initializeStock(InitializeStockRequest request) {
@@ -194,6 +333,10 @@ public class StockCommandService {
             return;
         }
 
+        expireLockedReservation(reservation);
+    }
+
+    private void expireLockedReservation(StockReservation reservation) {
         reservation.expire();
 
         StockItem stockItem = stockItemRepository.findByIdWithLock(reservation.getStockItemId())

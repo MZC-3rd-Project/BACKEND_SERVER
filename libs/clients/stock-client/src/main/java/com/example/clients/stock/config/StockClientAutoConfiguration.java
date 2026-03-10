@@ -4,8 +4,10 @@ import com.example.clients.stock.facade.StockAvailabilityQueryFacade;
 import com.example.clients.stock.facade.StockClientFacade;
 import com.example.clients.stock.facade.StockInfoQueryClientFacade;
 import com.example.clients.stock.facade.StockItemReferenceQueryFacade;
+import com.example.clients.stock.facade.StockOrderReservationClientFacade;
 import com.example.clients.stock.facade.StockReservationClientFacade;
 import com.example.clients.stock.impl.DefaultStockClientFacade;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -21,9 +23,10 @@ public class StockClientAutoConfiguration {
     @ConditionalOnMissingBean
     public DefaultStockClientFacade defaultStockClientFacade(
             WebClient.Builder webClientBuilder,
+            ObjectMapper objectMapper,
             @Value("${app.clients.stock.base-url:${app.service.stock-url:http://localhost:8085}}") String stockServiceUrl
     ) {
-        return new DefaultStockClientFacade(webClientBuilder, stockServiceUrl);
+        return new DefaultStockClientFacade(webClientBuilder, objectMapper, stockServiceUrl);
     }
 
     @Bean
@@ -35,6 +38,12 @@ public class StockClientAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(StockReservationClientFacade.class)
     public StockReservationClientFacade stockReservationClientFacade(DefaultStockClientFacade delegate) {
+        return delegate;
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(StockOrderReservationClientFacade.class)
+    public StockOrderReservationClientFacade stockOrderReservationClientFacade(DefaultStockClientFacade delegate) {
         return delegate;
     }
 

@@ -1,8 +1,12 @@
 package com.example.clients.product.impl;
 
 import com.example.clients.product.dto.ProductItemSummary;
+import com.example.clients.product.dto.ProductQuoteRequest;
+import com.example.clients.product.dto.ProductQuoteResponse;
 import com.example.clients.product.exception.ProductClientException;
 import com.example.clients.product.facade.ProductClientFacade;
+import com.example.clients.product.facade.ProductQuoteClientFacade;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,9 +17,11 @@ public class DefaultProductClientFacade implements ProductClientFacade {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultProductClientFacade.class);
     private final WebClient webClient;
+    private final ObjectMapper objectMapper;
 
-    public DefaultProductClientFacade(WebClient.Builder webClientBuilder, String productServiceUrl) {
+    public DefaultProductClientFacade(WebClient.Builder webClientBuilder, ObjectMapper objectMapper, String productServiceUrl) {
         this.webClient = webClientBuilder.baseUrl(productServiceUrl).build();
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -73,6 +79,33 @@ public class DefaultProductClientFacade implements ProductClientFacade {
             throw e;
         } catch (Exception e) {
             throw new ProductClientException("product lookup failed", e);
+        }
+    }
+
+    @Override
+    public ProductQuoteResponse quoteItems(ProductQuoteRequest request) {
+        try {
+            JsonNode response = webClient.post()
+                    .uri("/internal/v1/items/quote")
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block();
+
+            if (response == null || !response.path("success").asBoolean()) {
+                throw new ProductClientException("product quote failed");
+            }
+
+            JsonNode data = response.path("data");
+            if (data.isMissingNode() || data.isNull()) {
+                throw new ProductClientException("product quote returned empty data");
+            }
+
+            return objectMapper.treeToValue(data, ProductQuoteResponse.class);
+        } catch (ProductClientException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new ProductClientException("product quote failed", e);
         }
     }
 

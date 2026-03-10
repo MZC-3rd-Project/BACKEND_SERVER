@@ -16,6 +16,8 @@ public enum ProductErrorCode implements DomainErrorCode {
     ITEM_NOT_EDITABLE("PRODUCT-004", "수정할 수 없는 상태의 상품입니다", HttpStatus.BAD_REQUEST),
     ITEM_NOT_DELETABLE("PRODUCT-005", "삭제할 수 없는 상태의 상품입니다", HttpStatus.BAD_REQUEST),
     ITEM_TYPE_MISMATCH("PRODUCT-006", "요청한 상품 타입과 실제 상품 타입이 일치하지 않습니다", HttpStatus.BAD_REQUEST),
+    ITEM_NOT_SALEABLE("PRODUCT-007", "현재 채널에서 구매 가능한 상태의 상품이 아닙니다", HttpStatus.CONFLICT),
+    INVALID_QUOTE_CHANNEL("PRODUCT-008", "유효하지 않은 견적 채널입니다", HttpStatus.BAD_REQUEST),
 
     // Category
     CATEGORY_NOT_FOUND("PRODUCT-101", "카테고리를 찾을 수 없습니다", HttpStatus.NOT_FOUND),

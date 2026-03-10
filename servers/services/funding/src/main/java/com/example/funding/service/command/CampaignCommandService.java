@@ -112,8 +112,7 @@ public class CampaignCommandService {
         List<FundingParticipation> pendingParticipations =
                 participationRepository.findByCampaignIdAndStatus(campaignId, ParticipationStatus.PENDING);
         List<StockCancelTarget> cancelTargets = pendingParticipations.stream()
-                .filter(participation -> participation.getReservationId() != null)
-                .map(participation -> new StockCancelTarget(participation.getId(), participation.getReservationId()))
+                .map(participation -> new StockCancelTarget(participation.getId(), participation.getOrderId()))
                 .toList();
 
         for (FundingParticipation participation : pendingParticipations) {
@@ -180,24 +179,24 @@ public class CampaignCommandService {
     private void cancelReservations(List<StockCancelTarget> cancelTargets) {
         for (StockCancelTarget cancelTarget : cancelTargets) {
             try {
-                stockClient.cancelReservation(cancelTarget.reservationId());
+                stockClient.cancelReservationsByOrderId(cancelTarget.orderId());
             } catch (Exception e) {
-                log.error("Campaign cancel committed but stock reservation cancel failed: participationId={}, reservationId={}",
-                        cancelTarget.participationId(), cancelTarget.reservationId(), e);
+                log.error("Campaign cancel committed but stock reservation cancel failed: participationId={}, orderId={}",
+                        cancelTarget.participationId(), cancelTarget.orderId(), e);
                 try {
                     stockCancelRetryService.enqueue(
                             cancelTarget.participationId(),
-                            cancelTarget.reservationId(),
+                            cancelTarget.orderId(),
                             e.getMessage()
                     );
                 } catch (Exception enqueueError) {
-                    log.error("Failed to enqueue stock cancel retry after campaign cancel: participationId={}, reservationId={}",
-                            cancelTarget.participationId(), cancelTarget.reservationId(), enqueueError);
+                    log.error("Failed to enqueue stock cancel retry after campaign cancel: participationId={}, orderId={}",
+                            cancelTarget.participationId(), cancelTarget.orderId(), enqueueError);
                 }
             }
         }
     }
 
-    private record StockCancelTarget(Long participationId, Long reservationId) {
+    private record StockCancelTarget(Long participationId, Long orderId) {
     }
 }
