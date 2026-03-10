@@ -2,6 +2,7 @@ package com.example.store.entity;
 
 
 import com.example.core.id.jpa.SnowflakeGenerated;
+import com.example.data.entity.BaseEntity;
 import com.example.store.repository.StoreImageRepository;
 import jakarta.persistence.*;
 import lombok.*;
@@ -15,7 +16,7 @@ import org.hibernate.annotations.SQLRestriction;
 @Builder
 @Entity
 @Table(name = "store_images")
-public class StoreImage {
+public class StoreImage extends BaseEntity {
     @Id
     @SnowflakeGenerated
     private Long id;

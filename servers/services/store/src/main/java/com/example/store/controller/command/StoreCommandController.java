@@ -5,6 +5,7 @@ import com.example.store.controller.api.command.StoreCommandApi;
 import com.example.store.dto.request.StoreCreateRequest;
 import com.example.store.dto.request.StoreUpdateRequest;
 import com.example.store.dto.response.StoreCreateResponse;
+import com.example.store.dto.response.StoreDeleteResponse;
 import com.example.store.dto.response.StoreUpdateResponse;
 import com.example.store.service.command.StoreCommandService;
 import lombok.RequiredArgsConstructor;
@@ -28,5 +29,10 @@ public class StoreCommandController implements StoreCommandApi {
     @Override
     public ApiResponse<StoreUpdateResponse> updateStore(Long userId, Long storeId, StoreUpdateRequest request) {
         return ApiResponse.success(storeCommandService.update(userId, storeId, request));
+    }
+
+    @Override
+    public ApiResponse<StoreDeleteResponse> deleteStore(Long userId, Long storeId) {
+        return ApiResponse.success(storeCommandService.delete(userId,storeId));
     }
 }

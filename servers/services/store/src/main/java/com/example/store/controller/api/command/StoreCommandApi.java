@@ -4,11 +4,13 @@ import com.example.api.response.ApiResponse;
 import com.example.store.dto.request.StoreCreateRequest;
 import com.example.store.dto.request.StoreUpdateRequest;
 import com.example.store.dto.response.StoreCreateResponse;
+import com.example.store.dto.response.StoreDeleteResponse;
 import com.example.store.dto.response.StoreUpdateResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.apache.kafka.shaded.com.google.protobuf.Api;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "store command api, cud",description = "store command api")
@@ -28,5 +30,13 @@ public interface StoreCommandApi {
         @RequestHeader("X-User-Id") Long userId,
         @PathVariable Long storeId,
         @Valid @RequestBody StoreUpdateRequest request
+    );
+
+    @Operation(description = "Store 삭제(soft delete)")
+    @DeleteMapping("/{storeId}")
+    ApiResponse<StoreDeleteResponse> deleteStore(
+        @Parameter(hidden = true)
+        @RequestHeader("X-User-Id") Long userId,
+        @PathVariable Long storeId
     );
 }

@@ -6,6 +6,7 @@ import com.example.core.exception.TechnicalException;
 import com.example.store.dto.request.StoreCreateRequest;
 import com.example.store.dto.request.StoreUpdateRequest;
 import com.example.store.dto.response.StoreCreateResponse;
+import com.example.store.dto.response.StoreDeleteResponse;
 import com.example.store.dto.response.StoreUpdateResponse;
 import com.example.store.entity.*;
 import com.example.store.exception.StoreErrorCode;
@@ -191,6 +192,32 @@ public class StoreCommandService {
         if(!storeId.equals(userId)){
             throw new BusinessException(StoreErrorCode.STORE_ACCESS_DENIED);
         }
+    }
+
+    public StoreDeleteResponse delete(Long userId,Long storeId){
+        Stores stores = storesRepository.findByIdAndDeletedAtIsNull(storeId)
+            .orElseThrow(() -> new BusinessException(StoreErrorCode.STORE_NOT_FOUND));
+
+        validatorOwner(stores.getUserId(), userId);
+
+        StoreAddress storeAddress = storeAddressRepository.findById(storeId)
+            .orElseThrow(() -> new BusinessException(StoreErrorCode.ADDRESS_NOT_FOUND));
+        StoreContact storeContact = storeContactRepository.findById(storeId)
+            .orElseThrow(() -> new BusinessException(StoreErrorCode.CONTACT_NOT_FOUND));
+        StoreImage storeImage = storeImageRepository.findById(storeId)
+            .orElseThrow(() -> new BusinessException(StoreErrorCode.IMAGE_NOT_FOUND));
+        StoreProfile storeProfile = storeProfileRepository.findByStoreId(storeId)
+            .orElseThrow(() -> new BusinessException(StoreErrorCode.PROFILE_NOT_FOUND));
+
+
+        stores.softDelete();
+        storeAddress.softDelete();
+        storeContact.softDelete();
+        storeImage.softDelete();
+        storeProfile.softDelete();
+
+
+        return StoreDeleteResponse.of(storeId);
     }
 
 }
