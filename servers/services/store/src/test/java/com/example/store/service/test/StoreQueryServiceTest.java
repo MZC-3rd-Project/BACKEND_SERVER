@@ -1,6 +1,8 @@
 package com.example.store.service.test;
 
+import com.example.store.dto.image.StoreImageResponse;
 import com.example.store.dto.response.StoreListResponse;
+import com.example.store.entity.ImageType;
 import com.example.store.entity.StoreStatus;
 import com.example.store.repository.StoresRepository;
 import com.example.store.service.query.StoreQueryService;
@@ -37,6 +39,13 @@ class StoreQueryServiceTest {
     // ── 픽스처 ─────────────────────────────────────────────────────────────────
 
     private StoreListResponse storeListResponse() {
+        StoreImageResponse thumbnail = StoreImageResponse.builder()
+            .storeId(1L)
+            .mediaId(1L)
+            .imageType(ImageType.THUMBNAIL)
+            .sortOrder(0)
+            .build();
+
         return new StoreListResponse(
             1L,                          // id
             2L,                          // userId
@@ -44,7 +53,8 @@ class StoreQueryServiceTest {
             StoreStatus.ACTIVE,          // status
             "맛있는 음식점입니다.",        // description
             "010-1234-5678",             // contactValue
-            "서울시 강남구 테헤란로 1길"  // address
+            "서울시 강남구 테헤란로 1길", // address
+            thumbnail                    // isThumbnail
         );
     }
 

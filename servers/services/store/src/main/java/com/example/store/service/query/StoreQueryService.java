@@ -4,8 +4,10 @@ import com.example.core.exception.BusinessException;
 import com.example.core.exception.CommonErrorCode;
 import com.example.core.exception.ErrorCode;
 import com.example.core.exception.TechnicalException;
+import com.example.store.dto.image.StoreImagesResponse;
 import com.example.store.dto.response.StoreDetailResponse;
 import com.example.store.dto.response.StoreListResponse;
+import com.example.store.entity.StoreImage;
 import com.example.store.exception.StoreErrorCode;
 import com.example.store.repository.StoresRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.data.domain.Pageable;
+
+import java.util.List;
 
 import static com.example.store.exception.StoreErrorCode.STORE_NOT_FOUND;
 
@@ -38,9 +42,18 @@ public class StoreQueryService {
     }
 
     public StoreDetailResponse getStoreDetail(Long storeId){
-        return storesRepository.findByStoreId(storeId)
-            .map(StoreDetailResponse::of)
-            .orElseThrow(() -> new BusinessException(STORE_NOT_FOUND));
+        // 1. 기본 정보 조회
+        StoreDetailResponse base = storesRepository.findByStoreId(storeId)
+            .orElseThrow(() -> new BusinessException(StoreErrorCode.STORE_NOT_FOUND));
+
+        // 2. 이미지 조회
+        List<StoreImage> images = storesRepository.findImagesByStoreId(storeId);
+
+        // 3. 이미지 조합 (썸네일 자동 선택)
+        StoreImagesResponse imagesResponse = StoreImagesResponse.from(images);
+
+        // 4. 합쳐서 반환
+        return base.from(imagesResponse);
     }
 
 

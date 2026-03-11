@@ -2,6 +2,7 @@ package com.example.store.repository;
 
 import com.example.store.dto.response.StoreDetailResponse;
 import com.example.store.dto.response.StoreListResponse;
+import com.example.store.entity.StoreImage;
 import com.example.store.entity.Stores;
 
 import io.lettuce.core.dynamic.annotation.Param;
@@ -12,6 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.PathVariable;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface StoresRepository extends JpaRepository<Stores, Long> {
@@ -69,6 +71,10 @@ public interface StoresRepository extends JpaRepository<Stores, Long> {
                 AND s.deletedAt is null
     """)
     Optional<StoreDetailResponse> findByStoreId(@Param("storeId") Long storeId);//storeId = id(pk)
+
+    // 이미지 별도 조회
+    @Query("SELECT si FROM StoreImage si WHERE si.store.id = :storeId AND si.deletedAt IS NULL")
+    List<StoreImage> findImagesByStoreId(@Param("storeId") Long storeId);
 
     boolean existsByUserIdAndDeletedAtIsNull(Long userId);
 
