@@ -17,16 +17,20 @@ public class CreateOrderResponse {
     @SnowflakeId
     private Long purchaseId;
 
+    private String orderType;
     private String status;
     private Long totalAmount;
+    private LocalDateTime expiresAt;
     private LocalDateTime createdAt;
 
     public static CreateOrderResponse from(Order order) {
         return CreateOrderResponse.builder()
                 .orderId(order.getId())
                 .purchaseId(order.getPurchaseId())
+                .orderType(order.getOrderType().name())
                 .status(order.getStatus().name())
                 .totalAmount(order.getTotalAmount())
+                .expiresAt(order.getExpiresAt())
                 .createdAt(order.getCreatedAt())
                 .build();
     }

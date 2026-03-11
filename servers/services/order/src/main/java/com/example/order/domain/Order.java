@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,6 +34,10 @@ public class Order extends BaseEntity {
     @Column(name = "purchase_id", nullable = false)
     private Long purchaseId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "order_type", nullable = false, length = 20)
+    private OrderType orderType;
+
     @Column(name = "total_amount", nullable = false)
     private Long totalAmount;
 
@@ -46,15 +51,39 @@ public class Order extends BaseEntity {
     @Column(name = "status", nullable = false, length = 20)
     private OrderStatus status;
 
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
+
+    @Column(name = "recipient_name", length = 50)
+    private String recipientName;
+
+    @Column(name = "recipient_phone", length = 20)
+    private String recipientPhone;
+
+    @Column(name = "zip_code", length = 10)
+    private String zipCode;
+
+    @Column(name = "address", length = 200)
+    private String address;
+
+    @Column(name = "address_detail", length = 200)
+    private String addressDetail;
+
+    @Column(name = "delivery_memo", length = 200)
+    private String deliveryMemo;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> orderItems = new ArrayList<>();
 
-    public static Order create(Long userId, Long purchaseId, Long totalAmount, Long reservationId) {
+    public static Order create(Long userId, Long purchaseId, OrderType orderType,
+                               Long totalAmount, Long reservationId, LocalDateTime expiresAt) {
         Order order = new Order();
         order.userId = userId;
         order.purchaseId = purchaseId;
+        order.orderType = orderType;
         order.totalAmount = totalAmount;
         order.reservationId = reservationId;
+        order.expiresAt = expiresAt;
         order.status = OrderStatus.CREATED;
         return order;
     }
@@ -62,6 +91,17 @@ public class Order extends BaseEntity {
     public void addItem(OrderItem item) {
         orderItems.add(item);
         item.setOrder(this);
+    }
+
+    public void updateShippingInfo(String recipientName, String recipientPhone,
+                                   String zipCode, String address,
+                                   String addressDetail, String deliveryMemo) {
+        this.recipientName = recipientName;
+        this.recipientPhone = recipientPhone;
+        this.zipCode = zipCode;
+        this.address = address;
+        this.addressDetail = addressDetail;
+        this.deliveryMemo = deliveryMemo;
     }
 
     public void markAsPaid(Long paymentId) {

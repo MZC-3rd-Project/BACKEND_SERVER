@@ -17,6 +17,7 @@ public class OrderListResponse {
     @SnowflakeId
     private Long purchaseId;
 
+    private String orderType;
     private Long totalAmount;
     private String status;
     private int itemCount;
@@ -26,6 +27,7 @@ public class OrderListResponse {
         return OrderListResponse.builder()
                 .orderId(order.getId())
                 .purchaseId(order.getPurchaseId())
+                .orderType(order.getOrderType().name())
                 .totalAmount(order.getTotalAmount())
                 .status(order.getStatus().name())
                 .itemCount(order.getOrderItems().size())
