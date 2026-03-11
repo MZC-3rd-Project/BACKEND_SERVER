@@ -1,24 +1,21 @@
 package com.example.order.domain;
 
 import com.example.core.id.jpa.SnowflakeGenerated;
-import com.example.data.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "order_items",
         indexes = {
-                @Index(name = "idx_order_item_order_id", columnList = "order_id"),
-                @Index(name = "idx_order_item_item_id", columnList = "item_id")
+                @Index(name = "idx_order_items_order_id", columnList = "order_id"),
+                @Index(name = "idx_order_items_item_id", columnList = "item_id")
         })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@SQLRestriction("deleted_at IS NULL")
-public class OrderItem extends BaseEntity {
+public class OrderItem {
 
     @Id
     @SnowflakeGenerated
@@ -39,61 +36,46 @@ public class OrderItem extends BaseEntity {
     @Column(name = "item_id", nullable = false)
     private Long itemId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "item_type", nullable = false, length = 30)
-    private ItemType itemType;
-
-    @Column(name = "item_name", nullable = false)
-    private String itemName;
-
-    @Column(name = "seller_id")
-    private Long sellerId;
-
-    @Column(name = "store_id")
+    @Column(name = "store_id", nullable = false)
     private Long storeId;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "stock_item_type", length = 30)
-    private StockItemType stockItemType;
-
-    @Column(name = "reference_id")
-    private Long referenceId;
-
-    @Column(name = "reference_name", length = 100)
-    private String referenceName;
 
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
 
-    @Column(name = "base_unit_price", nullable = false)
-    private Long baseUnitPrice;
-
     @Column(name = "unit_price", nullable = false)
     private Long unitPrice;
 
-    @Column(name = "subtotal", nullable = false)
-    private Long subtotal;
+    @Column(name = "line_amount", nullable = false)
+    private Long lineAmount;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private java.time.LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private java.time.LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = java.time.LocalDateTime.now();
+        this.updatedAt = java.time.LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = java.time.LocalDateTime.now();
+    }
 
     public static OrderItem create(ChannelType channelType, Long channelRefId,
-                                   Long itemId, ItemType itemType, String itemName,
-                                   Long sellerId, Long storeId,
-                                   StockItemType stockItemType, Long referenceId, String referenceName,
-                                   Integer quantity, Long baseUnitPrice, Long finalUnitPrice) {
+                                   Long itemId, Long storeId,
+                                   Integer quantity, Long unitPrice, Long lineAmount) {
         OrderItem item = new OrderItem();
         item.channelType = channelType;
         item.channelRefId = channelRefId;
         item.itemId = itemId;
-        item.itemType = itemType;
-        item.itemName = itemName;
-        item.sellerId = sellerId;
         item.storeId = storeId;
-        item.stockItemType = stockItemType;
-        item.referenceId = referenceId;
-        item.referenceName = referenceName;
         item.quantity = quantity;
-        item.baseUnitPrice = baseUnitPrice;
-        item.unitPrice = finalUnitPrice;
-        item.subtotal = finalUnitPrice * quantity;
+        item.unitPrice = unitPrice;
+        item.lineAmount = lineAmount;
         return item;
     }
 }

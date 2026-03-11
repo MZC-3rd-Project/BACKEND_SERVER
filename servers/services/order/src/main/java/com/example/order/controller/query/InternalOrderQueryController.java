@@ -2,7 +2,7 @@ package com.example.order.controller.query;
 
 import com.example.api.response.ApiResponse;
 import com.example.order.controller.api.query.InternalOrderQueryApi;
-import com.example.order.dto.response.OrderDetailResponse;
+import com.example.order.dto.response.InternalOrderDetailResponse;
 import com.example.order.service.query.OrderQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,7 +16,7 @@ public class InternalOrderQueryController implements InternalOrderQueryApi {
     private final OrderQueryService orderQueryService;
 
     @Override
-    public ApiResponse<OrderDetailResponse> findById(Long orderId) {
-        return ApiResponse.success(orderQueryService.findById(orderId));
+    public ApiResponse<InternalOrderDetailResponse> findById(Long orderId) {
+        return ApiResponse.success(orderQueryService.getOrder(orderId));
     }
 }

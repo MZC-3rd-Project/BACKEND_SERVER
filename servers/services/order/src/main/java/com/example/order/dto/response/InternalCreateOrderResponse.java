@@ -9,28 +9,19 @@ import java.time.LocalDateTime;
 
 @Getter
 @Builder
-public class CreateOrderResponse {
+public class InternalCreateOrderResponse {
 
     @SnowflakeId
     private Long orderId;
 
-    @SnowflakeId
-    private Long purchaseId;
-
-    private String orderType;
     private String status;
-    private Long totalAmount;
-    private LocalDateTime expiresAt;
+
     private LocalDateTime createdAt;
 
-    public static CreateOrderResponse from(Order order) {
-        return CreateOrderResponse.builder()
+    public static InternalCreateOrderResponse from(Order order) {
+        return InternalCreateOrderResponse.builder()
                 .orderId(order.getId())
-                .purchaseId(order.getPurchaseId())
-                .orderType(order.getOrderType().name())
                 .status(order.getStatus().name())
-                .totalAmount(order.getTotalAmount())
-                .expiresAt(order.getExpiresAt())
                 .createdAt(order.getCreatedAt())
                 .build();
     }

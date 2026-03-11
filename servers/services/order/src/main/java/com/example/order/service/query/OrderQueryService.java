@@ -1,64 +1,55 @@
 package com.example.order.service.query;
 
 import com.example.core.exception.BusinessException;
-import com.example.core.pagination.CursorResponse;
-import com.example.core.pagination.CursorUtils;
 import com.example.order.domain.Order;
 import com.example.order.domain.OrderRepository;
+import com.example.order.dto.response.InternalOrderDetailResponse;
 import com.example.order.dto.response.OrderDetailResponse;
 import com.example.order.dto.response.OrderListResponse;
 import com.example.order.exception.OrderErrorCode;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class OrderQueryService {
 
-    private static final int DEFAULT_SIZE = 20;
-    private static final int MAX_SIZE = 100;
-
     private final OrderRepository orderRepository;
 
-    public OrderDetailResponse findById(Long orderId) {
+    /**
+     * 내 주문 목록 조회 (페이징)
+     */
+    public Page<OrderListResponse> getMyOrders(Long userId, Pageable pageable) {
+        return orderRepository.findByUserIdAndDeletedAtIsNull(userId, pageable)
+                .map(OrderListResponse::from);
+    }
+
+    /**
+     * 주문 상세 조회 (외부 API용 - userId 검증)
+     * 타인 주문 존재 여부 노출 방지를 위해 ORDER_NOT_FOUND 처리
+     */
+    public OrderDetailResponse getOrderDetail(Long orderId, Long userId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new BusinessException(OrderErrorCode.ORDER_NOT_FOUND));
+
+        if (!order.getUserId().equals(userId)) {
+            throw new BusinessException(OrderErrorCode.ORDER_NOT_FOUND);
+        }
+
         return OrderDetailResponse.from(order);
     }
 
-    public CursorResponse<OrderListResponse> findByUserId(Long userId, String cursor, Integer size) {
-        int normalizedSize = normalizeSize(size);
-        Long cursorId = cursor != null ? CursorUtils.decodeLong(cursor) : null;
+    /**
+     * 주문 상세 조회 (내부 API용 - userId 검증 없음)
+     */
+    public InternalOrderDetailResponse getOrder(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new BusinessException(OrderErrorCode.ORDER_NOT_FOUND));
 
-        List<Order> orders = orderRepository.findByUserIdWithCursor(
-                userId, cursorId, PageRequest.of(0, normalizedSize + 1)
-        );
-
-        boolean hasNext = orders.size() > normalizedSize;
-        List<Order> pageOrders = hasNext ? orders.subList(0, normalizedSize) : orders;
-
-        List<OrderListResponse> items = pageOrders.stream()
-                .map(OrderListResponse::from)
-                .toList();
-
-        String nextCursor = hasNext && !pageOrders.isEmpty()
-                ? CursorUtils.encode(pageOrders.get(pageOrders.size() - 1).getId())
-                : null;
-
-        long totalCount = orderRepository.countByUserId(userId);
-
-        return CursorResponse.of(items, nextCursor, totalCount);
-    }
-
-    private int normalizeSize(Integer size) {
-        if (size == null) {
-            return DEFAULT_SIZE;
-        }
-        return Math.max(1, Math.min(size, MAX_SIZE));
+        return InternalOrderDetailResponse.from(order);
     }
 }

@@ -11,7 +11,7 @@ import java.util.List;
 
 @Getter
 @Builder
-public class OrderDetailResponse {
+public class InternalOrderDetailResponse {
 
     @SnowflakeId
     private Long orderId;
@@ -30,46 +30,12 @@ public class OrderDetailResponse {
 
     private LocalDateTime expiresAt;
 
-    private List<OrderItemResponse> items;
+    private List<OrderDetailResponse.OrderItemResponse> items;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    @Getter
-    @Builder
-    public static class OrderItemResponse {
-
-        @SnowflakeId
-        private Long id;
-
-        private String channelType;
-        private Long channelRefId;
-
-        @SnowflakeId
-        private Long itemId;
-
-        @SnowflakeId
-        private Long storeId;
-
-        private Integer quantity;
-        private Long unitPrice;
-        private Long lineAmount;
-
-        public static OrderItemResponse from(OrderItem item) {
-            return OrderItemResponse.builder()
-                    .id(item.getId())
-                    .channelType(item.getChannelType().name())
-                    .channelRefId(item.getChannelRefId())
-                    .itemId(item.getItemId())
-                    .storeId(item.getStoreId())
-                    .quantity(item.getQuantity())
-                    .unitPrice(item.getUnitPrice())
-                    .lineAmount(item.getLineAmount())
-                    .build();
-        }
-    }
-
-    public static OrderDetailResponse from(Order order) {
-        return OrderDetailResponse.builder()
+    public static InternalOrderDetailResponse from(Order order) {
+        return InternalOrderDetailResponse.builder()
                 .orderId(order.getId())
                 .userId(order.getUserId())
                 .status(order.getStatus().name())
@@ -80,7 +46,7 @@ public class OrderDetailResponse {
                 .deliveryMemo(order.getDeliveryMemo())
                 .expiresAt(order.getExpiresAt())
                 .items(order.getOrderItems().stream()
-                        .map(OrderItemResponse::from)
+                        .map(OrderDetailResponse.OrderItemResponse::from)
                         .toList())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())

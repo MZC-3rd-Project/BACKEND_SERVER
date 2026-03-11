@@ -14,24 +14,18 @@ public class OrderListResponse {
     @SnowflakeId
     private Long orderId;
 
-    @SnowflakeId
-    private Long purchaseId;
-
-    private String orderType;
-    private Long totalAmount;
     private String status;
-    private int itemCount;
+    private Long totalAmount;
     private LocalDateTime createdAt;
+    private int itemCount;
 
     public static OrderListResponse from(Order order) {
         return OrderListResponse.builder()
                 .orderId(order.getId())
-                .purchaseId(order.getPurchaseId())
-                .orderType(order.getOrderType().name())
-                .totalAmount(order.getTotalAmount())
                 .status(order.getStatus().name())
-                .itemCount(order.getOrderItems().size())
+                .totalAmount(order.getTotalAmount())
                 .createdAt(order.getCreatedAt())
+                .itemCount(order.getOrderItems().size())
                 .build();
     }
 }

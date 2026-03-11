@@ -1,7 +1,7 @@
 package com.example.order.controller.api.query;
 
 import com.example.api.response.ApiResponse;
-import com.example.order.dto.response.OrderDetailResponse;
+import com.example.order.dto.response.InternalOrderDetailResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,5 +12,5 @@ public interface InternalOrderQueryApi {
 
     @Operation(summary = "주문 상세 조회 (내부)")
     @GetMapping("/{orderId}")
-    ApiResponse<OrderDetailResponse> findById(@PathVariable Long orderId);
+    ApiResponse<InternalOrderDetailResponse> findById(@PathVariable Long orderId);
 }

@@ -1,9 +1,6 @@
 package com.example.order.dto.request;
 
 import com.example.order.domain.ChannelType;
-import com.example.order.domain.ItemType;
-import com.example.order.domain.OrderType;
-import com.example.order.domain.StockItemType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
@@ -16,7 +13,7 @@ import java.util.List;
 
 @Getter
 @NoArgsConstructor
-public class CreateOrderRequest {
+public class InternalCreateOrderRequest {
 
     @NotNull(message = "주문 ID(orderId)는 필수입니다")
     private Long orderId;
@@ -24,30 +21,24 @@ public class CreateOrderRequest {
     @NotNull(message = "사용자 ID는 필수입니다")
     private Long userId;
 
-    @NotNull(message = "주문 타입은 필수입니다")
-    private OrderType orderType;
+    private LocalDateTime expiresAt;
 
     @NotNull(message = "총 금액은 필수입니다")
     @Min(value = 0, message = "총 금액은 0 이상이어야 합니다")
     private Long totalAmount;
 
-    private LocalDateTime expiresAt;
+    private String recipientName;
+    private String recipientPhone;
+    private Long deliveryAddressId;
+    private String deliveryMemo;
 
     @NotEmpty(message = "주문 항목은 최소 1개 이상이어야 합니다")
     @Valid
-    private List<OrderItemRequest> items;
-
-    // --- 배송지 / 수령인 (선택) ---
-    private String recipientName;
-    private String recipientPhone;
-    private String zipCode;
-    private String address;
-    private String addressDetail;
-    private String deliveryMemo;
+    private List<LineItem> lineItems;
 
     @Getter
     @NoArgsConstructor
-    public static class OrderItemRequest {
+    public static class LineItem {
 
         @NotNull(message = "채널 타입은 필수입니다")
         private ChannelType channelType;
@@ -57,28 +48,21 @@ public class CreateOrderRequest {
         @NotNull(message = "상품 ID는 필수입니다")
         private Long itemId;
 
-        @NotNull(message = "상품 타입은 필수입니다")
-        private ItemType itemType;
-
-        @NotNull(message = "상품명은 필수입니다")
+        private String itemType;
         private String title;
-
         private Long sellerId;
 
+        @NotNull(message = "매장 ID는 필수입니다")
         private Long storeId;
 
-        private StockItemType stockItemType;
-
+        private String stockItemType;
         private Long referenceId;
-
         private String referenceName;
 
         @NotNull(message = "수량은 필수입니다")
         @Min(value = 1, message = "수량은 1 이상이어야 합니다")
         private Integer quantity;
 
-        @NotNull(message = "기본 단가는 필수입니다")
-        @Min(value = 0, message = "기본 단가는 0 이상이어야 합니다")
         private Long baseUnitPrice;
 
         @NotNull(message = "최종 단가는 필수입니다")
