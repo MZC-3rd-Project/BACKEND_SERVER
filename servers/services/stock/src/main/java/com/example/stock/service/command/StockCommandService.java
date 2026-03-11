@@ -16,6 +16,7 @@ import com.example.stock.event.StockDepletedEvent;
 import com.example.stock.event.StockIncreasedEvent;
 import com.example.stock.event.StockThresholdEvent;
 import com.example.stock.exception.StockErrorCode;
+import com.example.stock.repository.OrderReserveIdempotencyRepository;
 import com.example.stock.repository.StockHistoryRepository;
 import com.example.stock.repository.StockItemRepository;
 import com.example.stock.repository.StockReservationRepository;
@@ -31,6 +32,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 @Slf4j
 @Service
@@ -43,6 +45,7 @@ public class StockCommandService {
 
     private final StockItemRepository stockItemRepository;
     private final StockReservationRepository stockReservationRepository;
+    private final OrderReserveIdempotencyRepository orderReserveIdempotencyRepository;
     private final StockHistoryRepository stockHistoryRepository;
     private final StockSyncVersionRepository stockSyncVersionRepository;
     private final StockCacheService stockCacheService;
@@ -116,16 +119,29 @@ public class StockCommandService {
         return ReservationResponse.from(reservation);
     }
 
+    @DistributedLock(key = "'stock:order-reserve:' + #request.userId + ':' + #request.idempotencyKey", waitTime = 5, leaseTime = 10)
     public ReserveOrderStockResponse reserveOrderStock(ReserveOrderStockRequest request) {
-        Long orderId = snowflake.nextId();
-        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(RESERVATION_TTL_MINUTES);
-
         List<ReserveOrderStockRequest.LineItem> sortedItems = request.getLineItems().stream()
                 .sorted(Comparator
                         .comparing(ReserveOrderStockRequest.LineItem::getItemId)
                         .thenComparing(ReserveOrderStockRequest.LineItem::getStockItemType)
                         .thenComparing(ReserveOrderStockRequest.LineItem::getReferenceId))
                 .toList();
+        String requestSignature = buildReserveOrderRequestSignature(request, sortedItems);
+
+        OrderReserveIdempotency existingIdempotency = orderReserveIdempotencyRepository
+                .findByUserIdAndIdempotencyKey(request.getUserId(), request.getIdempotencyKey())
+                .orElse(null);
+        if (existingIdempotency != null) {
+            existingIdempotency.ensureSameRequestSignature(requestSignature);
+            if (existingIdempotency.isExpired() || !isReplayable(existingIdempotency.getOrderId())) {
+                throw new BusinessException(StockErrorCode.ORDER_RESERVE_IDEMPOTENCY_CONFLICT);
+            }
+            return toIdempotentReserveResponse(existingIdempotency, sortedItems);
+        }
+
+        Long orderId = snowflake.nextId();
+        LocalDateTime expiresAt = LocalDateTime.now().plusMinutes(RESERVATION_TTL_MINUTES);
 
         List<ReserveOrderStockResponse.ReservedLineItem> reservedItems = new ArrayList<>();
         for (ReserveOrderStockRequest.LineItem lineItem : sortedItems) {
@@ -166,6 +182,8 @@ public class StockCommandService {
                     .quantity(lineItem.getQuantity())
                     .build());
         }
+
+        saveOrderReserveIdempotency(request, requestSignature, orderId, expiresAt);
 
         return ReserveOrderStockResponse.builder()
                 .orderId(orderId)
@@ -406,6 +424,72 @@ public class StockCommandService {
             return 0;
         }
         return Math.toIntExact(total);
+    }
+
+    private void saveOrderReserveIdempotency(
+            ReserveOrderStockRequest request,
+            String requestSignature,
+            Long orderId,
+            LocalDateTime expiresAt
+    ) {
+        try {
+            orderReserveIdempotencyRepository.save(OrderReserveIdempotency.create(
+                    request.getUserId(),
+                    request.getIdempotencyKey(),
+                    requestSignature,
+                    orderId,
+                    expiresAt
+            ));
+        } catch (DataIntegrityViolationException e) {
+            log.info("Order reserve idempotency row already exists. userId={}, idempotencyKey={}",
+                    request.getUserId(), request.getIdempotencyKey());
+        }
+    }
+
+    private boolean isReplayable(Long orderId) {
+        List<StockReservation> reservations = stockReservationRepository.findByOrderId(orderId);
+        if (reservations.isEmpty()) {
+            return false;
+        }
+        return reservations.stream().allMatch(reservation -> reservation.getStatus() == ReservationStatus.RESERVED);
+    }
+
+    private ReserveOrderStockResponse toIdempotentReserveResponse(
+            OrderReserveIdempotency idempotency,
+            List<ReserveOrderStockRequest.LineItem> sortedItems
+    ) {
+        return ReserveOrderStockResponse.builder()
+                .orderId(idempotency.getOrderId())
+                .expiresAt(idempotency.getExpiresAt())
+                .reservedItems(sortedItems.stream()
+                        .map(lineItem -> ReserveOrderStockResponse.ReservedLineItem.builder()
+                                .itemId(lineItem.getItemId())
+                                .stockItemType(lineItem.getStockItemType().name())
+                                .referenceId(lineItem.getReferenceId())
+                                .quantity(lineItem.getQuantity())
+                                .build())
+                        .toList())
+                .build();
+    }
+
+    private String buildReserveOrderRequestSignature(
+            ReserveOrderStockRequest request,
+            List<ReserveOrderStockRequest.LineItem> sortedItems
+    ) {
+        String normalizedChannelType = request.getChannelType() == null
+                ? ""
+                : request.getChannelType().trim().toUpperCase(Locale.ROOT);
+        String normalizedChannelRefId = request.getChannelRefId() == null
+                ? ""
+                : String.valueOf(request.getChannelRefId());
+        String lineSignature = sortedItems.stream()
+                .map(lineItem -> lineItem.getItemId()
+                        + ":" + lineItem.getStockItemType().name()
+                        + ":" + lineItem.getReferenceId()
+                        + ":" + lineItem.getQuantity())
+                .reduce((left, right) -> left + "|" + right)
+                .orElse("");
+        return normalizedChannelType + "#" + normalizedChannelRefId + "#" + lineSignature;
     }
 
     private StockItem getStockItemWithLock(Long stockItemId) {

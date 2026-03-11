@@ -2,10 +2,14 @@ package com.example.sales.controller.command;
 
 import com.example.api.response.ApiResponse;
 import com.example.sales.controller.api.command.CheckoutCommandApi;
+import com.example.sales.dto.checkout.request.CheckoutCancelRequest;
 import com.example.sales.dto.checkout.request.CheckoutQuoteRequest;
 import com.example.sales.dto.checkout.request.CheckoutReserveRequest;
+import com.example.sales.dto.checkout.request.CheckoutSubmitRequest;
+import com.example.sales.dto.checkout.response.CheckoutCancelResponse;
 import com.example.sales.dto.checkout.response.CheckoutQuoteResponse;
 import com.example.sales.dto.checkout.response.CheckoutReserveResponse;
+import com.example.sales.dto.checkout.response.CheckoutSubmitResponse;
 import com.example.sales.service.command.CheckoutCommandService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
@@ -24,5 +28,15 @@ public class CheckoutCommandController implements CheckoutCommandApi {
     @Override
     public ApiResponse<CheckoutQuoteResponse> quote(CheckoutQuoteRequest request, Long userId) {
         return ApiResponse.success(checkoutCommandService.quote(request, userId));
+    }
+
+    @Override
+    public ApiResponse<CheckoutSubmitResponse> submit(CheckoutSubmitRequest request, Long userId) {
+        return ApiResponse.success(checkoutCommandService.submit(request, userId));
+    }
+
+    @Override
+    public ApiResponse<CheckoutCancelResponse> cancel(CheckoutCancelRequest request, Long userId) {
+        return ApiResponse.success(checkoutCommandService.cancel(request, userId));
     }
 }

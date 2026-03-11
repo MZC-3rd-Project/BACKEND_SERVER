@@ -1,10 +1,14 @@
 package com.example.sales.controller.api.command;
 
 import com.example.api.response.ApiResponse;
+import com.example.sales.dto.checkout.request.CheckoutCancelRequest;
 import com.example.sales.dto.checkout.request.CheckoutQuoteRequest;
 import com.example.sales.dto.checkout.request.CheckoutReserveRequest;
+import com.example.sales.dto.checkout.request.CheckoutSubmitRequest;
+import com.example.sales.dto.checkout.response.CheckoutCancelResponse;
 import com.example.sales.dto.checkout.response.CheckoutQuoteResponse;
 import com.example.sales.dto.checkout.response.CheckoutReserveResponse;
+import com.example.sales.dto.checkout.response.CheckoutSubmitResponse;
 import com.example.security.gateway.CurrentUserId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -31,6 +35,20 @@ public interface CheckoutCommandApi {
     @PostMapping("/api/v1/sales/checkout/quotes")
     ApiResponse<CheckoutQuoteResponse> quote(
             @Valid @RequestBody CheckoutQuoteRequest request,
+            @CurrentUserId Long userId
+    );
+
+    @Operation(summary = "checkout 2차 주문 생성 요청")
+    @PostMapping("/api/v1/sales/checkout/submit")
+    ApiResponse<CheckoutSubmitResponse> submit(
+            @Valid @RequestBody CheckoutSubmitRequest request,
+            @CurrentUserId Long userId
+    );
+
+    @Operation(summary = "checkout 예약 취소")
+    @PostMapping("/api/v1/sales/checkout/cancellations")
+    ApiResponse<CheckoutCancelResponse> cancel(
+            @Valid @RequestBody CheckoutCancelRequest request,
             @CurrentUserId Long userId
     );
 }

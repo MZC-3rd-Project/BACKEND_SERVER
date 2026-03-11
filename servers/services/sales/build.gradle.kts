@@ -15,11 +15,14 @@ dependencies {
 
     // Data
     implementation(project(":libs:data:entity"))
+    implementation(project(":libs:clients:order-client"))
     implementation(project(":libs:clients:product-client"))
     implementation(project(":libs:clients:stock-client"))
 
     // Config
     implementation(project(":libs:config:kafka"))
+    implementation(project(":libs:config:lock"))
+    implementation(project(":libs:config:lock-redisson"))
     implementation(project(":libs:config:redis"))
     implementation(project(":libs:config:resilience"))
     implementation(project(":libs:config:webclient"))

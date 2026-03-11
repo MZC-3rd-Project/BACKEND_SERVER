@@ -56,6 +56,11 @@ public class CheckoutDraftRedisService {
         redisTemplate.delete(draftKey(orderId));
     }
 
+    public void deleteDraft(Long orderId, Long userId, String idempotencyKey) {
+        redisTemplate.delete(draftKey(orderId));
+        redisTemplate.delete(idempotencyKey(userId, idempotencyKey));
+    }
+
     private String draftKey(Long orderId) {
         return DRAFT_KEY_PREFIX + orderId;
     }
@@ -68,7 +73,7 @@ public class CheckoutDraftRedisService {
         try {
             return objectMapper.writeValueAsString(draft);
         } catch (JsonProcessingException e) {
-            throw new BusinessException(SalesErrorCode.CHECKOUT_DRAFT_NOT_FOUND);
+            throw new BusinessException(SalesErrorCode.CHECKOUT_SESSION_NOT_FOUND);
         }
     }
 
@@ -76,7 +81,7 @@ public class CheckoutDraftRedisService {
         try {
             return objectMapper.readValue(json, CheckoutDraft.class);
         } catch (JsonProcessingException e) {
-            throw new BusinessException(SalesErrorCode.CHECKOUT_DRAFT_NOT_FOUND);
+            throw new BusinessException(SalesErrorCode.CHECKOUT_SESSION_NOT_FOUND);
         }
     }
 }

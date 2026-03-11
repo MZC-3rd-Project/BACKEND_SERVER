@@ -45,6 +45,7 @@ class UserEventConsumerTest {
 
     @Test
     void consume_directMode_dispatchesToProcessor() {
+        configureDirectMode();
         String message = """
                 {"eventId":"evt-1","eventType":"UserCreated","userId":101,"email":"user@example.com","nickname":"tester"}
                 """;
@@ -101,6 +102,7 @@ class UserEventConsumerTest {
 
     @Test
     void consume_skipsUnsupportedType() {
+        configureDirectMode();
         String message = """
                 {"eventId":"evt-3","eventType":"UserPasswordChanged","userId":101}
                 """;
@@ -111,5 +113,11 @@ class UserEventConsumerTest {
         verify(profileUserEventProcessor).supports("UserPasswordChanged");
         verify(profileUserEventProcessor, never()).process(message, "evt-3", "UserPasswordChanged");
         verifyNoInteractions(inboxEnqueueService);
+    }
+
+    private void configureDirectMode() {
+        EventConsumerRoutingProperties.RoutingProperties routing = new EventConsumerRoutingProperties.RoutingProperties();
+        routing.setMode(ConsumerRoutingMode.DIRECT);
+        routingProperties.getRouting().put(ProfileUserEventProcessor.CONSUMER_NAME, routing);
     }
 }

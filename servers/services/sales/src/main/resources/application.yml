@@ -77,7 +77,7 @@ app:
     title: "Sales Service API"
     version: "1.0.0"
     description: |
-      일반 판매 구매 진입점 서비스
+      checkout session orchestration service
 
 # ─── Actuator ─────────────────────────────────
 management:
