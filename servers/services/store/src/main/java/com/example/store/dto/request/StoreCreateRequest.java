@@ -33,7 +33,6 @@ public record StoreCreateRequest(
         ImageType imageType,       // THUMBNAIL | GALLERY
         Long mediaId,
         int sortOrder
-    ) {
+    ) { }
 
-    }
 }
