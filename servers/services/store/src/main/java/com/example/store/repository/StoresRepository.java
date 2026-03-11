@@ -24,7 +24,13 @@ public interface StoresRepository extends JpaRepository<Stores, Long> {
             s.status,
             sp.description,
             sa.address,
-            sc.contactValue
+            sc.contactValue,
+            new com.example.store.dto.image.StoreImageResponse(
+                    s.id,
+                    si.mediaId,
+                    si.imageType,
+                    si.sortOrder
+                )
         )
         FROM Stores s
         LEFT JOIN StoreProfile sp
@@ -34,6 +40,9 @@ public interface StoresRepository extends JpaRepository<Stores, Long> {
             AND sc.isPrimary = true
         LEFT JOIN StoreAddress sa
             ON sa.store.id = s.id
+        LEFT JOIN StoreImage si
+               ON si.store.id = s.id
+              WHERE si.imageType = "THUMBNAIL"
         ORDER BY s.createdAt DESC
        """
     )
