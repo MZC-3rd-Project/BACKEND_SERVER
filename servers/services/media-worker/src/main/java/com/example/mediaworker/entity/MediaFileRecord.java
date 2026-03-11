@@ -1,5 +1,6 @@
 package com.example.mediaworker.entity;
 
+import com.example.data.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,12 +12,14 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "media_files")
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class MediaFileRecord {
+public class MediaFileRecord extends BaseEntity {
 
     @Id
     private Long id;
@@ -31,11 +34,19 @@ public class MediaFileRecord {
     @Column(name = "status", nullable = false, length = 30)
     private MediaFileStatus status;
 
+    @Column(name = "confirmed_at")
+    private LocalDateTime confirmedAt;
+
     public boolean isReadyForDerivative() {
         return status == MediaFileStatus.CONFIRMED || status == MediaFileStatus.READY;
     }
 
     public void markReady() {
         status = MediaFileStatus.READY;
+    }
+
+    public void markDeleted() {
+        status = MediaFileStatus.DELETED;
+        softDelete();
     }
 }

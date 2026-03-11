@@ -1,11 +1,12 @@
+
 server:
-  port: 8071
+  port: ${SERVER_PORT:8071}
 
 spring:
   application:
     name: profile-service
   datasource:
-    url: jdbc:postgresql://localhost:5433/profile_db
+    url: jdbc:postgresql://localhost:5432/profile_db
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
@@ -18,7 +19,7 @@ spring:
     show-sql: false
 
   flyway:
-    enabled: true
+    enabled: false
     baseline-on-migrate: true
     locations: classpath:db/migration
     repair-on-migrate: true
@@ -34,7 +35,7 @@ spring:
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
     consumer:
-      group-id: sales-service-group
+      group-id: profile-service-group
       auto-offset-reset: earliest
   # ─── Snowflake ID ────────────────────────────
   app:
@@ -50,6 +51,37 @@ spring:
     description: |
       프로필 유저 관리
 
+  profiles:
+    active: ${SPRING_PROFILE_ACTIVE:local}
+
+# ─── App ───────────────────────────────────────
+app:
+  snowflake:
+    datacenter-id: ${SNOWFLAKE_DATACENTER_ID:1}
+    worker-id: ${SNOWFLAKE_WORKER_ID:7}
+  security:
+    crypto:
+      encryption-key: ${APP_SECURITY_CRYPTO_ENCRYPTION_KEY:1234567890abcdef}
+      migration:
+        enabled: ${APP_SECURITY_CRYPTO_MIGRATION_ENABLED:true}
+  inbox:
+    enabled: ${APP_INBOX_ENABLED:true}
+    immediate-trigger-enabled: ${APP_INBOX_IMMEDIATE_TRIGGER_ENABLED:true}
+    worker:
+      enabled: ${APP_INBOX_WORKER_ENABLED:true}
+      fixed-delay-ms: ${APP_INBOX_WORKER_FIXED_DELAY_MS:1000}
+      batch-size: ${APP_INBOX_WORKER_BATCH_SIZE:100}
+      lease-seconds: ${APP_INBOX_WORKER_LEASE_SECONDS:30}
+      max-retry-count: ${APP_INBOX_WORKER_MAX_RETRY_COUNT:5}
+      base-retry-delay-seconds: ${APP_INBOX_WORKER_BASE_RETRY_DELAY_SECONDS:2}
+      max-retry-delay-seconds: ${APP_INBOX_WORKER_MAX_RETRY_DELAY_SECONDS:300}
+      stale-recovery-batch-size: ${APP_INBOX_WORKER_STALE_RECOVERY_BATCH_SIZE:100}
+      max-drain-loops: ${APP_INBOX_WORKER_MAX_DRAIN_LOOPS:10}
+  event:
+    consumer:
+      routing:
+        profile-user-events-consumer:
+          mode: ${PROFILE_USER_EVENTS_ROUTING_MODE:INBOX}
 # ─── Actuator ─────────────────────────────────
 management:
   endpoints:

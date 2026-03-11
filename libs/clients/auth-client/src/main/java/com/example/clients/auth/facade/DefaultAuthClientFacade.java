@@ -51,4 +51,9 @@ public class DefaultAuthClientFacade implements AuthItemSummaryClientFacade, Aut
             throw new AuthClientException("Auth service 호출 실패: " + e.getStatusCode(), e);
         }
     }
+
+    @Override
+    public JsonNode findProfileInfo(Long userId) {
+        return null;
+    }
 }

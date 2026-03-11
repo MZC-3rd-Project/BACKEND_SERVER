@@ -22,7 +22,7 @@ import java.time.LocalDateTime;
                 @Index(name = "idx_sales_stock_cancel_retry_status_next", columnList = "status, nextRetryAt"),
                 @Index(name = "idx_sales_stock_cancel_retry_status_updated", columnList = "status, updatedAt"),
                 @Index(name = "idx_sales_stock_cancel_retry_purchase", columnList = "purchaseId"),
-                @Index(name = "idx_sales_stock_cancel_retry_reservation", columnList = "reservationId")
+                @Index(name = "idx_sales_stock_cancel_retry_order", columnList = "orderId")
         })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -39,7 +39,7 @@ public class StockCancelRetry extends BaseEntity {
     private Long purchaseId;
 
     @Column(nullable = false)
-    private Long reservationId;
+    private Long orderId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -54,10 +54,10 @@ public class StockCancelRetry extends BaseEntity {
     @Column(length = MAX_ERROR_LENGTH)
     private String lastError;
 
-    public static StockCancelRetry create(Long purchaseId, Long reservationId, String errorMessage) {
+    public static StockCancelRetry create(Long purchaseId, Long orderId, String errorMessage) {
         StockCancelRetry retry = new StockCancelRetry();
         retry.purchaseId = purchaseId;
-        retry.reservationId = reservationId;
+        retry.orderId = orderId;
         retry.status = StockCancelRetryStatus.PENDING;
         retry.retryCount = 0;
         retry.nextRetryAt = LocalDateTime.now();

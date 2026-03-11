@@ -108,4 +108,9 @@ public class MediaDerivative extends BaseEntity {
         this.status = MediaDerivativeStatus.READY;
         restore();
     }
+
+    public void markDeleted() {
+        this.status = MediaDerivativeStatus.DELETED;
+        softDelete();
+    }
 }

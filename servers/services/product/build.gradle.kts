@@ -22,7 +22,9 @@ dependencies {
     implementation(project(":libs:config:redis"))
 
     // Event
+    implementation(project(":libs:event:consumer"))
     implementation(project(":libs:event:domain"))
+    implementation(project(":libs:event:inbox"))
     implementation(project(":libs:event:outbox"))
 
     // OpenAPI

@@ -3,8 +3,10 @@ package com.example.clients.product.config;
 import com.example.clients.product.facade.ProductClientFacade;
 import com.example.clients.product.facade.ProductEndingSoonClientFacade;
 import com.example.clients.product.facade.ProductItemQueryClientFacade;
+import com.example.clients.product.facade.ProductQuoteClientFacade;
 import com.example.clients.product.facade.ProductItemSummaryClientFacade;
 import com.example.clients.product.impl.DefaultProductClientFacade;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -20,9 +22,10 @@ public class ProductClientAutoConfiguration {
     @ConditionalOnMissingBean
     public DefaultProductClientFacade defaultProductClientFacade(
             WebClient.Builder webClientBuilder,
+            ObjectMapper objectMapper,
             @Value("${app.clients.product.base-url:${app.service.product-url:http://localhost:8084}}") String productServiceUrl
     ) {
-        return new DefaultProductClientFacade(webClientBuilder, productServiceUrl);
+        return new DefaultProductClientFacade(webClientBuilder, objectMapper, productServiceUrl);
     }
 
     @Bean
@@ -40,6 +43,12 @@ public class ProductClientAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(ProductItemQueryClientFacade.class)
     public ProductItemQueryClientFacade productItemQueryClientFacade(DefaultProductClientFacade delegate) {
+        return delegate;
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(ProductQuoteClientFacade.class)
+    public ProductQuoteClientFacade productQuoteClientFacade(DefaultProductClientFacade delegate) {
         return delegate;
     }
 

@@ -25,4 +25,20 @@ public interface MediaFileRecordRepository extends JpaRepository<MediaFileRecord
             @Param("toMediaId") Long toMediaId,
             Pageable pageable
     );
+
+    @Query("""
+            select record
+            from MediaFileRecord record
+            where record.status in :statuses
+              and not exists (
+                  select 1
+                  from MediaLinkRecord link
+                  where link.mediaId = record.id
+              )
+            order by record.id asc
+            """)
+    List<MediaFileRecord> findRawDeletionCandidates(
+            @Param("statuses") List<MediaFileStatus> statuses,
+            Pageable pageable
+    );
 }

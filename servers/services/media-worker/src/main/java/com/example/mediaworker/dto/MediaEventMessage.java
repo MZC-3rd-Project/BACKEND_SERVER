@@ -1,11 +1,12 @@
 package com.example.mediaworker.dto;
 
+import com.example.event.consumer.EventEnvelope;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor
-public class MediaEventMessage {
+public class MediaEventMessage implements EventEnvelope {
 
     private Integer schemaVersion;
     private String eventId;

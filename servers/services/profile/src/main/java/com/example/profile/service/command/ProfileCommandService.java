@@ -1,19 +1,26 @@
 package com.example.profile.service.command;
 
+import com.example.clients.auth.dto.profile.AuthSyncQuery;
 import com.example.core.exception.BusinessException;
-import com.example.core.exception.CommonErrorCode;
-import com.example.core.exception.TechnicalException;
+import com.example.event.EventMetadata;
+import com.example.event.EventPublisher;
 import com.example.profile.dto.request.ProfileRequest;
-import com.example.profile.dto.response.ProfileResponse;
+import com.example.profile.entity.ProfileAddress;
 import com.example.profile.entity.Profiles;
 import com.example.profile.entity.ProfilesImage;
+import com.example.profile.event.ProfileUpdatedEvent;
 import com.example.profile.exception.ProfileErrorCode;
+import com.example.profile.repository.ProfileAddressRepository;
 import com.example.profile.repository.ProfileImageRepository;
 import com.example.profile.repository.ProfileRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -22,25 +29,64 @@ public class ProfileCommandService {
 
     private final ProfileImageRepository profilesImageRepository;
     private final ProfileRepository profileRepository;
+    private final ProfileAddressRepository profileAddressRepository;
+    private final ProfileMediaReferenceService profileMediaReferenceService;
+    private final EventPublisher eventPublisher;
 
     @Transactional
-    public void updateProfile(ProfileRequest req) {
-        log.info("mediaid : {}, userid: {}", req.getMediaId(),req.getUserId());
+    public void createProfile(AuthSyncQuery req) {
+        if (profileRepository.existsByNickname(req.profileInfo().nickname())) {
+            throw new BusinessException(ProfileErrorCode.PROFILE_ALREADY_NICKNAME);
+        }
 
-        uploadProfileImage(req.getUserId(), req.getMediaId());
+        Profiles profile = profileRepository.save(Profiles.create(req));
+        profilesImageRepository.save(ProfilesImage.createDefault(profile));
 
-
-        Profiles profile = profileRepository.findByUserId(req.getUserId())
-            .orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_NOT_FOUND));
-        profile.updateProfile(req.getEmail(),req.getNickname(), req.getPhone(), req.getDelevery());
-    };
-
-    private void uploadProfileImage(Long userId, Long mediaId){
-
-        ProfilesImage profileImage = profilesImageRepository.findByUserId(userId)
-            .orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_IMAGE_NOT_FOUND));
-        profileImage.updateMediaId(mediaId);
+        if (req.profileDeliveryInfo() != null && !req.profileDeliveryInfo().isEmpty()) {
+            List<ProfileAddress> addresses = req.profileDeliveryInfo().stream()
+                .map(addr -> ProfileAddress.create(profile.getUserId(), addr))
+                .toList();
+            profileAddressRepository.saveAll(addresses);
+        }
     }
 
+    @Transactional
+    public void updateProfile(ProfileRequest req, Long userId) {
+        Profiles profile = profileRepository.findByUserId(userId)
+            .orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_NOT_FOUND));
 
+        Long canonicalMediaId = profileMediaReferenceService.resolveCanonicalMediaId(req.getMediaId(), req.getMediaRef());
+        profileMediaReferenceService.validateReadableMedia(canonicalMediaId);
+
+        ProfilesImage profileImage = profilesImageRepository.findByUserId(userId)
+            .orElseGet(() -> profilesImageRepository.save(ProfilesImage.createDefault(profile)));
+        profileImage.updateMediaId(canonicalMediaId);
+
+        validateNicknameAvailability(req, profile);
+        profile.updateProfile(req);
+        profileMediaReferenceService.syncProfileImageLink(userId, canonicalMediaId);
+
+        eventPublisher.publish(
+            new ProfileUpdatedEvent(
+                profile.getId(),
+                profile.getUserId(),
+                profile.getEmail(),
+                profile.getNickname(),
+                profile.getPhoneNumber(),
+                canonicalMediaId
+            ),
+            EventMetadata.of("PROFILE", String.valueOf(profile.getId()))
+        );
+    }
+
+    private void validateNicknameAvailability(ProfileRequest req, Profiles profile) {
+        if (!StringUtils.hasText(req.getNickname())) {
+            return;
+        }
+
+        if (profileRepository.existsByNickname(req.getNickname())
+            && !Objects.equals(req.getNickname(), profile.getNickname())) {
+            throw new BusinessException(ProfileErrorCode.PROFILE_ALREADY_NICKNAME);
+        }
+    }
 }

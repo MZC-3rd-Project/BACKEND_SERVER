@@ -7,6 +7,7 @@ import com.example.hotdeal.exception.HotDealErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -22,10 +23,13 @@ import java.util.concurrent.TimeUnit;
 public class QueueService {
 
     private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
 
     private static final String QUEUE_KEY_PREFIX = "hotdeal:queue:";
     private static final String TOKEN_KEY_PREFIX = "hotdeal:token:";
     private static final String ADMITTED_KEY_PREFIX = "hotdeal:admitted:";
+    private static final String ADMITTED_SLOT_KEY_PREFIX = "hotdeal:admitted:slots:";
+    private static final String STOCK_KEY_PREFIX = "hotdeal:stock:";
     private static final long TOKEN_TTL_MINUTES = 30;
     private static final long ADMITTED_TTL_MINUTES = 10;
     private static final long ESTIMATED_PROCESS_SECONDS_PER_USER = 2;
@@ -109,11 +113,13 @@ public class QueueService {
         for (ZSetOperations.TypedTuple<Object> user : topUsers) {
             Object value = user.getValue();
             if (value != null) {
-                String admittedKey = ADMITTED_KEY_PREFIX + hotDealId + ":" + value;
+                String userId = String.valueOf(value);
+                String admittedKey = ADMITTED_KEY_PREFIX + hotDealId + ":" + userId;
                 redisTemplate.opsForValue().set(admittedKey, "true", ADMITTED_TTL_MINUTES, TimeUnit.MINUTES);
-                log.debug("User admitted: hotDealId={}, userId={}", hotDealId, value);
+                trackAdmissionSlot(hotDealId, userId);
+                log.debug("User admitted: hotDealId={}, userId={}", hotDealId, userId);
                 try {
-                    admittedUserIds.add(Long.parseLong(String.valueOf(value)));
+                    admittedUserIds.add(Long.parseLong(userId));
                 } catch (NumberFormatException e) {
                     log.warn("Failed to parse admitted user id. hotDealId={}, rawUserId={}", hotDealId, value);
                 }
@@ -123,9 +129,40 @@ public class QueueService {
         return admittedUserIds;
     }
 
+    /**
+     * 현재 남은 재고 수량과 동시 처리 한도 중 더 작은 값을 목표 슬롯 수로 삼고,
+     * 이미 슬롯을 점유 중인 인원을 제외한 만큼만 추가 입장 허용한다.
+     */
+    public Set<Long> admitUsersByAvailableStock(Long hotDealId, int maxConcurrentAdmissions) {
+        if (maxConcurrentAdmissions <= 0) {
+            cleanupExpiredAdmissionSlots(hotDealId);
+            return Set.of();
+        }
+
+        int availableStock = resolveAvailableStock(hotDealId);
+        if (availableStock <= 0) {
+            cleanupExpiredAdmissionSlots(hotDealId);
+            return Set.of();
+        }
+
+        int targetOpenSlots = Math.min(availableStock, maxConcurrentAdmissions);
+        long activeSlots = countActiveAdmissionSlots(hotDealId);
+        long additionalUsers = targetOpenSlots - activeSlots;
+        if (additionalUsers <= 0) {
+            return Set.of();
+        }
+
+        int admitCount = (int) Math.min(additionalUsers, Integer.MAX_VALUE);
+        return admitUsers(hotDealId, admitCount);
+    }
+
     public boolean isAdmitted(Long hotDealId, Long userId) {
         String admittedKey = ADMITTED_KEY_PREFIX + hotDealId + ":" + userId;
         return Boolean.TRUE.equals(redisTemplate.hasKey(admittedKey));
+    }
+
+    public void releaseAdmissionSlot(Long hotDealId, Long userId) {
+        stringRedisTemplate.opsForZSet().remove(admissionSlotKey(hotDealId), userId.toString());
     }
 
     private String resolveOrIssueToken(Long hotDealId, Long userId) {
@@ -155,5 +192,42 @@ public class QueueService {
             return false;
         }
         return token.trim().equals(String.valueOf(stored));
+    }
+
+    private int resolveAvailableStock(Long hotDealId) {
+        String stockValue = stringRedisTemplate.opsForValue().get(STOCK_KEY_PREFIX + hotDealId);
+        if (!StringUtils.hasText(stockValue)) {
+            return 0;
+        }
+
+        try {
+            return Math.max(Integer.parseInt(stockValue.trim()), 0);
+        } catch (NumberFormatException e) {
+            log.warn("Failed to parse hot-deal stock. hotDealId={}, rawStock={}", hotDealId, stockValue);
+            return 0;
+        }
+    }
+
+    private long countActiveAdmissionSlots(Long hotDealId) {
+        cleanupExpiredAdmissionSlots(hotDealId);
+        Long count = stringRedisTemplate.opsForZSet().zCard(admissionSlotKey(hotDealId));
+        return count != null ? count : 0L;
+    }
+
+    private void cleanupExpiredAdmissionSlots(Long hotDealId) {
+        stringRedisTemplate.opsForZSet().removeRangeByScore(
+                admissionSlotKey(hotDealId),
+                Double.NEGATIVE_INFINITY,
+                System.currentTimeMillis()
+        );
+    }
+
+    private void trackAdmissionSlot(Long hotDealId, String userId) {
+        long expiresAt = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(ADMITTED_TTL_MINUTES);
+        stringRedisTemplate.opsForZSet().add(admissionSlotKey(hotDealId), userId, expiresAt);
+    }
+
+    private String admissionSlotKey(Long hotDealId) {
+        return ADMITTED_SLOT_KEY_PREFIX + hotDealId;
     }
 }

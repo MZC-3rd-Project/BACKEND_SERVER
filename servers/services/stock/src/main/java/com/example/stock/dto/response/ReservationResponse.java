@@ -11,7 +11,6 @@ import java.time.LocalDateTime;
 @Builder
 public class ReservationResponse {
 
-    private Long id;
     private Long stockItemId;
     private Long userId;
     private Long orderId;
@@ -21,7 +20,6 @@ public class ReservationResponse {
 
     public static ReservationResponse from(StockReservation reservation) {
         return ReservationResponse.builder()
-                .id(reservation.getId())
                 .stockItemId(reservation.getStockItemId())
                 .userId(reservation.getUserId())
                 .orderId(reservation.getOrderId())

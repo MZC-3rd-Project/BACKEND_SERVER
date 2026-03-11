@@ -1,6 +1,8 @@
 dependencies {
     // Web
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation("io.micrometer:micrometer-registry-prometheus")
 
     // Common libs
     implementation(project(":libs:core:exception"))
@@ -9,6 +11,7 @@ dependencies {
     implementation(project(":libs:api:exception-handler"))
     implementation(project(":libs:data:entity"))
     implementation(project(":libs:core:id"))
+    implementation(project(":libs:security:crypto"))
 
     // OpenAPI
     implementation(project(":libs:openapi:config"))
@@ -19,8 +22,10 @@ dependencies {
     implementation(project(":libs:config:resilience"))
 
     // Event
+    implementation(project(":libs:event:consumer"))
     implementation(project(":libs:event:domain"))
     implementation(project(":libs:event:outbox"))
+    implementation(project(":libs:event:inbox"))
 
     // JPA
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
@@ -39,5 +44,12 @@ dependencies {
     // flyway
     implementation("org.flywaydb:flyway-core")
     runtimeOnly("org.flywaydb:flyway-database-postgresql")
+
+    implementation (project(":libs:clients:auth-client"))
+    implementation(project(":libs:clients:media-client"))
+
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("org.springframework:spring-webflux")
 
 }

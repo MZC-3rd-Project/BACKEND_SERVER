@@ -1,10 +1,14 @@
 package com.example.clients.stock.impl;
 
-import com.example.clients.stock.dto.StockCancelRequest;
+import com.example.clients.stock.dto.ReserveOrderStockRequest;
+import com.example.clients.stock.dto.ReserveOrderStockResponse;
+import com.example.clients.stock.dto.StockOrderCancelRequest;
 import com.example.clients.stock.dto.StockReservationRequest;
 import com.example.clients.stock.exception.StockClientConflictException;
 import com.example.clients.stock.exception.StockClientException;
 import com.example.clients.stock.facade.StockClientFacade;
+import com.example.clients.stock.facade.StockOrderReservationClientFacade;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,13 +20,36 @@ public class DefaultStockClientFacade implements StockClientFacade {
     private static final Logger log = LoggerFactory.getLogger(DefaultStockClientFacade.class);
 
     private final WebClient webClient;
+    private final ObjectMapper objectMapper;
 
-    public DefaultStockClientFacade(WebClient.Builder webClientBuilder, String stockServiceUrl) {
+    public DefaultStockClientFacade(WebClient.Builder webClientBuilder, ObjectMapper objectMapper, String stockServiceUrl) {
         this.webClient = webClientBuilder.baseUrl(stockServiceUrl).build();
+        this.objectMapper = objectMapper;
     }
 
     @Override
-    public Long reserveStock(Long stockItemId, Long userId, int quantity, Long orderId) {
+    public ReserveOrderStockResponse reserveOrderStock(ReserveOrderStockRequest request) {
+        try {
+            JsonNode response = webClient.post()
+                    .uri("/internal/v1/stock/orders/reserve")
+                    .bodyValue(request)
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block();
+
+            JsonNode data = requireSuccessData(response, "stock order reserve");
+            return objectMapper.treeToValue(data, ReserveOrderStockResponse.class);
+        } catch (WebClientResponseException.Conflict e) {
+            throw new StockClientConflictException("stock order reserve conflict", e);
+        } catch (StockClientException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new StockClientException("stock order reserve failed", e);
+        }
+    }
+
+    @Override
+    public void reserveStock(Long stockItemId, Long userId, int quantity, Long orderId) {
         try {
             JsonNode response = webClient.post()
                     .uri("/internal/v1/stock/reserve")
@@ -31,12 +58,7 @@ public class DefaultStockClientFacade implements StockClientFacade {
                     .bodyToMono(JsonNode.class)
                     .block();
 
-            JsonNode data = requireSuccessData(response, "stock reserve");
-            JsonNode reservationIdNode = data.path("id");
-            if (reservationIdNode.isMissingNode() || reservationIdNode.isNull()) {
-                throw new StockClientException("stock reserve returned empty reservation id");
-            }
-            return reservationIdNode.asLong();
+            requireSuccessData(response, "stock reserve");
         } catch (WebClientResponseException.Conflict e) {
             throw new StockClientConflictException("stock reserve conflict", e);
         } catch (StockClientException e) {
@@ -47,11 +69,11 @@ public class DefaultStockClientFacade implements StockClientFacade {
     }
 
     @Override
-    public void cancelReservation(Long reservationId) {
+    public void cancelReservationsByOrderId(Long orderId) {
         try {
             JsonNode response = webClient.post()
-                    .uri("/internal/v1/stock/cancel")
-                    .bodyValue(new StockCancelRequest(reservationId))
+                    .uri("/internal/v1/stock/orders/cancel")
+                    .bodyValue(new StockOrderCancelRequest(orderId))
                     .retrieve()
                     .bodyToMono(JsonNode.class)
                     .block();
@@ -61,8 +83,8 @@ public class DefaultStockClientFacade implements StockClientFacade {
             }
         } catch (WebClientResponseException e) {
             if (isAlreadyReleasedReservation(e)) {
-                log.info("Reservation already released in stock service: reservationId={}, status={}",
-                        reservationId, e.getStatusCode().value());
+                log.info("Reservation already released in stock service: orderId={}, status={}",
+                        orderId, e.getStatusCode().value());
                 return;
             }
             throw new StockClientException("stock cancel failed", e);

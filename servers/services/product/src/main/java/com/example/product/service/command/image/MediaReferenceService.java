@@ -6,6 +6,8 @@ import com.example.clients.media.exception.MediaClientException;
 import com.example.clients.media.facade.MediaClientFacade;
 import com.example.clients.media.impl.MediaClientValidator;
 import com.example.clients.media.dto.MediaLinksSyncCommand;
+import com.example.clients.media.dto.MediaOwnerType;
+import com.example.clients.media.dto.MediaUsageType;
 import com.example.product.exception.ProductErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -57,15 +59,15 @@ public class MediaReferenceService {
             List<Long> normalizedGalleryMediaIds = mediaClientValidator.normalizeMediaIds(galleryMediaIds);
 
             mediaClientFacade.syncLinks(new MediaLinksSyncCommand(
-                    "ITEM",
+                    MediaOwnerType.ITEM,
                     itemId,
                     List.of(
                             new MediaLinksSyncCommand.MediaUsageSet(
-                                    "THUMBNAIL",
+                                    MediaUsageType.THUMBNAIL,
                                     thumbnailMediaIds
                             ),
                             new MediaLinksSyncCommand.MediaUsageSet(
-                                    "GALLERY",
+                                    MediaUsageType.GALLERY,
                                     normalizedGalleryMediaIds
                             )
                     )

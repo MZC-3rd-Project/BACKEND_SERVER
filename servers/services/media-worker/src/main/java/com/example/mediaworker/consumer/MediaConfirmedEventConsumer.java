@@ -1,68 +1,31 @@
 package com.example.mediaworker.consumer;
 
-import com.example.core.util.JsonUtils;
-import com.example.mediaworker.dto.MediaEventMessage;
-import com.example.mediaworker.entity.MediaDerivativeProfile;
-import com.example.mediaworker.entity.MediaDerivativeTask;
-import com.example.mediaworker.service.MediaDerivativeTaskService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import com.example.event.consumer.ConsumerRoutingMode;
+import com.example.event.consumer.RoutedEventConsumer;
+import com.example.event.inbox.AbstractProcessorRoutingConsumer;
+import com.example.event.inbox.InboxRoutingSupport;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 
-@Slf4j
 @Component
-@RequiredArgsConstructor
-public class MediaConfirmedEventConsumer {
+@RoutedEventConsumer(
+        consumerName = MediaConfirmedEventProcessor.CONSUMER_NAME,
+        defaultMode = ConsumerRoutingMode.INBOX
+)
+public class MediaConfirmedEventConsumer extends AbstractProcessorRoutingConsumer {
 
-    private static final long DEFAULT_MEDIA_VERSION = 1L;
-
-    private final MediaDerivativeTaskService mediaDerivativeTaskService;
+    public MediaConfirmedEventConsumer(
+            InboxRoutingSupport inboxRoutingSupport,
+            MediaConfirmedEventProcessor mediaConfirmedEventProcessor
+    ) {
+        super(inboxRoutingSupport, mediaConfirmedEventProcessor);
+    }
 
     @KafkaListener(topics = "${media.worker.confirmed-topic:media.confirmed}", groupId = "${media.worker.group-id:media-worker-group}")
     @Transactional
-    public void consume(String payload) {
-        try {
-            MediaEventMessage event = JsonUtils.fromJson(payload, MediaEventMessage.class);
-            if (!isValid(event)) {
-                log.warn("[MediaWorker] invalid event payload. payload={}", payload);
-                return;
-            }
-            MediaDerivativeTask task = mediaDerivativeTaskService.enqueuePending(
-                    event.getMediaId(),
-                    normalizeMediaVersion(event.getMediaVersion()),
-                    MediaDerivativeProfile.THUMBNAIL_WEBP,
-                    event.getEventId()
-            );
-            log.info(
-                    "[MediaWorker] confirmed event accepted. taskId={}, mediaId={}, profile={}, version={}, ownerType={}, ownerId={}, usageType={}, objectKey={}",
-                    task.getId(),
-                    task.getMediaId(),
-                    task.getDerivativeProfile(),
-                    task.getMediaVersion(),
-                    event.getOwnerType(),
-                    event.getOwnerId(),
-                    event.getUsageType(),
-                    event.getObjectKey()
-            );
-        } catch (Exception e) {
-            log.error("[MediaWorker] event consume failed. payload={}", payload, e);
-            throw e;
-        }
-    }
-
-    private boolean isValid(MediaEventMessage event) {
-        return event != null
-                && event.getEventId() != null
-                && event.getEventType() != null
-                && event.getMediaId() != null;
-    }
-
-    private long normalizeMediaVersion(Long mediaVersion) {
-        if (mediaVersion == null || mediaVersion < DEFAULT_MEDIA_VERSION) {
-            return DEFAULT_MEDIA_VERSION;
-        }
-        return mediaVersion;
+    public void consume(ConsumerRecord<String, Object> record) {
+        consumeRecord(record);
     }
 }

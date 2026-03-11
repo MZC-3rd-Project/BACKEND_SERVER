@@ -48,6 +48,17 @@ media:
       stale-processing-seconds: ${MEDIA_WORKER_TASK_STALE_PROCESSING_SECONDS:180}
       retry-initial-delay-seconds: ${MEDIA_WORKER_TASK_RETRY_INITIAL_DELAY_SECONDS:5}
       retry-max-delay-seconds: ${MEDIA_WORKER_TASK_RETRY_MAX_DELAY_SECONDS:300}
+    cleanup:
+      enabled: ${MEDIA_WORKER_CLEANUP_ENABLED:true}
+      batch-size: ${MEDIA_WORKER_CLEANUP_BATCH_SIZE:100}
+      fixed-delay-ms: ${MEDIA_WORKER_CLEANUP_FIXED_DELAY_MS:60000}
+      delete-object-enabled: ${MEDIA_WORKER_CLEANUP_DELETE_OBJECT_ENABLED:false}
+    raw-cleanup:
+      enabled: ${MEDIA_WORKER_RAW_CLEANUP_ENABLED:true}
+      batch-size: ${MEDIA_WORKER_RAW_CLEANUP_BATCH_SIZE:100}
+      fixed-delay-ms: ${MEDIA_WORKER_RAW_CLEANUP_FIXED_DELAY_MS:3600000}
+      transition-grace-days: ${MEDIA_WORKER_RAW_CLEANUP_TRANSITION_GRACE_DAYS:7}
+      delete-object-enabled: ${MEDIA_WORKER_RAW_CLEANUP_DELETE_OBJECT_ENABLED:false}
 
 app:
   security:

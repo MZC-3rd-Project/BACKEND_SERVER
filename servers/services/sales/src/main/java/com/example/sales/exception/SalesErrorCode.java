@@ -15,6 +15,9 @@ public enum SalesErrorCode implements DomainErrorCode {
     INVALID_STATUS_TRANSITION("SALES-003", "유효하지 않은 상태 전이입니다", HttpStatus.BAD_REQUEST),
     PURCHASE_NOT_CANCELLABLE("SALES-004", "취소할 수 없는 구매입니다", HttpStatus.BAD_REQUEST),
     INVALID_REQUEST("SALES-005", "잘못된 요청입니다", HttpStatus.BAD_REQUEST),
+    CHECKOUT_DRAFT_NOT_FOUND("SALES-006", "checkout 초안 정보를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
+    CHECKOUT_DRAFT_FORBIDDEN("SALES-007", "해당 checkout 초안에 접근할 수 없습니다", HttpStatus.FORBIDDEN),
+    CHECKOUT_DRAFT_EXPIRED("SALES-008", "checkout 초안이 만료되었습니다", HttpStatus.CONFLICT),
 
     // ─── External Service ────────────────────────
     STOCK_SERVICE_ERROR("SALES-201", "재고 서비스 호출 중 오류가 발생했습니다", HttpStatus.SERVICE_UNAVAILABLE),

@@ -52,16 +52,35 @@ public class FundingParticipation extends BaseEntity {
     @Column(name = "order_id", nullable = false)
     private Long orderId;
 
-    @Column(name = "reservation_id")
-    private Long reservationId;
-
     @Column(name = "payment_id")
     private Long paymentId;
 
     public static FundingParticipation create(Long campaignId, Long userId, Long amount,
                                                Integer quantity, Long seatGradeId,
-                                               Long itemOptionId, Long orderId,
-                                               Long reservationId) {
+                                               Long itemOptionId, Long orderId) {
+        return createConfirmed(campaignId, userId, amount, quantity, seatGradeId, itemOptionId, orderId, null);
+    }
+
+    public static FundingParticipation createConfirmed(Long campaignId, Long userId, Long amount,
+                                                       Integer quantity, Long seatGradeId,
+                                                       Long itemOptionId, Long orderId, Long paymentId) {
+        return newParticipation(
+                campaignId,
+                userId,
+                amount,
+                quantity,
+                seatGradeId,
+                itemOptionId,
+                orderId,
+                ParticipationStatus.CONFIRMED,
+                paymentId
+        );
+    }
+
+    private static FundingParticipation newParticipation(Long campaignId, Long userId, Long amount,
+                                                         Integer quantity, Long seatGradeId,
+                                                         Long itemOptionId, Long orderId,
+                                                         ParticipationStatus status, Long paymentId) {
         FundingParticipation p = new FundingParticipation();
         p.campaignId = campaignId;
         p.userId = userId;
@@ -70,21 +89,13 @@ public class FundingParticipation extends BaseEntity {
         p.seatGradeId = seatGradeId;
         p.itemOptionId = itemOptionId;
         p.orderId = orderId;
-        p.reservationId = reservationId;
-        p.status = ParticipationStatus.PENDING;
+        p.status = status;
+        p.paymentId = paymentId;
         return p;
     }
 
-    public void confirm(Long paymentId) {
-        if (this.status != ParticipationStatus.PENDING) {
-            throw new BusinessException(FundingErrorCode.INVALID_PARTICIPATION_STATUS);
-        }
-        this.status = ParticipationStatus.CONFIRMED;
-        this.paymentId = paymentId;
-    }
-
     public void refund() {
-        if (this.status != ParticipationStatus.PENDING) {
+        if (this.status != ParticipationStatus.CONFIRMED) {
             throw new BusinessException(FundingErrorCode.INVALID_PARTICIPATION_STATUS);
         }
         this.status = ParticipationStatus.REFUNDED;
