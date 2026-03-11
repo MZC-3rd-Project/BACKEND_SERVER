@@ -30,7 +30,7 @@ public record StoreCreateRequest(
 ) {
 
     public record StoreImageRequest(
-        ImageType imageType,       // THUMBNAIL | BANNER | INTRODUCE
+        ImageType imageType,       // THUMBNAIL | GALLERY
         Long mediaId,
         int sortOrder
     ) {

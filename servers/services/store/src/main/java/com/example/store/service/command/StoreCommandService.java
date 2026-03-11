@@ -32,6 +32,9 @@ public class StoreCommandService {
     private final StoreContactRepository storeContactRepository;
     private final StoreAddressRepository storeAddressRepository;
 
+    //동기 api
+    private final StoreMediaReferenceService storeMediaReferenceService;
+
     @Transactional
     public StoreCreateResponse create(Long userId, StoreCreateRequest request){
         if(storesRepository.existsByUserIdAndDeletedAtIsNull(userId)){
@@ -49,6 +52,8 @@ public class StoreCommandService {
         if (request.images() != null && !request.images().isEmpty()) {
             saveStoreImages(store, request);
         }
+
+        storeMediaReferenceService.syncStoreImagesOnCreate(store.getId(), request.images());
 
         return StoreCreateResponse.of(
             store.getId(),
@@ -173,6 +178,7 @@ public class StoreCommandService {
             .map(img -> new StoreUpdateResponse.StoreImageResponse(img.imageType(), img.sortOrder(), img.mediaId()))
             .toList();
 
+        storeMediaReferenceService.syncStoreImagesOnUpdate(storeId, request.images());
 
         return new StoreUpdateResponse(
             findStore.getId(),
@@ -216,6 +222,7 @@ public class StoreCommandService {
         storeImage.softDelete();
         storeProfile.softDelete();
 
+        storeMediaReferenceService.clearStoreImageLinks(storeId);
 
         return StoreDeleteResponse.of(storeId);
     }

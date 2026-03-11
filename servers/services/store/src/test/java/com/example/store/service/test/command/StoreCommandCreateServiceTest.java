@@ -76,7 +76,7 @@ class StoreCommandServiceCreateTest {
             null,
             List.of(
                 new StoreCreateRequest.StoreImageRequest(ImageType.THUMBNAIL, 1L, 0),
-                new StoreCreateRequest.StoreImageRequest(ImageType.BANNER,    2L, 1)
+                new StoreCreateRequest.StoreImageRequest(ImageType.GALLERY,    2L, 1)
             )
         );
     }

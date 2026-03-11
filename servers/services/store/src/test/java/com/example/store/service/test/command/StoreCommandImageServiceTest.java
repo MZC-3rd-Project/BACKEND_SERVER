@@ -141,8 +141,8 @@ class StoreImageSaveTest {
             givenBaseMocks();
             List<StoreUpdateRequest.StoreImageRequest> images = List.of(
                 new StoreUpdateRequest.StoreImageRequest(ImageType.THUMBNAIL, 1L, 0),
-                new StoreUpdateRequest.StoreImageRequest(ImageType.BANNER,    null,        1),
-                new StoreUpdateRequest.StoreImageRequest(ImageType.INTRODUCE, 100L, 2)
+                new StoreUpdateRequest.StoreImageRequest(ImageType.GALLERY,    null,        1),
+                new StoreUpdateRequest.StoreImageRequest(ImageType.GALLERY, 100L, 2)
             );
 
             // when
@@ -166,7 +166,7 @@ class StoreImageSaveTest {
             givenBaseMocks();
             List<StoreUpdateRequest.StoreImageRequest> images = List.of(
                 new StoreUpdateRequest.StoreImageRequest(ImageType.THUMBNAIL, null, 0),
-                new StoreUpdateRequest.StoreImageRequest(ImageType.BANNER,    null, 1)
+                new StoreUpdateRequest.StoreImageRequest(ImageType.GALLERY,    null, 1)
             );
 
             // when

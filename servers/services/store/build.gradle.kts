@@ -40,5 +40,12 @@ dependencies {
     implementation("org.flywaydb:flyway-core")
     runtimeOnly("org.flywaydb:flyway-database-postgresql")
 
+    implementation (project(":libs:clients:auth-client"))
+    implementation(project(":libs:clients:media-client"))
+
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("org.springframework:spring-webflux")
+
 }
 
