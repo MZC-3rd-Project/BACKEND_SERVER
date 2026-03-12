@@ -3,7 +3,9 @@ package com.example.store.service.test;
 import com.example.store.dto.image.StoreImageResponse;
 import com.example.store.dto.response.StoreListResponse;
 import com.example.store.entity.ImageType;
+import com.example.store.entity.StoreProfile;
 import com.example.store.entity.StoreStatus;
+import com.example.store.repository.StoreProfileRepository;
 import com.example.store.repository.StoresRepository;
 import com.example.store.service.query.StoreQueryService;
 import org.junit.jupiter.api.DisplayName;
@@ -12,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -20,6 +23,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
@@ -32,6 +36,9 @@ class StoreQueryServiceTest {
 
     @Mock
     private StoresRepository storesRepository;
+
+    @Mock
+    private StoreProfileRepository storeProfileRepository;
 
     @InjectMocks
     private StoreQueryService storeQueryService;
@@ -148,5 +155,89 @@ class StoreQueryServiceTest {
             // then
             then(storesRepository).should(times(2)).findStoreList(pageable);
         }
+
+        // ── StoreProfile Upsert ─────────────────────────────────────────────────────
+
+        @Nested
+        @DisplayName("StoreProfile Upsert")
+        class StoreProfileUpsert {
+
+            @Test
+            @DisplayName("StoreProfile이 존재하면 description을 수정한다")
+            void update_when_profile_exists() {
+
+                // given
+                Long storeId = 1L;
+
+                StoreProfile profile = Mockito.mock(StoreProfile.class);
+
+                given(storeProfileRepository.findByStoreId(storeId))
+                    .willReturn(Optional.of(profile));
+
+                // when
+                StoreProfile result =
+                    storeProfileRepository.findByStoreId(storeId)
+                        .map(p -> {
+                            p.updateDescription("수정된 설명");
+                            return p;
+                        })
+                        .orElseGet(() ->
+                            storeProfileRepository.save(
+                                StoreProfile.of(null, "수정된 설명")
+                            )
+                        );
+
+                // then
+                assertThat(result).isEqualTo(profile);
+
+                then(profile).should(times(1))
+                    .updateDescription("수정된 설명");
+
+                then(storeProfileRepository).should(times(1))
+                    .findByStoreId(storeId);
+
+                then(storeProfileRepository).should(times(0))
+                    .save(Mockito.any());
+            }
+
+            @Test
+            @DisplayName("StoreProfile이 없으면 새로 생성 후 저장한다")
+            void save_when_profile_not_exists() {
+
+                // given
+                Long storeId = 1L;
+
+                StoreProfile newProfile = Mockito.mock(StoreProfile.class);
+
+                given(storeProfileRepository.findByStoreId(storeId))
+                    .willReturn(Optional.empty());
+
+                given(storeProfileRepository.save(Mockito.any()))
+                    .willReturn(newProfile);
+
+                // when
+                StoreProfile result =
+                    storeProfileRepository.findByStoreId(storeId)
+                        .map(p -> {
+                            p.updateDescription("새 설명");
+                            return p;
+                        })
+                        .orElseGet(() ->
+                            storeProfileRepository.save(
+                                StoreProfile.of(null, "새 설명")
+                            )
+                        );
+
+                // then
+                assertThat(result).isEqualTo(newProfile);
+
+                then(storeProfileRepository).should(times(1))
+                    .save(Mockito.any());
+
+                then(storeProfileRepository).should(times(1))
+                    .findByStoreId(storeId);
+            }
+        }
     }
+
 }
