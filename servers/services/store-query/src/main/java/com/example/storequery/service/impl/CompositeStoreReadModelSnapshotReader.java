@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -75,7 +76,7 @@ public class CompositeStoreReadModelSnapshotReader implements StoreReadModelSnap
             galleryCount,
             countActiveItems(itemSnapshots),
             latestItemUpdatedAt(itemSnapshots),
-            buildSearchText(store, owner),
+            buildSearchText(store, owner, itemSnapshots),
             store.sourceCreatedAt(),
             store.sourceUpdatedAt(),
             normalizeImages(store.images()),
@@ -140,20 +141,39 @@ public class CompositeStoreReadModelSnapshotReader implements StoreReadModelSnap
 
     private int countActiveItems(List<StoreReadItemSnapshot> itemSnapshots) {
         return (int) itemSnapshots.stream()
-            .filter(snapshot -> {
-                String status = snapshot.status();
-                return status != null && !INACTIVE_ITEM_STATUSES.contains(status.trim().toUpperCase(Locale.ROOT));
-            })
+            .filter(this::isActiveItem)
             .count();
     }
 
-    private String buildSearchText(StoreSourceSnapshot store, StoreOwnerSnapshot owner) {
-        return String.join(" ",
-            safe(store.storeName()),
-            safe(store.description()),
-            safe(store.defaultAddress()),
-            owner == null ? "" : safe(owner.nickname())
-        ).trim();
+    private String buildSearchText(
+        StoreSourceSnapshot store,
+        StoreOwnerSnapshot owner,
+        List<StoreReadItemSnapshot> itemSnapshots
+    ) {
+        Set<String> terms = new LinkedHashSet<>();
+        addSearchTerm(terms, store.storeName());
+        addSearchTerm(terms, store.description());
+        addSearchTerm(terms, store.defaultAddress());
+        if (owner != null) {
+            addSearchTerm(terms, owner.nickname());
+        }
+        itemSnapshots.stream()
+            .filter(this::isActiveItem)
+            .map(StoreReadItemSnapshot::title)
+            .forEach(title -> addSearchTerm(terms, title));
+        return String.join(" ", terms);
+    }
+
+    private boolean isActiveItem(StoreReadItemSnapshot snapshot) {
+        String status = snapshot.status();
+        return status != null && !INACTIVE_ITEM_STATUSES.contains(status.trim().toUpperCase(Locale.ROOT));
+    }
+
+    private void addSearchTerm(Set<String> terms, String value) {
+        String normalized = safe(value).trim();
+        if (!normalized.isEmpty()) {
+            terms.add(normalized);
+        }
     }
 
     private String safe(String value) {

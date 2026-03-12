@@ -84,7 +84,8 @@ class CompositeStoreReadModelSnapshotReaderTest {
         assertThat(snapshot.galleryCount()).isEqualTo(1);
         assertThat(snapshot.activeItemCount()).isEqualTo(1);
         assertThat(snapshot.latestItemUpdatedAt()).isEqualTo(now.minusHours(1));
-        assertThat(snapshot.searchText()).contains("MZC Store", "music merch", "Seoul", "owner");
+        assertThat(snapshot.searchText()).contains("MZC Store", "music merch", "Seoul", "owner", "item1");
+        assertThat(snapshot.searchText()).doesNotContain("item2");
         assertThat(snapshot.images()).hasSize(2);
         assertThat(snapshot.items()).hasSize(2);
     }
