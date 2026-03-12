@@ -3,12 +3,17 @@ package com.example.store.service.command;
 import com.example.core.exception.BusinessException;
 import com.example.core.exception.CommonErrorCode;
 import com.example.core.exception.TechnicalException;
+import com.example.event.EventMetadata;
+import com.example.event.EventPublisher;
 import com.example.store.dto.request.StoreCreateRequest;
 import com.example.store.dto.request.StoreUpdateRequest;
 import com.example.store.dto.response.StoreCreateResponse;
 import com.example.store.dto.response.StoreDeleteResponse;
 import com.example.store.dto.response.StoreUpdateResponse;
 import com.example.store.entity.*;
+import com.example.store.event.StoreCreateEvent;
+import com.example.store.event.StoreDeleteEvent;
+import com.example.store.event.StoreUpdateEvent;
 import com.example.store.exception.StoreErrorCode;
 import com.example.store.repository.*;
 
@@ -31,6 +36,7 @@ public class StoreCommandService {
     private final StoreImageRepository storeImageRepository;
     private final StoreContactRepository storeContactRepository;
     private final StoreAddressRepository storeAddressRepository;
+    private final EventPublisher eventPublisher;
 
     //동기 api
     private final StoreMediaReferenceService storeMediaReferenceService;
@@ -43,17 +49,37 @@ public class StoreCommandService {
 
         Stores store = Stores.of(userId, request.storeName());
         saveStore(store);
-        saveStoreAddress(store, request);
-        saveStoreContact(store, request);
+        StoreAddress storeAddress = saveStoreAddress(store, request);
+        StoreContact storeContact = saveStoreContact(store, request);
+
+        StoreProfile storeProfile = null;
 
         if (request.description() != null) {
-            saveStoreProfile(store, request);
+            storeProfile = saveStoreProfile(store, request);
         }
+        List<StoreImage> storeImages = List.of();
         if (request.images() != null && !request.images().isEmpty()) {
-            saveStoreImages(store, request);
+            storeImages = saveStoreImages(store, request);
         }
 
-        storeMediaReferenceService.syncStoreImagesOnCreate(store.getId(), request.images());
+//        storeMediaReferenceService.syncStoreImagesOnCreate(store.getId(), request.images());
+        eventPublisher.publish(
+            new StoreCreateEvent(
+                store.getId(),
+                store.getUserId(),
+                store.getStoreName(),
+                store.getStatus(),
+                storeAddress.getAddress(),
+                storeAddress.getAddressType(),
+                storeAddress.getIsDefault(),
+                storeContact.getContactType(),
+                storeContact.getContactValue(),
+                storeContact.getIsPrimary(),
+                storeProfile != null ? storeProfile.getDescription() : null,
+                storeImages
+            ),
+            EventMetadata.of("STORE", String.valueOf(store.getId()))
+        );
 
         return StoreCreateResponse.of(
             store.getId(),
@@ -79,10 +105,11 @@ public class StoreCommandService {
         }
     }
 
-    private void saveStoreAddress(Stores store, StoreCreateRequest request) {
+    private StoreAddress saveStoreAddress(Stores store, StoreCreateRequest request) {
         try {
-            storeAddressRepository.save(StoreAddress.of(store, request.addressType(), request.address()));
+            StoreAddress result = storeAddressRepository.save(StoreAddress.of(store, request.addressType(), request.address()));
             log.info("[StoreAddress] 저장 성공 - storeId: {}, addressType: {}", store.getId(), request.addressType());
+            return StoreAddress.of(result.getAddressType(), result.getAddress());
         } catch (BusinessException e) {
             log.warn("[StoreAddress] 저장 실패 - code: {}, message: {}, storeId: {}",
                 e.getErrorCode().getCode(), e.getErrorCode().getMessage(), store.getId());
@@ -94,10 +121,11 @@ public class StoreCommandService {
         }
     }
 
-    private void saveStoreContact(Stores store, StoreCreateRequest request) {
+    private StoreContact saveStoreContact(Stores store, StoreCreateRequest request) {
         try {
-            storeContactRepository.save(StoreContact.of(store, request.contactType(), request.contactValue(), true));
+            StoreContact result = storeContactRepository.save(StoreContact.of(store, request.contactType(), request.contactValue(), true));
             log.info("[StoreContact] 저장 성공 - storeId: {}, contactType: {}", store.getId(), request.contactType());
+            return StoreContact.of(result.getContactType(), result.getContactValue(),true);
         } catch (BusinessException e) {
             log.warn("[StoreContact] 저장 실패 - code: {}, message: {}, storeId: {}",
                 e.getErrorCode().getCode(), e.getErrorCode().getMessage(), store.getId());
@@ -109,10 +137,11 @@ public class StoreCommandService {
         }
     }
 
-    private void saveStoreProfile(Stores store, StoreCreateRequest request) {
+    private StoreProfile saveStoreProfile(Stores store, StoreCreateRequest request) {
         try {
-            storeProfileRepository.save(StoreProfile.of(store, request.description()));
+            StoreProfile result = storeProfileRepository.save(StoreProfile.of(store, request.description()));
             log.info("[StoreProfile] 저장 성공 - storeId: {}", store.getId());
+            return StoreProfile.of(result.getDescription());
         } catch (BusinessException e) {
             log.warn("[StoreProfile] 저장 실패 - code: {}, message: {}, storeId: {}",
                 e.getErrorCode().getCode(), e.getErrorCode().getMessage(), store.getId());
@@ -124,13 +153,14 @@ public class StoreCommandService {
         }
     }
 
-    private void saveStoreImages(Stores store, StoreCreateRequest request) {
+    private List<StoreImage> saveStoreImages(Stores store, StoreCreateRequest request) {
         try {
-            storeImageRepository.saveAll(request.images().stream()
+            List<StoreImage> result = storeImageRepository.saveAll(request.images().stream()
                 .map(img -> StoreImage.of(store, img.imageType(), img.mediaId(), img.sortOrder()))
                 .toList()
             );
             log.info("[StoreImage] 저장 성공 - storeId: {}, imageCount: {}", store.getId(), request.images().size());
+            return result;
         } catch (BusinessException e) {
             log.warn("[StoreImage] 저장 실패 - code: {}, message: {}, storeId: {}",
                 e.getErrorCode().getCode(), e.getErrorCode().getMessage(), store.getId());
@@ -179,6 +209,19 @@ public class StoreCommandService {
             .toList();
 
         storeMediaReferenceService.syncStoreImagesOnUpdate(storeId, request.images());
+        eventPublisher.publish(new StoreUpdateEvent(
+            findStore.getId(),
+            userId,
+            findStore.getStoreName(),
+            findStore.getStatus(),
+            request.description(),
+            storeAddress.getAddress(),
+            storeAddress.getAddressType(),
+            storeContact.getContactValue(),
+            storeContact.getContactType(),
+            imgList
+            ),EventMetadata.of("STORE", String.valueOf(findStore.getId()))
+        );
 
         return new StoreUpdateResponse(
             findStore.getId(),
@@ -206,11 +249,11 @@ public class StoreCommandService {
 
         validatorOwner(stores.getUserId(), userId);
 
-        StoreAddress storeAddress = storeAddressRepository.findById(storeId)
+        StoreAddress storeAddress = storeAddressRepository.findByStoreIdAndIsDefaultTrueAndDeletedAtIsNull(storeId)
             .orElseThrow(() -> new BusinessException(StoreErrorCode.ADDRESS_NOT_FOUND));
-        StoreContact storeContact = storeContactRepository.findById(storeId)
+        StoreContact storeContact = storeContactRepository.findByStoreIdAndIsPrimaryTrueAndDeletedAtIsNull(storeId)
             .orElseThrow(() -> new BusinessException(StoreErrorCode.CONTACT_NOT_FOUND));
-        StoreImage storeImage = storeImageRepository.findById(storeId)
+        StoreImage storeImage = storeImageRepository.findByStoreId(storeId)
             .orElseThrow(() -> new BusinessException(StoreErrorCode.IMAGE_NOT_FOUND));
         StoreProfile storeProfile = storeProfileRepository.findByStoreId(storeId)
             .orElseThrow(() -> new BusinessException(StoreErrorCode.PROFILE_NOT_FOUND));
@@ -221,8 +264,22 @@ public class StoreCommandService {
         storeContact.softDelete();
         storeImage.softDelete();
         storeProfile.softDelete();
-
-        storeMediaReferenceService.clearStoreImageLinks(storeId);
+//
+//        storeMediaReferenceService.clearStoreImageLinks(storeId);
+        eventPublisher.publish(
+            new StoreDeleteEvent(
+                storeId,
+                userId,
+                storeAddress.getAddressType(),
+                storeAddress.getAddress(),
+                storeContact.getContactType(),
+                storeContact.getContactValue(),
+                storeImage.getMediaId(),
+                storeImage.getSortOrder(),
+                storeProfile.getDescription()
+            ),
+            EventMetadata.of("STORE", String.valueOf(stores.getId()))
+        );
 
         return StoreDeleteResponse.of(storeId);
     }
