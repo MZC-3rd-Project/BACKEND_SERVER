@@ -8,17 +8,21 @@ import java.util.Set;
 
 public enum OrderStatus {
 
-    CREATED,
+    PAYMENT_PENDING,
     PAID,
+    SHIPPING,
+    DELIVERED,
     COMPLETED,
     CANCELLED,
     REFUND_REQUESTED,
     REFUNDED;
 
     private static final Map<OrderStatus, Set<OrderStatus>> TRANSITIONS = Map.of(
-            CREATED, Set.of(PAID, CANCELLED),
-            PAID, Set.of(COMPLETED, REFUND_REQUESTED),
-            COMPLETED, Set.of(),
+            PAYMENT_PENDING, Set.of(PAID, CANCELLED),
+            PAID, Set.of(SHIPPING, REFUND_REQUESTED),
+            SHIPPING, Set.of(DELIVERED),
+            DELIVERED, Set.of(COMPLETED),
+            COMPLETED, Set.of(REFUND_REQUESTED),
             CANCELLED, Set.of(),
             REFUND_REQUESTED, Set.of(REFUNDED),
             REFUNDED, Set.of()
