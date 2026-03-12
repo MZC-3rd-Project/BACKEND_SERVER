@@ -14,6 +14,7 @@ import com.example.storequery.source.StoreSourceSnapshotReader;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -75,7 +76,7 @@ public class CompositeStoreReadModelSnapshotReader implements StoreReadModelSnap
             galleryCount,
             countActiveItems(itemSnapshots),
             latestItemUpdatedAt(itemSnapshots),
-            buildSearchText(store, owner),
+            buildSearchText(store, owner, itemSnapshots),
             store.sourceCreatedAt(),
             store.sourceUpdatedAt(),
             normalizeImages(store.images()),
@@ -147,13 +148,35 @@ public class CompositeStoreReadModelSnapshotReader implements StoreReadModelSnap
             .count();
     }
 
-    private String buildSearchText(StoreSourceSnapshot store, StoreOwnerSnapshot owner) {
-        return String.join(" ",
-            safe(store.storeName()),
-            safe(store.description()),
-            safe(store.defaultAddress()),
-            owner == null ? "" : safe(owner.nickname())
-        ).trim();
+    private String buildSearchText(
+        StoreSourceSnapshot store,
+        StoreOwnerSnapshot owner,
+        List<StoreReadItemSnapshot> itemSnapshots
+    ) {
+        List<String> tokens = new ArrayList<>();
+        addIfPresent(tokens, store.storeName());
+        addIfPresent(tokens, store.description());
+        addIfPresent(tokens, store.defaultAddress());
+        addIfPresent(tokens, owner == null ? null : owner.nickname());
+        itemSnapshots.stream()
+            .filter(snapshot -> isActiveItemStatus(snapshot.status()))
+            .map(StoreReadItemSnapshot::title)
+            .map(this::safe)
+            .filter(title -> !title.isBlank())
+            .distinct()
+            .forEach(tokens::add);
+        return String.join(" ", tokens).trim();
+    }
+
+    private boolean isActiveItemStatus(String rawStatus) {
+        return rawStatus != null && !INACTIVE_ITEM_STATUSES.contains(rawStatus.trim().toUpperCase(Locale.ROOT));
+    }
+
+    private void addIfPresent(List<String> tokens, String value) {
+        String normalized = safe(value).trim();
+        if (!normalized.isEmpty()) {
+            tokens.add(normalized);
+        }
     }
 
     private String safe(String value) {

@@ -74,7 +74,7 @@ public class WebClientStoreItemSummarySourceReader implements StoreItemSummarySo
                     item.itemType(),
                     item.status(),
                     item.thumbnailMediaId(),
-                    mediaUrlMap.get(item.thumbnailMediaId()),
+                    item.thumbnailMediaId() == null ? null : mediaUrlMap.get(item.thumbnailMediaId()),
                     item.sourceUpdatedAt()
                 ))
                 .toList();

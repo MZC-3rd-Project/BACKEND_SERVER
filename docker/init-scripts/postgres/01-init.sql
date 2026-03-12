@@ -10,6 +10,7 @@ CREATE DATABASE product_db;
 CREATE DATABASE stock_db;
 CREATE DATABASE funding_db;
 CREATE DATABASE sales_db;
+CREATE DATABASE order_db;
 CREATE DATABASE hotdeal_db;
 CREATE DATABASE profile_db;
 CREATE DATABASE search_db;
@@ -43,6 +44,10 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- sales_db 초기 설정
 \c sales_db;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- order_db 초기 설정
+\c order_db;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- hotdeal_db 초기 설정
