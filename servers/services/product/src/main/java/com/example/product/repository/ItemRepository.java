@@ -40,6 +40,8 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
 
     List<Item> findByCategoryIdOrderByIdDesc(Long categoryId, Pageable pageable);
 
+    List<Item> findByStoreIdAndStatusInOrderByUpdatedAtDesc(Long storeId, List<ItemStatus> statuses);
+
     boolean existsByCategoryId(Long categoryId);
 
     List<Item> findByStatusIn(List<ItemStatus> statuses, Pageable pageable);

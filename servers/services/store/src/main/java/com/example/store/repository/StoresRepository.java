@@ -2,16 +2,14 @@ package com.example.store.repository;
 
 import com.example.store.dto.response.StoreDetailResponse;
 import com.example.store.dto.response.StoreListResponse;
+import com.example.store.dto.response.internal.StoreSnapshotResponse;
 import com.example.store.entity.StoreImage;
 import com.example.store.entity.Stores;
-
-import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
-
-import org.springframework.data.domain.Pageable;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -72,9 +70,56 @@ public interface StoresRepository extends JpaRepository<Stores, Long> {
     """)
     Optional<StoreDetailResponse> findByStoreId(@Param("storeId") Long storeId);//storeId = id(pk)
 
+    @Query("""
+        SELECT new com.example.store.dto.response.internal.StoreSnapshotResponse(
+                s.id,
+                s.userId,
+                s.storeName,
+                s.status,
+                sp.description,
+                sa.address,
+                sa.addressType,
+                sc.contactValue,
+                sc.contactType,
+                null,
+                s.createdAt,
+                s.updatedAt
+            )
+            FROM Stores s
+                LEFT JOIN StoreProfile sp
+                    ON sp.store.id = s.id
+                        AND sp.deletedAt IS NULL
+                 LEFT JOIN StoreAddress sa
+                    ON sa.store.id = s.id
+                        AND sa.isDefault = true
+                        AND sa.deletedAt IS NULL
+                 LEFT JOIN StoreContact sc
+                    ON sc.store.id = s.id
+                        AND sc.isPrimary = true
+                        AND sc.deletedAt IS NULL
+            WHERE s.id = :storeId
+                AND s.deletedAt IS NULL
+    """)
+    Optional<StoreSnapshotResponse> findSnapshotByStoreId(@Param("storeId") Long storeId);
+
     // 이미지 별도 조회
-    @Query("SELECT si FROM StoreImage si WHERE si.store.id = :storeId AND si.deletedAt IS NULL")
+    @Query("""
+        SELECT si
+          FROM StoreImage si
+         WHERE si.store.id = :storeId
+           AND si.deletedAt IS NULL
+         ORDER BY si.sortOrder ASC, si.id ASC
+    """)
     List<StoreImage> findImagesByStoreId(@Param("storeId") Long storeId);
+
+    @Query("""
+        select s.id
+          from Stores s
+         where s.userId = :userId
+           and s.deletedAt is null
+         order by s.updatedAt desc
+    """)
+    List<Long> findIdsByUserIdAndDeletedAtIsNullOrderByUpdatedAtDesc(@Param("userId") Long userId);
 
     boolean existsByUserIdAndDeletedAtIsNull(Long userId);
 

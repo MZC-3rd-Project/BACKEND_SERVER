@@ -105,7 +105,14 @@ public class FundingEventProcessor extends AbstractIdempotentEventSpecProcessor 
                 ItemStatusHistory.create(itemId, previousStatus, newStatus, reason, null));
 
         eventPublisher.publish(
-                new ItemStatusChangedEvent(itemId, previousStatus.name(), newStatus.name()),
+                new ItemStatusChangedEvent(
+                        itemId,
+                        previousStatus.name(),
+                        newStatus.name(),
+                        item.getItemType().name(),
+                        item.getSellerId(),
+                        item.getStoreId()
+                ),
                 EventMetadata.of("Item", String.valueOf(itemId)));
     }
 }

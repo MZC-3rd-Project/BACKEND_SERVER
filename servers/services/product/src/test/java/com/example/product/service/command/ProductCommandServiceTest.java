@@ -10,6 +10,7 @@ import com.example.product.entity.goods.ShippingInfo;
 import com.example.product.entity.image.ItemImage;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemType;
+import com.example.product.event.ItemDeletedEvent;
 import com.example.product.exception.ProductErrorCode;
 import com.example.product.repository.CategoryRepository;
 import com.example.product.repository.ItemImageRepository;
@@ -54,6 +55,8 @@ class ProductCommandServiceTest {
     @Mock
     private ItemThumbnailSyncService itemThumbnailSyncService;
     @Mock
+    private StoreOwnershipValidator storeOwnershipValidator;
+    @Mock
     private EventPublisher eventPublisher;
     @Mock
     private ItemContentService itemContentService;
@@ -81,6 +84,7 @@ class ProductCommandServiceTest {
 
         productCommandService.createProduct(request, 77L);
 
+        verify(storeOwnershipValidator).validateOwnership(77L, 10L);
         verify(itemThumbnailSyncService).syncAfterCommit(itemId, 501L);
         verify(eventPublisher).publish(any(), any());
     }
@@ -104,6 +108,25 @@ class ProductCommandServiceTest {
 
         verifyNoInteractions(itemThumbnailSyncService);
         verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void createProduct_whenStoreOwnershipMismatch_throwsAndSkipsSave() {
+        ProductCreateRequest request = new ProductCreateRequest();
+        ReflectionTestUtils.setField(request, "title", "new item");
+        ReflectionTestUtils.setField(request, "description", "desc");
+        ReflectionTestUtils.setField(request, "price", 1000L);
+        ReflectionTestUtils.setField(request, "storeId", 10L);
+
+        org.mockito.Mockito.doThrow(new BusinessException(ProductErrorCode.STORE_OWNERSHIP_MISMATCH))
+            .when(storeOwnershipValidator).validateOwnership(77L, 10L);
+
+        assertThatThrownBy(() -> productCommandService.createProduct(request, 77L))
+            .isInstanceOf(BusinessException.class)
+            .extracting("errorCode")
+            .isEqualTo(ProductErrorCode.STORE_OWNERSHIP_MISMATCH);
+
+        verifyNoInteractions(itemRepository, itemThumbnailSyncService, eventPublisher);
     }
 
     @Test
@@ -264,6 +287,7 @@ class ProductCommandServiceTest {
         verify(shippingInfoRepository).softDeleteByItemId(itemId);
         verify(itemImageRepository).softDeleteAllByItemId(itemId);
         verify(itemThumbnailSyncService).syncAfterCommit(itemId, null, true);
+        verify(eventPublisher).publish(any(ItemDeletedEvent.class), any());
         assertThat(item.getThumbnailMediaId()).isNull();
     }
 

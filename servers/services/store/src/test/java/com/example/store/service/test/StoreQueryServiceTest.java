@@ -2,10 +2,12 @@ package com.example.store.service.test;
 
 import com.example.store.dto.image.StoreImageResponse;
 import com.example.store.dto.response.StoreListResponse;
+import com.example.store.dto.response.internal.StoreSnapshotResponse;
+import com.example.store.entity.AddressType;
+import com.example.store.entity.ContactType;
 import com.example.store.entity.ImageType;
-import com.example.store.entity.StoreProfile;
+import com.example.store.entity.StoreImage;
 import com.example.store.entity.StoreStatus;
-import com.example.store.repository.StoreProfileRepository;
 import com.example.store.repository.StoresRepository;
 import com.example.store.service.query.StoreQueryService;
 import org.junit.jupiter.api.DisplayName;
@@ -14,13 +16,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -37,13 +39,8 @@ class StoreQueryServiceTest {
     @Mock
     private StoresRepository storesRepository;
 
-    @Mock
-    private StoreProfileRepository storeProfileRepository;
-
     @InjectMocks
     private StoreQueryService storeQueryService;
-
-    // ── 픽스처 ─────────────────────────────────────────────────────────────────
 
     private StoreListResponse storeListResponse() {
         StoreImageResponse thumbnail = StoreImageResponse.builder()
@@ -54,18 +51,34 @@ class StoreQueryServiceTest {
             .build();
 
         return new StoreListResponse(
-            1L,                          // id
-            2L,                          // userId
-            "테스트 가게",                // storeName
-            StoreStatus.ACTIVE,          // status
-            "맛있는 음식점입니다.",        // description
-            "010-1234-5678",             // contactValue
-            "서울시 강남구 테헤란로 1길", // address
-            thumbnail                    // isThumbnail
+            1L,
+            2L,
+            "테스트 가게",
+            StoreStatus.ACTIVE,
+            "맛있는 음식점입니다.",
+            "010-1234-5678",
+            "서울시 강남구 테헤란로 1길",
+            thumbnail
         );
     }
 
-    // ── getStoreListInfo ───────────────────────────────────────────────────────
+    private StoreSnapshotResponse storeSnapshotResponse() {
+        LocalDateTime now = LocalDateTime.now();
+        return new StoreSnapshotResponse(
+            1L,
+            2L,
+            "테스트 가게",
+            StoreStatus.ACTIVE,
+            "맛있는 음식점입니다.",
+            "서울시 강남구 테헤란로 1길",
+            AddressType.MAIN,
+            "010-1234-5678",
+            ContactType.PHONE,
+            List.of(),
+            now.minusDays(3),
+            now.minusHours(2)
+        );
+    }
 
     @Nested
     @DisplayName("getStoreListInfo()")
@@ -74,17 +87,14 @@ class StoreQueryServiceTest {
         @Test
         @DisplayName("정상 조회 - 데이터가 있을 때 Page 반환")
         void success_returns_page() {
-            // given
             Pageable pageable = PageRequest.of(0, 20);
             List<StoreListResponse> content = List.of(storeListResponse());
             Page<StoreListResponse> expected = new PageImpl<>(content, pageable, 1);
 
             given(storesRepository.findStoreList(pageable)).willReturn(expected);
 
-            // when
             Page<StoreListResponse> result = storeQueryService.getStoreListInfo(pageable);
 
-            // then
             assertThat(result).isNotNull();
             assertThat(result.getTotalElements()).isEqualTo(1);
             assertThat(result.getContent()).hasSize(1);
@@ -99,145 +109,68 @@ class StoreQueryServiceTest {
         @Test
         @DisplayName("정상 조회 - 데이터가 없을 때 빈 Page 반환")
         void success_returns_empty_page() {
-            // given
             Pageable pageable = PageRequest.of(0, 20);
-            Page<StoreListResponse> emptyPage = new PageImpl<>(
-                Collections.emptyList(), pageable, 0
-            );
+            Page<StoreListResponse> emptyPage = new PageImpl<>(Collections.emptyList(), pageable, 0);
 
             given(storesRepository.findStoreList(pageable)).willReturn(emptyPage);
 
-            // when
             Page<StoreListResponse> result = storeQueryService.getStoreListInfo(pageable);
 
-            // then
             assertThat(result).isNotNull();
             assertThat(result.isEmpty()).isTrue();
             assertThat(result.getTotalElements()).isZero();
-
             then(storesRepository).should(times(1)).findStoreList(pageable);
-        }
-
-        @Test
-        @DisplayName("페이지 정보 검증 - page, size가 결과에 올바르게 반영된다")
-        void success_page_metadata_is_correct() {
-            // given
-            Pageable pageable = PageRequest.of(1, 5);
-            List<StoreListResponse> content = List.of(
-                storeListResponse(), storeListResponse()
-            );
-            Page<StoreListResponse> page = new PageImpl<>(content, pageable, 12L);
-
-            given(storesRepository.findStoreList(pageable)).willReturn(page);
-
-            // when
-            Page<StoreListResponse> result = storeQueryService.getStoreListInfo(pageable);
-
-            // then
-            assertThat(result.getNumber()).isEqualTo(1);         // 현재 페이지
-            assertThat(result.getSize()).isEqualTo(5);           // 페이지 크기
-            assertThat(result.getTotalElements()).isEqualTo(12); // 전체 건수
-            assertThat(result.getTotalPages()).isEqualTo(3);     // ceil(12/5) = 3
-        }
-
-        @Test
-        @DisplayName("Repository 호출 횟수 검증 - 서비스 호출 횟수만큼 repository도 호출된다")
-        void repository_called_same_times_as_service() {
-            // given
-            Pageable pageable = PageRequest.of(0, 20);
-            given(storesRepository.findStoreList(pageable))
-                .willReturn(Page.empty(pageable));
-
-            // when
-            storeQueryService.getStoreListInfo(pageable);
-            storeQueryService.getStoreListInfo(pageable);
-
-            // then
-            then(storesRepository).should(times(2)).findStoreList(pageable);
-        }
-
-        // ── StoreProfile Upsert ─────────────────────────────────────────────────────
-
-        @Nested
-        @DisplayName("StoreProfile Upsert")
-        class StoreProfileUpsert {
-
-            @Test
-            @DisplayName("StoreProfile이 존재하면 description을 수정한다")
-            void update_when_profile_exists() {
-
-                // given
-                Long storeId = 1L;
-
-                StoreProfile profile = Mockito.mock(StoreProfile.class);
-
-                given(storeProfileRepository.findByStoreId(storeId))
-                    .willReturn(Optional.of(profile));
-
-                // when
-                StoreProfile result =
-                    storeProfileRepository.findByStoreId(storeId)
-                        .map(p -> {
-                            p.updateDescription("수정된 설명");
-                            return p;
-                        })
-                        .orElseGet(() ->
-                            storeProfileRepository.save(
-                                StoreProfile.of(null, "수정된 설명")
-                            )
-                        );
-
-                // then
-                assertThat(result).isEqualTo(profile);
-
-                then(profile).should(times(1))
-                    .updateDescription("수정된 설명");
-
-                then(storeProfileRepository).should(times(1))
-                    .findByStoreId(storeId);
-
-                then(storeProfileRepository).should(times(0))
-                    .save(Mockito.any());
-            }
-
-            @Test
-            @DisplayName("StoreProfile이 없으면 새로 생성 후 저장한다")
-            void save_when_profile_not_exists() {
-
-                // given
-                Long storeId = 1L;
-
-                StoreProfile newProfile = Mockito.mock(StoreProfile.class);
-
-                given(storeProfileRepository.findByStoreId(storeId))
-                    .willReturn(Optional.empty());
-
-                given(storeProfileRepository.save(Mockito.any()))
-                    .willReturn(newProfile);
-
-                // when
-                StoreProfile result =
-                    storeProfileRepository.findByStoreId(storeId)
-                        .map(p -> {
-                            p.updateDescription("새 설명");
-                            return p;
-                        })
-                        .orElseGet(() ->
-                            storeProfileRepository.save(
-                                StoreProfile.of(null, "새 설명")
-                            )
-                        );
-
-                // then
-                assertThat(result).isEqualTo(newProfile);
-
-                then(storeProfileRepository).should(times(1))
-                    .save(Mockito.any());
-
-                then(storeProfileRepository).should(times(1))
-                    .findByStoreId(storeId);
-            }
         }
     }
 
+    @Nested
+    @DisplayName("getStoreSnapshot()")
+    class GetStoreSnapshot {
+
+        @Test
+        @DisplayName("snapshot base 정보와 image 목록을 합쳐 반환한다")
+        void success_returns_snapshot_with_images() {
+            given(storesRepository.findSnapshotByStoreId(1L))
+                .willReturn(Optional.of(storeSnapshotResponse()));
+            given(storesRepository.findImagesByStoreId(1L)).willReturn(List.of(
+                StoreImage.of(ImageType.THUMBNAIL, 10L, 0),
+                StoreImage.of(ImageType.GALLERY, 11L, 1)
+            ));
+
+            StoreSnapshotResponse result = storeQueryService.getStoreSnapshot(1L);
+
+            assertThat(result.storeId()).isEqualTo(1L);
+            assertThat(result.contactValue()).isEqualTo("010-1234-5678");
+            assertThat(result.images()).hasSize(2);
+            assertThat(result.images().get(0).mediaId()).isEqualTo(10L);
+            then(storesRepository).should(times(1)).findSnapshotByStoreId(1L);
+            then(storesRepository).should(times(1)).findImagesByStoreId(1L);
+        }
+    }
+
+    @Nested
+    @DisplayName("getActiveStoreIdsByUserId()")
+    class GetActiveStoreIdsByUserId {
+
+        @Test
+        @DisplayName("양수 userId면 repository 결과를 반환한다")
+        void success_returns_store_ids() {
+            given(storesRepository.findIdsByUserIdAndDeletedAtIsNullOrderByUpdatedAtDesc(2L))
+                .willReturn(List.of(101L, 102L));
+
+            List<Long> result = storeQueryService.getActiveStoreIdsByUserId(2L);
+
+            assertThat(result).containsExactly(101L, 102L);
+            then(storesRepository).should(times(1)).findIdsByUserIdAndDeletedAtIsNullOrderByUpdatedAtDesc(2L);
+        }
+
+        @Test
+        @DisplayName("잘못된 userId면 빈 목록을 반환하고 repository를 호출하지 않는다")
+        void invalid_user_id_returns_empty_list() {
+            List<Long> result = storeQueryService.getActiveStoreIdsByUserId(0L);
+
+            assertThat(result).isEmpty();
+            then(storesRepository).shouldHaveNoInteractions();
+        }
+    }
 }

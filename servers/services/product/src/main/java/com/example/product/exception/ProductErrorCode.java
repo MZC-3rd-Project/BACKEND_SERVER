@@ -51,7 +51,9 @@ public enum ProductErrorCode implements DomainErrorCode {
 
     // Authorization
     UNAUTHORIZED_ACCESS("PRODUCT-901", "해당 상품에 대한 권한이 없습니다", HttpStatus.FORBIDDEN),
-    STORE_OWNERSHIP_MISMATCH("PRODUCT-902", "요청한 가게 정보와 인증 가게 정보가 일치하지 않습니다", HttpStatus.FORBIDDEN);
+    STORE_OWNERSHIP_MISMATCH("PRODUCT-902", "요청한 가게 정보와 인증 가게 정보가 일치하지 않습니다", HttpStatus.FORBIDDEN),
+    STORE_NOT_FOUND("PRODUCT-903", "가게를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
+    STORE_SERVICE_ERROR("PRODUCT-904", "가게 서비스 호출에 실패했습니다", HttpStatus.BAD_GATEWAY);
 
     private final String code;
     private final String message;

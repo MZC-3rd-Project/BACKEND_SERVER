@@ -5,6 +5,7 @@ import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemStatus;
+import com.example.product.entity.item.ItemType;
 import com.example.product.entity.item.ItemStatusHistory;
 import com.example.product.event.ItemStatusChangedEvent;
 import com.example.product.repository.ItemRepository;
@@ -65,9 +66,12 @@ class FundingEventProcessorTest {
                     Supplier<?> supplier = invocation.getArgument(2);
                     supplier.get();
                     return Optional.empty();
-                });
+        });
         when(itemRepository.findById(101L)).thenReturn(Optional.of(item));
         when(item.getStatus()).thenReturn(ItemStatus.FUNDING);
+        when(item.getItemType()).thenReturn(ItemType.PRODUCT);
+        when(item.getSellerId()).thenReturn(10L);
+        when(item.getStoreId()).thenReturn(100L);
 
         processor.process(message, "evt-1", "FUNDING_SUCCEEDED");
 

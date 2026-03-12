@@ -198,7 +198,7 @@ public class StoreCommandService {
             storeImageRepository.saveAll(
                 request.images()
                     .stream()
-                    .map(img -> StoreImage.of(img.imageType(), img.mediaId(), img.sortOrder()))
+                    .map(img -> StoreImage.of(findStore, img.imageType(), img.mediaId(), img.sortOrder()))
                     .toList()
             );
         }
@@ -209,18 +209,20 @@ public class StoreCommandService {
             .toList();
 
         storeMediaReferenceService.syncStoreImagesOnUpdate(storeId, request.images());
-        eventPublisher.publish(new StoreUpdateEvent(
-            findStore.getId(),
-            userId,
-            findStore.getStoreName(),
-            findStore.getStatus(),
-            request.description(),
-            storeAddress.getAddress(),
-            storeAddress.getAddressType(),
-            storeContact.getContactValue(),
-            storeContact.getContactType(),
-            imgList
-            ),EventMetadata.of("STORE", String.valueOf(findStore.getId()))
+        eventPublisher.publish(
+            new StoreUpdateEvent(
+                findStore.getId(),
+                userId,
+                findStore.getStoreName(),
+                findStore.getStatus(),
+                request.description(),
+                storeAddress.getAddress(),
+                storeAddress.getAddressType(),
+                storeContact.getContactValue(),
+                storeContact.getContactType(),
+                imgList
+            ),
+            EventMetadata.of("STORE", String.valueOf(findStore.getId()))
         );
 
         return new StoreUpdateResponse(
@@ -264,8 +266,8 @@ public class StoreCommandService {
         storeContact.softDelete();
         storeImage.softDelete();
         storeProfile.softDelete();
-//
-//        storeMediaReferenceService.clearStoreImageLinks(storeId);
+
+        storeMediaReferenceService.clearStoreImageLinks(storeId);
         eventPublisher.publish(
             new StoreDeleteEvent(
                 storeId,

@@ -35,7 +35,7 @@ public record StoreCreateRequest(
         Long mediaId,
         int sortOrder
     ) { }
-    public StoreCreateRequest{
+    public StoreCreateRequest {
         description = (description == null || description.isBlank()) ? null : description;
     }
 

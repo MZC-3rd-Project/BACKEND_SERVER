@@ -188,7 +188,11 @@ public class ItemImageCommandService {
                         item.getTitle(),
                         item.getPrice(),
                         item.getThumbnailMediaId(),
-                        System.currentTimeMillis()
+                        System.currentTimeMillis(),
+                        item.getItemType().name(),
+                        item.getStatus().name(),
+                        item.getSellerId(),
+                        item.getStoreId()
                 ),
                 EventMetadata.of("Item", String.valueOf(item.getId()))
         );

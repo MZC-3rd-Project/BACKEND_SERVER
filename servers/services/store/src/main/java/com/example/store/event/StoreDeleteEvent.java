@@ -4,12 +4,10 @@ import com.example.event.DomainEvent;
 import com.example.store.entity.AddressType;
 import com.example.store.entity.ContactType;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class StoreDeleteEvent extends DomainEvent {
-
 
     private final Long storeId;
     private final Long userId;
@@ -21,16 +19,17 @@ public class StoreDeleteEvent extends DomainEvent {
     private final Integer sortOrder;
     private final String description;
 
-
-    public StoreDeleteEvent(Long storeId,
-                            Long userId,
-                            AddressType addressType,
-                            String address,
-                            ContactType contactType,
-                            String contactValue,
-                            Long mediaId,
-                            Integer sortOrder,
-                            String description) {
+    public StoreDeleteEvent(
+        Long storeId,
+        Long userId,
+        AddressType addressType,
+        String address,
+        ContactType contactType,
+        String contactValue,
+        Long mediaId,
+        Integer sortOrder,
+        String description
+    ) {
         super("store-event");
         this.storeId = storeId;
         this.userId = userId;
@@ -41,7 +40,6 @@ public class StoreDeleteEvent extends DomainEvent {
         this.mediaId = mediaId;
         this.sortOrder = sortOrder;
         this.description = description;
-
     }
 
     @Override
@@ -52,37 +50,27 @@ public class StoreDeleteEvent extends DomainEvent {
     @Override
     public Map<String, Object> getPayload() {
         Map<String, Object> payload = new LinkedHashMap<>();
-
         payload.put("storeId", storeId);
         payload.put("userId", userId);
-        payload.put(
-            "address",
-            Map.of(
-                "addressType", addressType,
-                "address", address
-            )
-        );
-        payload.put(
-            "contact",
-            Map.of(
-                "contactType", contactType,
-                "contactValue", contactValue
-            )
-        );
-        payload.put(
-            "image",
-            Map.of(
-                "mediaId", mediaId,
-                "sortOrder", sortOrder
-            )
-        );
-        payload.put(
-            "profile",
-            Map.of(
-                "description", description
-            )
-        );
 
+        Map<String, Object> addressPayload = new LinkedHashMap<>();
+        addressPayload.put("addressType", addressType);
+        addressPayload.put("address", address);
+        payload.put("address", addressPayload);
+
+        Map<String, Object> contactPayload = new LinkedHashMap<>();
+        contactPayload.put("contactType", contactType);
+        contactPayload.put("contactValue", contactValue);
+        payload.put("contact", contactPayload);
+
+        Map<String, Object> imagePayload = new LinkedHashMap<>();
+        imagePayload.put("mediaId", mediaId);
+        imagePayload.put("sortOrder", sortOrder);
+        payload.put("image", imagePayload);
+
+        Map<String, Object> profilePayload = new LinkedHashMap<>();
+        profilePayload.put("description", description);
+        payload.put("profile", profilePayload);
         return payload;
     }
 }

@@ -2,11 +2,13 @@ package com.example.store.service.test.command;
 
 
 import com.example.core.exception.BusinessException;
+import com.example.event.EventPublisher;
 import com.example.store.dto.request.StoreCreateRequest;
 import com.example.store.dto.response.StoreCreateResponse;
 import com.example.store.entity.*;
 import com.example.store.repository.*;
 import com.example.store.service.command.StoreCommandService;
+import com.example.store.service.command.StoreMediaReferenceService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -22,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
@@ -34,6 +37,8 @@ class StoreCommandServiceCreateTest {
     @Mock private StoreAddressRepository storeAddressRepository;
     @Mock private StoreContactRepository storeContactRepository;
     @Mock private StoreImageRepository   storeImageRepository;
+    @Mock private EventPublisher         eventPublisher;
+    @Mock private StoreMediaReferenceService storeMediaReferenceService;
 
     @InjectMocks
     private StoreCommandService storeCommandService;
@@ -83,10 +88,22 @@ class StoreCommandServiceCreateTest {
 
     private Stores mockStore() {
         return Stores.builder()
+            .id(100L)
             .userId(USER_ID)
             .storeName("테스트 가게")
             .status(StoreStatus.INACTIVE)
             .build();
+    }
+
+    private void givenCreatePersistence(Stores savedStore) {
+        lenient().when(storeAddressRepository.save(any(StoreAddress.class)))
+            .thenReturn(StoreAddress.of(savedStore, AddressType.MAIN, "서울시 강남구 테헤란로 1길"));
+        lenient().when(storeContactRepository.save(any(StoreContact.class)))
+            .thenReturn(StoreContact.of(savedStore, ContactType.PHONE, "010-1234-5678", true));
+        lenient().when(storeProfileRepository.save(any(StoreProfile.class)))
+            .thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(storeImageRepository.saveAll(any()))
+            .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     // ── 정상 케이스 ────────────────────────────────────────────────────────────
@@ -99,15 +116,17 @@ class StoreCommandServiceCreateTest {
         @DisplayName("필수 필드만으로 가게 생성 성공")
         void createStore_withRequiredFields_success() {
             // given
+            Stores savedStore = mockStore();
             given(storesRepository.existsByUserIdAndDeletedAtIsNull(USER_ID)).willReturn(false);
-            given(storesRepository.save(any(Stores.class))).willReturn(mockStore());
+            given(storesRepository.save(any(Stores.class))).willReturn(savedStore);
+            givenCreatePersistence(savedStore);
 
             // when
             StoreCreateResponse response = storeCommandService.create(USER_ID, baseRequest());
             // then
             assertThat(response).isNotNull();
             assertThat(response.getStoreName()).isEqualTo("테스트 가게");
-            assertThat(response.getStatus()).isEqualTo(StoreStatus.ACTIVE); //active
+            assertThat(response.getStatus()).isEqualTo(StoreStatus.ACTIVE);
 
             // 저장 호출 검증
             then(storesRepository).should(times(1)).save(any(Stores.class));
@@ -123,8 +142,10 @@ class StoreCommandServiceCreateTest {
         @DisplayName("description 포함 시 StoreProfile 저장")
         void createStore_withDescription_savesProfile() {
             // given
+            Stores savedStore = mockStore();
             given(storesRepository.existsByUserIdAndDeletedAtIsNull(USER_ID)).willReturn(false);
-            given(storesRepository.save(any(Stores.class))).willReturn(mockStore());
+            given(storesRepository.save(any(Stores.class))).willReturn(savedStore);
+            givenCreatePersistence(savedStore);
 
             // when
             storeCommandService.create(USER_ID, requestWithDescription());
@@ -137,8 +158,10 @@ class StoreCommandServiceCreateTest {
         @DisplayName("이미지 포함 시 StoreImage 저장")
         void createStore_withImages_savesImages() {
             // given
+            Stores savedStore = mockStore();
             given(storesRepository.existsByUserIdAndDeletedAtIsNull(USER_ID)).willReturn(false);
-            given(storesRepository.save(any(Stores.class))).willReturn(mockStore());
+            given(storesRepository.save(any(Stores.class))).willReturn(savedStore);
+            givenCreatePersistence(savedStore);
 
             // when
             storeCommandService.create(USER_ID, requestWithImages());
@@ -148,10 +171,11 @@ class StoreCommandServiceCreateTest {
         }
 
         @Test
-        @DisplayName("생성된 가게의 초기 status는 INACTIVE")
-        void createStore_initialStatus_isInactive() {
+        @DisplayName("생성된 가게의 초기 status는 ACTIVE")
+        void createStore_initialStatus_isActive() {
             // given
             Stores savedStore = Stores.builder()
+                .id(100L)
                 .userId(USER_ID)
                 .storeName("테스트 가게")
                 .status(StoreStatus.INACTIVE)
@@ -159,12 +183,13 @@ class StoreCommandServiceCreateTest {
 
             given(storesRepository.existsByUserIdAndDeletedAtIsNull(USER_ID)).willReturn(false);
             given(storesRepository.save(any(Stores.class))).willReturn(savedStore);
+            givenCreatePersistence(savedStore);
 
             // when
             StoreCreateResponse response = storeCommandService.create(USER_ID, baseRequest());
 
             // then
-            assertThat(response.getStatus()).isEqualTo(StoreStatus.INACTIVE);
+            assertThat(response.getStatus()).isEqualTo(StoreStatus.ACTIVE);
         }
 
         @Test
@@ -172,6 +197,7 @@ class StoreCommandServiceCreateTest {
         void createStore_response_containsUserId() {
             // given
             Stores savedStore = Stores.builder()
+                .id(100L)
                 .userId(USER_ID)
                 .storeName("테스트 가게")
                 .status(StoreStatus.INACTIVE)
@@ -179,6 +205,7 @@ class StoreCommandServiceCreateTest {
 
             given(storesRepository.existsByUserIdAndDeletedAtIsNull(USER_ID)).willReturn(false);
             given(storesRepository.save(any(Stores.class))).willReturn(savedStore);
+            givenCreatePersistence(savedStore);
 
             // when
             StoreCreateResponse response = storeCommandService.create(USER_ID, baseRequest());

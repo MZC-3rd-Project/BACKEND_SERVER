@@ -14,14 +14,32 @@ public class ItemUpdatedEvent extends DomainEvent {
     private final Long price;
     private final Long thumbnailMediaId;
     private final Long mediaVersion;
+    private final String itemType;
+    private final String status;
+    private final Long sellerId;
+    private final Long storeId;
 
-    public ItemUpdatedEvent(Long itemId, String title, Long price, Long thumbnailMediaId, Long mediaVersion) {
+    public ItemUpdatedEvent(
+            Long itemId,
+            String title,
+            Long price,
+            Long thumbnailMediaId,
+            Long mediaVersion,
+            String itemType,
+            String status,
+            Long sellerId,
+            Long storeId
+    ) {
         super("item-events");
         this.itemId = itemId;
         this.title = title;
         this.price = price;
         this.thumbnailMediaId = thumbnailMediaId;
         this.mediaVersion = mediaVersion;
+        this.itemType = itemType;
+        this.status = status;
+        this.sellerId = sellerId;
+        this.storeId = storeId;
     }
 
     @Override
@@ -37,6 +55,10 @@ public class ItemUpdatedEvent extends DomainEvent {
         payload.put("price", price);
         payload.put("thumbnailMediaId", thumbnailMediaId);
         payload.put("mediaVersion", mediaVersion);
+        payload.put("itemType", itemType);
+        payload.put("status", status);
+        payload.put("sellerId", sellerId);
+        payload.put("storeId", storeId);
         return payload;
     }
 }

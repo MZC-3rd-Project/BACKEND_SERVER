@@ -17,26 +17,25 @@ public class StoreUpdateEvent extends DomainEvent {
     private final String storeName;
     private final StoreStatus status;
     private final String description;
-
     private final String address;
     private final AddressType addressType;
-
     private final String contactValue;
     private final ContactType contactType;
-
     private final List<StoreUpdateResponse.StoreImageResponse> images;
 
-    public StoreUpdateEvent(Long storeId,
-                            Long userId,
-                            String storeName,
-                            StoreStatus status,
-                            String description,
-                            String address,
-                            AddressType addressType,
-                            String contactValue,
-                            ContactType contactType,
-                            List<StoreUpdateResponse.StoreImageResponse> images) {
-        super("store-events");
+    public StoreUpdateEvent(
+        Long storeId,
+        Long userId,
+        String storeName,
+        StoreStatus status,
+        String description,
+        String address,
+        AddressType addressType,
+        String contactValue,
+        ContactType contactType,
+        List<StoreUpdateResponse.StoreImageResponse> images
+    ) {
+        super("store-event");
         this.storeId = storeId;
         this.userId = userId;
         this.storeName = storeName;
@@ -46,7 +45,7 @@ public class StoreUpdateEvent extends DomainEvent {
         this.addressType = addressType;
         this.contactValue = contactValue;
         this.contactType = contactType;
-        this.images = images;
+        this.images = images == null ? List.of() : List.copyOf(images);
     }
 
     @Override
@@ -57,29 +56,31 @@ public class StoreUpdateEvent extends DomainEvent {
     @Override
     public Map<String, Object> getPayload() {
         Map<String, Object> payload = new LinkedHashMap<>();
-
         payload.put("storeId", storeId);
         payload.put("userId", userId);
         payload.put("storeName", storeName);
         payload.put("status", status);
         payload.put("description", description);
 
-        payload.put("address", address);
-        payload.put("addressType", addressType);
+        Map<String, Object> addressPayload = new LinkedHashMap<>();
+        addressPayload.put("address", address);
+        addressPayload.put("addressType", addressType);
+        payload.put("address", addressPayload);
 
-        payload.put("contactValue", contactValue);
-        payload.put("contactType", contactType);
+        Map<String, Object> contactPayload = new LinkedHashMap<>();
+        contactPayload.put("contactValue", contactValue);
+        contactPayload.put("contactType", contactType);
+        payload.put("contact", contactPayload);
 
-        payload.put("images",
-            images.stream()
-                .map(img -> Map.of(
-                    "mediaId", img.mediaId(),
-                    "imageType", img.imageType(),
-                    "sortOrder", img.sortOrder()
-                ))
-                .toList()
-        );
-
+        payload.put("images", images.stream()
+            .map(image -> {
+                Map<String, Object> imagePayload = new LinkedHashMap<>();
+                imagePayload.put("mediaId", image.mediaId());
+                imagePayload.put("imageType", image.imageType());
+                imagePayload.put("sortOrder", image.sortOrder());
+                return imagePayload;
+            })
+            .toList());
         return payload;
     }
 }

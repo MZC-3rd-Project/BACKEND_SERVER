@@ -8,6 +8,7 @@ import com.example.product.dto.performance.response.PerformanceDetailResponse;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemType;
 import com.example.product.entity.performance.Performance;
+import com.example.product.event.ItemDeletedEvent;
 import com.example.product.exception.ProductErrorCode;
 import com.example.product.repository.CategoryRepository;
 import com.example.product.repository.CastMemberRepository;
@@ -32,6 +33,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -55,6 +57,8 @@ class PerformanceCommandServiceTest {
     private MediaReferenceService mediaReferenceService;
     @Mock
     private ItemThumbnailSyncService itemThumbnailSyncService;
+    @Mock
+    private StoreOwnershipValidator storeOwnershipValidator;
     @Mock
     private EventPublisher eventPublisher;
     @Mock
@@ -80,6 +84,7 @@ class PerformanceCommandServiceTest {
         verify(performanceRepository).softDeleteByItemId(itemId);
         verify(itemImageRepository).softDeleteAllByItemId(itemId);
         verify(itemThumbnailSyncService).syncAfterCommit(itemId, null, true);
+        verify(eventPublisher).publish(any(ItemDeletedEvent.class), any());
         assertThat(item.getThumbnailMediaId()).isNull();
     }
 

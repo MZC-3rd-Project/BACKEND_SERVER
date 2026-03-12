@@ -14,6 +14,7 @@ import com.example.product.entity.performance.CastMember;
 import com.example.product.entity.performance.Performance;
 import com.example.product.entity.performance.SeatGrade;
 import com.example.product.event.ItemCreatedEvent;
+import com.example.product.event.ItemDeletedEvent;
 import com.example.product.event.ItemUpdatedEvent;
 import com.example.product.exception.ProductErrorCode;
 import com.example.product.repository.CastMemberRepository;
@@ -45,10 +46,11 @@ public class PerformanceCommandService {
     private final ItemContentService itemContentService;
     private final MediaReferenceService mediaReferenceService;
     private final ItemThumbnailSyncService itemThumbnailSyncService;
+    private final StoreOwnershipValidator storeOwnershipValidator;
     private final EventPublisher eventPublisher;
 
     public PerformanceDetailResponse create(PerformanceCreateRequest request, Long sellerId) {
-        // TODO: store-service 연동 후 sellerId-storeId 소유권 검증을 추가한다.
+        storeOwnershipValidator.validateOwnership(sellerId, request.getStoreId());
         mediaReferenceService.resolveMediaUrl(request.getThumbnailMediaId());
         validateCategoryExists(request.getCategoryId());
         Item item = Item.create(
@@ -176,7 +178,11 @@ public class PerformanceCommandService {
                         item.getTitle(),
                         item.getPrice(),
                         item.getThumbnailMediaId(),
-                        System.currentTimeMillis()
+                        System.currentTimeMillis(),
+                        item.getItemType().name(),
+                        item.getStatus().name(),
+                        item.getSellerId(),
+                        item.getStoreId()
                 ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
@@ -205,6 +211,15 @@ public class PerformanceCommandService {
         itemImageRepository.softDeleteAllByItemId(itemId);
         item.clearThumbnail();
         itemThumbnailSyncService.syncAfterCommit(itemId, null, true);
+        eventPublisher.publish(
+                new ItemDeletedEvent(
+                        item.getId(),
+                        item.getItemType().name(),
+                        item.getStatus().name(),
+                        item.getSellerId(),
+                        item.getStoreId()
+                ),
+                EventMetadata.of("Item", String.valueOf(item.getId())));
     }
 
     private Item getItem(Long itemId) {
