@@ -46,4 +46,8 @@ dependencies {
     runtimeOnly("org.flywaydb:flyway-core")
     runtimeOnly("org.flywaydb:flyway-database-postgresql")
     testRuntimeOnly("com.h2database:h2")
+
+    // ─── Test ───────────────────────────────────
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.kafka:spring-kafka-test")
 }
