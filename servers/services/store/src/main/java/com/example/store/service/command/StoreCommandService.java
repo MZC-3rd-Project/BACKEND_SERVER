@@ -5,7 +5,6 @@ import com.example.core.exception.CommonErrorCode;
 import com.example.core.exception.TechnicalException;
 import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;
-import com.example.store.dto.image.StoreImageResponse;
 import com.example.store.dto.request.StoreCreateRequest;
 import com.example.store.dto.request.StoreUpdateRequest;
 import com.example.store.dto.response.StoreCreateResponse;
@@ -13,6 +12,7 @@ import com.example.store.dto.response.StoreDeleteResponse;
 import com.example.store.dto.response.StoreUpdateResponse;
 import com.example.store.entity.*;
 import com.example.store.event.StoreCreateEvent;
+import com.example.store.event.StoreUpdateEvent;
 import com.example.store.exception.StoreErrorCode;
 import com.example.store.repository.*;
 
@@ -61,7 +61,7 @@ public class StoreCommandService {
             storeImages = saveStoreImages(store, request);
         }
 
-//        storeMediaReferenceService.syncStoreImagesOnCreate(store.getId(), request.images());
+        storeMediaReferenceService.syncStoreImagesOnCreate(store.getId(), request.images());
         eventPublisher.publish(
             new StoreCreateEvent(
                 store.getId(),
@@ -208,6 +208,19 @@ public class StoreCommandService {
             .toList();
 
         storeMediaReferenceService.syncStoreImagesOnUpdate(storeId, request.images());
+        eventPublisher.publish(new StoreUpdateEvent(
+            findStore.getId(),
+            userId,
+            findStore.getStoreName(),
+            findStore.getStatus(),
+            request.description(),
+            storeAddress.getAddress(),
+            storeAddress.getAddressType(),
+            storeContact.getContactValue(),
+            storeContact.getContactType(),
+            imgList
+            ),EventMetadata.of("STORE", String.valueOf(findStore.getId()))
+        );
 
         return new StoreUpdateResponse(
             findStore.getId(),
