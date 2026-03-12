@@ -42,6 +42,13 @@ public class StoreContact extends BaseEntity {
             .isPrimary(isPrimary)
             .build();
     }
+    public static StoreContact of(ContactType contactType, String contactValue, boolean isPrimary){
+        return  StoreContact.builder()
+            .contactType(contactType)
+            .contactValue(contactValue)
+            .isPrimary(isPrimary)
+            .build();
+    }
 
     public void updateStoreContact(String contactValue, ContactType contactType) {
         if (contactValue != null) this.contactValue = contactValue;

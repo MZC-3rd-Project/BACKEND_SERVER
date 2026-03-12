@@ -32,6 +32,12 @@ public class StoreProfile extends BaseEntity {
             .build();
     }
 
+    public static StoreProfile of(String description){
+        return StoreProfile.builder()
+            .description(description)
+            .build();
+    }
+
     public void updateDescription(String description) {
         this.description = description;
     }
