@@ -1,15 +1,13 @@
 package com.example.storequery.controller.api.query;
 
 import com.example.api.response.ApiResponse;
+import com.example.core.pagination.CursorResponse;
 import com.example.security.gateway.CurrentUserId;
 import com.example.storequery.dto.response.StoreQueryDetailResponse;
 import com.example.storequery.dto.response.StoreQueryListResponse;
 import com.example.storequery.entity.StoreQueryStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -21,10 +19,11 @@ public interface StoreQueryReadApi {
 
     @Operation(summary = "스토어 목록 조회")
     @GetMapping("/stores")
-    ApiResponse<Page<StoreQueryListResponse>> getStores(
+    ApiResponse<CursorResponse<StoreQueryListResponse>> getStores(
         @RequestParam(name = "q", required = false) String keyword,
         @RequestParam(name = "status", required = false) StoreQueryStatus status,
-        @ParameterObject Pageable pageable
+        @RequestParam(required = false) String cursor,
+        @RequestParam(defaultValue = "20") int size
     );
 
     @Operation(summary = "스토어 상세 조회")

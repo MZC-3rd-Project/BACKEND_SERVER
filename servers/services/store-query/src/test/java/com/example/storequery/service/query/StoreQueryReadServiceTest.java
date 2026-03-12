@@ -1,6 +1,7 @@
 package com.example.storequery.service.query;
 
 import com.example.core.exception.BusinessException;
+import com.example.core.pagination.CursorResponse;
 import com.example.storequery.dto.response.StoreQueryDetailResponse;
 import com.example.storequery.dto.response.StoreQueryListResponse;
 import com.example.storequery.entity.StoreQueryImageType;
@@ -11,14 +12,12 @@ import com.example.storequery.entity.StoreReadModel;
 import com.example.storequery.repository.StoreReadImageRepository;
 import com.example.storequery.repository.StoreReadItemRepository;
 import com.example.storequery.repository.StoreReadModelRepository;
+import com.example.storequery.repository.StoreReadModelSearchRow;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDateTime;
@@ -56,15 +55,24 @@ class StoreQueryReadServiceTest {
 
     @Test
     void keyword가_있으면_search_repository를_사용한다() {
-        Pageable pageable = PageRequest.of(0, 20);
-        Page<StoreReadModel> page = new PageImpl<>(List.of(model()), pageable, 1);
-        when(storeReadModelRepository.search(eq("mzc"), eq("ACTIVE"), eq(0.2d), eq(pageable)))
-            .thenReturn(page);
+        when(storeReadModelRepository.searchWithCursor(eq("mzc"), eq("ACTIVE"), eq(0.2d), eq(null), eq(null), eq(null), eq(21)))
+            .thenReturn(List.of(searchRow()));
 
-        Page<StoreQueryListResponse> result = service.getStores("mzc", StoreQueryStatus.ACTIVE, pageable);
+        CursorResponse<StoreQueryListResponse> result = service.getStores("mzc", StoreQueryStatus.ACTIVE, null, 20);
 
-        assertThat(result.getContent()).hasSize(1);
-        verify(storeReadModelRepository).search("mzc", "ACTIVE", 0.2d, pageable);
+        assertThat(result.getItems()).hasSize(1);
+        verify(storeReadModelRepository).searchWithCursor("mzc", "ACTIVE", 0.2d, null, null, null, 21);
+    }
+
+    @Test
+    void keyword가_없으면_cursor_list_repository를_사용한다() {
+        when(storeReadModelRepository.findListWithCursor(eq(StoreQueryStatus.ACTIVE), eq(null), eq(null), eq(PageRequest.of(0, 21))))
+            .thenReturn(List.of(model()));
+
+        CursorResponse<StoreQueryListResponse> result = service.getStores(null, StoreQueryStatus.ACTIVE, null, 20);
+
+        assertThat(result.getItems()).hasSize(1);
+        verify(storeReadModelRepository).findListWithCursor(StoreQueryStatus.ACTIVE, null, null, PageRequest.of(0, 21));
     }
 
     @Test
@@ -130,5 +138,75 @@ class StoreQueryReadServiceTest {
             now.minusHours(1),
             now
         );
+    }
+
+    private static StoreReadModelSearchRow searchRow() {
+        LocalDateTime now = LocalDateTime.now();
+        return new StoreReadModelSearchRow() {
+            @Override
+            public Long getStoreId() {
+                return 1L;
+            }
+
+            @Override
+            public Long getUserId() {
+                return 100L;
+            }
+
+            @Override
+            public String getStoreName() {
+                return "MZC Store";
+            }
+
+            @Override
+            public String getStatus() {
+                return "ACTIVE";
+            }
+
+            @Override
+            public String getDescription() {
+                return "desc";
+            }
+
+            @Override
+            public String getPrimaryContactValue() {
+                return "010-1234-5678";
+            }
+
+            @Override
+            public String getDefaultAddress() {
+                return "Seoul";
+            }
+
+            @Override
+            public String getOwnerNickname() {
+                return "owner";
+            }
+
+            @Override
+            public Long getThumbnailMediaId() {
+                return 10L;
+            }
+
+            @Override
+            public String getThumbnailUrl() {
+                return "https://thumb";
+            }
+
+            @Override
+            public Integer getThumbnailSortOrder() {
+                return 0;
+            }
+
+            @Override
+            public LocalDateTime getSourceUpdatedAt() {
+                return now;
+            }
+
+            @Override
+            public Double getSortRank() {
+                return 0.9d;
+            }
+        };
     }
 }
