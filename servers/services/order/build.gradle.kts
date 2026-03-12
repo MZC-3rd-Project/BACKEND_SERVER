@@ -20,7 +20,9 @@ dependencies {
     implementation(project(":libs:config:redis"))
 
     // ─── Event ────────────────────────────────────
+    implementation(project(":libs:event:consumer"))
     implementation(project(":libs:event:domain"))
+    implementation(project(":libs:event:inbox"))
     implementation(project(":libs:event:outbox"))
 
     // ─── Security ─────────────────────────────────
@@ -41,5 +43,7 @@ dependencies {
 
     // Database
     runtimeOnly("org.postgresql:postgresql")
+    runtimeOnly("org.flywaydb:flyway-core")
+    runtimeOnly("org.flywaydb:flyway-database-postgresql")
     testRuntimeOnly("com.h2database:h2")
 }

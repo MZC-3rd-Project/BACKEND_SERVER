@@ -7,17 +7,15 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.SQLRestriction;
 
 @Entity
 @Table(name = "order_items",
         indexes = {
-                @Index(name = "idx_order_item_order_id", columnList = "order_id"),
-                @Index(name = "idx_order_item_item_id", columnList = "item_id")
+                @Index(name = "idx_order_items_order_id", columnList = "order_id"),
+                @Index(name = "idx_order_items_item_id", columnList = "item_id")
         })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@SQLRestriction("deleted_at IS NULL")
 public class OrderItem extends BaseEntity {
 
     @Id
@@ -29,11 +27,17 @@ public class OrderItem extends BaseEntity {
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
+    @Column(name = "channel_type", nullable = false, length = 20)
+    private String channelType;
+
+    @Column(name = "channel_ref_id")
+    private Long channelRefId;
+
     @Column(name = "item_id", nullable = false)
     private Long itemId;
 
-    @Column(name = "item_name", nullable = false)
-    private String itemName;
+    @Column(name = "store_id", nullable = false)
+    private Long storeId;
 
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
@@ -41,16 +45,20 @@ public class OrderItem extends BaseEntity {
     @Column(name = "unit_price", nullable = false)
     private Long unitPrice;
 
-    @Column(name = "subtotal", nullable = false)
-    private Long subtotal;
+    @Column(name = "line_amount", nullable = false)
+    private Long lineAmount;
 
-    public static OrderItem create(Long itemId, String itemName, Integer quantity, Long unitPrice) {
+    public static OrderItem create(String channelType, Long channelRefId,
+                                   Long itemId, Long storeId,
+                                   Integer quantity, Long unitPrice, Long lineAmount) {
         OrderItem item = new OrderItem();
+        item.channelType = channelType;
+        item.channelRefId = channelRefId;
         item.itemId = itemId;
-        item.itemName = itemName;
+        item.storeId = storeId;
         item.quantity = quantity;
         item.unitPrice = unitPrice;
-        item.subtotal = unitPrice * quantity;
+        item.lineAmount = lineAmount;
         return item;
     }
 }
