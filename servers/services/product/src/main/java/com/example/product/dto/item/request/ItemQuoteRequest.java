@@ -14,11 +14,6 @@ import java.util.List;
 @NoArgsConstructor
 public class ItemQuoteRequest {
 
-    @NotBlank
-    private String channelType;
-
-    private Long channelRefId;
-
     @Valid
     @NotEmpty
     private List<LineItem> lineItems;
@@ -29,6 +24,11 @@ public class ItemQuoteRequest {
 
         @NotNull
         private Long itemId;
+
+        @NotBlank
+        private String channelType;
+
+        private Long channelRefId;
 
         @NotNull
         private Long referenceId;

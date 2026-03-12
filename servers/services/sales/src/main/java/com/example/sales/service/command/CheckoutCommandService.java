@@ -85,11 +85,12 @@ public class CheckoutCommandService {
             return toReserveResponse(existingAttempt.draft());
         }
 
+        StockReserveChannelContext stockChannelContext = resolveStockReserveChannelContext(request.getLineItems());
         ReserveOrderStockResponse stockResponse;
         try {
             stockResponse = stockOrderReservationClientFacade.reserveOrderStock(new ReserveOrderStockRequest(
-                    request.getChannelType(),
-                    request.getChannelRefId(),
+                    stockChannelContext.channelType(),
+                    stockChannelContext.channelRefId(),
                     userId,
                     request.getIdempotencyKey(),
                     request.getLineItems().stream()
@@ -109,13 +110,13 @@ public class CheckoutCommandService {
         CheckoutDraft draft = CheckoutDraft.builder()
                 .orderId(stockResponse.orderId())
                 .userId(userId)
-                .channelType(request.getChannelType())
-                .channelRefId(request.getChannelRefId())
                 .idempotencyKey(request.getIdempotencyKey())
                 .expiresAt(stockResponse.expiresAt())
                 .lineItems(request.getLineItems().stream()
                         .map(item -> CheckoutDraft.LineItem.builder()
                                 .itemId(item.getItemId())
+                                .channelType(item.getChannelType())
+                                .channelRefId(item.getChannelRefId())
                                 .stockItemType(item.getStockItemType())
                                 .referenceId(item.getReferenceId())
                                 .quantity(item.getQuantity())
@@ -450,10 +451,13 @@ public class CheckoutCommandService {
     private ProductQuoteResponse fetchLiveQuote(CheckoutDraft draft) {
         try {
             return productQuoteClientFacade.quoteItems(new ProductQuoteRequest(
-                    draft.getChannelType(),
-                    draft.getChannelRefId(),
                     draft.getLineItems().stream()
-                            .map(item -> new ProductQuoteLineItemRequest(item.getItemId(), item.getReferenceId(), item.getQuantity()))
+                            .map(item -> new ProductQuoteLineItemRequest(
+                                    item.getItemId(),
+                                    item.getChannelType(),
+                                    item.getChannelRefId(),
+                                    item.getReferenceId(),
+                                    item.getQuantity()))
                             .toList()
             ));
         } catch (ProductClientException e) {
@@ -665,8 +669,8 @@ public class CheckoutCommandService {
             CheckoutReserveRequest.LineItem item = requestLineItems.get(i);
             session.addLineItem(CheckoutSessionLineItem.createReserved(
                     i + 1,
-                    request.getChannelType(),
-                    request.getChannelRefId(),
+                    item.getChannelType(),
+                    item.getChannelRefId(),
                     item.getItemId(),
                     item.getStockItemType(),
                     item.getReferenceId(),
@@ -691,16 +695,11 @@ public class CheckoutCommandService {
     }
 
     private boolean hasSameReserveIntent(CheckoutDraft draft, CheckoutReserveRequest request) {
-        if (!Objects.equals(normalizeEnumLike(draft.getChannelType()), normalizeEnumLike(request.getChannelType()))) {
-            return false;
-        }
-        if (!Objects.equals(draft.getChannelRefId(), request.getChannelRefId())) {
-            return false;
-        }
-
         List<CheckoutDraft.LineItem> existingLineItems = draft.getLineItems().stream()
                 .sorted(Comparator
                         .comparing(CheckoutDraft.LineItem::getItemId)
+                        .thenComparing(item -> normalizeEnumLike(item.getChannelType()))
+                        .thenComparing(CheckoutDraft.LineItem::getChannelRefId, Comparator.nullsFirst(Long::compareTo))
                         .thenComparing(item -> normalizeEnumLike(item.getStockItemType()))
                         .thenComparing(CheckoutDraft.LineItem::getReferenceId)
                         .thenComparing(CheckoutDraft.LineItem::getQuantity))
@@ -708,6 +707,8 @@ public class CheckoutCommandService {
         List<CheckoutReserveRequest.LineItem> requestLineItems = request.getLineItems().stream()
                 .sorted(Comparator
                         .comparing(CheckoutReserveRequest.LineItem::getItemId)
+                        .thenComparing(item -> normalizeEnumLike(item.getChannelType()))
+                        .thenComparing(CheckoutReserveRequest.LineItem::getChannelRefId, Comparator.nullsFirst(Long::compareTo))
                         .thenComparing(item -> normalizeEnumLike(item.getStockItemType()))
                         .thenComparing(CheckoutReserveRequest.LineItem::getReferenceId)
                         .thenComparing(CheckoutReserveRequest.LineItem::getQuantity))
@@ -721,6 +722,8 @@ public class CheckoutCommandService {
             CheckoutDraft.LineItem existing = existingLineItems.get(i);
             CheckoutReserveRequest.LineItem candidate = requestLineItems.get(i);
             if (!Objects.equals(existing.getItemId(), candidate.getItemId())
+                    || !Objects.equals(normalizeEnumLike(existing.getChannelType()), normalizeEnumLike(candidate.getChannelType()))
+                    || !Objects.equals(existing.getChannelRefId(), candidate.getChannelRefId())
                     || !Objects.equals(normalizeEnumLike(existing.getStockItemType()), normalizeEnumLike(candidate.getStockItemType()))
                     || !Objects.equals(existing.getReferenceId(), candidate.getReferenceId())
                     || !Objects.equals(existing.getQuantity(), candidate.getQuantity())) {
@@ -744,25 +747,46 @@ public class CheckoutCommandService {
     }
 
     private CheckoutDraft toDraft(CheckoutSession session) {
-        CheckoutSessionLineItem firstLineItem = session.getLineItems().isEmpty()
-                ? null
-                : session.getLineItems().get(0);
-
         return CheckoutDraft.builder()
                 .orderId(session.getOrderId())
                 .userId(session.getUserId())
-                .channelType(firstLineItem == null ? null : firstLineItem.getChannelType())
-                .channelRefId(firstLineItem == null ? null : firstLineItem.getChannelRefId())
                 .idempotencyKey(session.getIdempotencyKey())
                 .expiresAt(session.getExpiresAt())
                 .lineItems(session.getLineItems().stream()
                         .map(item -> CheckoutDraft.LineItem.builder()
                                 .itemId(item.getItemId())
+                                .channelType(item.getChannelType())
+                                .channelRefId(item.getChannelRefId())
                                 .stockItemType(item.getStockItemType())
                                 .referenceId(item.getReferenceId())
                                 .quantity(item.getQuantity())
                                 .build())
                         .toList())
                 .build();
+    }
+
+    private StockReserveChannelContext resolveStockReserveChannelContext(List<CheckoutReserveRequest.LineItem> lineItems) {
+        List<String> normalizedChannelTypes = lineItems.stream()
+                .map(CheckoutReserveRequest.LineItem::getChannelType)
+                .map(this::normalizeEnumLike)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        List<Long> distinctChannelRefIds = lineItems.stream()
+                .map(CheckoutReserveRequest.LineItem::getChannelRefId)
+                .distinct()
+                .toList();
+
+        if (normalizedChannelTypes.size() == 1 && distinctChannelRefIds.size() <= 1) {
+            return new StockReserveChannelContext(
+                    normalizedChannelTypes.getFirst(),
+                    distinctChannelRefIds.isEmpty() ? null : distinctChannelRefIds.getFirst()
+            );
+        }
+
+        return new StockReserveChannelContext("MIXED", null);
+    }
+
+    private record StockReserveChannelContext(String channelType, Long channelRefId) {
     }
 }

@@ -36,16 +36,15 @@ public class InternalItemQuoteService {
     private final SeatGradeRepository seatGradeRepository;
 
     public ItemQuoteResponse quote(ItemQuoteRequest request) {
-        validateChannelType(request.getChannelType());
-
         List<ItemQuoteResponse.QuotedLineItem> quotedLineItems = new ArrayList<>();
         long totalAmount = 0L;
 
         for (ItemQuoteRequest.LineItem lineItem : request.getLineItems()) {
+            String normalizedChannelType = normalizeChannelType(lineItem.getChannelType());
             Item item = itemRepository.findById(lineItem.getItemId())
                     .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
 
-            validateSaleable(item, request.getChannelType());
+            validateSaleable(item, normalizedChannelType);
 
             ItemQuoteResponse.QuotedLineItem quotedLineItem = switch (item.getItemType()) {
                 case PRODUCT, GOODS -> quoteOptionItem(item, lineItem);
@@ -120,7 +119,7 @@ public class InternalItemQuoteService {
                 .build();
     }
 
-    private void validateChannelType(String channelType) {
+    private String normalizeChannelType(String channelType) {
         if (channelType == null) {
             throw new BusinessException(ProductErrorCode.INVALID_QUOTE_CHANNEL);
         }
@@ -129,11 +128,11 @@ public class InternalItemQuoteService {
         if (!"NORMAL".equals(normalized) && !"FUNDING".equals(normalized)) {
             throw new BusinessException(ProductErrorCode.INVALID_QUOTE_CHANNEL);
         }
+        return normalized;
     }
 
     private void validateSaleable(Item item, String channelType) {
-        String normalized = channelType.trim().toUpperCase(Locale.ROOT);
-        ItemStatus expectedStatus = "FUNDING".equals(normalized) ? ItemStatus.FUNDING : ItemStatus.ON_SALE;
+        ItemStatus expectedStatus = "FUNDING".equals(channelType) ? ItemStatus.FUNDING : ItemStatus.ON_SALE;
         if (item.getStatus() != expectedStatus) {
             throw new BusinessException(ProductErrorCode.ITEM_NOT_SALEABLE);
         }

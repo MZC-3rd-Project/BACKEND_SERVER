@@ -16,8 +16,6 @@ public class CheckoutDraft {
 
     private Long orderId;
     private Long userId;
-    private String channelType;
-    private Long channelRefId;
     private String idempotencyKey;
     private LocalDateTime expiresAt;
     private List<LineItem> lineItems;
@@ -28,6 +26,8 @@ public class CheckoutDraft {
     @AllArgsConstructor
     public static class LineItem {
         private Long itemId;
+        private String channelType;
+        private Long channelRefId;
         private String stockItemType;
         private Long referenceId;
         private Integer quantity;

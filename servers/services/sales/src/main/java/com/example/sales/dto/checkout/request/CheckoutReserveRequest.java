@@ -14,11 +14,6 @@ import java.util.List;
 @NoArgsConstructor
 public class CheckoutReserveRequest {
 
-    @NotBlank
-    private String channelType;
-
-    private Long channelRefId;
-
     @Valid
     @NotEmpty
     private List<LineItem> lineItems;
@@ -32,6 +27,11 @@ public class CheckoutReserveRequest {
 
         @NotNull
         private Long itemId;
+
+        @NotBlank
+        private String channelType;
+
+        private Long channelRefId;
 
         @NotBlank
         private String stockItemType;

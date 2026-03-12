@@ -11,9 +11,6 @@ import org.hibernate.annotations.SQLRestriction;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-
 @Entity
 @Table(name = "checkout_sessions",
         indexes = {
@@ -153,14 +150,7 @@ public class CheckoutSession extends BaseEntity {
         return value.length() <= maxLength ? value : value.substring(0, maxLength);
     }
 
-    public boolean hasSameReserveIntent(String channelType, Long channelRefId, List<CheckoutSessionLineItem> candidateLineItems) {
-        if (!Objects.equals(normalizeEnumLike(lineItems.isEmpty() ? null : lineItems.getFirst().getChannelType()),
-                normalizeEnumLike(channelType))) {
-            return false;
-        }
-        if (!Objects.equals(lineItems.isEmpty() ? null : lineItems.getFirst().getChannelRefId(), channelRefId)) {
-            return false;
-        }
+    public boolean hasSameReserveIntent(List<CheckoutSessionLineItem> candidateLineItems) {
         if (lineItems.size() != candidateLineItems.size()) {
             return false;
         }
@@ -173,12 +163,5 @@ public class CheckoutSession extends BaseEntity {
             }
         }
         return true;
-    }
-
-    private String normalizeEnumLike(String value) {
-        if (value == null) {
-            return null;
-        }
-        return value.trim().toUpperCase(Locale.ROOT);
     }
 }

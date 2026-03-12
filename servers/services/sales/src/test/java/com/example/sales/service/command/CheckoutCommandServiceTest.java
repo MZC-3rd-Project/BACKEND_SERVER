@@ -6,9 +6,11 @@ import com.example.clients.order.exception.OrderClientException;
 import com.example.clients.order.exception.OrderClientRetriableException;
 import com.example.clients.order.exception.OrderClientValidationException;
 import com.example.clients.order.facade.OrderCreateClientFacade;
+import com.example.clients.product.dto.ProductQuoteRequest;
 import com.example.clients.product.dto.ProductQuoteResponse;
 import com.example.clients.product.dto.ProductQuotedLineItem;
 import com.example.clients.product.facade.ProductQuoteClientFacade;
+import com.example.clients.stock.dto.ReserveOrderStockRequest;
 import com.example.clients.stock.dto.ReserveOrderStockResponse;
 import com.example.clients.stock.dto.ReservedOrderStockLineItem;
 import com.example.clients.stock.facade.StockOrderReservationClientFacade;
@@ -113,12 +115,12 @@ class CheckoutCommandServiceTest {
     void reserve_savesCheckoutSessionAlongsideRedisDraft() throws Exception {
         CheckoutReserveRequest request = objectMapper.readValue("""
                 {
-                  "channelType": "NORMAL",
-                  "channelRefId": null,
                   "idempotencyKey": "idem-1",
                   "lineItems": [
                     {
                       "itemId": 930001,
+                      "channelType": "NORMAL",
+                      "channelRefId": null,
                       "stockItemType": "ITEM_OPTION",
                       "referenceId": 930101,
                       "quantity": 2
@@ -149,7 +151,13 @@ class CheckoutCommandServiceTest {
         verify(checkoutDraftRedisService).saveDraft(draftCaptor.capture(), ttlCaptor.capture());
         assertThat(draftCaptor.getValue().getOrderId()).isEqualTo(289581624952246272L);
         assertThat(draftCaptor.getValue().getLineItems()).hasSize(1);
+        assertThat(draftCaptor.getValue().getLineItems().get(0).getChannelType()).isEqualTo("NORMAL");
         assertThat(ttlCaptor.getValue()).isPositive();
+
+        ArgumentCaptor<ReserveOrderStockRequest> stockRequestCaptor = ArgumentCaptor.forClass(ReserveOrderStockRequest.class);
+        verify(stockOrderReservationClientFacade).reserveOrderStock(stockRequestCaptor.capture());
+        assertThat(stockRequestCaptor.getValue().channelType()).isEqualTo("NORMAL");
+        assertThat(stockRequestCaptor.getValue().channelRefId()).isNull();
 
         ArgumentCaptor<CheckoutSession> sessionCaptor = ArgumentCaptor.forClass(CheckoutSession.class);
         verify(checkoutSessionRepository).save(sessionCaptor.capture());
@@ -166,15 +174,70 @@ class CheckoutCommandServiceTest {
     }
 
     @Test
+    void reserve_preservesLineItemChannelContextAndUsesMixedStockContextWhenNeeded() throws Exception {
+        CheckoutReserveRequest request = objectMapper.readValue("""
+                {
+                  "idempotencyKey": "idem-mixed",
+                  "lineItems": [
+                    {
+                      "itemId": 930001,
+                      "channelType": "NORMAL",
+                      "channelRefId": null,
+                      "stockItemType": "ITEM_OPTION",
+                      "referenceId": 930101,
+                      "quantity": 1
+                    },
+                    {
+                      "itemId": 930002,
+                      "channelType": "FUNDING",
+                      "channelRefId": 4401,
+                      "stockItemType": "ITEM_OPTION",
+                      "referenceId": 930201,
+                      "quantity": 1
+                    }
+                  ]
+                }
+                """, CheckoutReserveRequest.class);
+        ReserveOrderStockResponse stockResponse = new ReserveOrderStockResponse(
+                289581624952246299L,
+                LocalDateTime.now().plusMinutes(5),
+                List.of(
+                        new ReservedOrderStockLineItem(930001L, "ITEM_OPTION", 930101L, 1),
+                        new ReservedOrderStockLineItem(930002L, "ITEM_OPTION", 930201L, 1)
+                )
+        );
+
+        when(checkoutDraftRedisService.findOrderIdByIdempotencyKey(1001L, "idem-mixed"))
+                .thenReturn(Optional.empty());
+        when(checkoutSessionRepository.findTopByUserIdAndIdempotencyKeyOrderByCreatedAtDesc(1001L, "idem-mixed"))
+                .thenReturn(Optional.empty());
+        when(stockOrderReservationClientFacade.reserveOrderStock(any())).thenReturn(stockResponse);
+
+        service.reserve(request, 1001L);
+
+        ArgumentCaptor<ReserveOrderStockRequest> stockRequestCaptor = ArgumentCaptor.forClass(ReserveOrderStockRequest.class);
+        verify(stockOrderReservationClientFacade).reserveOrderStock(stockRequestCaptor.capture());
+        assertThat(stockRequestCaptor.getValue().channelType()).isEqualTo("MIXED");
+        assertThat(stockRequestCaptor.getValue().channelRefId()).isNull();
+
+        ArgumentCaptor<CheckoutSession> sessionCaptor = ArgumentCaptor.forClass(CheckoutSession.class);
+        verify(checkoutSessionRepository).save(sessionCaptor.capture());
+        assertThat(sessionCaptor.getValue().getLineItems()).hasSize(2);
+        assertThat(sessionCaptor.getValue().getLineItems().get(0).getChannelType()).isEqualTo("NORMAL");
+        assertThat(sessionCaptor.getValue().getLineItems().get(1).getChannelType()).isEqualTo("FUNDING");
+        assertThat(sessionCaptor.getValue().getLineItems().get(1).getChannelRefId()).isEqualTo(4401L);
+    }
+
+    @Test
     void reserve_reusesPersistedSessionWhenRedisMisses() throws Exception {
         CheckoutReserveRequest request = objectMapper.readValue("""
                 {
-                  "channelType": "NORMAL",
-                  "channelRefId": null,
                   "idempotencyKey": "idem-2",
                   "lineItems": [
                     {
                       "itemId": 930001,
+                      "channelType": "NORMAL",
+                      "channelRefId": null,
                       "stockItemType": "ITEM_OPTION",
                       "referenceId": 930101,
                       "quantity": 1
@@ -231,11 +294,12 @@ class CheckoutCommandServiceTest {
         CheckoutDraft draft = CheckoutDraft.builder()
                 .orderId(12345L)
                 .userId(1001L)
-                .channelType("NORMAL")
                 .idempotencyKey("idem-2")
                 .expiresAt(LocalDateTime.now().plusMinutes(10))
                 .lineItems(List.of(CheckoutDraft.LineItem.builder()
                         .itemId(930001L)
+                        .channelType("NORMAL")
+                        .channelRefId(null)
                         .stockItemType("ITEM_OPTION")
                         .referenceId(930101L)
                         .quantity(1)
@@ -383,6 +447,12 @@ class CheckoutCommandServiceTest {
         assertThat(session.getQuotedAt()).isEqualTo(quoteResponse.quotedAt());
         assertThat(session.getLineItems().get(0).getTitle()).isEqualTo("MZC 티셔츠");
         assertThat(session.getLineItems().get(0).getFinalUnitPrice()).isEqualTo(12000L);
+
+        ArgumentCaptor<ProductQuoteRequest> quoteRequestCaptor = ArgumentCaptor.forClass(ProductQuoteRequest.class);
+        verify(productQuoteClientFacade).quoteItems(quoteRequestCaptor.capture());
+        assertThat(quoteRequestCaptor.getValue().lineItems()).hasSize(1);
+        assertThat(quoteRequestCaptor.getValue().lineItems().get(0).channelType()).isEqualTo("NORMAL");
+        assertThat(quoteRequestCaptor.getValue().lineItems().get(0).channelRefId()).isNull();
 
         verify(checkoutDraftRedisService).saveDraft(any(CheckoutDraft.class), any(Duration.class));
         verify(checkoutQuoteCacheRedisService).saveQuote(any(CheckoutQuoteCache.class), any(Duration.class));
