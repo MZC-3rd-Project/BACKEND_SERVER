@@ -24,6 +24,7 @@ public record StoreCreateRequest(
     @NotNull(message = "연락처 타입은 필수입니다!")
     ContactType contactType,
 
+
     String description,
 
     List<StoreImageRequest> images
@@ -34,5 +35,8 @@ public record StoreCreateRequest(
         Long mediaId,
         int sortOrder
     ) { }
+    public StoreCreateRequest {
+        description = (description == null || description.isBlank()) ? null : description;
+    }
 
 }

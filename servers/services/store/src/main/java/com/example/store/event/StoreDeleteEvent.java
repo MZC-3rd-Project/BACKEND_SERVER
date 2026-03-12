@@ -52,6 +52,7 @@ public class StoreDeleteEvent extends DomainEvent {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("storeId", storeId);
         payload.put("userId", userId);
+
         Map<String, Object> addressPayload = new LinkedHashMap<>();
         addressPayload.put("addressType", addressType);
         addressPayload.put("address", address);

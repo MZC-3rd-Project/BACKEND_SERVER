@@ -61,6 +61,7 @@ public class StoreUpdateEvent extends DomainEvent {
         payload.put("storeName", storeName);
         payload.put("status", status);
         payload.put("description", description);
+
         Map<String, Object> addressPayload = new LinkedHashMap<>();
         addressPayload.put("address", address);
         addressPayload.put("addressType", addressType);
@@ -72,11 +73,13 @@ public class StoreUpdateEvent extends DomainEvent {
         payload.put("contact", contactPayload);
 
         payload.put("images", images.stream()
-            .map(image -> Map.of(
-                "mediaId", image.mediaId(),
-                "imageType", image.imageType(),
-                "sortOrder", image.sortOrder()
-            ))
+            .map(image -> {
+                Map<String, Object> imagePayload = new LinkedHashMap<>();
+                imagePayload.put("mediaId", image.mediaId());
+                imagePayload.put("imageType", image.imageType());
+                imagePayload.put("sortOrder", image.sortOrder());
+                return imagePayload;
+            })
             .toList());
         return payload;
     }

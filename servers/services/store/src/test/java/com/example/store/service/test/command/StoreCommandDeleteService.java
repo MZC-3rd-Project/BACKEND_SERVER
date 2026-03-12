@@ -20,10 +20,12 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("StoreCommandService - delete 단위 테스트")
@@ -88,6 +90,12 @@ class StoreCommandServiceDeleteTest {
             .description("소개글")
             .build();
     }
+    private StoreProfile mockProfileWithNullDescription() {
+        return StoreProfile.builder()
+            .store(mockStore())
+            .description(null)   // ← null
+            .build();
+    }
 
     // 모든 연관 엔티티 정상 조회 셋업
     private void givenAllFound(Stores store, StoreAddress address,
@@ -97,6 +105,17 @@ class StoreCommandServiceDeleteTest {
         given(storeContactRepository.findByStoreIdAndIsPrimaryTrueAndDeletedAtIsNull(STORE_ID)).willReturn(Optional.of(contact));
         given(storeImageRepository.findByStoreId(STORE_ID)).willReturn(Optional.of(image));
         given(storeProfileRepository.findByStoreId(STORE_ID)).willReturn(Optional.of(profile));
+    }
+
+    private void givenBaseEntities() {
+        given(storesRepository.findByIdAndDeletedAtIsNull(STORE_ID))
+            .willReturn(Optional.of(mockStore()));
+        given(storeAddressRepository.findByStoreIdAndIsDefaultTrueAndDeletedAtIsNull(STORE_ID))
+            .willReturn(Optional.of(mockAddress()));
+        given(storeContactRepository.findByStoreIdAndIsPrimaryTrueAndDeletedAtIsNull(STORE_ID))
+            .willReturn(Optional.of(mockContact()));
+        given(storeImageRepository.findByStoreId(STORE_ID))
+            .willReturn(Optional.of(mockImage()));
     }
 
     // ── 정상 케이스 ────────────────────────────────────────────────────────────
@@ -354,6 +373,66 @@ class StoreCommandServiceDeleteTest {
             assertThatThrownBy(() -> storeCommandService.delete(USER_ID, STORE_ID))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining(StoreErrorCode.PROFILE_NOT_FOUND.getMessage());
+        }
+    }
+
+    @Nested
+    @DisplayName("StoreProfile description이 null인 경우")
+    class ProfileDescriptionNull {
+
+        @Test
+        @DisplayName("description이 null이어도 NullPointerException 없이 정상 삭제된다")
+        void delete_profileDescriptionNull_noNullPointerException() {
+            // given
+            givenBaseEntities();
+            given(storeProfileRepository.findByStoreId(STORE_ID))
+                .willReturn(Optional.of(mockProfileWithNullDescription()));
+
+            // when & then - NPE 없이 정상 실행
+            assertThatCode(() -> storeCommandService.delete(USER_ID, STORE_ID))
+                .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("description이 null이어도 softDelete는 호출된다")
+        void delete_profileDescriptionNull_softDeleteCalled() {
+            // given
+            givenBaseEntities();
+            StoreProfile profile = mockProfileWithNullDescription();
+            given(storeProfileRepository.findByStoreId(STORE_ID))
+                .willReturn(Optional.of(profile));
+
+            // when
+            storeCommandService.delete(USER_ID, STORE_ID);
+
+            // then - softDelete 호출 후 deletedAt 설정 확인
+            assertThat(profile.isDeleted()).isTrue();
+            assertThat(profile.getDeletedAt()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("description이 null이어도 이벤트 발행 시 null로 전달된다")
+        void delete_profileDescriptionNull_eventPublishedWithNullDescription() {
+            // given
+            givenBaseEntities();
+            given(storeProfileRepository.findByStoreId(STORE_ID))
+                .willReturn(Optional.of(mockProfileWithNullDescription()));
+
+            // when
+            storeCommandService.delete(USER_ID, STORE_ID);
+
+            // then - 이벤트 발행 1회 호출
+            then(eventPublisher).should(times(1)).publish(any(), any());
+        }
+
+        @Test
+        @DisplayName("description null → getDescription()은 null 반환 (NPE 아님)")
+        void profileDescriptionNull_getDescriptionReturnsNull() {
+            // given
+            StoreProfile profile = mockProfileWithNullDescription();
+
+            // when & then - NPE 아닌 null 반환 확인
+            assertThat(profile.getDescription()).isNull();
         }
     }
 }

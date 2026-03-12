@@ -5,7 +5,6 @@ import com.example.core.exception.CommonErrorCode;
 import com.example.core.exception.TechnicalException;
 import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;
-import com.example.store.dto.image.StoreImageResponse;
 import com.example.store.dto.request.StoreCreateRequest;
 import com.example.store.dto.request.StoreUpdateRequest;
 import com.example.store.dto.response.StoreCreateResponse;

@@ -1,6 +1,5 @@
 package com.example.order.domain;
 
-import com.example.core.id.jpa.SnowflakeGenerated;
 import com.example.data.entity.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -8,15 +7,15 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Table(name = "orders",
         indexes = {
-                @Index(name = "idx_order_user_id", columnList = "user_id"),
-                @Index(name = "idx_order_purchase_id", columnList = "purchase_id", unique = true),
-                @Index(name = "idx_order_status", columnList = "status")
+                @Index(name = "idx_orders_user_id", columnList = "user_id"),
+                @Index(name = "idx_orders_status", columnList = "status")
         })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -24,38 +23,50 @@ import java.util.List;
 public class Order extends BaseEntity {
 
     @Id
-    @SnowflakeGenerated
     private Long id;
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(name = "purchase_id", nullable = false)
-    private Long purchaseId;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 30)
+    private OrderStatus status;
 
     @Column(name = "total_amount", nullable = false)
     private Long totalAmount;
 
-    @Column(name = "reservation_id")
-    private Long reservationId;
+    @Column(name = "recipient_name", length = 100)
+    private String recipientName;
 
-    @Column(name = "payment_id")
-    private Long paymentId;
+    @Column(name = "recipient_phone", length = 20)
+    private String recipientPhone;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
-    private OrderStatus status;
+    @Column(name = "delivery_address_id")
+    private Long deliveryAddressId;
+
+    @Column(name = "delivery_memo", length = 500)
+    private String deliveryMemo;
+
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> orderItems = new ArrayList<>();
 
-    public static Order create(Long userId, Long purchaseId, Long totalAmount, Long reservationId) {
+    public static Order create(Long orderId, Long userId, Long totalAmount,
+                               String recipientName, String recipientPhone,
+                               Long deliveryAddressId, String deliveryMemo,
+                               LocalDateTime expiresAt) {
         Order order = new Order();
+        order.id = orderId;
         order.userId = userId;
-        order.purchaseId = purchaseId;
+        order.status = OrderStatus.PAYMENT_PENDING;
         order.totalAmount = totalAmount;
-        order.reservationId = reservationId;
-        order.status = OrderStatus.CREATED;
+        order.recipientName = recipientName;
+        order.recipientPhone = recipientPhone;
+        order.deliveryAddressId = deliveryAddressId;
+        order.deliveryMemo = deliveryMemo;
+        order.expiresAt = expiresAt;
         return order;
     }
 
@@ -64,29 +75,8 @@ public class Order extends BaseEntity {
         item.setOrder(this);
     }
 
-    public void markAsPaid(Long paymentId) {
-        status.validateTransitionTo(OrderStatus.PAID);
-        this.status = OrderStatus.PAID;
-        this.paymentId = paymentId;
-    }
-
-    public void complete() {
-        status.validateTransitionTo(OrderStatus.COMPLETED);
-        this.status = OrderStatus.COMPLETED;
-    }
-
-    public void cancel() {
-        status.validateTransitionTo(OrderStatus.CANCELLED);
-        this.status = OrderStatus.CANCELLED;
-    }
-
-    public void requestRefund() {
-        status.validateTransitionTo(OrderStatus.REFUND_REQUESTED);
-        this.status = OrderStatus.REFUND_REQUESTED;
-    }
-
-    public void markAsRefunded() {
-        status.validateTransitionTo(OrderStatus.REFUNDED);
-        this.status = OrderStatus.REFUNDED;
+    public void transitTo(OrderStatus next) {
+        this.status.validateTransitionTo(next);
+        this.status = next;
     }
 }
