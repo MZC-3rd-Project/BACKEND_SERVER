@@ -2,6 +2,7 @@ package com.example.product.service.query;
 
 import com.example.core.exception.BusinessException;
 import com.example.data.entity.datasource.UseWriteDataSource;
+import com.example.product.dto.item.response.InternalStoreItemSummaryResponse;
 import com.example.product.dto.item.response.ItemSummaryResponse;
 import com.example.product.entity.image.ItemImage;
 import com.example.product.entity.item.Item;
@@ -23,6 +24,13 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 @UseWriteDataSource
 public class InternalItemQueryService {
+
+    private static final List<ItemStatus> STORE_VISIBLE_STATUSES = List.of(
+        ItemStatus.FUNDING,
+        ItemStatus.FUNDED,
+        ItemStatus.ON_SALE,
+        ItemStatus.HOT_DEAL
+    );
 
     private final ItemRepository itemRepository;
     private final ItemImageRepository itemImageRepository;
@@ -55,5 +63,11 @@ public class InternalItemQueryService {
         return items.stream()
                 .map(item -> ItemSummaryResponse.from(item, imageMap.getOrDefault(item.getId(), List.of())))
                 .toList();
+    }
+
+    public List<InternalStoreItemSummaryResponse> findByStoreId(Long storeId) {
+        return itemRepository.findByStoreIdAndStatusInOrderByUpdatedAtDesc(storeId, STORE_VISIBLE_STATUSES).stream()
+            .map(InternalStoreItemSummaryResponse::from)
+            .toList();
     }
 }

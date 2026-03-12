@@ -17,11 +17,7 @@ public class DefaultAuthClientFacade implements AuthItemSummaryClientFacade, Aut
     @Override
     public AuthItemSummary findItemSummary(Long itemId) {
         try {
-            JsonNode response = webClient.get()
-                    .uri("/internal/v1/users/{userId}", itemId)
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .block();
+            JsonNode response = getUserInfoResponse(itemId);
 
             if (response == null || !response.path("success").asBoolean(false)) {
                 throw new AuthClientException("Auth service 응답 실패: itemId=" + itemId);
@@ -36,11 +32,7 @@ public class DefaultAuthClientFacade implements AuthItemSummaryClientFacade, Aut
     @Override
     public JsonNode findItem(Long itemId) {
         try {
-            JsonNode response = webClient.get()
-                    .uri("/internal/v1/users/{userId}", itemId)
-                    .retrieve()
-                    .bodyToMono(JsonNode.class)
-                    .block();
+            JsonNode response = getUserInfoResponse(itemId);
 
             if (response == null || !response.path("success").asBoolean(false)) {
                 return null;
@@ -54,6 +46,24 @@ public class DefaultAuthClientFacade implements AuthItemSummaryClientFacade, Aut
 
     @Override
     public JsonNode findProfileInfo(Long userId) {
-        return null;
+        try {
+            JsonNode response = getUserInfoResponse(userId);
+            if (response == null || !response.path("success").asBoolean(false)) {
+                return null;
+            }
+            return response.path("data");
+        } catch (WebClientResponseException.NotFound exception) {
+            return null;
+        } catch (WebClientResponseException exception) {
+            throw new AuthClientException("Auth service 호출 실패: " + exception.getStatusCode(), exception);
+        }
+    }
+
+    private JsonNode getUserInfoResponse(Long userId) {
+        return webClient.get()
+                .uri("/internal/v1/users/{userId}", userId)
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .block();
     }
 }

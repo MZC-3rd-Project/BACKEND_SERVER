@@ -10,6 +10,7 @@ import com.example.product.entity.goods.ItemOption;
 import com.example.product.entity.goods.ShippingInfo;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemType;
+import com.example.product.event.ItemDeletedEvent;
 import com.example.product.exception.ProductErrorCode;
 import com.example.product.repository.CategoryRepository;
 import com.example.product.repository.ItemGoodsLinkRepository;
@@ -32,6 +33,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -56,6 +58,8 @@ class GoodsCommandServiceTest {
     @Mock
     private ItemThumbnailSyncService itemThumbnailSyncService;
     @Mock
+    private StoreOwnershipValidator storeOwnershipValidator;
+    @Mock
     private EventPublisher eventPublisher;
     @Mock
     private ItemContentService itemContentService;
@@ -78,6 +82,7 @@ class GoodsCommandServiceTest {
         verify(itemGoodsLinkRepository).softDeleteAllByGoodsItemId(itemId);
         verify(itemImageRepository).softDeleteAllByItemId(itemId);
         verify(itemThumbnailSyncService).syncAfterCommit(itemId, null, true);
+        verify(eventPublisher).publish(any(ItemDeletedEvent.class), any());
         assertThat(item.getThumbnailMediaId()).isNull();
     }
 

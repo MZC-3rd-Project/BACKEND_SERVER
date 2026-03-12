@@ -13,6 +13,8 @@ import com.example.store.dto.response.StoreDeleteResponse;
 import com.example.store.dto.response.StoreUpdateResponse;
 import com.example.store.entity.*;
 import com.example.store.event.StoreCreateEvent;
+import com.example.store.event.StoreDeleteEvent;
+import com.example.store.event.StoreUpdateEvent;
 import com.example.store.exception.StoreErrorCode;
 import com.example.store.repository.*;
 
@@ -197,7 +199,7 @@ public class StoreCommandService {
             storeImageRepository.saveAll(
                 request.images()
                     .stream()
-                    .map(img -> StoreImage.of(img.imageType(), img.mediaId(), img.sortOrder()))
+                    .map(img -> StoreImage.of(findStore, img.imageType(), img.mediaId(), img.sortOrder()))
                     .toList()
             );
         }
@@ -208,6 +210,21 @@ public class StoreCommandService {
             .toList();
 
         storeMediaReferenceService.syncStoreImagesOnUpdate(storeId, request.images());
+        eventPublisher.publish(
+            new StoreUpdateEvent(
+                findStore.getId(),
+                userId,
+                findStore.getStoreName(),
+                findStore.getStatus(),
+                request.description(),
+                storeAddress.getAddress(),
+                storeAddress.getAddressType(),
+                storeContact.getContactValue(),
+                storeContact.getContactType(),
+                imgList
+            ),
+            EventMetadata.of("STORE", String.valueOf(findStore.getId()))
+        );
 
         return new StoreUpdateResponse(
             findStore.getId(),
@@ -235,11 +252,11 @@ public class StoreCommandService {
 
         validatorOwner(stores.getUserId(), userId);
 
-        StoreAddress storeAddress = storeAddressRepository.findById(storeId)
+        StoreAddress storeAddress = storeAddressRepository.findByStoreIdAndIsDefaultTrueAndDeletedAtIsNull(storeId)
             .orElseThrow(() -> new BusinessException(StoreErrorCode.ADDRESS_NOT_FOUND));
-        StoreContact storeContact = storeContactRepository.findById(storeId)
+        StoreContact storeContact = storeContactRepository.findByStoreIdAndIsPrimaryTrueAndDeletedAtIsNull(storeId)
             .orElseThrow(() -> new BusinessException(StoreErrorCode.CONTACT_NOT_FOUND));
-        StoreImage storeImage = storeImageRepository.findById(storeId)
+        StoreImage storeImage = storeImageRepository.findByStoreId(storeId)
             .orElseThrow(() -> new BusinessException(StoreErrorCode.IMAGE_NOT_FOUND));
         StoreProfile storeProfile = storeProfileRepository.findByStoreId(storeId)
             .orElseThrow(() -> new BusinessException(StoreErrorCode.PROFILE_NOT_FOUND));
@@ -252,6 +269,20 @@ public class StoreCommandService {
         storeProfile.softDelete();
 
         storeMediaReferenceService.clearStoreImageLinks(storeId);
+        eventPublisher.publish(
+            new StoreDeleteEvent(
+                storeId,
+                userId,
+                storeAddress.getAddressType(),
+                storeAddress.getAddress(),
+                storeContact.getContactType(),
+                storeContact.getContactValue(),
+                storeImage.getMediaId(),
+                storeImage.getSortOrder(),
+                storeProfile.getDescription()
+            ),
+            EventMetadata.of("STORE", String.valueOf(stores.getId()))
+        );
 
         return StoreDeleteResponse.of(storeId);
     }

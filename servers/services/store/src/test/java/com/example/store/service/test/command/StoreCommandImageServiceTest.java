@@ -1,9 +1,11 @@
 package com.example.store.service.test.command;
 
+import com.example.event.EventPublisher;
 import com.example.store.dto.request.StoreUpdateRequest;
 import com.example.store.entity.*;
 import com.example.store.repository.*;
 import com.example.store.service.command.StoreCommandService;
+import com.example.store.service.command.StoreMediaReferenceService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -32,6 +34,8 @@ class StoreImageSaveTest {
     @Mock private StoreAddressRepository storeAddressRepository;
     @Mock private StoreContactRepository storeContactRepository;
     @Mock private StoreImageRepository   storeImageRepository;
+    @Mock private EventPublisher         eventPublisher;
+    @Mock private StoreMediaReferenceService storeMediaReferenceService;
 
     @InjectMocks
     private StoreCommandService storeCommandService;

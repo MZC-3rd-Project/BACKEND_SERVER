@@ -9,6 +9,7 @@ import com.example.profile.exception.ProfileErrorCode;
 import com.example.profile.repository.ProfileAddressRepository;
 import com.example.profile.repository.ProfileImageRepository;
 import com.example.profile.repository.ProfileRepository;
+import com.example.profile.service.ProfileProjectionRepairService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,6 +42,9 @@ class ProfileCommandServiceTest {
     private ProfileMediaReferenceService profileMediaReferenceService;
 
     @Mock
+    private ProfileProjectionRepairService profileProjectionRepairService;
+
+    @Mock
     private EventPublisher eventPublisher;
 
     private ProfileCommandService profileCommandService;
@@ -52,6 +56,7 @@ class ProfileCommandServiceTest {
             profileRepository,
             profileAddressRepository,
             profileMediaReferenceService,
+            profileProjectionRepairService,
             eventPublisher
         );
     }
@@ -70,7 +75,7 @@ class ProfileCommandServiceTest {
             .nickname("newNick")
             .build();
 
-        when(profileRepository.findByUserId(userId)).thenReturn(Optional.of(profile));
+        when(profileProjectionRepairService.ensureProfile(userId)).thenReturn(Optional.of(profile));
         when(profileRepository.existsByNickname("newNick")).thenReturn(false);
         when(profileImageRepository.findByUserId(userId)).thenReturn(Optional.of(image));
         when(profileMediaReferenceService.resolveCanonicalMediaId(777L, null)).thenReturn(777L);
@@ -97,7 +102,7 @@ class ProfileCommandServiceTest {
             .mediaId(null)
             .build();
 
-        when(profileRepository.findByUserId(userId)).thenReturn(Optional.of(profile));
+        when(profileProjectionRepairService.ensureProfile(userId)).thenReturn(Optional.of(profile));
         when(profileImageRepository.findByUserId(userId)).thenReturn(Optional.of(image));
         when(profileMediaReferenceService.resolveCanonicalMediaId(null, null)).thenReturn(null);
 
@@ -117,7 +122,7 @@ class ProfileCommandServiceTest {
             .mediaId(888L)
             .build();
 
-        when(profileRepository.findByUserId(userId)).thenReturn(Optional.of(profile));
+        when(profileProjectionRepairService.ensureProfile(userId)).thenReturn(Optional.of(profile));
         when(profileImageRepository.findByUserId(userId)).thenReturn(Optional.empty());
         when(profileImageRepository.save(any(ProfilesImage.class)))
             .thenAnswer(invocation -> invocation.getArgument(0));
@@ -138,7 +143,7 @@ class ProfileCommandServiceTest {
             .mediaRef("media-4321")
             .build();
 
-        when(profileRepository.findByUserId(userId)).thenReturn(Optional.of(profile));
+        when(profileProjectionRepairService.ensureProfile(userId)).thenReturn(Optional.of(profile));
         when(profileImageRepository.findByUserId(userId)).thenReturn(Optional.of(
             ProfilesImage.builder().userId(userId).profile(profile).mediaId(null).build()
         ));
@@ -159,7 +164,7 @@ class ProfileCommandServiceTest {
             .nickname("takenNick")
             .build();
 
-        when(profileRepository.findByUserId(userId)).thenReturn(Optional.of(profile));
+        when(profileProjectionRepairService.ensureProfile(userId)).thenReturn(Optional.of(profile));
         when(profileImageRepository.findByUserId(userId)).thenReturn(Optional.of(
             ProfilesImage.builder().userId(userId).profile(profile).mediaId(null).build()
         ));
@@ -172,6 +177,23 @@ class ProfileCommandServiceTest {
             .isEqualTo(ProfileErrorCode.PROFILE_ALREADY_NICKNAME);
 
         verify(profileMediaReferenceService, never()).syncProfileImageLink(eq(userId), any());
+        verify(eventPublisher, never()).publish(any(), any());
+    }
+
+    @Test
+    void updateProfile_throwsWhenProjectionRepairFails() {
+        Long userId = 106L;
+        ProfileRequest request = ProfileRequest.builder()
+            .nickname("missing")
+            .build();
+
+        when(profileProjectionRepairService.ensureProfile(userId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> profileCommandService.updateProfile(request, userId))
+            .isInstanceOf(BusinessException.class)
+            .extracting("errorCode")
+            .isEqualTo(ProfileErrorCode.PROFILE_NOT_FOUND);
+
         verify(eventPublisher, never()).publish(any(), any());
     }
 

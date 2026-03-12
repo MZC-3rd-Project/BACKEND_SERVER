@@ -65,6 +65,7 @@ app:
 
   service:
     media-url: ${MEDIA_SERVICE_URL:http://localhost:8094}
+    store-url: ${STORE_SERVICE_URL:http://localhost:8072}
 
   media-link-sync-retry:
     fixed-delay-ms: ${APP_MEDIA_LINK_SYNC_RETRY_FIXED_DELAY_MS:30000}

@@ -42,7 +42,12 @@ public class ItemStatusCommandService {
         statusHistoryRepository.save(history);
 
         ItemStatusChangedEvent event = new ItemStatusChangedEvent(
-                itemId, previousStatus.name(), newStatus.name());
+                itemId,
+                previousStatus.name(),
+                newStatus.name(),
+                item.getItemType().name(),
+                item.getSellerId(),
+                item.getStoreId());
         eventPublisher.publish(event, EventMetadata.of("Item", String.valueOf(itemId)));
 
         log.info("[ItemStatus] {} -> {} for item #{}", previousStatus, newStatus, itemId);

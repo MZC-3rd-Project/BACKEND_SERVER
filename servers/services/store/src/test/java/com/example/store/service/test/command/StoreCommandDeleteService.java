@@ -1,11 +1,13 @@
 package com.example.store.service.test.command;
 
 import com.example.core.exception.BusinessException;
+import com.example.event.EventPublisher;
 import com.example.store.dto.response.StoreDeleteResponse;
 import com.example.store.entity.*;
 import com.example.store.exception.StoreErrorCode;
 import com.example.store.repository.*;
 import com.example.store.service.command.StoreCommandService;
+import com.example.store.service.command.StoreMediaReferenceService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -32,6 +34,8 @@ class StoreCommandServiceDeleteTest {
     @Mock private StoreAddressRepository storeAddressRepository;
     @Mock private StoreContactRepository storeContactRepository;
     @Mock private StoreImageRepository   storeImageRepository;
+    @Mock private EventPublisher         eventPublisher;
+    @Mock private StoreMediaReferenceService storeMediaReferenceService;
 
     @InjectMocks
     private StoreCommandService storeCommandService;
@@ -89,9 +93,9 @@ class StoreCommandServiceDeleteTest {
     private void givenAllFound(Stores store, StoreAddress address,
                                StoreContact contact, StoreImage image, StoreProfile profile) {
         given(storesRepository.findByIdAndDeletedAtIsNull(STORE_ID)).willReturn(Optional.of(store));
-        given(storeAddressRepository.findById(STORE_ID)).willReturn(Optional.of(address));
-        given(storeContactRepository.findById(STORE_ID)).willReturn(Optional.of(contact));
-        given(storeImageRepository.findById(STORE_ID)).willReturn(Optional.of(image));
+        given(storeAddressRepository.findByStoreIdAndIsDefaultTrueAndDeletedAtIsNull(STORE_ID)).willReturn(Optional.of(address));
+        given(storeContactRepository.findByStoreIdAndIsPrimaryTrueAndDeletedAtIsNull(STORE_ID)).willReturn(Optional.of(contact));
+        given(storeImageRepository.findByStoreId(STORE_ID)).willReturn(Optional.of(image));
         given(storeProfileRepository.findByStoreId(STORE_ID)).willReturn(Optional.of(profile));
     }
 
@@ -257,9 +261,9 @@ class StoreCommandServiceDeleteTest {
                 .hasMessageContaining(StoreErrorCode.STORE_NOT_FOUND.getMessage());
 
             // 이후 조회 로직 실행 안 됨
-            then(storeAddressRepository).should(never()).findById(any());
-            then(storeContactRepository).should(never()).findById(any());
-            then(storeImageRepository).should(never()).findById(any());
+            then(storeAddressRepository).should(never()).findByStoreIdAndIsDefaultTrueAndDeletedAtIsNull(any());
+            then(storeContactRepository).should(never()).findByStoreIdAndIsPrimaryTrueAndDeletedAtIsNull(any());
+            then(storeImageRepository).should(never()).findByStoreId(any());
             then(storeProfileRepository).should(never()).findByStoreId(any());
         }
 
@@ -277,7 +281,7 @@ class StoreCommandServiceDeleteTest {
                 .hasMessageContaining(StoreErrorCode.STORE_ACCESS_DENIED.getMessage());
 
             // 연관 엔티티 조회 실행 안 됨
-            then(storeAddressRepository).should(never()).findById(any());
+            then(storeAddressRepository).should(never()).findByStoreIdAndIsDefaultTrueAndDeletedAtIsNull(any());
         }
 
         @Test
@@ -286,7 +290,7 @@ class StoreCommandServiceDeleteTest {
             // given
             given(storesRepository.findByIdAndDeletedAtIsNull(STORE_ID))
                 .willReturn(Optional.of(mockStore()));
-            given(storeAddressRepository.findById(STORE_ID))
+            given(storeAddressRepository.findByStoreIdAndIsDefaultTrueAndDeletedAtIsNull(STORE_ID))
                 .willReturn(Optional.empty());
 
             // when & then
@@ -301,9 +305,9 @@ class StoreCommandServiceDeleteTest {
             // given
             given(storesRepository.findByIdAndDeletedAtIsNull(STORE_ID))
                 .willReturn(Optional.of(mockStore()));
-            given(storeAddressRepository.findById(STORE_ID))
+            given(storeAddressRepository.findByStoreIdAndIsDefaultTrueAndDeletedAtIsNull(STORE_ID))
                 .willReturn(Optional.of(mockAddress()));
-            given(storeContactRepository.findById(STORE_ID))
+            given(storeContactRepository.findByStoreIdAndIsPrimaryTrueAndDeletedAtIsNull(STORE_ID))
                 .willReturn(Optional.empty());
 
             // when & then
@@ -318,11 +322,11 @@ class StoreCommandServiceDeleteTest {
             // given
             given(storesRepository.findByIdAndDeletedAtIsNull(STORE_ID))
                 .willReturn(Optional.of(mockStore()));
-            given(storeAddressRepository.findById(STORE_ID))
+            given(storeAddressRepository.findByStoreIdAndIsDefaultTrueAndDeletedAtIsNull(STORE_ID))
                 .willReturn(Optional.of(mockAddress()));
-            given(storeContactRepository.findById(STORE_ID))
+            given(storeContactRepository.findByStoreIdAndIsPrimaryTrueAndDeletedAtIsNull(STORE_ID))
                 .willReturn(Optional.of(mockContact()));
-            given(storeImageRepository.findById(STORE_ID))
+            given(storeImageRepository.findByStoreId(STORE_ID))
                 .willReturn(Optional.empty());
 
             // when & then
@@ -337,11 +341,11 @@ class StoreCommandServiceDeleteTest {
             // given
             given(storesRepository.findByIdAndDeletedAtIsNull(STORE_ID))
                 .willReturn(Optional.of(mockStore()));
-            given(storeAddressRepository.findById(STORE_ID))
+            given(storeAddressRepository.findByStoreIdAndIsDefaultTrueAndDeletedAtIsNull(STORE_ID))
                 .willReturn(Optional.of(mockAddress()));
-            given(storeContactRepository.findById(STORE_ID))
+            given(storeContactRepository.findByStoreIdAndIsPrimaryTrueAndDeletedAtIsNull(STORE_ID))
                 .willReturn(Optional.of(mockContact()));
-            given(storeImageRepository.findById(STORE_ID))
+            given(storeImageRepository.findByStoreId(STORE_ID))
                 .willReturn(Optional.of(mockImage()));
             given(storeProfileRepository.findByStoreId(STORE_ID))
                 .willReturn(Optional.empty());

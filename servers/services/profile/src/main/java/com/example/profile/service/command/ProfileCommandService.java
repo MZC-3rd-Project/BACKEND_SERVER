@@ -13,6 +13,7 @@ import com.example.profile.exception.ProfileErrorCode;
 import com.example.profile.repository.ProfileAddressRepository;
 import com.example.profile.repository.ProfileImageRepository;
 import com.example.profile.repository.ProfileRepository;
+import com.example.profile.service.ProfileProjectionRepairService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ public class ProfileCommandService {
     private final ProfileRepository profileRepository;
     private final ProfileAddressRepository profileAddressRepository;
     private final ProfileMediaReferenceService profileMediaReferenceService;
+    private final ProfileProjectionRepairService profileProjectionRepairService;
     private final EventPublisher eventPublisher;
 
     @Transactional
@@ -52,7 +54,7 @@ public class ProfileCommandService {
 
     @Transactional
     public void updateProfile(ProfileRequest req, Long userId) {
-        Profiles profile = profileRepository.findByUserId(userId)
+        Profiles profile = profileProjectionRepairService.ensureProfile(userId)
             .orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_NOT_FOUND));
 
         Long canonicalMediaId = profileMediaReferenceService.resolveCanonicalMediaId(req.getMediaId(), req.getMediaRef());

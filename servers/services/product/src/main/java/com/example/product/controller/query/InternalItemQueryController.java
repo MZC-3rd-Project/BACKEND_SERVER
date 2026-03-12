@@ -1,6 +1,7 @@
 package com.example.product.controller.query;
 
 import com.example.api.response.ApiResponse;
+import com.example.product.dto.item.response.InternalStoreItemSummaryResponse;
 import com.example.product.dto.item.response.ItemSummaryResponse;
 import com.example.product.service.query.InternalItemQueryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,5 +35,11 @@ public class InternalItemQueryController {
     @GetMapping("/ending-soon")
     public ApiResponse<List<ItemSummaryResponse>> findItemsEndingSoon() {
         return ApiResponse.success(internalItemQueryService.findItemsEndingSoon());
+    }
+
+    @Operation(summary = "스토어 기준 상품 요약 목록 조회 (내부)")
+    @GetMapping("/stores/{storeId}/summaries")
+    public ApiResponse<List<InternalStoreItemSummaryResponse>> findByStoreId(@PathVariable Long storeId) {
+        return ApiResponse.success(internalItemQueryService.findByStoreId(storeId));
     }
 }

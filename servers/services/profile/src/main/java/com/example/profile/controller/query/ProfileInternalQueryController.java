@@ -4,9 +4,8 @@ import com.example.api.response.ApiResponse;
 import com.example.profile.controller.api.query.ProfileInternalAPI;
 import com.example.profile.dto.response.ProfileAddressResponse;
 import com.example.profile.dto.response.ProfileResponse;
-import com.example.profile.entity.ProfileAddress;
+import com.example.profile.dto.response.internal.ProfileSnapshotResponse;
 import com.example.profile.entity.Profiles;
-import com.example.profile.repository.ProfileAddressRepository;
 import com.example.profile.service.query.ProfileQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,6 +28,11 @@ public class ProfileInternalQueryController implements ProfileInternalAPI {
     @Override
     public ApiResponse<ProfileResponse> findProfile(Long userId) {
         return ApiResponse.success(profileQueryService.getProfile(userId));
+    }
+
+    @Override
+    public ApiResponse<ProfileSnapshotResponse> findProfileSnapshot(Long userId) {
+        return ApiResponse.success(profileQueryService.getProfileSnapshot(userId));
     }
 
     @Override
