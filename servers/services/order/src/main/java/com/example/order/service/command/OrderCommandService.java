@@ -10,6 +10,7 @@ import com.example.order.domain.OrderStatus;
 import com.example.order.dto.request.InternalCreateOrderRequest;
 import com.example.order.dto.response.InternalCreateOrderResponse;
 import com.example.order.event.OrderCancelledEvent;
+import com.example.order.event.OrderRefundRequestedEvent;
 import com.example.order.exception.OrderErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -79,6 +80,26 @@ public class OrderCommandService {
         );
 
         log.info("주문 취소 완료: orderId={}", orderId);
+    }
+
+    public void requestRefund(Long orderId, Long userId) {
+        Order order = getOrderByIdAndUserId(orderId, userId);
+
+        OrderStatus status = order.getStatus();
+        if (status != OrderStatus.PAID && status != OrderStatus.SHIPPING
+                && status != OrderStatus.DELIVERED && status != OrderStatus.COMPLETED) {
+            throw new BusinessException(OrderErrorCode.ORDER_NOT_REFUNDABLE);
+        }
+
+        order.transitTo(OrderStatus.REFUND_REQUESTED);
+
+        eventPublisher.publish(
+                new OrderRefundRequestedEvent(orderId, userId, order.getTotalAmount()),
+                EventMetadata.of("Order", String.valueOf(orderId))
+        );
+
+        log.info("환불 요청 완료: orderId={}", orderId);
+        // TODO: 부분 환불 지원 시 refundAmount 필드 추가
     }
 
     private Order getOrderByIdAndUserId(Long orderId, Long userId) {

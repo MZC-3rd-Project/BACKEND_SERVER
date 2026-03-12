@@ -19,4 +19,10 @@ public class OrderCommandController implements OrderCommandApi {
         orderCommandService.cancelOrder(orderId, userId);
         return ApiResponse.success();
     }
+
+    @Override
+    public ApiResponse<Void> requestRefund(@PathVariable Long orderId, @CurrentUserId Long userId) {
+        orderCommandService.requestRefund(orderId, userId);
+        return ApiResponse.success();
+    }
 }
