@@ -12,4 +12,8 @@ public interface OrderCommandApi {
     @Operation(summary = "주문 취소", description = "결제 전(PAYMENT_PENDING) 주문을 취소합니다")
     @PostMapping("/api/v1/orders/{orderId}/cancel")
     ApiResponse<Void> cancelOrder(@PathVariable Long orderId, Long userId);
+
+    @Operation(summary = "환불 요청", description = "결제 완료 이후 주문의 전액 환불을 요청합니다")
+    @PostMapping("/api/v1/orders/{orderId}/refund")
+    ApiResponse<Void> requestRefund(@PathVariable Long orderId, Long userId);
 }
