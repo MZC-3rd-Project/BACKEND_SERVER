@@ -16,6 +16,8 @@ cart:
     credential-profile: ${CART_DYNAMODB_CREDENTIAL_PROFILE:}
     access-key: ${CART_DYNAMODB_ACCESS_KEY:}
     secret-key: ${CART_DYNAMODB_SECRET_KEY:}
+  policy:
+    ttl-days: ${CART_TTL_DAYS:30}
 
 app:
   security:

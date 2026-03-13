@@ -16,7 +16,7 @@ import software.amazon.awssdk.services.dynamodb.DynamoDbClientBuilder;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 
 @Configuration
-@EnableConfigurationProperties(CartDynamoDbProperties.class)
+@EnableConfigurationProperties({CartDynamoDbProperties.class, CartPolicyProperties.class})
 public class CartDynamoDbConfig {
 
     @Bean
