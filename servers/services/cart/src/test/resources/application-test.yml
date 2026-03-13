@@ -1,0 +1,9 @@
+cart:
+  dynamodb:
+    endpoint: http://localhost:8000
+
+app:
+  gateway-security:
+    enabled: false
+  openapi:
+    enabled: false
