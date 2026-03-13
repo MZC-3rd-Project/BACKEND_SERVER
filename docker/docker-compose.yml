@@ -58,6 +58,34 @@ services:
     networks:
       - project03-network
 
+  # ─── DynamoDB Local ─────────────────────────────────────
+  dynamodb:
+    image: amazon/dynamodb-local:2.6.1
+    container_name: project03-dynamodb
+    command: "-jar DynamoDBLocal.jar -sharedDb -inMemory"
+    ports:
+      - "${DYNAMODB_PORT:-8000}:8000"
+    networks:
+      - project03-network
+
+  dynamodb-init:
+    image: amazon/aws-cli:2.27.55
+    container_name: project03-dynamodb-init
+    depends_on:
+      - dynamodb
+    environment:
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      AWS_DEFAULT_REGION: ${CART_DYNAMODB_REGION:-ap-northeast-2}
+      DYNAMODB_ENDPOINT: http://dynamodb:8000
+      CART_DYNAMODB_TABLE_NAME: ${CART_DYNAMODB_TABLE_NAME:-donmoa-local-cart-items}
+    volumes:
+      - ./init-scripts/dynamodb:/init-scripts/dynamodb:ro
+    entrypoint: /bin/sh
+    command: /init-scripts/dynamodb/create-cart-table.sh
+    networks:
+      - project03-network
+
   # ─── Elasticsearch ────────────────────────────
   elasticsearch:
     build:

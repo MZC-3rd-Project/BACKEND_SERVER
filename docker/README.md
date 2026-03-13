@@ -9,6 +9,7 @@ This directory contains Docker Compose configuration for running the Project03 b
 | PostgreSQL | 5432 | Main database (service-specific DBs) |
 | MariaDB | 3306 | Chat persistence |
 | Redis | 6379 | Caching layer |
+| DynamoDB Local | 8000 | Cart storage |
 | Elasticsearch | 23173 | Search index engine |
 | Kafka | 29092 | Event streaming (localhost access) |
 | Kafka | 9092 | Event streaming (inter-container) |
@@ -72,6 +73,27 @@ The PostgreSQL init script automatically creates service databases:
 - `chat_db`
 
 All databases have the `uuid-ossp` extension enabled.
+
+## DynamoDB Local
+
+Cart uses DynamoDB Local in the local Docker stack.
+
+### Table bootstrap
+
+When `docker-compose up -d` runs, `dynamodb-init` creates the cart table automatically:
+
+- `donmoa-local-cart-items`
+- partition key: `pk`
+- sort key: `sk`
+- TTL attribute: `expiresAtEpoch`
+
+### Connect to DynamoDB Local
+
+```bash
+aws dynamodb list-tables \
+  --endpoint-url http://localhost:8000 \
+  --region ap-northeast-2
+```
 
 ### Connect to PostgreSQL
 
