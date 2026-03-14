@@ -24,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDate;
@@ -34,6 +35,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -157,6 +159,45 @@ class PerformanceCommandServiceTest {
         assertThat(performance.getPerformanceTime()).isEqualTo(originalTime);
         assertThat(performance.getTotalSeats()).isEqualTo(originalTotalSeats);
         verify(eventPublisher).publish(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void create_withExtendedMetadata_persistsPerformanceDetailFields() {
+        PerformanceCreateRequest request = new PerformanceCreateRequest();
+        ReflectionTestUtils.setField(request, "title", "performance");
+        ReflectionTestUtils.setField(request, "description", "desc");
+        ReflectionTestUtils.setField(request, "price", 1000L);
+        ReflectionTestUtils.setField(request, "storeId", 1L);
+        ReflectionTestUtils.setField(request, "venue", "hall");
+        ReflectionTestUtils.setField(request, "performanceDate", LocalDate.of(2030, 1, 1));
+        ReflectionTestUtils.setField(request, "performanceTime", LocalTime.of(18, 0));
+        ReflectionTestUtils.setField(request, "totalSeats", 100);
+        ReflectionTestUtils.setField(request, "runningTimeMinutes", 140);
+        ReflectionTestUtils.setField(request, "ageLimit", "15+");
+        ReflectionTestUtils.setField(request, "venueAddress", "Seoul");
+        ReflectionTestUtils.setField(request, "bookingNotice", "No re-entry");
+        ReflectionTestUtils.setField(request, "organizer", "DonMoa Live");
+        ReflectionTestUtils.setField(request, "host", "DonMoa");
+        ReflectionTestUtils.setField(request, "seatGrades", List.of());
+
+        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> {
+            Item saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 10L);
+            return saved;
+        });
+        when(itemImageRepository.findByItemIdOrderBySortOrder(10L)).thenReturn(List.of());
+
+        performanceCommandService.create(request, 77L);
+
+        ArgumentCaptor<Performance> captor = ArgumentCaptor.forClass(Performance.class);
+        verify(performanceRepository).save(captor.capture());
+        Performance saved = captor.getValue();
+        assertThat(saved.getRunningTimeMinutes()).isEqualTo(140);
+        assertThat(saved.getAgeLimit()).isEqualTo("15+");
+        assertThat(saved.getVenueAddress()).isEqualTo("Seoul");
+        assertThat(saved.getBookingNotice()).isEqualTo("No re-entry");
+        assertThat(saved.getOrganizer()).isEqualTo("DonMoa Live");
+        assertThat(saved.getHost()).isEqualTo("DonMoa");
     }
 
     private Item createItem(Long id, Long sellerId) {

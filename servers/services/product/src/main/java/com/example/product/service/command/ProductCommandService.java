@@ -204,7 +204,9 @@ public class ProductCommandService {
 
     private ShippingInfo saveShippingInfo(Long itemId, ShippingInfoRequest request) {
         ShippingInfo si = ShippingInfo.create(itemId, request.getShippingFee(),
-                request.getFreeShippingThreshold(), request.getEstimatedDays(), request.getReturnPolicy());
+                request.getFreeShippingThreshold(), request.getEstimatedDays(), request.getReturnPolicy(),
+                request.getCarrier(), request.getShipFrom(), request.getReturnAddress(),
+                request.getReturnShippingFee(), request.getExchangeShippingFee(), request.getShippingNotice());
         return shippingInfoRepository.save(si);
     }
 

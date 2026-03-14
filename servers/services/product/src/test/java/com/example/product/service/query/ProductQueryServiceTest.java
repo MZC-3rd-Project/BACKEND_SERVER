@@ -4,6 +4,7 @@ import com.example.core.exception.BusinessException;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemStatus;
 import com.example.product.entity.item.ItemType;
+import com.example.product.entity.goods.ShippingInfo;
 import com.example.product.exception.ProductErrorCode;
 import com.example.product.repository.ItemImageRepository;
 import com.example.product.repository.ItemOptionRepository;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -38,6 +40,8 @@ class ProductQueryServiceTest {
     private ItemImageRepository itemImageRepository;
     @Mock
     private ItemContentService itemContentService;
+    @Spy
+    private ItemAccessPolicy itemAccessPolicy = new ItemAccessPolicy();
 
     @InjectMocks
     private ProductQueryService productQueryService;
@@ -79,13 +83,34 @@ class ProductQueryServiceTest {
         Long sellerId = 7L;
         Item hiddenProduct = Item.create("product", "desc", 1000L, ItemType.PRODUCT, null, sellerId, 1L, null);
         ReflectionTestUtils.setField(hiddenProduct, "status", ItemStatus.HIDDEN);
+        ShippingInfo shippingInfo = ShippingInfo.create(
+                itemId,
+                3000L,
+                50000L,
+                2,
+                "return",
+                "CJ",
+                "Seoul",
+                "Incheon",
+                3500L,
+                7000L,
+                "remote area extra"
+        );
 
         when(itemRepository.findById(itemId)).thenReturn(Optional.of(hiddenProduct));
         when(itemOptionRepository.findByItemId(itemId)).thenReturn(List.of());
-        when(shippingInfoRepository.findByItemId(itemId)).thenReturn(Optional.empty());
+        when(shippingInfoRepository.findByItemId(itemId)).thenReturn(Optional.of(shippingInfo));
         when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(List.of());
 
-        assertThat(productQueryService.findSellerProductById(itemId, sellerId).getStatus())
-                .isEqualTo(ItemStatus.HIDDEN.name());
+        var response = productQueryService.findSellerProductById(itemId, sellerId);
+
+        assertThat(response.getStatus()).isEqualTo(ItemStatus.HIDDEN.name());
+        assertThat(response.getShippingInfo()).isNotNull();
+        assertThat(response.getShippingInfo().getCarrier()).isEqualTo("CJ");
+        assertThat(response.getShippingInfo().getShipFrom()).isEqualTo("Seoul");
+        assertThat(response.getShippingInfo().getReturnAddress()).isEqualTo("Incheon");
+        assertThat(response.getShippingInfo().getReturnShippingFee()).isEqualTo(3500L);
+        assertThat(response.getShippingInfo().getExchangeShippingFee()).isEqualTo(7000L);
+        assertThat(response.getShippingInfo().getShippingNotice()).isEqualTo("remote area extra");
     }
 }

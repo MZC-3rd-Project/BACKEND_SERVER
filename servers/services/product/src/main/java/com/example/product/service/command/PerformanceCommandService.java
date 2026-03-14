@@ -64,7 +64,10 @@ public class PerformanceCommandService {
 
         Performance performance = Performance.create(
                 item.getId(), request.getVenue(), request.getPerformanceDate(),
-                request.getPerformanceTime(), request.getTotalSeats());
+                request.getPerformanceTime(), request.getTotalSeats(),
+                request.getRunningTimeMinutes(), request.getAgeLimit(),
+                request.getVenueAddress(), request.getBookingNotice(),
+                request.getOrganizer(), request.getHost());
         performanceRepository.save(performance);
 
         List<SeatGrade> seatGrades = request.getSeatGrades().stream()
@@ -143,7 +146,13 @@ public class PerformanceCommandService {
                 request.getVenue() != null ? request.getVenue() : performance.getVenue(),
                 request.getPerformanceDate() != null ? request.getPerformanceDate() : performance.getPerformanceDate(),
                 request.getPerformanceTime() != null ? request.getPerformanceTime() : performance.getPerformanceTime(),
-                request.getTotalSeats() != null ? request.getTotalSeats() : performance.getTotalSeats());
+                request.getTotalSeats() != null ? request.getTotalSeats() : performance.getTotalSeats(),
+                request.getRunningTimeMinutes() != null ? request.getRunningTimeMinutes() : performance.getRunningTimeMinutes(),
+                request.getAgeLimit() != null ? request.getAgeLimit() : performance.getAgeLimit(),
+                request.getVenueAddress() != null ? request.getVenueAddress() : performance.getVenueAddress(),
+                request.getBookingNotice() != null ? request.getBookingNotice() : performance.getBookingNotice(),
+                request.getOrganizer() != null ? request.getOrganizer() : performance.getOrganizer(),
+                request.getHost() != null ? request.getHost() : performance.getHost());
 
         if (request.getSeatGrades() != null) {
             seatGradeRepository.softDeleteAllByPerformanceId(performance.getId());

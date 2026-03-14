@@ -12,6 +12,12 @@ public class ShippingInfoResponse {
     private Long freeShippingThreshold;
     private Integer estimatedDays;
     private String returnPolicy;
+    private String carrier;
+    private String shipFrom;
+    private String returnAddress;
+    private Long returnShippingFee;
+    private Long exchangeShippingFee;
+    private String shippingNotice;
 
     public static ShippingInfoResponse from(ShippingInfo entity) {
         return ShippingInfoResponse.builder()
@@ -19,6 +25,12 @@ public class ShippingInfoResponse {
                 .freeShippingThreshold(entity.getFreeShippingThreshold())
                 .estimatedDays(entity.getEstimatedDays())
                 .returnPolicy(entity.getReturnPolicy())
+                .carrier(entity.getCarrier())
+                .shipFrom(entity.getShipFrom())
+                .returnAddress(entity.getReturnAddress())
+                .returnShippingFee(entity.getReturnShippingFee())
+                .exchangeShippingFee(entity.getExchangeShippingFee())
+                .shippingNotice(entity.getShippingNotice())
                 .build();
     }
 }

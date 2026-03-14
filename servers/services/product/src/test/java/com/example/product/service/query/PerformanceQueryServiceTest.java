@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -44,6 +45,8 @@ class PerformanceQueryServiceTest {
     private ItemImageRepository itemImageRepository;
     @Mock
     private ItemContentService itemContentService;
+    @Spy
+    private ItemAccessPolicy itemAccessPolicy = new ItemAccessPolicy();
 
     @InjectMocks
     private PerformanceQueryService performanceQueryService;
@@ -90,7 +93,13 @@ class PerformanceQueryServiceTest {
                 "hall",
                 LocalDate.of(2030, 1, 1),
                 LocalTime.of(18, 0),
-                100
+                100,
+                140,
+                "15+",
+                "Seoul",
+                "No re-entry",
+                "DonMoa Live",
+                "DonMoa"
         );
         ReflectionTestUtils.setField(performance, "id", 500L);
 
@@ -100,7 +109,14 @@ class PerformanceQueryServiceTest {
         when(castMemberRepository.findByPerformanceId(500L)).thenReturn(List.of());
         when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(List.of());
 
-        assertThat(performanceQueryService.findSellerById(itemId, sellerId).getStatus())
-                .isEqualTo(ItemStatus.HIDDEN.name());
+        var response = performanceQueryService.findSellerById(itemId, sellerId);
+
+        assertThat(response.getStatus()).isEqualTo(ItemStatus.HIDDEN.name());
+        assertThat(response.getRunningTimeMinutes()).isEqualTo(140);
+        assertThat(response.getAgeLimit()).isEqualTo("15+");
+        assertThat(response.getVenueAddress()).isEqualTo("Seoul");
+        assertThat(response.getBookingNotice()).isEqualTo("No re-entry");
+        assertThat(response.getOrganizer()).isEqualTo("DonMoa Live");
+        assertThat(response.getHost()).isEqualTo("DonMoa");
     }
 }

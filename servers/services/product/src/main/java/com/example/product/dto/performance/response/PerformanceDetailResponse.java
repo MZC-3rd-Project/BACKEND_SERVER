@@ -47,6 +47,12 @@ public class PerformanceDetailResponse {
     private LocalDate performanceDate;
     private LocalTime performanceTime;
     private Integer totalSeats;
+    private Integer runningTimeMinutes;
+    private String ageLimit;
+    private String venueAddress;
+    private String bookingNotice;
+    private String organizer;
+    private String host;
 
     private List<SeatGradeResponse> seatGrades;
     private List<CastMemberResponse> castMembers;
@@ -77,6 +83,12 @@ public class PerformanceDetailResponse {
                 .performanceDate(perf.getPerformanceDate())
                 .performanceTime(perf.getPerformanceTime())
                 .totalSeats(perf.getTotalSeats())
+                .runningTimeMinutes(perf.getRunningTimeMinutes())
+                .ageLimit(perf.getAgeLimit())
+                .venueAddress(perf.getVenueAddress())
+                .bookingNotice(perf.getBookingNotice())
+                .organizer(perf.getOrganizer())
+                .host(perf.getHost())
                 .seatGrades(seatGrades.stream().map(SeatGradeResponse::from).toList())
                 .castMembers(castMembers.stream().map(CastMemberResponse::from).toList())
                 .createdAt(item.getCreatedAt())
