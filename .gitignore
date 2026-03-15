@@ -15,6 +15,7 @@ resume/
 .springBeans
 .sts4-cache
 bin/
+/docker/scripts
 !**/src/main/**/bin/
 !**/src/test/**/bin/
 
