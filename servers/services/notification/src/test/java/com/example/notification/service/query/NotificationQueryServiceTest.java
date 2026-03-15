@@ -4,80 +4,75 @@ import com.example.core.pagination.CursorResponse;
 import com.example.core.pagination.CursorUtils;
 import com.example.notification.dto.query.response.NotificationHistoryItemResponse;
 import com.example.notification.dto.query.response.UnreadCountResponse;
-import com.example.notification.entity.Notification;
-import com.example.notification.entity.NotificationChannel;
-import com.example.notification.entity.NotificationDelivery;
-import com.example.notification.entity.NotificationType;
-import com.example.notification.repository.NotificationDeliveryRepository;
-import com.example.notification.repository.NotificationRepository;
 import com.example.notification.service.unread.NotificationUnreadCountService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class NotificationQueryServiceTest {
 
     @Mock
-    private NotificationRepository notificationRepository;
+    private NotificationHistoryReader notificationHistoryReader;
+
+    @Spy
+    private NotificationHistoryAssembler notificationHistoryAssembler;
 
     @Mock
     private NotificationUnreadCountService notificationUnreadCountService;
-
-    @Mock
-    private NotificationDeliveryRepository notificationDeliveryRepository;
 
     @InjectMocks
     private NotificationQueryService notificationQueryService;
 
     @Test
-    void findMyNotifications_returnsCursorPage() {
-        Notification first = Notification.create(10L, 1L, NotificationType.GENERAL, NotificationChannel.IN_APP,
-                "t1", "m1", null, null, null, "d1", null);
-        Notification second = Notification.create(10L, 1L, NotificationType.GENERAL, NotificationChannel.IN_APP,
-                "t2", "m2", null, null, null, "d2", null);
-        Notification third = Notification.create(10L, 1L, NotificationType.GENERAL, NotificationChannel.IN_APP,
-                "t3", "m3", null, null, null, "d3", null);
-        ReflectionTestUtils.setField(first, "id", 300L);
-        ReflectionTestUtils.setField(second, "id", 200L);
-        ReflectionTestUtils.setField(third, "id", 100L);
-
-        when(notificationRepository.findByRecipientIdWithCursor(
-                eq(10L), eq(null), eq(PageRequest.of(0, 3))
-        )).thenReturn(List.of(first, second, third));
-
-        NotificationDelivery firstDelivery = NotificationDelivery.createPending(
+    void findMyNotifications_mapsHistoryViewsToResponse() {
+        NotificationHistoryView first = new NotificationHistoryView(
                 300L,
-                NotificationChannel.IN_APP,
+                "GENERAL",
                 "IN_APP",
-                null
+                "t1",
+                "m1",
+                null,
+                null,
+                false,
+                null,
+                LocalDateTime.now(),
+                List.of(new NotificationHistoryView.NotificationDeliveryView(
+                        "IN_APP",
+                        "DELIVERED",
+                        "IN_APP",
+                        1,
+                        null,
+                        null,
+                        null,
+                        LocalDateTime.now()
+                ))
         );
-        ReflectionTestUtils.setField(firstDelivery, "id", 900L);
-        firstDelivery.markSent("IN_APP:900");
-        firstDelivery.markDelivered();
-
-        NotificationDelivery secondDelivery = NotificationDelivery.createPending(
+        NotificationHistoryView second = new NotificationHistoryView(
                 200L,
-                NotificationChannel.EMAIL,
+                "GENERAL",
                 "EMAIL",
-                "test@example.com"
+                "t2",
+                "m2",
+                null,
+                null,
+                true,
+                LocalDateTime.now(),
+                LocalDateTime.now(),
+                List.of()
         );
-        ReflectionTestUtils.setField(secondDelivery, "id", 901L);
-        secondDelivery.markRetry("EMAIL_SEND_FAILED", "smtp timeout", null);
 
-        when(notificationDeliveryRepository.findByNotificationIdInOrderByNotificationIdAscIdAsc(
-                eq(List.of(300L, 200L))
-        )).thenReturn(List.of(firstDelivery, secondDelivery));
+        when(notificationHistoryReader.findMyNotifications(10L, null, 2))
+                .thenReturn(CursorResponse.of(List.of(first, second), CursorUtils.encode(200L)));
 
         CursorResponse<NotificationHistoryItemResponse> result =
                 notificationQueryService.findMyNotifications(10L, null, 2);
@@ -87,8 +82,7 @@ class NotificationQueryServiceTest {
         assertThat(result.getNextCursor()).isEqualTo(CursorUtils.encode(200L));
         assertThat(result.getItems().get(0).getDeliveries()).hasSize(1);
         assertThat(result.getItems().get(0).getDeliveries().get(0).getStatus()).isEqualTo("DELIVERED");
-        assertThat(result.getItems().get(1).getDeliveries()).hasSize(1);
-        assertThat(result.getItems().get(1).getDeliveries().get(0).getStatus()).isEqualTo("RETRYING");
+        assertThat(result.getItems().get(1).isRead()).isTrue();
     }
 
     @Test

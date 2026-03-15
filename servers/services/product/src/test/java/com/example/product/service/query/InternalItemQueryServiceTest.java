@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -33,6 +34,8 @@ class InternalItemQueryServiceTest {
     private ItemRepository itemRepository;
     @Mock
     private ItemImageRepository itemImageRepository;
+    @Spy
+    private ItemAccessPolicy itemAccessPolicy = new ItemAccessPolicy();
 
     @InjectMocks
     private InternalItemQueryService internalItemQueryService;
@@ -78,7 +81,7 @@ class InternalItemQueryServiceTest {
 
         when(itemRepository.findByStoreIdAndStatusInOrderByUpdatedAtDesc(
             eq(300L),
-            eq(List.of(ItemStatus.FUNDING, ItemStatus.FUNDED, ItemStatus.ON_SALE, ItemStatus.HOT_DEAL))
+            eq(ItemStatus.publiclyVisibleStatuses())
         )).thenReturn(List.of(item));
 
         var result = internalItemQueryService.findByStoreId(300L);
@@ -90,7 +93,7 @@ class InternalItemQueryServiceTest {
         assertThat(result.get(0).sourceUpdatedAt()).isEqualTo(LocalDateTime.of(2026, 3, 12, 10, 15));
         verify(itemRepository).findByStoreIdAndStatusInOrderByUpdatedAtDesc(
             eq(300L),
-            eq(List.of(ItemStatus.FUNDING, ItemStatus.FUNDED, ItemStatus.ON_SALE, ItemStatus.HOT_DEAL))
+            eq(ItemStatus.publiclyVisibleStatuses())
         );
     }
 }

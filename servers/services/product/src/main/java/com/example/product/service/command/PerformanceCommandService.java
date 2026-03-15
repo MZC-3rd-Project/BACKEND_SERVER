@@ -26,11 +26,14 @@ import com.example.product.repository.SeatGradeRepository;
 import com.example.product.service.content.ItemContentService;
 import com.example.product.service.command.image.ItemThumbnailSyncService;
 import com.example.product.service.command.image.MediaReferenceService;
+import com.example.product.service.query.detail.ItemCategoryDetailResolver;
+import com.example.product.service.query.detail.ItemCategoryDetailView;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -48,6 +51,7 @@ public class PerformanceCommandService {
     private final ItemThumbnailSyncService itemThumbnailSyncService;
     private final StoreOwnershipValidator storeOwnershipValidator;
     private final EventPublisher eventPublisher;
+    private final ItemCategoryDetailResolver itemCategoryDetailResolver;
 
     public PerformanceDetailResponse create(PerformanceCreateRequest request, Long sellerId) {
         storeOwnershipValidator.validateOwnership(sellerId, request.getStoreId());
@@ -110,7 +114,13 @@ public class PerformanceCommandService {
 
         ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(item.getId());
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(item.getId());
-        return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers, contentSnapshot, images);
+        ItemCategoryDetailView categoryDetail = resolveCategoryDetail(item);
+        return PerformanceDetailResponse.of(
+                item, performance, seatGrades, castMembers,
+                categoryDetail != null ? categoryDetail.categoryName() : null,
+                categoryDetail != null ? categoryDetail.categoryPath() : List.of(),
+                contentSnapshot, images
+        );
     }
 
     public PerformanceDetailResponse update(Long itemId, PerformanceUpdateRequest request, Long sellerId) {
@@ -199,7 +209,13 @@ public class PerformanceCommandService {
         List<CastMember> castMembers = castMemberRepository.findByPerformanceId(performance.getId());
         ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(itemId);
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
-        return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers, contentSnapshot, images);
+        ItemCategoryDetailView categoryDetail = resolveCategoryDetail(item);
+        return PerformanceDetailResponse.of(
+                item, performance, seatGrades, castMembers,
+                categoryDetail != null ? categoryDetail.categoryName() : null,
+                categoryDetail != null ? categoryDetail.categoryPath() : List.of(),
+                contentSnapshot, images
+        );
     }
 
     public void delete(Long itemId, Long sellerId) {
@@ -253,6 +269,16 @@ public class PerformanceCommandService {
         if (categoryId != null && !categoryRepository.existsById(categoryId)) {
             throw new BusinessException(ProductErrorCode.CATEGORY_NOT_FOUND);
         }
+    }
+
+    private ItemCategoryDetailView resolveCategoryDetail(Item item) {
+        Map<Long, ItemCategoryDetailView> resolved = itemCategoryDetailResolver != null
+                ? itemCategoryDetailResolver.resolve(List.of(item))
+                : Map.of();
+        if (resolved == null) {
+            return null;
+        }
+        return resolved.get(item.getId());
     }
 
 }

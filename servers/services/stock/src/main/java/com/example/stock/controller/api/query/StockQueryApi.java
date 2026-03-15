@@ -1,10 +1,10 @@
 package com.example.stock.controller.api.query;
 
 import com.example.api.response.ApiResponse;
-import com.example.stock.dto.response.ReservationResponse;
-import com.example.stock.dto.response.StockHistoryResponse;
-import com.example.stock.dto.response.StockResponse;
-import com.example.stock.dto.response.StockSummaryResponse;
+import com.example.stock.dto.query.response.StockHistoryQueryResponse;
+import com.example.stock.dto.query.response.StockItemQueryResponse;
+import com.example.stock.dto.query.response.StockReservationQueryResponse;
+import com.example.stock.dto.query.response.StockSummaryQueryResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,20 +18,20 @@ public interface StockQueryApi {
 
     @Operation(summary = "재고 단건 조회")
     @GetMapping("/internal/v1/stock/{stockItemId}")
-    ApiResponse<StockResponse> getStock(@PathVariable Long stockItemId);
+    ApiResponse<StockItemQueryResponse> getStock(@PathVariable Long stockItemId);
 
     @Operation(summary = "아이템별 재고 목록 조회")
     @GetMapping("/internal/v1/stock/items/{itemId}")
-    ApiResponse<StockSummaryResponse> getStocksByItemId(@PathVariable Long itemId);
+    ApiResponse<StockSummaryQueryResponse> getStocksByItemId(@PathVariable Long itemId);
 
     @Operation(summary = "재고 변경 이력 조회")
     @GetMapping("/internal/v1/stock/{stockItemId}/history")
-    ApiResponse<List<StockHistoryResponse>> getStockHistory(
+    ApiResponse<List<StockHistoryQueryResponse>> getStockHistory(
             @PathVariable Long stockItemId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size);
 
     @Operation(summary = "orderId 기반 예약 조회")
     @GetMapping("/internal/v1/stock/reservations")
-    ApiResponse<List<ReservationResponse>> getReservationsByOrderId(@RequestParam Long orderId);
+    ApiResponse<List<StockReservationQueryResponse>> getReservationsByOrderId(@RequestParam Long orderId);
 }

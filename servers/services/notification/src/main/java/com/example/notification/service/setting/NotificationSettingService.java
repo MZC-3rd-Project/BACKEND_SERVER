@@ -5,14 +5,12 @@ import com.example.notification.dto.setting.request.UpdateNotificationGlobalPref
 import com.example.notification.dto.setting.request.UpdateNotificationSettingRequest;
 import com.example.notification.dto.setting.response.NotificationGlobalPreferenceResponse;
 import com.example.notification.dto.setting.response.NotificationSettingItemResponse;
-import com.example.notification.dto.setting.response.NotificationSettingsResponse;
 import com.example.notification.entity.NotificationChannel;
 import com.example.notification.entity.NotificationSetting;
 import com.example.notification.entity.NotificationType;
 import com.example.notification.entity.NotificationUserPreference;
 import com.example.notification.exception.NotificationErrorCode;
 import com.example.notification.repository.NotificationSettingRepository;
-import com.example.notification.repository.NotificationUserPreferenceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,42 +18,19 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.EnumMap;
-import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class NotificationSettingService {
 
     private final NotificationSettingRepository notificationSettingRepository;
-    private final NotificationUserPreferenceRepository notificationUserPreferenceRepository;
-    private final NotificationSettingPolicy notificationSettingPolicy;
-
-    @Transactional
-    public NotificationSettingsResponse getSettings(Long userId) {
-        NotificationUserPreference preference = loadOrCreatePreference(userId);
-        List<NotificationSetting> settings = loadOrCreateSettings(userId);
-        List<NotificationSettingItemResponse> settingResponses = settings.stream()
-                .sorted(Comparator
-                        .comparing(NotificationSetting::getType)
-                        .thenComparing(NotificationSetting::getChannel))
-                .map(NotificationSettingItemResponse::from)
-                .toList();
-
-        return NotificationSettingsResponse.of(
-                NotificationGlobalPreferenceResponse.from(preference),
-                settingResponses
-        );
-    }
+    private final NotificationSettingInitializer notificationSettingInitializer;
 
     @Transactional
     public NotificationGlobalPreferenceResponse updateGlobalPreference(Long userId,
                                                                        UpdateNotificationGlobalPreferenceRequest request) {
-        NotificationUserPreference preference = loadOrCreatePreference(userId);
+        NotificationUserPreference preference = notificationSettingInitializer.ensurePreference(userId);
 
         if (request.getGlobalEnabled() != null) {
             preference.updateGlobalEnabled(request.getGlobalEnabled());
@@ -90,11 +65,7 @@ public class NotificationSettingService {
         NotificationType type = parseType(request.getType());
         NotificationChannel channel = parseChannel(request.getChannel());
 
-        NotificationSetting setting = notificationSettingRepository
-                .findByUserIdAndTypeAndChannel(userId, type, channel)
-                .orElseGet(() -> NotificationSetting.createDefault(
-                        userId, type, channel, notificationSettingPolicy.isDefaultEnabled(channel)
-                ));
+        NotificationSetting setting = notificationSettingInitializer.ensureSetting(userId, type, channel);
 
         boolean changed = false;
         if (request.getEnabled() != null) {
@@ -120,8 +91,7 @@ public class NotificationSettingService {
 
     @Transactional
     public boolean shouldSendNotification(Long userId, NotificationType type, NotificationChannel channel) {
-        NotificationUserPreference preference = notificationUserPreferenceRepository.findByUserId(userId)
-                .orElseGet(() -> NotificationUserPreference.createDefault(userId));
+        NotificationUserPreference preference = notificationSettingInitializer.ensurePreference(userId);
         if (!preference.isGlobalEnabled()) {
             return false;
         }
@@ -129,50 +99,8 @@ public class NotificationSettingService {
             return false;
         }
 
-        NotificationSetting setting = notificationSettingRepository
-                .findByUserIdAndTypeAndChannel(userId, type, channel)
-                .orElse(null);
-
-        if (setting == null) {
-            return notificationSettingPolicy.isDefaultEnabled(channel);
-        }
+        NotificationSetting setting = notificationSettingInitializer.ensureSetting(userId, type, channel);
         return setting.isEnabledNow();
-    }
-
-    private NotificationUserPreference loadOrCreatePreference(Long userId) {
-        return notificationUserPreferenceRepository.findByUserId(userId)
-                .orElseGet(() -> notificationUserPreferenceRepository.save(
-                        NotificationUserPreference.createDefault(userId)
-                ));
-    }
-
-    private List<NotificationSetting> loadOrCreateSettings(Long userId) {
-        List<NotificationSetting> settings = notificationSettingRepository.findByUserId(userId);
-        Map<NotificationType, Map<NotificationChannel, NotificationSetting>> settingMap = new EnumMap<>(NotificationType.class);
-        for (NotificationSetting setting : settings) {
-            settingMap
-                    .computeIfAbsent(setting.getType(), key -> new EnumMap<>(NotificationChannel.class))
-                    .put(setting.getChannel(), setting);
-        }
-
-        List<NotificationSetting> missing = new ArrayList<>();
-        for (NotificationType type : NotificationType.values()) {
-            for (NotificationChannel channel : notificationSettingPolicy.supportedChannels()) {
-                Map<NotificationChannel, NotificationSetting> channels = settingMap.get(type);
-                if (channels == null || !channels.containsKey(channel)) {
-                    missing.add(NotificationSetting.createDefault(
-                            userId, type, channel, notificationSettingPolicy.isDefaultEnabled(channel)
-                    ));
-                }
-            }
-        }
-
-        if (!missing.isEmpty()) {
-            notificationSettingRepository.saveAll(missing);
-            settings = notificationSettingRepository.findByUserId(userId);
-        }
-
-        return settings;
     }
 
     private NotificationType parseType(String rawType) {

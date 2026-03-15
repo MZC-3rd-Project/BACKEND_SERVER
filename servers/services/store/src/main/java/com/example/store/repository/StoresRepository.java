@@ -1,10 +1,10 @@
 package com.example.store.repository;
 
-import com.example.store.dto.response.StoreDetailResponse;
-import com.example.store.dto.response.StoreListResponse;
-import com.example.store.dto.response.internal.StoreSnapshotResponse;
-import com.example.store.entity.StoreImage;
 import com.example.store.entity.Stores;
+import com.example.store.service.query.view.StoreDetailBaseView;
+import com.example.store.service.query.view.StoreImageView;
+import com.example.store.service.query.view.StoreListView;
+import com.example.store.service.query.view.StoreSnapshotBaseView;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -17,7 +17,7 @@ import java.util.Optional;
 public interface StoresRepository extends JpaRepository<Stores, Long> {
     @Query(
                 value = """
-        SELECT new com.example.store.dto.response.StoreListResponse(
+        SELECT new com.example.store.service.query.view.StoreListView(
             s.id,
             s.userId,
             s.storeName,
@@ -25,31 +25,73 @@ public interface StoresRepository extends JpaRepository<Stores, Long> {
             sp.description,
             sa.address,
             sc.contactValue,
-            new com.example.store.dto.image.StoreImageResponse(
-                    s.id,
-                    si.mediaId,
-                    si.imageType,
-                    si.sortOrder
-                )
+            si.id,
+            si.mediaId,
+            si.imageType,
+            si.sortOrder
         )
         FROM Stores s
         LEFT JOIN StoreProfile sp
             ON sp.store.id = s.id
+            AND sp.deletedAt IS NULL
         LEFT JOIN StoreContact sc
             ON sc.store.id = s.id
             AND sc.isPrimary = true
+            AND sc.deletedAt IS NULL
         LEFT JOIN StoreAddress sa
             ON sa.store.id = s.id
+            AND sa.isDefault = true
+            AND sa.deletedAt IS NULL
         LEFT JOIN StoreImage si
-               ON si.store.id = s.id
-              WHERE si.imageType = "THUMBNAIL"
+            ON si.store.id = s.id
+            AND si.imageType = com.example.store.entity.ImageType.THUMBNAIL
+            AND si.deletedAt IS NULL
+        WHERE s.deletedAt IS NULL
         ORDER BY s.createdAt DESC
        """
     )
-    Page<StoreListResponse> findStoreList(Pageable pageable);
+    Page<StoreListView> findStoreList(Pageable pageable);
+
+    @Query(
+                value = """
+        SELECT new com.example.store.service.query.view.StoreListView(
+            s.id,
+            s.userId,
+            s.storeName,
+            s.status,
+            sp.description,
+            sa.address,
+            sc.contactValue,
+            si.id,
+            si.mediaId,
+            si.imageType,
+            si.sortOrder
+        )
+        FROM Stores s
+        LEFT JOIN StoreProfile sp
+            ON sp.store.id = s.id
+            AND sp.deletedAt IS NULL
+        LEFT JOIN StoreContact sc
+            ON sc.store.id = s.id
+            AND sc.isPrimary = true
+            AND sc.deletedAt IS NULL
+        LEFT JOIN StoreAddress sa
+            ON sa.store.id = s.id
+            AND sa.isDefault = true
+            AND sa.deletedAt IS NULL
+        LEFT JOIN StoreImage si
+            ON si.store.id = s.id
+           AND si.imageType = com.example.store.entity.ImageType.THUMBNAIL
+           AND si.deletedAt IS NULL
+        WHERE s.userId = :userId
+          AND s.deletedAt IS NULL
+        ORDER BY s.createdAt DESC
+       """
+    )
+    List<StoreListView> findStoreListByUserId(@Param("userId") Long userId);
 
     @Query("""
-        SELECT new com.example.store.dto.response.StoreDetailResponse(
+        SELECT new com.example.store.service.query.view.StoreDetailBaseView(
                 s.id,
                 s.userId,
                 s.storeName,
@@ -68,10 +110,10 @@ public interface StoresRepository extends JpaRepository<Stores, Long> {
             WHERE s.id = :storeId
                 AND s.deletedAt is null
     """)
-    Optional<StoreDetailResponse> findByStoreId(@Param("storeId") Long storeId);//storeId = id(pk)
+    Optional<StoreDetailBaseView> findDetailBaseByStoreId(@Param("storeId") Long storeId);//storeId = id(pk)
 
     @Query("""
-        SELECT new com.example.store.dto.response.internal.StoreSnapshotResponse(
+        SELECT new com.example.store.service.query.view.StoreSnapshotBaseView(
                 s.id,
                 s.userId,
                 s.storeName,
@@ -81,7 +123,6 @@ public interface StoresRepository extends JpaRepository<Stores, Long> {
                 sa.addressType,
                 sc.contactValue,
                 sc.contactType,
-                null,
                 s.createdAt,
                 s.updatedAt
             )
@@ -100,17 +141,24 @@ public interface StoresRepository extends JpaRepository<Stores, Long> {
             WHERE s.id = :storeId
                 AND s.deletedAt IS NULL
     """)
-    Optional<StoreSnapshotResponse> findSnapshotByStoreId(@Param("storeId") Long storeId);
+    Optional<StoreSnapshotBaseView> findSnapshotBaseByStoreId(@Param("storeId") Long storeId);
 
     // 이미지 별도 조회
     @Query("""
-        SELECT si
+        SELECT new com.example.store.service.query.view.StoreImageView(
+            si.id,
+            si.store.id,
+            si.mediaId,
+            si.imageType,
+            si.sortOrder,
+            si.updatedAt
+        )
           FROM StoreImage si
          WHERE si.store.id = :storeId
            AND si.deletedAt IS NULL
          ORDER BY si.sortOrder ASC, si.id ASC
     """)
-    List<StoreImage> findImagesByStoreId(@Param("storeId") Long storeId);
+    List<StoreImageView> findImagesByStoreId(@Param("storeId") Long storeId);
 
     @Query("""
         select s.id

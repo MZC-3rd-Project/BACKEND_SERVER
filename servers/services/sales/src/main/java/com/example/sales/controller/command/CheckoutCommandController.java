@@ -11,6 +11,7 @@ import com.example.sales.dto.checkout.response.CheckoutQuoteResponse;
 import com.example.sales.dto.checkout.response.CheckoutReserveResponse;
 import com.example.sales.dto.checkout.response.CheckoutSubmitResponse;
 import com.example.sales.service.command.CheckoutCommandService;
+import com.example.sales.service.query.CheckoutQuoteQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CheckoutCommandController implements CheckoutCommandApi {
 
     private final CheckoutCommandService checkoutCommandService;
+    private final CheckoutQuoteQueryService checkoutQuoteQueryService;
 
     @Override
     public ApiResponse<CheckoutReserveResponse> reserve(CheckoutReserveRequest request, Long userId) {
@@ -27,7 +29,7 @@ public class CheckoutCommandController implements CheckoutCommandApi {
 
     @Override
     public ApiResponse<CheckoutQuoteResponse> quote(CheckoutQuoteRequest request, Long userId) {
-        return ApiResponse.success(checkoutCommandService.quote(request, userId));
+        return ApiResponse.success(checkoutQuoteQueryService.quote(request, userId));
     }
 
     @Override

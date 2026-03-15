@@ -2,10 +2,10 @@ package com.example.stock.controller.query;
 
 import com.example.api.response.ApiResponse;
 import com.example.stock.controller.api.query.StockQueryApi;
-import com.example.stock.dto.response.ReservationResponse;
-import com.example.stock.dto.response.StockHistoryResponse;
-import com.example.stock.dto.response.StockResponse;
-import com.example.stock.dto.response.StockSummaryResponse;
+import com.example.stock.dto.query.response.StockHistoryQueryResponse;
+import com.example.stock.dto.query.response.StockItemQueryResponse;
+import com.example.stock.dto.query.response.StockReservationQueryResponse;
+import com.example.stock.dto.query.response.StockSummaryQueryResponse;
 import com.example.stock.service.query.StockQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,17 +21,17 @@ public class StockQueryController implements StockQueryApi {
     private final StockQueryService stockQueryService;
 
     @Override
-    public ApiResponse<StockResponse> getStock(@PathVariable Long stockItemId) {
+    public ApiResponse<StockItemQueryResponse> getStock(@PathVariable Long stockItemId) {
         return ApiResponse.success(stockQueryService.getStock(stockItemId));
     }
 
     @Override
-    public ApiResponse<StockSummaryResponse> getStocksByItemId(@PathVariable Long itemId) {
+    public ApiResponse<StockSummaryQueryResponse> getStocksByItemId(@PathVariable Long itemId) {
         return ApiResponse.success(stockQueryService.getStocksByItemId(itemId));
     }
 
     @Override
-    public ApiResponse<List<StockHistoryResponse>> getStockHistory(
+    public ApiResponse<List<StockHistoryQueryResponse>> getStockHistory(
             @PathVariable Long stockItemId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -39,7 +39,7 @@ public class StockQueryController implements StockQueryApi {
     }
 
     @Override
-    public ApiResponse<List<ReservationResponse>> getReservationsByOrderId(@RequestParam Long orderId) {
+    public ApiResponse<List<StockReservationQueryResponse>> getReservationsByOrderId(@RequestParam Long orderId) {
         return ApiResponse.success(stockQueryService.getReservationsByOrderId(orderId));
     }
 }

@@ -1,16 +1,16 @@
 package com.example.chat.service.query;
 
 import com.example.chat.dto.query.response.ChatMessageItemResponse;
+import com.example.chat.dto.query.response.ChatRoomLastMessageResponse;
 import com.example.chat.dto.query.response.ChatRoomSummaryResponse;
 import com.example.chat.entity.message.ChatMessage;
 import com.example.chat.entity.message.ChatMessageType;
 import com.example.chat.entity.participant.ChatParticipantRole;
 import com.example.chat.entity.participant.ChatRoomParticipant;
-import com.example.chat.entity.room.ChatRoom;
 import com.example.chat.exception.ChatErrorCode;
 import com.example.chat.repository.ChatMessageRepository;
 import com.example.chat.repository.ChatRoomParticipantRepository;
-import com.example.chat.repository.ChatRoomRepository;
+import com.example.chat.service.policy.ChatRoomAccessPolicy;
 import com.example.core.exception.BusinessException;
 import com.example.core.pagination.CursorResponse;
 import com.example.core.pagination.CursorUtils;
@@ -39,10 +39,16 @@ class ChatRoomQueryServiceTest {
     private ChatRoomParticipantRepository chatRoomParticipantRepository;
 
     @Mock
-    private ChatRoomRepository chatRoomRepository;
+    private ChatMessageRepository chatMessageRepository;
 
     @Mock
-    private ChatMessageRepository chatMessageRepository;
+    private ChatRoomAccessPolicy chatRoomAccessPolicy;
+
+    @Mock
+    private ChatRoomSummaryReader chatRoomSummaryReader;
+
+    @Mock
+    private ChatMessagePresenter chatMessagePresenter;
 
     @InjectMocks
     private ChatRoomQueryService chatRoomQueryService;
@@ -54,18 +60,18 @@ class ChatRoomQueryServiceTest {
 
         when(chatRoomParticipantRepository.findByUserIdAndStatusOrderByRoomIdDesc(eq(10L), any(), any(Pageable.class)))
                 .thenReturn(List.of(participant1, participant2));
-
-        ChatRoom room200 = ChatRoom.createInquiryRoom("inquiry:1:10:20", 1L, 20L, "문의방");
-        ReflectionTestUtils.setField(room200, "id", 200L);
-        when(chatRoomRepository.findAllById(List.of(200L))).thenReturn(List.of(room200));
-
-        ChatMessage lastMessage = ChatMessage.create(200L, 10L, ChatMessageType.CHAT, "c", "hello", "hello", null);
-        ReflectionTestUtils.setField(lastMessage, "id", 999L);
-        ReflectionTestUtils.setField(lastMessage, "createdAt", LocalDateTime.now());
-
-        when(chatMessageRepository.findByRoomIdOrderByIdDesc(eq(200L), any(Pageable.class)))
-                .thenReturn(List.of(lastMessage));
-        when(chatMessageRepository.countByRoomId(200L)).thenReturn(5L);
+        when(chatRoomSummaryReader.readSummaries(List.of(participant1))).thenReturn(List.of(
+            ChatRoomSummaryResponse.builder()
+                .roomId(200L)
+                .title("문의방")
+                .unreadCount(5L)
+                .lastMessage(ChatRoomLastMessageResponse.builder()
+                    .messageId(999L)
+                    .preview("hello")
+                    .createdAt(LocalDateTime.now())
+                    .build())
+                .build()
+        ));
 
         CursorResponse<ChatRoomSummaryResponse> response = chatRoomQueryService.findMyRooms(10L, null, 1);
 
@@ -82,10 +88,8 @@ class ChatRoomQueryServiceTest {
 
     @Test
     void findRoomMessages_blocksRefundedParticipant() {
-        ChatRoomParticipant participant = ChatRoomParticipant.create(100L, 10L, ChatParticipantRole.PARTICIPANT);
-        participant.markRefunded();
-
-        when(chatRoomParticipantRepository.findByRoomIdAndUserId(100L, 10L)).thenReturn(Optional.of(participant));
+        when(chatRoomAccessPolicy.requireActiveParticipant(100L, 10L))
+            .thenThrow(new BusinessException(ChatErrorCode.FORBIDDEN_ROOM_ACCESS));
 
         assertThatThrownBy(() -> chatRoomQueryService.findRoomMessages(100L, 10L, null, 50))
                 .isInstanceOf(BusinessException.class)
@@ -96,7 +100,7 @@ class ChatRoomQueryServiceTest {
     @Test
     void findRoomMessages_returnsCursorPagedMessages() {
         ChatRoomParticipant participant = ChatRoomParticipant.create(100L, 10L, ChatParticipantRole.PARTICIPANT);
-        when(chatRoomParticipantRepository.findByRoomIdAndUserId(100L, 10L)).thenReturn(Optional.of(participant));
+        when(chatRoomAccessPolicy.requireActiveParticipant(100L, 10L)).thenReturn(participant);
 
         ChatMessage m1 = ChatMessage.create(100L, 10L, ChatMessageType.CHAT, "c1", "one", "one", null);
         ReflectionTestUtils.setField(m1, "id", 200L);
@@ -108,6 +112,13 @@ class ChatRoomQueryServiceTest {
 
         when(chatMessageRepository.findByRoomIdOrderByIdDesc(eq(100L), any(Pageable.class)))
                 .thenReturn(List.of(m1, m2));
+        when(chatMessagePresenter.toItemResponse(m1)).thenReturn(ChatMessageItemResponse.builder()
+            .messageId(200L)
+            .senderId(10L)
+            .messageType(ChatMessageType.CHAT)
+            .content("one")
+            .createdAt(m1.getCreatedAt())
+            .build());
 
         CursorResponse<ChatMessageItemResponse> response = chatRoomQueryService.findRoomMessages(100L, 10L, null, 1);
 
@@ -120,7 +131,7 @@ class ChatRoomQueryServiceTest {
     @Test
     void findMessagesAfter_returnsAscendingMissedMessages() {
         ChatRoomParticipant participant = ChatRoomParticipant.create(100L, 10L, ChatParticipantRole.PARTICIPANT);
-        when(chatRoomParticipantRepository.findByRoomIdAndUserId(100L, 10L)).thenReturn(Optional.of(participant));
+        when(chatRoomAccessPolicy.requireActiveParticipant(100L, 10L)).thenReturn(participant);
 
         ChatMessage m1 = ChatMessage.create(100L, 20L, ChatMessageType.CHAT, "c1", "one", "one", null);
         ReflectionTestUtils.setField(m1, "id", 101L);
@@ -132,6 +143,20 @@ class ChatRoomQueryServiceTest {
 
         when(chatMessageRepository.findByRoomIdAndIdGreaterThanOrderByIdAsc(eq(100L), eq(100L), any(Pageable.class)))
                 .thenReturn(List.of(m1, m2));
+        when(chatMessagePresenter.toItemResponse(m1)).thenReturn(ChatMessageItemResponse.builder()
+            .messageId(101L)
+            .senderId(20L)
+            .messageType(ChatMessageType.CHAT)
+            .content("one")
+            .createdAt(m1.getCreatedAt())
+            .build());
+        when(chatMessagePresenter.toItemResponse(m2)).thenReturn(ChatMessageItemResponse.builder()
+            .messageId(102L)
+            .senderId(20L)
+            .messageType(ChatMessageType.CHAT)
+            .content("two")
+            .createdAt(m2.getCreatedAt())
+            .build());
 
         List<ChatMessageItemResponse> missed = chatRoomQueryService.findMessagesAfter(100L, 10L, 100L, 100);
 

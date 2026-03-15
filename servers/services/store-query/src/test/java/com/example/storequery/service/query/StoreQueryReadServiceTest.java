@@ -46,10 +46,13 @@ class StoreQueryReadServiceTest {
 
     @BeforeEach
     void setUp() {
+        StoreThumbnailResolver storeThumbnailResolver = new StoreThumbnailResolver();
         service = new StoreQueryReadService(
             storeReadModelRepository,
             storeReadImageRepository,
-            storeReadItemRepository
+            storeReadItemRepository,
+            new StoreSummaryAssembler(storeThumbnailResolver),
+            new StoreDetailAssembler(storeThumbnailResolver)
         );
     }
 
@@ -61,6 +64,8 @@ class StoreQueryReadServiceTest {
         CursorResponse<StoreQueryListResponse> result = service.getStores("mzc", StoreQueryStatus.ACTIVE, null, 20);
 
         assertThat(result.getItems()).hasSize(1);
+        assertThat(result.getItems().get(0).status()).isEqualTo(StoreQueryStatus.ACTIVE);
+        assertThat(result.getItems().get(0).thumbnail()).isNotNull();
         verify(storeReadModelRepository).searchWithCursor("mzc", "ACTIVE", 0.2d, null, null, null, 21);
     }
 
@@ -160,7 +165,7 @@ class StoreQueryReadServiceTest {
 
             @Override
             public String getStatus() {
-                return "ACTIVE";
+                return " active ";
             }
 
             @Override

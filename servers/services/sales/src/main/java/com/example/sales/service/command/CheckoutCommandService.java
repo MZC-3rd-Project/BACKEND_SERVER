@@ -5,12 +5,6 @@ import com.example.clients.order.dto.OrderCreateRequest;
 import com.example.clients.order.dto.OrderCreateResponse;
 import com.example.clients.order.exception.OrderClientException;
 import com.example.clients.order.facade.OrderCreateClientFacade;
-import com.example.clients.product.dto.ProductQuoteLineItemRequest;
-import com.example.clients.product.dto.ProductQuoteRequest;
-import com.example.clients.product.dto.ProductQuoteResponse;
-import com.example.clients.product.dto.ProductQuotedLineItem;
-import com.example.clients.product.exception.ProductClientException;
-import com.example.clients.product.facade.ProductQuoteClientFacade;
 import com.example.clients.stock.dto.ReserveOrderStockLineItem;
 import com.example.clients.stock.dto.ReserveOrderStockRequest;
 import com.example.clients.stock.dto.ReserveOrderStockResponse;
@@ -21,14 +15,13 @@ import com.example.clients.stock.facade.StockOrderReservationClientFacade;
 import com.example.clients.stock.facade.StockReservationClientFacade;
 import com.example.config.lock.DistributedLock;
 import com.example.core.exception.BusinessException;
+import com.example.sales.domain.checkout.CheckoutLineItemKey;
+import com.example.sales.domain.checkout.ReserveIntent;
 import com.example.sales.dto.checkout.CheckoutDraft;
-import com.example.sales.dto.checkout.CheckoutQuoteCache;
 import com.example.sales.dto.checkout.request.CheckoutCancelRequest;
-import com.example.sales.dto.checkout.request.CheckoutQuoteRequest;
 import com.example.sales.dto.checkout.request.CheckoutReserveRequest;
 import com.example.sales.dto.checkout.request.CheckoutSubmitRequest;
 import com.example.sales.dto.checkout.response.CheckoutCancelResponse;
-import com.example.sales.dto.checkout.response.CheckoutQuoteResponse;
 import com.example.sales.dto.checkout.response.CheckoutReserveResponse;
 import com.example.sales.dto.checkout.response.CheckoutSubmitResponse;
 import com.example.sales.entity.CheckoutSession;
@@ -39,6 +32,8 @@ import com.example.sales.event.CheckoutReservedEvent;
 import com.example.sales.exception.SalesErrorCode;
 import com.example.sales.repository.CheckoutSessionRepository;
 import com.example.sales.repository.CheckoutSubmitAttemptRepository;
+import com.example.sales.service.query.CheckoutQuoteQueryService;
+import com.example.sales.service.support.CheckoutSnapshotAssembler;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -65,7 +60,8 @@ public class CheckoutCommandService {
     private final CheckoutSubmitFailurePolicy checkoutSubmitFailurePolicy;
     private final StockOrderReservationClientFacade stockOrderReservationClientFacade;
     private final StockReservationClientFacade stockReservationClientFacade;
-    private final ProductQuoteClientFacade productQuoteClientFacade;
+    private final CheckoutQuoteQueryService checkoutQuoteQueryService;
+    private final CheckoutSnapshotAssembler checkoutSnapshotAssembler;
     private final CheckoutDraftRedisService checkoutDraftRedisService;
     private final CheckoutQuoteCacheRedisService checkoutQuoteCacheRedisService;
     private final CheckoutSessionRepository checkoutSessionRepository;
@@ -138,20 +134,6 @@ public class CheckoutCommandService {
     }
 
     @Transactional
-    @DistributedLock(key = "'checkout:quote:' + #request.orderId", waitTime = 3, leaseTime = 10)
-    public CheckoutQuoteResponse quote(CheckoutQuoteRequest request, Long userId) {
-        CheckoutSession session = checkoutSessionRepository.findByOrderId(request.getOrderId())
-                .orElseThrow(() -> new BusinessException(SalesErrorCode.CHECKOUT_SESSION_NOT_FOUND));
-        validateOwnedSession(session, userId);
-        validateQuoteableSession(session);
-
-        CheckoutDraft draft = findDraft(request.getOrderId())
-                .orElseGet(() -> toDraft(session));
-
-        return loadQuoteResponse(draft);
-    }
-
-    @Transactional
     @DistributedLock(key = "'checkout:submit:' + #request.orderId", waitTime = 5, leaseTime = 10)
     public CheckoutSubmitResponse submit(CheckoutSubmitRequest request, Long userId) {
         CheckoutSession session = checkoutSessionRepository.findByOrderId(request.getOrderId())
@@ -163,7 +145,7 @@ public class CheckoutCommandService {
             return toSubmitResponse(session);
         }
 
-        ensureSubmitSnapshot(session);
+        checkoutQuoteQueryService.ensureSubmitQuoteSnapshot(session);
 
         OrderCreateRequest orderRequest = toOrderCreateRequest(session, request);
         String requestPayloadJson = toJson(orderRequest, "checkout submit request");
@@ -182,14 +164,6 @@ public class CheckoutCommandService {
             handleSubmitFailure(session, attempt, e);
             throw new BusinessException(SalesErrorCode.ORDER_SERVICE_ERROR, e.getMessage(), e);
         }
-    }
-
-    @Transactional
-    @DistributedLock(key = "'checkout:quote:' + #orderId", waitTime = 3, leaseTime = 10)
-    public void warmQuoteCache(Long orderId) {
-        findDraft(orderId)
-                .filter(draft -> draft.getExpiresAt() == null || LocalDateTime.now().isBefore(draft.getExpiresAt()))
-                .ifPresent(this::loadQuoteResponse);
     }
 
     @Transactional
@@ -230,58 +204,12 @@ public class CheckoutCommandService {
         if (persistedSession == null) {
             return null;
         }
-        CheckoutDraft persistedDraft = toDraft(persistedSession);
+        CheckoutDraft persistedDraft = checkoutSnapshotAssembler.toDraft(persistedSession);
         boolean replayable = isReplayableSession(persistedSession);
         if (replayable && persistedDraft.getExpiresAt() != null && LocalDateTime.now().isBefore(persistedDraft.getExpiresAt())) {
             checkoutDraftRedisService.saveDraft(persistedDraft, ttlUntil(persistedDraft.getExpiresAt()));
         }
         return new ExistingReserveAttempt(persistedDraft, replayable);
-    }
-
-    private Optional<CheckoutDraft> findDraft(Long orderId) {
-        Optional<CheckoutDraft> redisDraft = checkoutDraftRedisService.findDraft(orderId);
-        if (redisDraft.isPresent()) {
-            return redisDraft;
-        }
-
-        Optional<CheckoutSession> persistedSession = checkoutSessionRepository.findByOrderId(orderId);
-        if (persistedSession.isEmpty()) {
-            return Optional.empty();
-        }
-
-        CheckoutSession session = persistedSession.get();
-        if (!isReplayableSession(session)) {
-            return Optional.empty();
-        }
-
-        CheckoutDraft persistedDraft = toDraft(session);
-        if (persistedDraft.getExpiresAt() != null && LocalDateTime.now().isBefore(persistedDraft.getExpiresAt())) {
-            checkoutDraftRedisService.saveDraft(persistedDraft, ttlUntil(persistedDraft.getExpiresAt()));
-        }
-        return Optional.of(persistedDraft);
-    }
-
-    private CheckoutQuoteResponse loadQuoteResponse(CheckoutDraft draft) {
-        Optional<CheckoutQuoteResponse> cachedQuote = checkoutQuoteCacheRedisService.findQuote(draft.getOrderId())
-                .map(this::toQuoteResponse);
-        if (cachedQuote.isPresent()) {
-            return cachedQuote.get();
-        }
-
-        Optional<CheckoutQuoteResponse> persistedQuote = checkoutSessionRepository.findByOrderId(draft.getOrderId())
-                .filter(this::hasPersistedQuoteSnapshot)
-                .map(session -> toQuoteResponse(session, draft.getExpiresAt()));
-        if (persistedQuote.isPresent()) {
-            cacheQuote(draft, persistedQuote.get());
-            return persistedQuote.get();
-        }
-
-        ProductQuoteResponse quoteResponse = fetchLiveQuote(draft);
-        applyQuoteSnapshot(draft.getOrderId(), quoteResponse);
-
-        CheckoutQuoteResponse response = toQuoteResponse(draft, quoteResponse);
-        cacheQuote(draft, response);
-        return response;
     }
 
     private Duration ttlUntil(LocalDateTime expiresAt) {
@@ -292,17 +220,6 @@ public class CheckoutCommandService {
     private void validateOwnedSession(CheckoutSession session, Long userId) {
         if (!session.getUserId().equals(userId)) {
             throw new BusinessException(SalesErrorCode.CHECKOUT_SESSION_FORBIDDEN);
-        }
-    }
-
-    private void validateQuoteableSession(CheckoutSession session) {
-        if (session.getStatus() == CheckoutSessionStatus.CANCELLED) {
-            throw new BusinessException(SalesErrorCode.CHECKOUT_SESSION_CANCELLED);
-        }
-        if (session.getStatus() == CheckoutSessionStatus.EXPIRED
-                || (session.getExpiresAt() != null && LocalDateTime.now().isAfter(session.getExpiresAt()))) {
-            clearCheckoutCaches(session);
-            throw new BusinessException(SalesErrorCode.CHECKOUT_SESSION_EXPIRED);
         }
     }
 
@@ -361,218 +278,6 @@ public class CheckoutCommandService {
                 .orderId(session.getOrderId())
                 .status(session.getStatus())
                 .submittedAt(session.getOrderCreatedAt())
-                .build();
-    }
-
-    private CheckoutQuoteResponse.QuotedLineItem toQuotedLineItem(ProductQuotedLineItem item) {
-        return CheckoutQuoteResponse.QuotedLineItem.builder()
-                .itemId(item.itemId())
-                .itemType(item.itemType())
-                .title(item.title())
-                .sellerId(item.sellerId())
-                .storeId(item.storeId())
-                .referenceId(item.referenceId())
-                .referenceName(item.referenceName())
-                .stockItemType(item.stockItemType())
-                .quantity(item.quantity())
-                .baseUnitPrice(item.baseUnitPrice())
-                .finalUnitPrice(item.finalUnitPrice())
-                .lineAmount(item.lineAmount())
-                .build();
-    }
-
-    private CheckoutQuoteResponse.QuotedLineItem toQuotedLineItem(CheckoutQuoteCache.LineItem item) {
-        return CheckoutQuoteResponse.QuotedLineItem.builder()
-                .itemId(item.getItemId())
-                .itemType(item.getItemType())
-                .title(item.getTitle())
-                .sellerId(item.getSellerId())
-                .storeId(item.getStoreId())
-                .referenceId(item.getReferenceId())
-                .referenceName(item.getReferenceName())
-                .stockItemType(item.getStockItemType())
-                .quantity(item.getQuantity())
-                .baseUnitPrice(item.getBaseUnitPrice())
-                .finalUnitPrice(item.getFinalUnitPrice())
-                .lineAmount(item.getLineAmount())
-                .build();
-    }
-
-    private void applyQuoteSnapshot(Long orderId, ProductQuoteResponse quoteResponse) {
-        checkoutSessionRepository.findByOrderId(orderId).ifPresent(session -> {
-            for (ProductQuotedLineItem quotedLineItem : quoteResponse.lineItems()) {
-                session.getLineItems().stream()
-                        .filter(lineItem -> lineItem.matches(quotedLineItem.itemId(), quotedLineItem.referenceId()))
-                        .findFirst()
-                        .ifPresent(lineItem -> lineItem.applyQuoteSnapshot(
-                                quotedLineItem.itemType(),
-                                quotedLineItem.title(),
-                                quotedLineItem.sellerId(),
-                                quotedLineItem.storeId(),
-                                quotedLineItem.referenceName(),
-                                quotedLineItem.baseUnitPrice(),
-                                quotedLineItem.finalUnitPrice(),
-                                quotedLineItem.lineAmount()
-                        ));
-            }
-
-            if (session.getStatus() == CheckoutSessionStatus.RESERVED) {
-                session.markQuoted(quoteResponse.quotedAt());
-            } else if (session.getStatus() == CheckoutSessionStatus.QUOTED) {
-                session.refreshQuotedAt(quoteResponse.quotedAt());
-            }
-        });
-    }
-
-    private void ensureSubmitSnapshot(CheckoutSession session) {
-        CheckoutQuoteResponse quoteResponse = loadQuoteResponse(toDraft(session));
-
-        for (CheckoutQuoteResponse.QuotedLineItem lineItem : quoteResponse.getLineItems()) {
-            session.getLineItems().stream()
-                    .filter(candidate -> candidate.matches(lineItem.getItemId(), lineItem.getReferenceId()))
-                    .findFirst()
-                    .ifPresent(candidate -> candidate.applyQuoteSnapshot(
-                            lineItem.getItemType(),
-                            lineItem.getTitle(),
-                            lineItem.getSellerId(),
-                            lineItem.getStoreId(),
-                            lineItem.getReferenceName(),
-                            lineItem.getBaseUnitPrice(),
-                            lineItem.getFinalUnitPrice(),
-                            lineItem.getLineAmount()
-                    ));
-        }
-
-        if (session.getStatus() == CheckoutSessionStatus.RESERVED) {
-            session.markQuoted(quoteResponse.getQuotedAt());
-        }
-    }
-
-    private ProductQuoteResponse fetchLiveQuote(CheckoutDraft draft) {
-        try {
-            return productQuoteClientFacade.quoteItems(new ProductQuoteRequest(
-                    draft.getLineItems().stream()
-                            .map(item -> new ProductQuoteLineItemRequest(
-                                    item.getItemId(),
-                                    item.getChannelType(),
-                                    item.getChannelRefId(),
-                                    item.getReferenceId(),
-                                    item.getQuantity()))
-                            .toList()
-            ));
-        } catch (ProductClientException e) {
-            throw new BusinessException(SalesErrorCode.PRODUCT_SERVICE_ERROR);
-        }
-    }
-
-    private boolean hasPersistedQuoteSnapshot(CheckoutSession session) {
-        if (session.getQuotedAt() == null || session.getStatus() != CheckoutSessionStatus.QUOTED) {
-            return false;
-        }
-        if (session.getLineItems().isEmpty()) {
-            return false;
-        }
-        return session.getLineItems().stream().allMatch(this::hasLineItemQuoteSnapshot);
-    }
-
-    private boolean hasLineItemQuoteSnapshot(CheckoutSessionLineItem lineItem) {
-        return lineItem.getItemType() != null
-                && lineItem.getTitle() != null
-                && lineItem.getReferenceName() != null
-                && lineItem.getBaseUnitPrice() != null
-                && lineItem.getFinalUnitPrice() != null
-                && lineItem.getLineAmount() != null;
-    }
-
-    private CheckoutQuoteResponse toQuoteResponse(CheckoutDraft draft, ProductQuoteResponse quoteResponse) {
-        return CheckoutQuoteResponse.builder()
-                .orderId(draft.getOrderId())
-                .expiresAt(draft.getExpiresAt())
-                .quotedAt(quoteResponse.quotedAt())
-                .totalAmount(quoteResponse.totalAmount())
-                .lineItems(quoteResponse.lineItems().stream()
-                        .map(this::toQuotedLineItem)
-                        .toList())
-                .build();
-    }
-
-    private CheckoutQuoteResponse toQuoteResponse(CheckoutSession session, LocalDateTime expiresAt) {
-        long totalAmount = session.getLineItems().stream()
-                .map(CheckoutSessionLineItem::getLineAmount)
-                .filter(amount -> amount != null)
-                .mapToLong(Long::longValue)
-                .sum();
-
-        return CheckoutQuoteResponse.builder()
-                .orderId(session.getOrderId())
-                .expiresAt(expiresAt)
-                .quotedAt(session.getQuotedAt())
-                .totalAmount(totalAmount)
-                .lineItems(session.getLineItems().stream()
-                        .map(this::toQuotedLineItem)
-                        .toList())
-                .build();
-    }
-
-    private CheckoutQuoteResponse.QuotedLineItem toQuotedLineItem(CheckoutSessionLineItem item) {
-        return CheckoutQuoteResponse.QuotedLineItem.builder()
-                .itemId(item.getItemId())
-                .itemType(item.getItemType())
-                .title(item.getTitle())
-                .sellerId(item.getSellerId())
-                .storeId(item.getStoreId())
-                .referenceId(item.getReferenceId())
-                .referenceName(item.getReferenceName())
-                .stockItemType(item.getStockItemType())
-                .quantity(item.getQuantity())
-                .baseUnitPrice(item.getBaseUnitPrice())
-                .finalUnitPrice(item.getFinalUnitPrice())
-                .lineAmount(item.getLineAmount())
-                .build();
-    }
-
-    private void cacheQuote(CheckoutDraft draft, CheckoutQuoteResponse response) {
-        if (draft.getExpiresAt() == null) {
-            log.debug("Skip quote cache because expiresAt is missing: orderId={}", draft.getOrderId());
-            return;
-        }
-
-        checkoutQuoteCacheRedisService.saveQuote(
-                CheckoutQuoteCache.builder()
-                        .orderId(response.getOrderId())
-                        .expiresAt(response.getExpiresAt())
-                        .quotedAt(response.getQuotedAt())
-                        .totalAmount(response.getTotalAmount())
-                        .lineItems(response.getLineItems().stream()
-                                .map(item -> CheckoutQuoteCache.LineItem.builder()
-                                        .itemId(item.getItemId())
-                                        .itemType(item.getItemType())
-                                        .title(item.getTitle())
-                                        .sellerId(item.getSellerId())
-                                        .storeId(item.getStoreId())
-                                        .referenceId(item.getReferenceId())
-                                        .referenceName(item.getReferenceName())
-                                        .stockItemType(item.getStockItemType())
-                                        .quantity(item.getQuantity())
-                                        .baseUnitPrice(item.getBaseUnitPrice())
-                                        .finalUnitPrice(item.getFinalUnitPrice())
-                                        .lineAmount(item.getLineAmount())
-                                        .build())
-                                .toList())
-                        .build(),
-                ttlUntil(draft.getExpiresAt())
-        );
-    }
-
-    private CheckoutQuoteResponse toQuoteResponse(CheckoutQuoteCache quoteCache) {
-        return CheckoutQuoteResponse.builder()
-                .orderId(quoteCache.getOrderId())
-                .expiresAt(quoteCache.getExpiresAt())
-                .quotedAt(quoteCache.getQuotedAt())
-                .totalAmount(quoteCache.getTotalAmount())
-                .lineItems(quoteCache.getLineItems().stream()
-                        .map(this::toQuotedLineItem)
-                        .toList())
                 .build();
     }
 
@@ -695,42 +400,7 @@ public class CheckoutCommandService {
     }
 
     private boolean hasSameReserveIntent(CheckoutDraft draft, CheckoutReserveRequest request) {
-        List<CheckoutDraft.LineItem> existingLineItems = draft.getLineItems().stream()
-                .sorted(Comparator
-                        .comparing(CheckoutDraft.LineItem::getItemId)
-                        .thenComparing(item -> normalizeEnumLike(item.getChannelType()))
-                        .thenComparing(CheckoutDraft.LineItem::getChannelRefId, Comparator.nullsFirst(Long::compareTo))
-                        .thenComparing(item -> normalizeEnumLike(item.getStockItemType()))
-                        .thenComparing(CheckoutDraft.LineItem::getReferenceId)
-                        .thenComparing(CheckoutDraft.LineItem::getQuantity))
-                .toList();
-        List<CheckoutReserveRequest.LineItem> requestLineItems = request.getLineItems().stream()
-                .sorted(Comparator
-                        .comparing(CheckoutReserveRequest.LineItem::getItemId)
-                        .thenComparing(item -> normalizeEnumLike(item.getChannelType()))
-                        .thenComparing(CheckoutReserveRequest.LineItem::getChannelRefId, Comparator.nullsFirst(Long::compareTo))
-                        .thenComparing(item -> normalizeEnumLike(item.getStockItemType()))
-                        .thenComparing(CheckoutReserveRequest.LineItem::getReferenceId)
-                        .thenComparing(CheckoutReserveRequest.LineItem::getQuantity))
-                .toList();
-
-        if (existingLineItems.size() != requestLineItems.size()) {
-            return false;
-        }
-
-        for (int i = 0; i < existingLineItems.size(); i++) {
-            CheckoutDraft.LineItem existing = existingLineItems.get(i);
-            CheckoutReserveRequest.LineItem candidate = requestLineItems.get(i);
-            if (!Objects.equals(existing.getItemId(), candidate.getItemId())
-                    || !Objects.equals(normalizeEnumLike(existing.getChannelType()), normalizeEnumLike(candidate.getChannelType()))
-                    || !Objects.equals(existing.getChannelRefId(), candidate.getChannelRefId())
-                    || !Objects.equals(normalizeEnumLike(existing.getStockItemType()), normalizeEnumLike(candidate.getStockItemType()))
-                    || !Objects.equals(existing.getReferenceId(), candidate.getReferenceId())
-                    || !Objects.equals(existing.getQuantity(), candidate.getQuantity())) {
-                return false;
-            }
-        }
-        return true;
+        return toReserveIntent(draft).matches(toReserveIntent(request));
     }
 
     private String normalizeEnumLike(String value) {
@@ -746,23 +416,28 @@ public class CheckoutCommandService {
         }
     }
 
-    private CheckoutDraft toDraft(CheckoutSession session) {
-        return CheckoutDraft.builder()
-                .orderId(session.getOrderId())
-                .userId(session.getUserId())
-                .idempotencyKey(session.getIdempotencyKey())
-                .expiresAt(session.getExpiresAt())
-                .lineItems(session.getLineItems().stream()
-                        .map(item -> CheckoutDraft.LineItem.builder()
-                                .itemId(item.getItemId())
-                                .channelType(item.getChannelType())
-                                .channelRefId(item.getChannelRefId())
-                                .stockItemType(item.getStockItemType())
-                                .referenceId(item.getReferenceId())
-                                .quantity(item.getQuantity())
-                                .build())
-                        .toList())
-                .build();
+    private ReserveIntent toReserveIntent(CheckoutDraft draft) {
+        return new ReserveIntent(draft.getLineItems().stream()
+                .map(item -> new ReserveIntent.LineItem(
+                        new CheckoutLineItemKey(item.getItemId(), item.getReferenceId()),
+                        item.getChannelType(),
+                        item.getChannelRefId(),
+                        item.getStockItemType(),
+                        item.getQuantity()
+                ))
+                .toList());
+    }
+
+    private ReserveIntent toReserveIntent(CheckoutReserveRequest request) {
+        return new ReserveIntent(request.getLineItems().stream()
+                .map(item -> new ReserveIntent.LineItem(
+                        new CheckoutLineItemKey(item.getItemId(), item.getReferenceId()),
+                        item.getChannelType(),
+                        item.getChannelRefId(),
+                        item.getStockItemType(),
+                        item.getQuantity()
+                ))
+                .toList());
     }
 
     private StockReserveChannelContext resolveStockReserveChannelContext(List<CheckoutReserveRequest.LineItem> lineItems) {

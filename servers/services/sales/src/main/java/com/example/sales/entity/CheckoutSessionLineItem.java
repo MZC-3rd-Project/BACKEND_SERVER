@@ -1,5 +1,7 @@
 package com.example.sales.entity;
 
+import com.example.sales.domain.checkout.CheckoutLineItemKey;
+import com.example.sales.domain.checkout.QuoteSnapshot;
 import com.example.core.id.jpa.SnowflakeGenerated;
 import com.example.data.entity.BaseEntity;
 import jakarta.persistence.*;
@@ -119,11 +121,29 @@ public class CheckoutSessionLineItem extends BaseEntity {
         this.lineAmount = lineAmount;
     }
 
+    public void applyQuoteSnapshot(QuoteSnapshot.QuotedLineItem snapshot) {
+        applyQuoteSnapshot(
+                snapshot.itemType(),
+                snapshot.title(),
+                snapshot.sellerId(),
+                snapshot.storeId(),
+                snapshot.referenceName(),
+                snapshot.baseUnitPrice(),
+                snapshot.finalUnitPrice(),
+                snapshot.lineAmount()
+        );
+    }
+
+    public CheckoutLineItemKey key() {
+        return new CheckoutLineItemKey(itemId, referenceId);
+    }
+
+    public boolean matches(CheckoutLineItemKey key) {
+        return key().matches(key);
+    }
+
     public boolean matches(Long itemId, Long referenceId) {
-        return this.itemId != null
-                && this.referenceId != null
-                && this.itemId.equals(itemId)
-                && this.referenceId.equals(referenceId);
+        return matches(new CheckoutLineItemKey(itemId, referenceId));
     }
 
     public boolean hasSameReserveIntent(CheckoutSessionLineItem other) {
@@ -137,6 +157,15 @@ public class CheckoutSessionLineItem extends BaseEntity {
                 && equalsIgnoreCase(stockItemType, other.stockItemType)
                 && java.util.Objects.equals(referenceId, other.referenceId)
                 && java.util.Objects.equals(quantity, other.quantity);
+    }
+
+    public boolean hasQuotedSnapshot() {
+        return itemType != null
+                && title != null
+                && referenceName != null
+                && baseUnitPrice != null
+                && finalUnitPrice != null
+                && lineAmount != null;
     }
 
     void attachTo(CheckoutSession checkoutSession) {

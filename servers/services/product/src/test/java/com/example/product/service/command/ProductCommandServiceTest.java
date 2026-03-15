@@ -298,6 +298,52 @@ class ProductCommandServiceTest {
     }
 
     @Test
+    void updateProduct_withExtendedShippingMetadata_updatesExistingShippingInfoInPlace() {
+        Long itemId = 30L;
+        Long sellerId = 10L;
+        Item item = createItem(itemId, sellerId);
+        ProductUpdateRequest request = new ProductUpdateRequest();
+
+        Object shippingInfoRequest = new com.example.product.dto.goods.request.ShippingInfoRequest();
+        ReflectionTestUtils.setField(shippingInfoRequest, "shippingFee", 2500L);
+        ReflectionTestUtils.setField(shippingInfoRequest, "freeShippingThreshold", 40000L);
+        ReflectionTestUtils.setField(shippingInfoRequest, "estimatedDays", 1);
+        ReflectionTestUtils.setField(shippingInfoRequest, "returnPolicy", "updated policy");
+        ReflectionTestUtils.setField(shippingInfoRequest, "carrier", "Hanjin");
+        ReflectionTestUtils.setField(shippingInfoRequest, "shipFrom", "Busan");
+        ReflectionTestUtils.setField(shippingInfoRequest, "returnAddress", "Busan return");
+        ReflectionTestUtils.setField(shippingInfoRequest, "returnShippingFee", 4000L);
+        ReflectionTestUtils.setField(shippingInfoRequest, "exchangeShippingFee", 8000L);
+        ReflectionTestUtils.setField(shippingInfoRequest, "shippingNotice", "same day");
+        ReflectionTestUtils.setField(request, "shippingInfo", shippingInfoRequest);
+
+        ShippingInfo existingShippingInfo = ShippingInfo.create(itemId, 3000L, 50000L, 2, "old policy");
+
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
+        when(shippingInfoRepository.findByItemId(itemId)).thenReturn(Optional.of(existingShippingInfo));
+        when(itemOptionRepository.findByItemId(itemId)).thenReturn(List.of());
+        when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(List.of());
+
+        GoodsDetailResponse response = productCommandService.updateProduct(itemId, request, sellerId);
+
+        verify(shippingInfoRepository, org.mockito.Mockito.never()).softDeleteByItemId(itemId);
+        verify(shippingInfoRepository, org.mockito.Mockito.never()).save(any(ShippingInfo.class));
+        assertThat(existingShippingInfo.getShippingFee()).isEqualTo(2500L);
+        assertThat(existingShippingInfo.getFreeShippingThreshold()).isEqualTo(40000L);
+        assertThat(existingShippingInfo.getEstimatedDays()).isEqualTo(1);
+        assertThat(existingShippingInfo.getReturnPolicy()).isEqualTo("updated policy");
+        assertThat(existingShippingInfo.getCarrier()).isEqualTo("Hanjin");
+        assertThat(existingShippingInfo.getShipFrom()).isEqualTo("Busan");
+        assertThat(existingShippingInfo.getReturnAddress()).isEqualTo("Busan return");
+        assertThat(existingShippingInfo.getReturnShippingFee()).isEqualTo(4000L);
+        assertThat(existingShippingInfo.getExchangeShippingFee()).isEqualTo(8000L);
+        assertThat(existingShippingInfo.getShippingNotice()).isEqualTo("same day");
+        assertThat(response.getShippingInfo()).isNotNull();
+        assertThat(response.getShippingInfo().getCarrier()).isEqualTo("Hanjin");
+        assertThat(response.getShippingInfo().getShippingNotice()).isEqualTo("same day");
+    }
+
+    @Test
     void updateProduct_whenCategoryNotFound_throwsBusinessError() {
         Long itemId = 1L;
         Long sellerId = 10L;

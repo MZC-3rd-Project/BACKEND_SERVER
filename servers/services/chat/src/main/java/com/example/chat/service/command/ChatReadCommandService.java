@@ -6,6 +6,7 @@ import com.example.chat.entity.participant.ChatRoomParticipant;
 import com.example.chat.exception.ChatErrorCode;
 import com.example.chat.repository.ChatMessageRepository;
 import com.example.chat.repository.ChatRoomParticipantRepository;
+import com.example.chat.service.policy.ChatRoomAccessPolicy;
 import com.example.core.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ChatReadCommandService {
 
+    private final ChatRoomAccessPolicy chatRoomAccessPolicy;
     private final ChatRoomParticipantRepository chatRoomParticipantRepository;
     private final ChatMessageRepository chatMessageRepository;
 
@@ -25,12 +27,7 @@ public class ChatReadCommandService {
             throw new BusinessException(ChatErrorCode.INVALID_MESSAGE_CONTENT);
         }
 
-        ChatRoomParticipant participant = chatRoomParticipantRepository.findByRoomIdAndUserId(roomId, userId)
-                .orElseThrow(() -> new BusinessException(ChatErrorCode.FORBIDDEN_ROOM_ACCESS));
-
-        if (!participant.isActive()) {
-            throw new BusinessException(ChatErrorCode.FORBIDDEN_ROOM_ACCESS);
-        }
+        ChatRoomParticipant participant = chatRoomAccessPolicy.requireActiveParticipant(roomId, userId);
 
         Long targetMessageId = request.getLastReadMessageId();
         if (!chatMessageRepository.existsByRoomIdAndId(roomId, targetMessageId)) {

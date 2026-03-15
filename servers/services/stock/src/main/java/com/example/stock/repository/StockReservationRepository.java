@@ -2,6 +2,7 @@ package com.example.stock.repository;
 
 import com.example.stock.entity.ReservationStatus;
 import com.example.stock.entity.StockReservation;
+import com.example.stock.service.query.view.StockReservationQueryView;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -36,4 +37,19 @@ public interface StockReservationRepository extends JpaRepository<StockReservati
     List<StockReservation> findByStockItemIdAndStatus(Long stockItemId, ReservationStatus status);
 
     List<StockReservation> findByOrderId(Long orderId);
+
+    @Query("""
+            SELECT new com.example.stock.service.query.view.StockReservationQueryView(
+                r.stockItemId,
+                r.userId,
+                r.orderId,
+                r.quantity,
+                r.status,
+                r.expiredAt
+            )
+            FROM StockReservation r
+            WHERE r.orderId = :orderId
+            ORDER BY r.id ASC
+            """)
+    List<StockReservationQueryView> findViewsByOrderId(@Param("orderId") Long orderId);
 }

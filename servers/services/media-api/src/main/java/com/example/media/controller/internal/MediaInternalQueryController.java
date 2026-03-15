@@ -3,6 +3,7 @@ package com.example.media.controller.internal;
 import com.example.api.response.ApiResponse;
 import com.example.media.dto.query.request.MediaUrlBatchRequest;
 import com.example.media.dto.query.response.MediaUrlResponse;
+import com.example.media.service.query.MediaAccessContext;
 import com.example.media.service.query.MediaQueryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,11 +25,11 @@ public class MediaInternalQueryController {
 
     @GetMapping("/{mediaId}/url")
     public ApiResponse<MediaUrlResponse> getMediaUrl(@PathVariable Long mediaId) {
-        return ApiResponse.success(mediaQueryService.getMediaUrl(mediaId, null));
+        return ApiResponse.success(mediaQueryService.getMediaUrl(mediaId, MediaAccessContext.internal()));
     }
 
     @PostMapping("/urls/batch")
     public ApiResponse<List<MediaUrlResponse>> getMediaUrls(@Valid @RequestBody MediaUrlBatchRequest request) {
-        return ApiResponse.success(mediaQueryService.getMediaUrls(request.getMediaIds(), null));
+        return ApiResponse.success(mediaQueryService.getMediaUrls(request.getMediaIds(), MediaAccessContext.internal()));
     }
 }

@@ -1,21 +1,18 @@
 package com.example.hotdeal.service;
 
-import com.example.core.exception.BusinessException;
-import com.example.data.entity.datasource.UseWriteDataSource;
-import com.example.hotdeal.dto.HotDealDetailResponse;
-import com.example.hotdeal.dto.HotDealListResponse;
-import com.example.hotdeal.entity.HotDeal;
+import com.example.hotdeal.dto.query.response.HotDealDetailQueryResponse;
+import com.example.hotdeal.dto.query.response.HotDealListQueryResponse;
 import com.example.hotdeal.entity.HotDealStatus;
-import com.example.hotdeal.exception.HotDealErrorCode;
 import com.example.hotdeal.repository.HotDealRepository;
+import com.example.hotdeal.service.query.HotDealDetailCache;
+import com.example.hotdeal.service.query.HotDealDetailReader;
+import com.example.hotdeal.service.query.HotDealQueryAssembler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -23,12 +20,11 @@ import java.util.concurrent.TimeUnit;
 public class HotDealQueryService {
 
     private final HotDealRepository hotDealRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final HotDealDetailCache hotDealDetailCache;
+    private final HotDealDetailReader hotDealDetailReader;
+    private final HotDealQueryAssembler hotDealQueryAssembler;
 
-    private static final String CACHE_KEY_PREFIX = "hotdeal:detail:";
-    private static final long CACHE_TTL_SECONDS = 10;
-
-    public List<HotDealListResponse> getActiveDeals(Long cursor, int size) {
+    public List<HotDealListQueryResponse> getActiveDeals(Long cursor, int size) {
         if (cursor == null || cursor == 0) {
             cursor = Long.MAX_VALUE;
         }
@@ -36,26 +32,18 @@ public class HotDealQueryService {
         return hotDealRepository.findByStatusWithCursor(
                         HotDealStatus.ACTIVE, cursor, PageRequest.of(0, size))
                 .stream()
-                .map(HotDealListResponse::from)
+                .map(hotDealQueryAssembler::toListResponse)
                 .toList();
     }
 
-    @UseWriteDataSource
-    public HotDealDetailResponse getDetail(Long hotDealId) {
-        String cacheKey = CACHE_KEY_PREFIX + hotDealId;
-
-        Object cached = redisTemplate.opsForValue().get(cacheKey);
-        if (cached instanceof HotDealDetailResponse response) {
-            return response;
-        }
-
-        HotDeal hotDeal = hotDealRepository.findById(hotDealId)
-                .orElseThrow(() -> new BusinessException(HotDealErrorCode.HOT_DEAL_NOT_FOUND));
-
-        HotDealDetailResponse response = HotDealDetailResponse.from(hotDeal);
-
-        redisTemplate.opsForValue().set(cacheKey, response, CACHE_TTL_SECONDS, TimeUnit.SECONDS);
-
-        return response;
+    public HotDealDetailQueryResponse getDetail(Long hotDealId) {
+        return hotDealDetailCache.get(hotDealId)
+                .orElseGet(() -> {
+                    HotDealDetailQueryResponse response = hotDealQueryAssembler.toDetailResponse(
+                            hotDealDetailReader.read(hotDealId)
+                    );
+                    hotDealDetailCache.put(hotDealId, response);
+                    return response;
+                });
     }
 }

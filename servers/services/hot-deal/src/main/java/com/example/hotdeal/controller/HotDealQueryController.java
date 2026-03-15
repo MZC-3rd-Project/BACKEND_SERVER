@@ -2,8 +2,8 @@ package com.example.hotdeal.controller;
 
 import com.example.api.response.ApiResponse;
 import com.example.hotdeal.controller.api.HotDealQueryApi;
-import com.example.hotdeal.dto.HotDealDetailResponse;
-import com.example.hotdeal.dto.HotDealListResponse;
+import com.example.hotdeal.dto.query.response.HotDealDetailQueryResponse;
+import com.example.hotdeal.dto.query.response.HotDealListQueryResponse;
 import com.example.hotdeal.service.HotDealQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,12 +19,12 @@ public class HotDealQueryController implements HotDealQueryApi {
     private final HotDealQueryService hotDealQueryService;
 
     @Override
-    public ApiResponse<List<HotDealListResponse>> getActiveDeals(Long cursor, int size) {
+    public ApiResponse<List<HotDealListQueryResponse>> getActiveDeals(Long cursor, int size) {
         return ApiResponse.success(hotDealQueryService.getActiveDeals(cursor, size));
     }
 
     @Override
-    public ApiResponse<HotDealDetailResponse> getDetail(Long hotDealId) {
+    public ApiResponse<HotDealDetailQueryResponse> getDetail(Long hotDealId) {
         return ApiResponse.success(hotDealQueryService.getDetail(hotDealId));
     }
 }

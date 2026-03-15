@@ -5,6 +5,7 @@ import com.example.product.exception.ProductErrorCode;
 
 import java.util.Locale;
 import java.util.Map;
+import java.util.List;
 import java.util.Set;
 
 public enum ItemStatus {
@@ -17,6 +18,10 @@ public enum ItemStatus {
     HIDDEN,
     SOLD_OUT,
     CLOSED;
+
+    private static final List<ItemStatus> PUBLICLY_VISIBLE_STATUSES = List.of(
+            FUNDING, FUNDED, ON_SALE, HOT_DEAL
+    );
 
     private static final Map<ItemStatus, Set<ItemStatus>> TRANSITIONS = Map.of(
             DRAFT, Set.of(FUNDING, ON_SALE, HIDDEN),
@@ -39,6 +44,14 @@ public enum ItemStatus {
 
     public boolean canTransitionTo(ItemStatus target) {
         return TRANSITIONS.getOrDefault(this, Set.of()).contains(target);
+    }
+
+    public boolean isPubliclyVisible() {
+        return PUBLICLY_VISIBLE_STATUSES.contains(this);
+    }
+
+    public static List<ItemStatus> publiclyVisibleStatuses() {
+        return PUBLICLY_VISIBLE_STATUSES;
     }
 
     public static ItemStatus from(String rawStatus) {
