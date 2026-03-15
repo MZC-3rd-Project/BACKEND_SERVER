@@ -1,6 +1,7 @@
 package com.example.sales.service.command;
 
 import com.example.sales.event.CheckoutReservedEvent;
+import com.example.sales.service.query.CheckoutQuoteQueryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -13,13 +14,13 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @RequiredArgsConstructor
 public class CheckoutQuoteWarmupListener {
 
-    private final CheckoutCommandService checkoutCommandService;
+    private final CheckoutQuoteQueryService checkoutQuoteQueryService;
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void warmQuoteCache(CheckoutReservedEvent event) {
         try {
-            checkoutCommandService.warmQuoteCache(event.orderId());
+            checkoutQuoteQueryService.warmQuoteCache(event.orderId());
         } catch (Exception e) {
             log.warn("Checkout quote warm-up failed: orderId={}", event.orderId(), e);
         }

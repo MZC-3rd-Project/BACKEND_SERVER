@@ -1,5 +1,6 @@
 package com.example.sales.entity;
 
+import com.example.sales.domain.checkout.QuoteSnapshot;
 import com.example.core.id.jpa.SnowflakeGenerated;
 import com.example.data.entity.BaseEntity;
 import jakarta.persistence.*;
@@ -120,6 +121,40 @@ public class CheckoutSession extends BaseEntity {
 
     public void cancel() {
         changeStatus(CheckoutSessionStatus.CANCELLED);
+    }
+
+    public void applyQuoteSnapshot(QuoteSnapshot snapshot) {
+        for (CheckoutSessionLineItem lineItem : lineItems) {
+            snapshot.findLineItem(lineItem.key())
+                    .ifPresent(lineItem::applyQuoteSnapshot);
+        }
+
+        if (status == CheckoutSessionStatus.RESERVED) {
+            markQuoted(snapshot.quotedAt());
+        } else if (status == CheckoutSessionStatus.QUOTED) {
+            refreshQuotedAt(snapshot.quotedAt());
+        }
+    }
+
+    public void ensureQuoteSnapshot(QuoteSnapshot snapshot) {
+        for (CheckoutSessionLineItem lineItem : lineItems) {
+            snapshot.findLineItem(lineItem.key())
+                    .ifPresent(lineItem::applyQuoteSnapshot);
+        }
+
+        if (status == CheckoutSessionStatus.RESERVED) {
+            markQuoted(snapshot.quotedAt());
+        }
+    }
+
+    public boolean hasPersistedQuoteSnapshot() {
+        if (quotedAt == null || status != CheckoutSessionStatus.QUOTED) {
+            return false;
+        }
+        if (lineItems.isEmpty()) {
+            return false;
+        }
+        return lineItems.stream().allMatch(CheckoutSessionLineItem::hasQuotedSnapshot);
     }
 
     private void changeStatus(CheckoutSessionStatus newStatus) {

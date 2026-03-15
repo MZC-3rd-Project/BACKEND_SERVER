@@ -2,9 +2,12 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "$ROOT/docker/scripts/lib/e2e_support.sh"
+ensure_java21
 LOG_DIR="${LOG_DIR:-/tmp/search_consumer_dlq_retry_e2e_logs_$(date +%Y%m%d_%H%M%S)}"
 mkdir -p "$LOG_DIR"
 
+STORE_PORT="${STORE_PORT:-18872}"
 PRODUCT_PORT="${PRODUCT_PORT:-18884}"
 SEARCH_PORT="${SEARCH_PORT:-18888}"
 ELASTICSEARCH_PORT="${ELASTICSEARCH_PORT:-23173}"
@@ -290,6 +293,10 @@ JSON
 }
 
 start_services() {
+  echo "[INFO] starting store-service on ${STORE_PORT}"
+  store_pid="$(start_store_service "$ROOT" "$LOG_DIR/store.log" "$STORE_PORT" "$GRADLE_USER_HOME")"
+  PIDS+=("$store_pid")
+
   echo "[INFO] starting product-service on ${PRODUCT_PORT}"
   (
     cd "$ROOT"
@@ -298,6 +305,7 @@ start_services() {
       SERVER_PORT="$PRODUCT_PORT" \
       SPRING_KAFKA_CONSUMER_GROUP_ID="$PRODUCT_CONSUMER_GROUP" \
       SPRING_KAFKA_CONSUMER_AUTO_OFFSET_RESET=latest \
+      STORE_SERVICE_URL="http://127.0.0.1:${STORE_PORT}" \
       APP_GATEWAY_SECURITY_ENABLED=false \
       ./gradlew :servers:services:product:bootRun --no-daemon >"$LOG_DIR/product.log" 2>&1
   ) &
@@ -330,6 +338,7 @@ main() {
   require_cmd lsof
 
   check_port_free "$PRODUCT_PORT"
+  check_port_free "$STORE_PORT"
   check_port_free "$SEARCH_PORT"
 
   echo "[INFO] preparing infra"
@@ -337,10 +346,17 @@ main() {
   wait_es_up
 
   start_services
+  wait_health "store-service" "$STORE_PORT"
   wait_health "product-service" "$PRODUCT_PORT"
   wait_health "search-service" "$SEARCH_PORT"
   recreate_search_index
   wait_consumer_assignment "$SEARCH_CONSUMER_GROUP" "item-events" "search consumer assignment ready (item-events)"
+
+  STORE_ID="$(ensure_store_fixture "$STORE_PORT" "$SELLER_ID" "Search Retry Store ${SELLER_ID}" "Seoul Search-ro 1" "010-0000-1005" "search dlq retry e2e store")" || {
+    fail "store fixture ready"
+    exit 1
+  }
+  pass "store fixture ready (storeId=${STORE_ID})"
 
   psql_exec search_db "TRUNCATE TABLE dead_letter_messages RESTART IDENTITY CASCADE;"
   psql_exec search_db "TRUNCATE TABLE processed_events RESTART IDENTITY CASCADE;"

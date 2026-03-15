@@ -25,15 +25,9 @@ import java.util.stream.Collectors;
 @UseWriteDataSource
 public class InternalItemQueryService {
 
-    private static final List<ItemStatus> STORE_VISIBLE_STATUSES = List.of(
-        ItemStatus.FUNDING,
-        ItemStatus.FUNDED,
-        ItemStatus.ON_SALE,
-        ItemStatus.HOT_DEAL
-    );
-
     private final ItemRepository itemRepository;
     private final ItemImageRepository itemImageRepository;
+    private final ItemAccessPolicy itemAccessPolicy;
 
     public ItemSummaryResponse findById(Long itemId) {
         Item item = itemRepository.findById(itemId)
@@ -66,7 +60,7 @@ public class InternalItemQueryService {
     }
 
     public List<InternalStoreItemSummaryResponse> findByStoreId(Long storeId) {
-        return itemRepository.findByStoreIdAndStatusInOrderByUpdatedAtDesc(storeId, STORE_VISIBLE_STATUSES).stream()
+        return itemRepository.findByStoreIdAndStatusInOrderByUpdatedAtDesc(storeId, itemAccessPolicy.visibleStatuses()).stream()
             .map(InternalStoreItemSummaryResponse::from)
             .toList();
     }

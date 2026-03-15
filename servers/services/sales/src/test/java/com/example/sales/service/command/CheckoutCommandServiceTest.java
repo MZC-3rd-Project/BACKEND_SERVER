@@ -6,10 +6,6 @@ import com.example.clients.order.exception.OrderClientException;
 import com.example.clients.order.exception.OrderClientRetriableException;
 import com.example.clients.order.exception.OrderClientValidationException;
 import com.example.clients.order.facade.OrderCreateClientFacade;
-import com.example.clients.product.dto.ProductQuoteRequest;
-import com.example.clients.product.dto.ProductQuoteResponse;
-import com.example.clients.product.dto.ProductQuotedLineItem;
-import com.example.clients.product.facade.ProductQuoteClientFacade;
 import com.example.clients.stock.dto.ReserveOrderStockRequest;
 import com.example.clients.stock.dto.ReserveOrderStockResponse;
 import com.example.clients.stock.dto.ReservedOrderStockLineItem;
@@ -17,13 +13,10 @@ import com.example.clients.stock.facade.StockOrderReservationClientFacade;
 import com.example.clients.stock.facade.StockReservationClientFacade;
 import com.example.core.exception.BusinessException;
 import com.example.sales.dto.checkout.CheckoutDraft;
-import com.example.sales.dto.checkout.CheckoutQuoteCache;
 import com.example.sales.dto.checkout.request.CheckoutCancelRequest;
-import com.example.sales.dto.checkout.request.CheckoutQuoteRequest;
 import com.example.sales.dto.checkout.request.CheckoutReserveRequest;
 import com.example.sales.dto.checkout.request.CheckoutSubmitRequest;
 import com.example.sales.dto.checkout.response.CheckoutCancelResponse;
-import com.example.sales.dto.checkout.response.CheckoutQuoteResponse;
 import com.example.sales.dto.checkout.response.CheckoutReserveResponse;
 import com.example.sales.dto.checkout.response.CheckoutSubmitResponse;
 import com.example.sales.entity.CheckoutSession;
@@ -35,6 +28,8 @@ import com.example.sales.event.CheckoutReservedEvent;
 import com.example.sales.exception.SalesErrorCode;
 import com.example.sales.repository.CheckoutSessionRepository;
 import com.example.sales.repository.CheckoutSubmitAttemptRepository;
+import com.example.sales.service.query.CheckoutQuoteQueryService;
+import com.example.sales.service.support.CheckoutSnapshotAssembler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
@@ -73,7 +68,7 @@ class CheckoutCommandServiceTest {
     private StockReservationClientFacade stockReservationClientFacade;
 
     @Mock
-    private ProductQuoteClientFacade productQuoteClientFacade;
+    private CheckoutQuoteQueryService checkoutQuoteQueryService;
 
     @Mock
     private CheckoutDraftRedisService checkoutDraftRedisService;
@@ -91,6 +86,7 @@ class CheckoutCommandServiceTest {
     private ApplicationEventPublisher applicationEventPublisher;
 
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
+    private final CheckoutSnapshotAssembler checkoutSnapshotAssembler = new CheckoutSnapshotAssembler();
 
     private CheckoutCommandService service;
 
@@ -101,7 +97,8 @@ class CheckoutCommandServiceTest {
                 checkoutSubmitFailurePolicy,
                 stockOrderReservationClientFacade,
                 stockReservationClientFacade,
-                productQuoteClientFacade,
+                checkoutQuoteQueryService,
+                checkoutSnapshotAssembler,
                 checkoutDraftRedisService,
                 checkoutQuoteCacheRedisService,
                 checkoutSessionRepository,
@@ -279,82 +276,47 @@ class CheckoutCommandServiceTest {
     }
 
     @Test
-    void quote_returnsCachedQuoteWhenRedisQuoteCacheHits() throws Exception {
-        CheckoutQuoteRequest request = objectMapper.readValue("""
+    void reserve_reusesPersistedSessionWhenIntentMatchesIgnoringOrderAndCase() throws Exception {
+        CheckoutReserveRequest request = objectMapper.readValue("""
                 {
-                  "orderId": 12345
+                  "idempotencyKey": "idem-ordered",
+                  "lineItems": [
+                    {
+                      "itemId": 930001,
+                      "channelType": "normal",
+                      "channelRefId": null,
+                      "stockItemType": "item_option",
+                      "referenceId": 930101,
+                      "quantity": 1
+                    },
+                    {
+                      "itemId": 930002,
+                      "channelType": "funding",
+                      "channelRefId": 4401,
+                      "stockItemType": "item_option",
+                      "referenceId": 930201,
+                      "quantity": 2
+                    }
+                  ]
                 }
-                """, CheckoutQuoteRequest.class);
+                """, CheckoutReserveRequest.class);
         CheckoutSession session = CheckoutSession.createReserved(
-                12345L,
+                22345L,
                 1001L,
-                "idem-2",
-                LocalDateTime.now().plusMinutes(10)
-        );
-        CheckoutDraft draft = CheckoutDraft.builder()
-                .orderId(12345L)
-                .userId(1001L)
-                .idempotencyKey("idem-2")
-                .expiresAt(LocalDateTime.now().plusMinutes(10))
-                .lineItems(List.of(CheckoutDraft.LineItem.builder()
-                        .itemId(930001L)
-                        .channelType("NORMAL")
-                        .channelRefId(null)
-                        .stockItemType("ITEM_OPTION")
-                        .referenceId(930101L)
-                        .quantity(1)
-                        .build()))
-                .build();
-        CheckoutQuoteCache cachedQuote = CheckoutQuoteCache.builder()
-                .orderId(12345L)
-                .expiresAt(draft.getExpiresAt())
-                .quotedAt(LocalDateTime.now())
-                .totalAmount(12000L)
-                .lineItems(List.of(CheckoutQuoteCache.LineItem.builder()
-                        .itemId(930001L)
-                        .itemType("GOODS")
-                        .title("MZC 티셔츠")
-                        .sellerId(88L)
-                        .storeId(11L)
-                        .referenceId(930101L)
-                        .referenceName("Blue / L")
-                        .stockItemType("ITEM_OPTION")
-                        .quantity(1)
-                        .baseUnitPrice(10000L)
-                        .finalUnitPrice(12000L)
-                        .lineAmount(12000L)
-                        .build()))
-                .build();
-
-        when(checkoutSessionRepository.findByOrderId(12345L)).thenReturn(Optional.of(session));
-        when(checkoutDraftRedisService.findDraft(12345L)).thenReturn(Optional.of(draft));
-        when(checkoutQuoteCacheRedisService.findQuote(12345L)).thenReturn(Optional.of(cachedQuote));
-
-        CheckoutQuoteResponse response = service.quote(request, 1001L);
-
-        assertThat(response.getOrderId()).isEqualTo(12345L);
-        assertThat(response.getTotalAmount()).isEqualTo(12000L);
-        assertThat(response.getLineItems()).hasSize(1);
-        assertThat(response.getLineItems().get(0).getTitle()).isEqualTo("MZC 티셔츠");
-
-        verify(productQuoteClientFacade, never()).quoteItems(any());
-    }
-
-    @Test
-    void quote_usesPersistedSessionSnapshotWhenQuoteCacheMisses() throws Exception {
-        CheckoutQuoteRequest request = objectMapper.readValue("""
-                {
-                  "orderId": 12345
-                }
-                """, CheckoutQuoteRequest.class);
-        CheckoutSession session = CheckoutSession.createReserved(
-                12345L,
-                1001L,
-                "idem-2",
+                "idem-ordered",
                 LocalDateTime.now().plusMinutes(10)
         );
         session.addLineItem(CheckoutSessionLineItem.createReserved(
                 1,
+                "FUNDING",
+                4401L,
+                930002L,
+                "ITEM_OPTION",
+                930201L,
+                2
+        ));
+        session.addLineItem(CheckoutSessionLineItem.createReserved(
+                2,
                 "NORMAL",
                 null,
                 930001L,
@@ -362,45 +324,42 @@ class CheckoutCommandServiceTest {
                 930101L,
                 1
         ));
-        session.getLineItems().get(0).applyQuoteSnapshot(
-                "GOODS",
-                "MZC 티셔츠",
-                88L,
-                11L,
-                "Blue / L",
-                10000L,
-                12000L,
-                12000L
-        );
-        session.markQuoted(LocalDateTime.now());
 
-        when(checkoutDraftRedisService.findDraft(12345L)).thenReturn(Optional.empty());
-        when(checkoutQuoteCacheRedisService.findQuote(12345L)).thenReturn(Optional.empty());
-        when(checkoutSessionRepository.findByOrderId(12345L)).thenReturn(Optional.of(session));
+        when(checkoutDraftRedisService.findOrderIdByIdempotencyKey(1001L, "idem-ordered"))
+                .thenReturn(Optional.empty());
+        when(checkoutSessionRepository.findTopByUserIdAndIdempotencyKeyOrderByCreatedAtDesc(1001L, "idem-ordered"))
+                .thenReturn(Optional.of(session));
 
-        CheckoutQuoteResponse response = service.quote(request, 1001L);
+        CheckoutReserveResponse response = service.reserve(request, 1001L);
 
-        assertThat(response.getOrderId()).isEqualTo(12345L);
-        assertThat(response.getTotalAmount()).isEqualTo(12000L);
-        assertThat(response.getLineItems()).hasSize(1);
-        assertThat(response.getLineItems().get(0).getTitle()).isEqualTo("MZC 티셔츠");
-
-        verify(productQuoteClientFacade, never()).quoteItems(any());
+        assertThat(response.getOrderId()).isEqualTo(22345L);
+        assertThat(response.getReservedItems()).hasSize(2);
+        verify(stockOrderReservationClientFacade, never()).reserveOrderStock(any());
+        verify(checkoutSessionRepository, never()).save(any());
         verify(checkoutDraftRedisService).saveDraft(any(CheckoutDraft.class), any(Duration.class));
-        verify(checkoutQuoteCacheRedisService).saveQuote(any(CheckoutQuoteCache.class), any(Duration.class));
     }
 
     @Test
-    void quote_usesLiveQuoteWhenNoCachedOrPersistedSnapshotExists() throws Exception {
-        CheckoutQuoteRequest request = objectMapper.readValue("""
+    void reserve_rejectsPersistedSessionWhenIntentDiffers() throws Exception {
+        CheckoutReserveRequest request = objectMapper.readValue("""
                 {
-                  "orderId": 12345
+                  "idempotencyKey": "idem-conflict",
+                  "lineItems": [
+                    {
+                      "itemId": 930001,
+                      "channelType": "NORMAL",
+                      "channelRefId": null,
+                      "stockItemType": "ITEM_OPTION",
+                      "referenceId": 930101,
+                      "quantity": 2
+                    }
+                  ]
                 }
-                """, CheckoutQuoteRequest.class);
+                """, CheckoutReserveRequest.class);
         CheckoutSession session = CheckoutSession.createReserved(
-                12345L,
+                32345L,
                 1001L,
-                "idem-2",
+                "idem-conflict",
                 LocalDateTime.now().plusMinutes(10)
         );
         session.addLineItem(CheckoutSessionLineItem.createReserved(
@@ -412,98 +371,20 @@ class CheckoutCommandServiceTest {
                 930101L,
                 1
         ));
-        ProductQuoteResponse quoteResponse = new ProductQuoteResponse(
-                LocalDateTime.now(),
-                12000L,
-                List.of(new ProductQuotedLineItem(
-                        930001L,
-                        "GOODS",
-                        "MZC 티셔츠",
-                        88L,
-                        11L,
-                        930101L,
-                        "Blue / L",
-                        "ITEM_OPTION",
-                        1,
-                        10000L,
-                        12000L,
-                        12000L
-                ))
-        );
 
-        when(checkoutDraftRedisService.findDraft(12345L)).thenReturn(Optional.empty());
-        when(checkoutQuoteCacheRedisService.findQuote(12345L)).thenReturn(Optional.empty());
-        when(checkoutSessionRepository.findByOrderId(12345L)).thenReturn(Optional.of(session));
-        when(productQuoteClientFacade.quoteItems(any())).thenReturn(quoteResponse);
+        when(checkoutDraftRedisService.findOrderIdByIdempotencyKey(1001L, "idem-conflict"))
+                .thenReturn(Optional.empty());
+        when(checkoutSessionRepository.findTopByUserIdAndIdempotencyKeyOrderByCreatedAtDesc(1001L, "idem-conflict"))
+                .thenReturn(Optional.of(session));
 
-        CheckoutQuoteResponse response = service.quote(request, 1001L);
+        assertThatThrownBy(() -> service.reserve(request, 1001L))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(SalesErrorCode.CHECKOUT_IDEMPOTENCY_CONFLICT);
 
-        assertThat(response.getOrderId()).isEqualTo(12345L);
-        assertThat(response.getTotalAmount()).isEqualTo(12000L);
-        assertThat(response.getLineItems()).hasSize(1);
-        assertThat(response.getLineItems().get(0).getTitle()).isEqualTo("MZC 티셔츠");
-
-        assertThat(session.getStatus()).isEqualTo(CheckoutSessionStatus.QUOTED);
-        assertThat(session.getQuotedAt()).isEqualTo(quoteResponse.quotedAt());
-        assertThat(session.getLineItems().get(0).getTitle()).isEqualTo("MZC 티셔츠");
-        assertThat(session.getLineItems().get(0).getFinalUnitPrice()).isEqualTo(12000L);
-
-        ArgumentCaptor<ProductQuoteRequest> quoteRequestCaptor = ArgumentCaptor.forClass(ProductQuoteRequest.class);
-        verify(productQuoteClientFacade).quoteItems(quoteRequestCaptor.capture());
-        assertThat(quoteRequestCaptor.getValue().lineItems()).hasSize(1);
-        assertThat(quoteRequestCaptor.getValue().lineItems().get(0).channelType()).isEqualTo("NORMAL");
-        assertThat(quoteRequestCaptor.getValue().lineItems().get(0).channelRefId()).isNull();
-
-        verify(checkoutDraftRedisService).saveDraft(any(CheckoutDraft.class), any(Duration.class));
-        verify(checkoutQuoteCacheRedisService).saveQuote(any(CheckoutQuoteCache.class), any(Duration.class));
-    }
-
-    @Test
-    void warmQuoteCache_populatesCacheAndSnapshot() {
-        CheckoutSession session = CheckoutSession.createReserved(
-                12345L,
-                1001L,
-                "idem-2",
-                LocalDateTime.now().plusMinutes(10)
-        );
-        session.addLineItem(CheckoutSessionLineItem.createReserved(
-                1,
-                "NORMAL",
-                null,
-                930001L,
-                "ITEM_OPTION",
-                930101L,
-                1
-        ));
-        ProductQuoteResponse quoteResponse = new ProductQuoteResponse(
-                LocalDateTime.now(),
-                12000L,
-                List.of(new ProductQuotedLineItem(
-                        930001L,
-                        "GOODS",
-                        "MZC 티셔츠",
-                        88L,
-                        11L,
-                        930101L,
-                        "Blue / L",
-                        "ITEM_OPTION",
-                        1,
-                        10000L,
-                        12000L,
-                        12000L
-                ))
-        );
-
-        when(checkoutDraftRedisService.findDraft(12345L)).thenReturn(Optional.empty());
-        when(checkoutQuoteCacheRedisService.findQuote(12345L)).thenReturn(Optional.empty());
-        when(checkoutSessionRepository.findByOrderId(12345L)).thenReturn(Optional.of(session));
-        when(productQuoteClientFacade.quoteItems(any())).thenReturn(quoteResponse);
-
-        service.warmQuoteCache(12345L);
-
-        assertThat(session.getStatus()).isEqualTo(CheckoutSessionStatus.QUOTED);
-        assertThat(session.getLineItems().get(0).getTitle()).isEqualTo("MZC 티셔츠");
-        verify(checkoutQuoteCacheRedisService).saveQuote(any(CheckoutQuoteCache.class), any(Duration.class));
+        verify(stockOrderReservationClientFacade, never()).reserveOrderStock(any());
+        verify(checkoutSessionRepository, never()).save(any());
+        verify(applicationEventPublisher, never()).publishEvent(any(Object.class));
     }
 
     @Test
@@ -533,32 +414,6 @@ class CheckoutCommandServiceTest {
     }
 
     @Test
-    void quote_rejectsCancelledSession() throws Exception {
-        CheckoutQuoteRequest request = objectMapper.readValue("""
-                {
-                  "orderId": 12345
-                }
-                """, CheckoutQuoteRequest.class);
-        CheckoutSession session = CheckoutSession.createReserved(
-                12345L,
-                1001L,
-                "idem-2",
-                LocalDateTime.now().plusMinutes(10)
-        );
-        session.cancel();
-
-        when(checkoutSessionRepository.findByOrderId(12345L)).thenReturn(Optional.of(session));
-
-        assertThatThrownBy(() -> service.quote(request, 1001L))
-                .isInstanceOf(BusinessException.class)
-                .extracting(ex -> ((BusinessException) ex).getErrorCode())
-                .isEqualTo(SalesErrorCode.CHECKOUT_SESSION_CANCELLED);
-
-        verify(checkoutDraftRedisService, never()).findDraft(12345L);
-        verify(checkoutQuoteCacheRedisService, never()).findQuote(12345L);
-    }
-
-    @Test
     void submit_createsOrderAndMarksSessionOrderCreated() throws Exception {
         CheckoutSubmitRequest request = objectMapper.readValue("""
                 {
@@ -572,7 +427,6 @@ class CheckoutCommandServiceTest {
         CheckoutSession session = quotedSession(12345L, 1001L, "idem-submit");
 
         when(checkoutSessionRepository.findByOrderId(12345L)).thenReturn(Optional.of(session));
-        when(checkoutQuoteCacheRedisService.findQuote(12345L)).thenReturn(Optional.empty());
         when(checkoutSubmitAttemptRepository.save(any(CheckoutSubmitAttempt.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(orderCreateClientFacade.createOrder(any())).thenReturn(new OrderCreateResponse(12345L, "CREATED"));
 
@@ -588,6 +442,7 @@ class CheckoutCommandServiceTest {
         verify(checkoutSubmitAttemptRepository).save(attemptCaptor.capture());
         assertThat(attemptCaptor.getValue().getStatus()).isEqualTo(CheckoutSubmitAttemptStatus.SUCCEEDED);
         assertThat(attemptCaptor.getValue().getResponsePayloadJson()).contains("\"status\":\"CREATED\"");
+        verify(checkoutQuoteQueryService).ensureSubmitQuoteSnapshot(session);
     }
 
     @Test
@@ -612,6 +467,7 @@ class CheckoutCommandServiceTest {
         assertThat(response.getStatus()).isEqualTo(CheckoutSessionStatus.ORDER_CREATED);
         verify(orderCreateClientFacade, never()).createOrder(any());
         verify(checkoutSubmitAttemptRepository, never()).save(any());
+        verify(checkoutQuoteQueryService, never()).ensureSubmitQuoteSnapshot(any());
     }
 
     @Test
@@ -628,7 +484,6 @@ class CheckoutCommandServiceTest {
         CheckoutSession session = quotedSession(12345L, 1001L, "idem-submit");
 
         when(checkoutSessionRepository.findByOrderId(12345L)).thenReturn(Optional.of(session));
-        when(checkoutQuoteCacheRedisService.findQuote(12345L)).thenReturn(Optional.empty());
         when(checkoutSubmitAttemptRepository.save(any(CheckoutSubmitAttempt.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(checkoutSubmitFailurePolicy.decide(any(OrderClientException.class)))
                 .thenReturn(CheckoutSubmitFailureDecision.cancelImmediately(SalesErrorCode.CHECKOUT_SUBMIT_INVALID));
@@ -644,6 +499,7 @@ class CheckoutCommandServiceTest {
         verify(stockReservationClientFacade).cancelReservationsByOrderId(12345L);
         verify(checkoutDraftRedisService).deleteDraft(12345L, 1001L, "idem-submit");
         verify(checkoutQuoteCacheRedisService).deleteQuote(12345L);
+        verify(checkoutQuoteQueryService).ensureSubmitQuoteSnapshot(session);
         ArgumentCaptor<CheckoutSubmitAttempt> attemptCaptor = ArgumentCaptor.forClass(CheckoutSubmitAttempt.class);
         verify(checkoutSubmitAttemptRepository).save(attemptCaptor.capture());
         assertThat(attemptCaptor.getValue().getStatus()).isEqualTo(CheckoutSubmitAttemptStatus.FAILED);
@@ -665,7 +521,6 @@ class CheckoutCommandServiceTest {
         CheckoutSession session = quotedSession(12345L, 1001L, "idem-submit");
 
         when(checkoutSessionRepository.findByOrderId(12345L)).thenReturn(Optional.of(session));
-        when(checkoutQuoteCacheRedisService.findQuote(12345L)).thenReturn(Optional.empty());
         when(checkoutSubmitAttemptRepository.save(any(CheckoutSubmitAttempt.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(checkoutSubmitFailurePolicy.decide(any(OrderClientException.class)))
                 .thenReturn(CheckoutSubmitFailureDecision.cancelImmediately(SalesErrorCode.ORDER_SERVICE_ERROR));
@@ -681,6 +536,7 @@ class CheckoutCommandServiceTest {
         verify(stockReservationClientFacade).cancelReservationsByOrderId(12345L);
         verify(checkoutDraftRedisService).deleteDraft(12345L, 1001L, "idem-submit");
         verify(checkoutQuoteCacheRedisService).deleteQuote(12345L);
+        verify(checkoutQuoteQueryService).ensureSubmitQuoteSnapshot(session);
         ArgumentCaptor<CheckoutSubmitAttempt> attemptCaptor = ArgumentCaptor.forClass(CheckoutSubmitAttempt.class);
         verify(checkoutSubmitAttemptRepository).save(attemptCaptor.capture());
         assertThat(attemptCaptor.getValue().getStatus()).isEqualTo(CheckoutSubmitAttemptStatus.FAILED);

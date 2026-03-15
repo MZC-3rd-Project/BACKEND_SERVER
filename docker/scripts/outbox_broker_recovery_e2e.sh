@@ -2,9 +2,12 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "$ROOT/docker/scripts/lib/e2e_support.sh"
+ensure_java21
 LOG_DIR="${LOG_DIR:-/tmp/outbox_broker_recovery_e2e_logs_$(date +%Y%m%d_%H%M%S)}"
 mkdir -p "$LOG_DIR"
 
+STORE_PORT="${STORE_PORT:-18472}"
 PRODUCT_PORT="${PRODUCT_PORT:-18484}"
 POSTGRES_CONTAINER="${POSTGRES_CONTAINER:-project03-postgres}"
 KAFKA_CONTAINER="${KAFKA_CONTAINER:-project03-kafka}"
@@ -192,6 +195,7 @@ start_product() {
     env \
       GRADLE_USER_HOME="$GRADLE_USER_HOME" \
       SERVER_PORT="$PRODUCT_PORT" \
+      STORE_SERVICE_URL="http://127.0.0.1:${STORE_PORT}" \
       APP_GATEWAY_SECURITY_ENABLED=false \
       APP_OUTBOX_RELAY_FIXED_DELAY_MS=1000 \
       APP_OUTBOX_RELAY_FETCH_BEFORE_SECONDS=1 \
@@ -240,14 +244,26 @@ main() {
   require_cmd lsof
 
   check_port_free "$PRODUCT_PORT" || true
+  check_port_free "$STORE_PORT" || true
 
   echo "[INFO] preparing docker infra"
   (cd "$ROOT/docker" && docker compose up -d postgres redis zookeeper kafka >/dev/null)
   pass "docker infra up (postgres/redis/zookeeper/kafka)"
   wait_kafka_ready
 
+  echo "[INFO] starting store-service on ${STORE_PORT}"
+  store_pid="$(start_store_service "$ROOT" "$LOG_DIR/store.log" "$STORE_PORT" "$GRADLE_USER_HOME")"
+  PIDS+=("$store_pid")
+
+  wait_health "store-service" "$STORE_PORT"
   start_product
   wait_health "product-service" "$PRODUCT_PORT"
+
+  STORE_ID="$(ensure_store_fixture "$STORE_PORT" "$SELLER_ID" "Outbox Recovery Store ${SELLER_ID}" "Seoul Outbox-ro 1" "010-0000-1006" "outbox broker recovery e2e store")" || {
+    fail "store fixture ready"
+    exit 1
+  }
+  pass "store fixture ready (storeId=${STORE_ID})"
 
   local baseline_item outage_item offset_before offset_after
   create_product "baseline"

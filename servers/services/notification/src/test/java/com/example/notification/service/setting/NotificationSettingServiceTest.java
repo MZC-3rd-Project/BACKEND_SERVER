@@ -1,21 +1,19 @@
 package com.example.notification.service.setting;
 
 import com.example.core.exception.BusinessException;
+import com.example.notification.dto.setting.request.UpdateNotificationGlobalPreferenceRequest;
 import com.example.notification.dto.setting.request.UpdateNotificationSettingRequest;
 import com.example.notification.entity.NotificationChannel;
 import com.example.notification.entity.NotificationSetting;
 import com.example.notification.entity.NotificationType;
 import com.example.notification.entity.NotificationUserPreference;
 import com.example.notification.repository.NotificationSettingRepository;
-import com.example.notification.repository.NotificationUserPreferenceRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -32,10 +30,7 @@ class NotificationSettingServiceTest {
     private NotificationSettingRepository notificationSettingRepository;
 
     @Mock
-    private NotificationUserPreferenceRepository notificationUserPreferenceRepository;
-
-    @Mock
-    private NotificationSettingPolicy notificationSettingPolicy;
+    private NotificationSettingInitializer notificationSettingInitializer;
 
     @InjectMocks
     private NotificationSettingService notificationSettingService;
@@ -44,7 +39,7 @@ class NotificationSettingServiceTest {
     void shouldSendNotification_returnsFalseWhenGlobalDisabled() {
         NotificationUserPreference preference = NotificationUserPreference.createDefault(1L);
         preference.updateGlobalEnabled(false);
-        when(notificationUserPreferenceRepository.findByUserId(1L)).thenReturn(Optional.of(preference));
+        when(notificationSettingInitializer.ensurePreference(1L)).thenReturn(preference);
 
         boolean sendable = notificationSettingService.shouldSendNotification(
                 1L, NotificationType.PAYMENT, NotificationChannel.EMAIL
@@ -57,18 +52,34 @@ class NotificationSettingServiceTest {
     @Test
     void shouldSendNotification_usesDefaultPolicyWhenNoUserSetting() {
         NotificationUserPreference preference = NotificationUserPreference.createDefault(1L);
-        when(notificationUserPreferenceRepository.findByUserId(1L)).thenReturn(Optional.of(preference));
-        when(notificationSettingRepository.findByUserIdAndTypeAndChannel(
+        NotificationSetting setting = NotificationSetting.createDefault(
+                1L, NotificationType.STOCK_DEPLETED, NotificationChannel.SMS, false
+        );
+        when(notificationSettingInitializer.ensurePreference(1L)).thenReturn(preference);
+        when(notificationSettingInitializer.ensureSetting(
                 1L, NotificationType.STOCK_DEPLETED, NotificationChannel.SMS
-        )).thenReturn(Optional.empty());
-        when(notificationSettingPolicy.isDefaultEnabled(NotificationChannel.SMS)).thenReturn(false);
+        )).thenReturn(setting);
 
         boolean sendable = notificationSettingService.shouldSendNotification(
                 1L, NotificationType.STOCK_DEPLETED, NotificationChannel.SMS
         );
 
         assertFalse(sendable);
-        verify(notificationSettingPolicy).isDefaultEnabled(NotificationChannel.SMS);
+        verify(notificationSettingInitializer).ensureSetting(1L, NotificationType.STOCK_DEPLETED, NotificationChannel.SMS);
+    }
+
+    @Test
+    void updateGlobalPreference_usesInitializerPreference() {
+        NotificationUserPreference preference = NotificationUserPreference.createDefault(1L);
+        when(notificationSettingInitializer.ensurePreference(1L)).thenReturn(preference);
+
+        UpdateNotificationGlobalPreferenceRequest request = new UpdateNotificationGlobalPreferenceRequest();
+        ReflectionTestUtils.setField(request, "globalEnabled", false);
+
+        notificationSettingService.updateGlobalPreference(1L, request);
+
+        assertFalse(preference.isGlobalEnabled());
+        verify(notificationSettingInitializer).ensurePreference(1L);
     }
 
     @Test
@@ -76,9 +87,9 @@ class NotificationSettingServiceTest {
         NotificationSetting existing = NotificationSetting.createDefault(
                 1L, NotificationType.GENERAL, NotificationChannel.EMAIL, true
         );
-        when(notificationSettingRepository.findByUserIdAndTypeAndChannel(
+        when(notificationSettingInitializer.ensureSetting(
                 1L, NotificationType.GENERAL, NotificationChannel.EMAIL
-        )).thenReturn(Optional.of(existing));
+        )).thenReturn(existing);
 
         UpdateNotificationSettingRequest request = new UpdateNotificationSettingRequest();
         ReflectionTestUtils.setField(request, "type", "GENERAL");

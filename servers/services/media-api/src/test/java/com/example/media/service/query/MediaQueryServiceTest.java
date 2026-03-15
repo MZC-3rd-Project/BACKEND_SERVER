@@ -47,6 +47,12 @@ class MediaQueryServiceTest {
 
     private MediaUrlProperties mediaUrlProperties;
 
+    private MediaAccessPolicy mediaAccessPolicy;
+
+    private LatestMediaVariantReader latestMediaVariantReader;
+
+    private MediaUrlAssembler mediaUrlAssembler;
+
     @BeforeEach
     void setUp() {
         MediaS3Properties mediaS3Properties = new MediaS3Properties();
@@ -57,11 +63,14 @@ class MediaQueryServiceTest {
         mediaUrlProperties.setSignedUrlTtlSeconds(300);
 
         MediaUrlPolicyService mediaUrlPolicyService = new MediaUrlPolicyService(mediaS3Properties, mediaUrlProperties);
+        mediaAccessPolicy = new MediaAccessPolicy();
+        latestMediaVariantReader = new LatestMediaVariantReader(mediaLinkRepository, mediaDerivativeRepository);
+        mediaUrlAssembler = new MediaUrlAssembler(mediaUrlPolicyService);
         mediaQueryService = new MediaQueryService(
                 mediaFileRepository,
-                mediaLinkRepository,
-                mediaDerivativeRepository,
-                mediaUrlPolicyService
+                mediaAccessPolicy,
+                latestMediaVariantReader,
+                mediaUrlAssembler
         );
     }
 
@@ -87,14 +96,15 @@ class MediaQueryServiceTest {
         MediaLink mediaLink = MediaLink.create(101L, MediaOwnerType.ITEM, 200L, MediaUsageType.THUMBNAIL, 0);
 
         when(mediaFileRepository.findById(101L)).thenReturn(Optional.of(mediaFile));
-        when(mediaLinkRepository.findTopByMediaIdOrderByCreatedAtDesc(101L)).thenReturn(Optional.of(mediaLink));
+        when(mediaLinkRepository.findByMediaIdInOrderByMediaIdAscCreatedAtDesc(List.of(101L)))
+                .thenReturn(List.of(mediaLink));
         when(mediaDerivativeRepository.findByMediaIdInAndDerivativeProfileInAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
                 List.of(101L),
                 List.of(MediaDerivativeProfile.THUMBNAIL_WEBP, MediaDerivativeProfile.DISPLAY_WEBP),
                 MediaDerivativeStatus.READY
         )).thenReturn(List.of());
 
-        MediaUrlResponse response = mediaQueryService.getMediaUrl(101L, 100L);
+        MediaUrlResponse response = mediaQueryService.getMediaUrl(101L, MediaAccessContext.authenticated(100L));
 
         assertThat(response.getMediaId()).isEqualTo(101L);
         assertThat(response.getUrlAccessType()).isEqualTo("PUBLIC");
@@ -126,14 +136,15 @@ class MediaQueryServiceTest {
         mediaFile.confirm(1024L, "image/jpeg", "etag-query2", LocalDateTime.now());
 
         when(mediaFileRepository.findById(102L)).thenReturn(Optional.of(mediaFile));
-        when(mediaLinkRepository.findTopByMediaIdOrderByCreatedAtDesc(102L)).thenReturn(Optional.empty());
+        when(mediaLinkRepository.findByMediaIdInOrderByMediaIdAscCreatedAtDesc(List.of(102L)))
+                .thenReturn(List.of());
         when(mediaDerivativeRepository.findByMediaIdInAndDerivativeProfileInAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
                 List.of(102L),
                 List.of(MediaDerivativeProfile.THUMBNAIL_WEBP, MediaDerivativeProfile.DISPLAY_WEBP),
                 MediaDerivativeStatus.READY
         )).thenReturn(List.of());
 
-        MediaUrlResponse response = mediaQueryService.getMediaUrl(102L, 100L);
+        MediaUrlResponse response = mediaQueryService.getMediaUrl(102L, MediaAccessContext.authenticated(100L));
 
         assertThat(response.getUrlAccessType()).isEqualTo("SIGNED_URL");
         assertThat(response.getUrlExpiresAt()).isNotNull();
@@ -159,7 +170,7 @@ class MediaQueryServiceTest {
 
         when(mediaFileRepository.findById(103L)).thenReturn(Optional.of(mediaFile));
 
-        assertThatThrownBy(() -> mediaQueryService.getMediaUrl(103L, 100L))
+        assertThatThrownBy(() -> mediaQueryService.getMediaUrl(103L, MediaAccessContext.authenticated(100L)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(MediaErrorCode.MEDIA_NOT_READY);
@@ -212,7 +223,10 @@ class MediaQueryServiceTest {
                 MediaDerivativeStatus.READY
         )).thenReturn(List.of());
 
-        List<MediaUrlResponse> responses = mediaQueryService.getMediaUrls(List.of(201L, 202L, 999L), 100L);
+        List<MediaUrlResponse> responses = mediaQueryService.getMediaUrls(
+                List.of(201L, 202L, 999L),
+                MediaAccessContext.authenticated(100L)
+        );
 
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).getMediaId()).isEqualTo(201L);
@@ -254,7 +268,10 @@ class MediaQueryServiceTest {
                 MediaDerivativeStatus.READY
         )).thenReturn(List.of(derivative));
 
-        List<MediaUrlResponse> responses = mediaQueryService.getMediaUrls(List.of(301L), 100L);
+        List<MediaUrlResponse> responses = mediaQueryService.getMediaUrls(
+                List.of(301L),
+                MediaAccessContext.authenticated(100L)
+        );
 
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).getObjectKey()).isEqualTo(derivative.getObjectKey());
@@ -304,11 +321,74 @@ class MediaQueryServiceTest {
                 MediaDerivativeStatus.READY
         )).thenReturn(List.of(displayDerivative));
 
-        List<MediaUrlResponse> responses = mediaQueryService.getMediaUrls(List.of(401L), 100L);
+        List<MediaUrlResponse> responses = mediaQueryService.getMediaUrls(
+                List.of(401L),
+                MediaAccessContext.authenticated(100L)
+        );
 
         assertThat(responses).hasSize(1);
         assertThat(responses.get(0).getObjectKey()).isEqualTo(displayDerivative.getObjectKey());
         assertThat(responses.get(0).getUsageType()).isEqualTo("GALLERY");
+    }
+
+    @Test
+    void getMediaUrl_internalContextBypassesUploaderOwnershipCheck() {
+        MediaFile mediaFile = MediaFile.createPending(
+                100L,
+                "internal-query.jpg",
+                "team2-donmoa-media/raw/2026/01/01/internal-query.jpg",
+                "team2-donmoa-media-raw",
+                "image/jpeg",
+                1024L,
+                null,
+                null,
+                null,
+                null,
+                "upload-token-query4",
+                LocalDateTime.now().plusMinutes(1)
+        );
+        ReflectionTestUtils.setField(mediaFile, "id", 104L);
+        mediaFile.confirm(1024L, "image/jpeg", "etag-query4", LocalDateTime.now());
+
+        when(mediaFileRepository.findById(104L)).thenReturn(Optional.of(mediaFile));
+        when(mediaLinkRepository.findByMediaIdInOrderByMediaIdAscCreatedAtDesc(List.of(104L)))
+                .thenReturn(List.of());
+        when(mediaDerivativeRepository.findByMediaIdInAndDerivativeProfileInAndStatusOrderByMediaIdAscMediaVersionDescCreatedAtDesc(
+                List.of(104L),
+                List.of(MediaDerivativeProfile.THUMBNAIL_WEBP, MediaDerivativeProfile.DISPLAY_WEBP),
+                MediaDerivativeStatus.READY
+        )).thenReturn(List.of());
+
+        MediaUrlResponse response = mediaQueryService.getMediaUrl(104L, MediaAccessContext.internal());
+
+        assertThat(response.getMediaId()).isEqualTo(104L);
+    }
+
+    @Test
+    void getMediaUrl_authenticatedNonOwnerIsForbidden() {
+        MediaFile mediaFile = MediaFile.createPending(
+                100L,
+                "forbidden-query.jpg",
+                "team2-donmoa-media/raw/2026/01/01/forbidden-query.jpg",
+                "team2-donmoa-media-raw",
+                "image/jpeg",
+                1024L,
+                null,
+                null,
+                null,
+                null,
+                "upload-token-query5",
+                LocalDateTime.now().plusMinutes(1)
+        );
+        ReflectionTestUtils.setField(mediaFile, "id", 105L);
+        mediaFile.confirm(1024L, "image/jpeg", "etag-query5", LocalDateTime.now());
+
+        when(mediaFileRepository.findById(105L)).thenReturn(Optional.of(mediaFile));
+
+        assertThatThrownBy(() -> mediaQueryService.getMediaUrl(105L, MediaAccessContext.authenticated(999L)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(MediaErrorCode.FORBIDDEN_MEDIA_ACCESS);
     }
 
     private MediaDerivative createReadyDerivative(Long mediaId, String objectKey) {

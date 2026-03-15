@@ -4,23 +4,21 @@ import com.example.core.exception.BusinessException;
 import com.example.core.pagination.CursorResponse;
 import com.example.core.pagination.CursorUtils;
 import com.example.data.entity.datasource.UseWriteDataSource;
-import com.example.product.dto.item.response.ItemContentSnapshot;
 import com.example.product.dto.performance.response.PerformanceDetailResponse;
 import com.example.product.dto.performance.response.PerformanceListResponse;
 import com.example.product.entity.image.ItemImage;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemStatus;
 import com.example.product.entity.item.ItemType;
-import com.example.product.entity.performance.CastMember;
 import com.example.product.entity.performance.Performance;
-import com.example.product.entity.performance.SeatGrade;
 import com.example.product.exception.ProductErrorCode;
-import com.example.product.repository.CastMemberRepository;
 import com.example.product.repository.ItemImageRepository;
 import com.example.product.repository.ItemRepository;
 import com.example.product.repository.PerformanceRepository;
-import com.example.product.repository.SeatGradeRepository;
-import com.example.product.service.content.ItemContentService;
+import com.example.product.service.query.assembler.PerformanceDetailAssembler;
+import com.example.product.service.query.assembler.PerformanceListAssembler;
+import com.example.product.service.query.detail.PerformanceItemDetailReader;
+import com.example.product.service.query.detail.PerformanceItemDetailView;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -37,50 +35,37 @@ public class PerformanceQueryService {
 
     private final ItemRepository itemRepository;
     private final PerformanceRepository performanceRepository;
-    private final SeatGradeRepository seatGradeRepository;
-    private final CastMemberRepository castMemberRepository;
     private final ItemImageRepository itemImageRepository;
-    private final ItemContentService itemContentService;
-
-    private static final List<ItemStatus> VISIBLE_STATUSES = List.of(
-            ItemStatus.FUNDING, ItemStatus.FUNDED, ItemStatus.ON_SALE, ItemStatus.HOT_DEAL);
+    private final ItemAccessPolicy itemAccessPolicy;
+    private final PerformanceItemDetailReader performanceItemDetailReader;
+    private final PerformanceDetailAssembler performanceDetailAssembler;
+    private final PerformanceListAssembler performanceListAssembler;
 
     public PerformanceDetailResponse findById(Long itemId) {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
-        validateItemType(item, ItemType.PERFORMANCE);
-        validateVisibleStatus(item);
-        Performance performance = performanceRepository.findByItemId(itemId)
-                .orElseThrow(() -> new BusinessException(ProductErrorCode.PERFORMANCE_NOT_FOUND));
-        List<SeatGrade> seatGrades = seatGradeRepository.findByPerformanceIdOrderByPriceDesc(performance.getId());
-        List<CastMember> castMembers = castMemberRepository.findByPerformanceId(performance.getId());
-        ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(itemId);
-        List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
-        return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers, contentSnapshot, images);
+        itemAccessPolicy.validatePublicAccess(item, ItemType.PERFORMANCE);
+        PerformanceItemDetailView detailView = performanceItemDetailReader.read(item);
+        return performanceDetailAssembler.toResponse(detailView);
     }
 
     @UseWriteDataSource
     public PerformanceDetailResponse findSellerById(Long itemId, Long sellerId) {
         Item item = itemRepository.findById(itemId)
                 .orElseThrow(() -> new BusinessException(ProductErrorCode.ITEM_NOT_FOUND));
-        validateItemType(item, ItemType.PERFORMANCE);
-        item.validateOwnership(sellerId);
-        Performance performance = performanceRepository.findByItemId(itemId)
-                .orElseThrow(() -> new BusinessException(ProductErrorCode.PERFORMANCE_NOT_FOUND));
-        List<SeatGrade> seatGrades = seatGradeRepository.findByPerformanceIdOrderByPriceDesc(performance.getId());
-        List<CastMember> castMembers = castMemberRepository.findByPerformanceId(performance.getId());
-        ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(itemId);
-        List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
-        return PerformanceDetailResponse.of(item, performance, seatGrades, castMembers, contentSnapshot, images);
+        itemAccessPolicy.validateSellerAccess(item, ItemType.PERFORMANCE, sellerId);
+        PerformanceItemDetailView detailView = performanceItemDetailReader.read(item);
+        return performanceDetailAssembler.toResponse(detailView);
     }
 
     public CursorResponse<PerformanceListResponse> findList(String cursor, int size) {
         Long cursorId = CursorUtils.decodeLong(cursor);
         PageRequest pageable = PageRequest.of(0, size + 1);
+        List<ItemStatus> visibleStatuses = itemAccessPolicy.visibleStatuses();
 
         List<Item> items = cursorId == null
-                ? itemRepository.findByItemTypeAndStatusIn(ItemType.PERFORMANCE, VISIBLE_STATUSES, pageable)
-                : itemRepository.findByItemTypeAndStatusInAndIdLessThan(ItemType.PERFORMANCE, VISIBLE_STATUSES, cursorId, pageable);
+                ? itemRepository.findByItemTypeAndStatusIn(ItemType.PERFORMANCE, visibleStatuses, pageable)
+                : itemRepository.findByItemTypeAndStatusInAndIdLessThan(ItemType.PERFORMANCE, visibleStatuses, cursorId, pageable);
 
         boolean hasNext = items.size() > size;
         List<Item> pageItems = hasNext ? items.subList(0, size) : items;
@@ -94,7 +79,7 @@ public class PerformanceQueryService {
 
         List<PerformanceListResponse> content = pageItems.stream()
                 .filter(item -> perfMap.containsKey(item.getId()))
-                .map(item -> PerformanceListResponse.of(
+                .map(item -> performanceListAssembler.toResponse(
                         item,
                         perfMap.get(item.getId()),
                         imageMap.getOrDefault(item.getId(), List.of())
@@ -103,17 +88,5 @@ public class PerformanceQueryService {
 
         String nextCursor = hasNext ? CursorUtils.encode(pageItems.get(pageItems.size() - 1).getId()) : null;
         return CursorResponse.of(content, nextCursor);
-    }
-
-    private void validateItemType(Item item, ItemType expectedType) {
-        if (item.getItemType() != expectedType) {
-            throw new BusinessException(ProductErrorCode.ITEM_TYPE_MISMATCH);
-        }
-    }
-
-    private void validateVisibleStatus(Item item) {
-        if (!VISIBLE_STATUSES.contains(item.getStatus())) {
-            throw new BusinessException(ProductErrorCode.ITEM_NOT_FOUND);
-        }
     }
 }

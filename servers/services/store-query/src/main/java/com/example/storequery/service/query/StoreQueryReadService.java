@@ -4,11 +4,7 @@ import com.example.core.exception.BusinessException;
 import com.example.core.pagination.CursorRequest;
 import com.example.core.pagination.CursorResponse;
 import com.example.storequery.dto.response.StoreQueryDetailResponse;
-import com.example.storequery.dto.response.StoreQueryImageResponse;
-import com.example.storequery.dto.response.StoreQueryImagesResponse;
-import com.example.storequery.dto.response.StoreQueryItemSummaryResponse;
 import com.example.storequery.dto.response.StoreQueryListResponse;
-import com.example.storequery.entity.StoreQueryImageType;
 import com.example.storequery.entity.StoreQueryStatus;
 import com.example.storequery.entity.StoreReadImage;
 import com.example.storequery.entity.StoreReadItem;
@@ -24,9 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +32,8 @@ public class StoreQueryReadService {
     private final StoreReadModelRepository storeReadModelRepository;
     private final StoreReadImageRepository storeReadImageRepository;
     private final StoreReadItemRepository storeReadItemRepository;
+    private final StoreSummaryAssembler storeSummaryAssembler;
+    private final StoreDetailAssembler storeDetailAssembler;
 
     public CursorResponse<StoreQueryListResponse> getStores(String keyword, StoreQueryStatus status, String cursor, int size) {
         CursorRequest request = CursorRequest.of(cursor, size);
@@ -54,34 +50,7 @@ public class StoreQueryReadService {
 
         List<StoreReadImage> images = storeReadImageRepository.findByStoreIdAndDeletedAtIsNullOrderBySortOrderAsc(storeId);
         List<StoreReadItem> items = storeReadItemRepository.findByStoreIdAndDeletedAtIsNullOrderBySourceUpdatedAtDesc(storeId);
-
-        StoreQueryImageResponse thumbnail = toThumbnail(model, images);
-        List<StoreQueryImageResponse> gallery = images.stream()
-            .sorted(Comparator.comparing(StoreReadImage::getSortOrder, Comparator.nullsLast(Integer::compareTo)))
-            .filter(image -> thumbnail == null || !Objects.equals(image.getMediaId(), thumbnail.mediaId()))
-            .map(StoreQueryImageResponse::of)
-            .toList();
-
-        return StoreQueryDetailResponse.builder()
-            .storeId(model.getStoreId())
-            .userId(model.getUserId())
-            .storeName(model.getStoreName())
-            .status(model.getStatus())
-            .description(model.getDescription())
-            .address(model.getDefaultAddress())
-            .addressType(model.getDefaultAddressType())
-            .contactValue(model.getPrimaryContactValue())
-            .contactType(model.getPrimaryContactType())
-            .ownerNickname(model.getOwnerNickname())
-            .ownerProfileImageUrl(model.getOwnerProfileImageUrl())
-            .activeItemCount(model.getActiveItemCount())
-            .latestItemUpdatedAt(model.getLatestItemUpdatedAt())
-            .images(StoreQueryImagesResponse.builder()
-                .thumbnail(thumbnail)
-                .gallery(gallery)
-                .build())
-            .items(items.stream().map(StoreQueryItemSummaryResponse::from).toList())
-            .build();
+        return storeDetailAssembler.toDetailResponse(model, images, items);
     }
 
     public List<StoreQueryListResponse> getMyStores(Long userId) {
@@ -90,7 +59,8 @@ public class StoreQueryReadService {
 
     public List<StoreQueryListResponse> getStoresByUserId(Long userId) {
         return storeReadModelRepository.findByUserIdAndDeletedAtIsNullOrderBySourceUpdatedAtDesc(userId).stream()
-            .map(StoreQueryListResponse::from)
+            .map(StoreReadModelSummarySource::new)
+            .map(storeSummaryAssembler::toListResponse)
             .toList();
     }
 
@@ -106,7 +76,8 @@ public class StoreQueryReadService {
         boolean hasNext = stores.size() > request.getSize();
         List<StoreReadModel> pageItems = hasNext ? stores.subList(0, request.getSize()) : stores;
         List<StoreQueryListResponse> content = pageItems.stream()
-                .map(StoreQueryListResponse::from)
+                .map(StoreReadModelSummarySource::new)
+                .map(storeSummaryAssembler::toListResponse)
                 .toList();
 
         String nextCursor = hasNext
@@ -133,7 +104,8 @@ public class StoreQueryReadService {
         boolean hasNext = stores.size() > request.getSize();
         List<StoreReadModelSearchRow> pageItems = hasNext ? stores.subList(0, request.getSize()) : stores;
         List<StoreQueryListResponse> content = pageItems.stream()
-                .map(this::toListResponse)
+                .map(StoreSearchRowSummarySource::new)
+                .map(storeSummaryAssembler::toListResponse)
                 .toList();
 
         String nextCursor = hasNext
@@ -144,49 +116,5 @@ public class StoreQueryReadService {
                 : null;
 
         return CursorResponse.of(content, nextCursor);
-    }
-
-    private StoreQueryImageResponse toThumbnail(StoreReadModel model, List<StoreReadImage> images) {
-        if (model.getThumbnailMediaId() != null) {
-            return StoreQueryImageResponse.of(
-                model.getThumbnailMediaId(),
-                model.getThumbnailUrl(),
-                StoreQueryImageType.THUMBNAIL,
-                model.getThumbnailSortOrder()
-            );
-        }
-
-        return images.stream()
-            .filter(image -> image.getImageType() == StoreQueryImageType.THUMBNAIL)
-            .min(Comparator.comparing(StoreReadImage::getSortOrder, Comparator.nullsLast(Integer::compareTo)))
-            .map(StoreQueryImageResponse::of)
-            .orElse(null);
-    }
-
-    private StoreQueryListResponse toListResponse(StoreReadModelSearchRow row) {
-        return StoreQueryListResponse.builder()
-                .storeId(row.getStoreId())
-                .userId(row.getUserId())
-                .storeName(row.getStoreName())
-                .status(StoreQueryStatus.valueOf(row.getStatus()))
-                .description(row.getDescription())
-                .contactValue(row.getPrimaryContactValue())
-                .address(row.getDefaultAddress())
-                .ownerNickname(row.getOwnerNickname())
-                .thumbnail(toThumbnail(row))
-                .build();
-    }
-
-    private StoreQueryImageResponse toThumbnail(StoreReadModelSearchRow row) {
-        if (row.getThumbnailMediaId() == null) {
-            return null;
-        }
-
-        return StoreQueryImageResponse.of(
-                row.getThumbnailMediaId(),
-                row.getThumbnailUrl(),
-                StoreQueryImageType.THUMBNAIL,
-                row.getThumbnailSortOrder()
-        );
     }
 }

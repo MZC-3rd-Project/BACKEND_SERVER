@@ -1,8 +1,8 @@
 package com.example.hotdeal.controller.api;
 
 import com.example.api.response.ApiResponse;
-import com.example.hotdeal.dto.HotDealDetailResponse;
-import com.example.hotdeal.dto.HotDealListResponse;
+import com.example.hotdeal.dto.query.response.HotDealDetailQueryResponse;
+import com.example.hotdeal.dto.query.response.HotDealListQueryResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -17,11 +17,11 @@ public interface HotDealQueryApi {
 
     @Operation(summary = "핫딜 목록 조회 (ACTIVE)")
     @GetMapping
-    ApiResponse<List<HotDealListResponse>> getActiveDeals(
+    ApiResponse<List<HotDealListQueryResponse>> getActiveDeals(
             @Parameter(description = "커서 ID") @RequestParam(required = false) Long cursor,
             @Parameter(description = "페이지 크기") @RequestParam(defaultValue = "20") int size);
 
     @Operation(summary = "핫딜 상세 조회")
     @GetMapping("/{hotDealId}")
-    ApiResponse<HotDealDetailResponse> getDetail(@PathVariable Long hotDealId);
+    ApiResponse<HotDealDetailQueryResponse> getDetail(@PathVariable Long hotDealId);
 }

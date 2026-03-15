@@ -12,10 +12,13 @@ import com.example.product.repository.ItemOptionRepository;
 import com.example.product.repository.ItemRepository;
 import com.example.product.repository.PerformanceRepository;
 import com.example.product.repository.SeatGradeRepository;
+import com.example.product.service.query.quote.OptionItemQuoteStrategy;
+import com.example.product.service.query.quote.PerformanceQuoteStrategy;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -25,6 +28,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -41,9 +45,21 @@ class InternalItemQuoteServiceTest {
 
     @Mock
     private SeatGradeRepository seatGradeRepository;
-
-    @InjectMocks
+    @Spy
+    private ItemAccessPolicy itemAccessPolicy = new ItemAccessPolicy();
     private InternalItemQuoteService internalItemQuoteService;
+
+    @BeforeEach
+    void setUp() {
+        internalItemQuoteService = new InternalItemQuoteService(
+                itemRepository,
+                itemAccessPolicy,
+                List.of(
+                        new OptionItemQuoteStrategy(itemOptionRepository),
+                        new PerformanceQuoteStrategy(seatGradeRepository, performanceRepository)
+                )
+        );
+    }
 
     @Test
     void quote_goodsItem_returnsOptionAdjustedPrice() {
@@ -128,6 +144,42 @@ class InternalItemQuoteServiceTest {
         assertThat(response.getLineItems()).hasSize(2);
         assertThat(response.getLineItems().get(0).getItemId()).isEqualTo(10L);
         assertThat(response.getLineItems().get(1).getItemId()).isEqualTo(20L);
+    }
+
+    @Test
+    void quote_whenItemIsNotSaleable_throwsConflict() {
+        Item item = createItem(10L, "MZC 티셔츠", 10_000L, ItemType.GOODS, ItemStatus.HIDDEN, 1L, 2L);
+
+        when(itemRepository.findById(10L)).thenReturn(Optional.of(item));
+
+        assertThatThrownBy(() -> internalItemQuoteService.quote(request("NORMAL", 10L, 101L, 1)))
+                .isInstanceOf(com.example.core.exception.BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(com.example.product.exception.ProductErrorCode.ITEM_NOT_SALEABLE);
+    }
+
+    @Test
+    void quote_whenChannelTypeHasMixedCaseAndWhitespace_normalizesAtBoundary() {
+        Item item = createItem(10L, "MZC 티셔츠", 10_000L, ItemType.GOODS, ItemStatus.ON_SALE, 1L, 2L);
+        ItemOption option = ItemOption.create(10L, "BLACK / L", 2_000L, 50);
+        ReflectionTestUtils.setField(option, "id", 101L);
+
+        when(itemRepository.findById(10L)).thenReturn(Optional.of(item));
+        when(itemOptionRepository.findById(101L)).thenReturn(Optional.of(option));
+
+        ItemQuoteResponse response = internalItemQuoteService.quote(request("  normal  ", 10L, 101L, 1));
+
+        assertThat(response.getTotalAmount()).isEqualTo(12_000L);
+        assertThat(response.getLineItems()).hasSize(1);
+        assertThat(response.getLineItems().getFirst().getStockItemType()).isEqualTo("ITEM_OPTION");
+    }
+
+    @Test
+    void quote_whenChannelTypeIsInvalid_throwsBadRequest() {
+        assertThatThrownBy(() -> internalItemQuoteService.quote(request("PREORDER", 10L, 101L, 1)))
+                .isInstanceOf(com.example.core.exception.BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(com.example.product.exception.ProductErrorCode.INVALID_QUOTE_CHANNEL);
     }
 
     private Item createItem(Long id, String title, Long price, ItemType itemType, ItemStatus status, Long sellerId, Long storeId) {

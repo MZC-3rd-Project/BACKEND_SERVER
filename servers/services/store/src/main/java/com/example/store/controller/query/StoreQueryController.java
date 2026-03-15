@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import org.springframework.data.domain.Pageable;
+import java.util.List;
 
 @Slf4j
 @RestController
@@ -23,9 +24,8 @@ public class StoreQueryController implements StoreQueryApi {
     private final StoreQueryService storeQueryService;
 
     @Override
-    public ApiResponse<?> getMyStore(Long userId) {
-
-        return null;
+    public ApiResponse<List<StoreListResponse>> getMyStore(Long userId) {
+        return ApiResponse.success(storeQueryService.getMyStoreList(userId));
     }
 
     @Override

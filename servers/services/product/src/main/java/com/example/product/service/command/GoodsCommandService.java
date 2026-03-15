@@ -9,6 +9,7 @@ import com.example.product.dto.goods.request.ItemOptionRequest;
 import com.example.product.dto.goods.request.ShippingInfoRequest;
 import com.example.product.dto.goods.response.GoodsDetailResponse;
 import com.example.product.dto.item.response.ItemContentSnapshot;
+import com.example.product.dto.item.response.ItemSummaryResponse;
 import com.example.product.entity.goods.ItemGoodsLink;
 import com.example.product.entity.goods.ItemOption;
 import com.example.product.entity.goods.ShippingInfo;
@@ -29,11 +30,17 @@ import com.example.product.repository.ShippingInfoRepository;
 import com.example.product.service.content.ItemContentService;
 import com.example.product.service.command.image.ItemThumbnailSyncService;
 import com.example.product.service.command.image.MediaReferenceService;
+import com.example.product.service.query.detail.ItemCategoryDetailResolver;
+import com.example.product.service.query.detail.ItemCategoryDetailView;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -51,6 +58,7 @@ public class GoodsCommandService {
     private final ItemThumbnailSyncService itemThumbnailSyncService;
     private final StoreOwnershipValidator storeOwnershipValidator;
     private final EventPublisher eventPublisher;
+    private final ItemCategoryDetailResolver itemCategoryDetailResolver;
 
     public GoodsDetailResponse createGoods(GoodsCreateRequest request, Long sellerId) {
         storeOwnershipValidator.validateOwnership(sellerId, request.getStoreId());
@@ -102,7 +110,14 @@ public class GoodsCommandService {
 
         ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(item.getId());
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(item.getId());
-        return GoodsDetailResponse.of(item, options, shippingInfo, linkedIds, contentSnapshot, images);
+        ItemCategoryDetailView categoryDetail = resolveCategoryDetail(item);
+        List<ItemSummaryResponse> linkedItems = resolveLinkedPerformanceItems(linkedIds);
+        return GoodsDetailResponse.of(
+                item, options, shippingInfo, linkedIds, linkedItems,
+                categoryDetail != null ? categoryDetail.categoryName() : null,
+                categoryDetail != null ? categoryDetail.categoryPath() : List.of(),
+                contentSnapshot, images
+        );
     }
 
     public GoodsDetailResponse updateGoods(Long itemId, GoodsUpdateRequest request, Long sellerId) {
@@ -143,14 +158,12 @@ public class GoodsCommandService {
 
         // 배송정보 교체
         if (request.getShippingInfo() != null) {
-            shippingInfoRepository.softDeleteByItemId(itemId);
-            saveShippingInfo(itemId, request.getShippingInfo());
+            upsertShippingInfo(itemId, request.getShippingInfo());
         }
 
         // 공연 연결 교체
         if (request.getLinkedPerformanceItemIds() != null) {
-            itemGoodsLinkRepository.softDeleteAllByGoodsItemId(itemId);
-            linkPerformances(itemId, request.getLinkedPerformanceItemIds());
+            syncPerformanceLinks(itemId, request.getLinkedPerformanceItemIds());
         }
         if (request.getTags() != null) {
             itemContentService.replaceTags(itemId, request.getTags());
@@ -183,7 +196,14 @@ public class GoodsCommandService {
                 .toList();
         ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(itemId);
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
-        return GoodsDetailResponse.of(item, currentOptions, currentShippingInfo, currentLinkedIds, contentSnapshot, images);
+        ItemCategoryDetailView categoryDetail = resolveCategoryDetail(item);
+        List<ItemSummaryResponse> linkedItems = resolveLinkedPerformanceItems(currentLinkedIds);
+        return GoodsDetailResponse.of(
+                item, currentOptions, currentShippingInfo, currentLinkedIds, linkedItems,
+                categoryDetail != null ? categoryDetail.categoryName() : null,
+                categoryDetail != null ? categoryDetail.categoryPath() : List.of(),
+                contentSnapshot, images
+        );
     }
 
     public void delete(Long itemId, Long sellerId) {
@@ -225,8 +245,57 @@ public class GoodsCommandService {
 
     private ShippingInfo saveShippingInfo(Long itemId, ShippingInfoRequest request) {
         ShippingInfo si = ShippingInfo.create(itemId, request.getShippingFee(),
-                request.getFreeShippingThreshold(), request.getEstimatedDays(), request.getReturnPolicy());
+                request.getFreeShippingThreshold(), request.getEstimatedDays(), request.getReturnPolicy(),
+                request.getCarrier(), request.getShipFrom(), request.getReturnAddress(),
+                request.getReturnShippingFee(), request.getExchangeShippingFee(), request.getShippingNotice());
         return shippingInfoRepository.save(si);
+    }
+
+    private ShippingInfo upsertShippingInfo(Long itemId, ShippingInfoRequest request) {
+        return shippingInfoRepository.findByItemId(itemId)
+                .map(existing -> {
+                    existing.update(
+                            request.getShippingFee(),
+                            request.getFreeShippingThreshold(),
+                            request.getEstimatedDays(),
+                            request.getReturnPolicy(),
+                            request.getCarrier(),
+                            request.getShipFrom(),
+                            request.getReturnAddress(),
+                            request.getReturnShippingFee(),
+                            request.getExchangeShippingFee(),
+                            request.getShippingNotice()
+                    );
+                    return existing;
+                })
+                .orElseGet(() -> saveShippingInfo(itemId, request));
+    }
+
+    private ItemCategoryDetailView resolveCategoryDetail(Item item) {
+        Map<Long, ItemCategoryDetailView> resolved = itemCategoryDetailResolver != null
+                ? itemCategoryDetailResolver.resolve(List.of(item))
+                : Map.of();
+        if (resolved == null) {
+            return null;
+        }
+        return resolved.get(item.getId());
+    }
+
+    private List<ItemSummaryResponse> resolveLinkedPerformanceItems(List<Long> linkedIds) {
+        if (linkedIds == null || linkedIds.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, Item> linkedItemMap = itemRepository.findAllById(linkedIds).stream()
+                .collect(Collectors.toMap(Item::getId, Function.identity()));
+        Map<Long, List<ItemImage>> linkedImageMap = itemImageRepository.findByItemIdInOrderByItemIdAscSortOrderAsc(linkedIds).stream()
+                .collect(Collectors.groupingBy(ItemImage::getItemId));
+
+        return linkedIds.stream()
+                .map(linkedItemMap::get)
+                .filter(linkedItem -> linkedItem != null)
+                .map(linkedItem -> ItemSummaryResponse.from(linkedItem, linkedImageMap.getOrDefault(linkedItem.getId(), List.of())))
+                .toList();
     }
 
     private List<Long> linkPerformances(Long goodsItemId, List<Long> performanceItemIds) {
@@ -247,6 +316,44 @@ public class GoodsCommandService {
                 .toList();
         itemGoodsLinkRepository.saveAll(links);
         return performanceItemIds;
+    }
+
+    private List<Long> syncPerformanceLinks(Long goodsItemId, List<Long> performanceItemIds) {
+        List<Long> requestedIds = performanceItemIds == null ? List.of() : performanceItemIds.stream().distinct().toList();
+        List<ItemGoodsLink> currentLinks = itemGoodsLinkRepository.findByGoodsItemId(goodsItemId);
+
+        if (requestedIds.isEmpty()) {
+            currentLinks.forEach(ItemGoodsLink::softDelete);
+            return List.of();
+        }
+
+        List<Item> targets = itemRepository.findAllById(requestedIds);
+        if (targets.size() != requestedIds.size()) {
+            throw new BusinessException(ProductErrorCode.INVALID_LINK_TARGET);
+        }
+        boolean allPerformance = targets.stream()
+                .allMatch(item -> item.getItemType() == ItemType.PERFORMANCE);
+        if (!allPerformance) {
+            throw new BusinessException(ProductErrorCode.INVALID_LINK_TARGET);
+        }
+
+        Map<Long, ItemGoodsLink> currentLinkMap = currentLinks.stream()
+                .collect(Collectors.toMap(ItemGoodsLink::getPerformanceItemId, Function.identity()));
+        Set<Long> requestedIdSet = Set.copyOf(requestedIds);
+
+        currentLinks.stream()
+                .filter(link -> !requestedIdSet.contains(link.getPerformanceItemId()))
+                .forEach(ItemGoodsLink::softDelete);
+
+        List<ItemGoodsLink> newLinks = requestedIds.stream()
+                .filter(performanceItemId -> !currentLinkMap.containsKey(performanceItemId))
+                .map(performanceItemId -> ItemGoodsLink.create(performanceItemId, goodsItemId))
+                .toList();
+
+        if (!newLinks.isEmpty()) {
+            itemGoodsLinkRepository.saveAll(newLinks);
+        }
+        return requestedIds;
     }
 
     private void validateItemType(Item item, ItemType expectedType) {

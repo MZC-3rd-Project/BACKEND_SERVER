@@ -7,14 +7,13 @@ import com.example.chat.entity.participant.ChatRoomParticipant;
 import com.example.chat.exception.ChatErrorCode;
 import com.example.chat.repository.ChatMessageRepository;
 import com.example.chat.repository.ChatRoomParticipantRepository;
+import com.example.chat.service.policy.ChatRoomAccessPolicy;
 import com.example.core.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -30,13 +29,16 @@ class ChatReadCommandServiceTest {
     @Mock
     private ChatMessageRepository chatMessageRepository;
 
+    @Mock
+    private ChatRoomAccessPolicy chatRoomAccessPolicy;
+
     @InjectMocks
     private ChatReadCommandService chatReadCommandService;
 
     @Test
     void updateReadPointer_updatesPointerWhenMessageExists() {
         ChatRoomParticipant participant = ChatRoomParticipant.create(100L, 10L, ChatParticipantRole.PARTICIPANT);
-        when(chatRoomParticipantRepository.findByRoomIdAndUserId(100L, 10L)).thenReturn(Optional.of(participant));
+        when(chatRoomAccessPolicy.requireActiveParticipant(100L, 10L)).thenReturn(participant);
         when(chatMessageRepository.existsByRoomIdAndId(100L, 500L)).thenReturn(true);
 
         ChatReadUpdateResponse response = chatReadCommandService.updateReadPointer(
@@ -53,9 +55,8 @@ class ChatReadCommandServiceTest {
 
     @Test
     void updateReadPointer_blocksRefundedParticipant() {
-        ChatRoomParticipant participant = ChatRoomParticipant.create(100L, 10L, ChatParticipantRole.PARTICIPANT);
-        participant.markRefunded();
-        when(chatRoomParticipantRepository.findByRoomIdAndUserId(100L, 10L)).thenReturn(Optional.of(participant));
+        when(chatRoomAccessPolicy.requireActiveParticipant(100L, 10L))
+            .thenThrow(new BusinessException(ChatErrorCode.FORBIDDEN_ROOM_ACCESS));
 
         assertThatThrownBy(() -> chatReadCommandService.updateReadPointer(
                 100L,
@@ -69,7 +70,7 @@ class ChatReadCommandServiceTest {
     @Test
     void updateReadPointer_throwsWhenMessageNotFound() {
         ChatRoomParticipant participant = ChatRoomParticipant.create(100L, 10L, ChatParticipantRole.PARTICIPANT);
-        when(chatRoomParticipantRepository.findByRoomIdAndUserId(100L, 10L)).thenReturn(Optional.of(participant));
+        when(chatRoomAccessPolicy.requireActiveParticipant(100L, 10L)).thenReturn(participant);
         when(chatMessageRepository.existsByRoomIdAndId(100L, 500L)).thenReturn(false);
 
         assertThatThrownBy(() -> chatReadCommandService.updateReadPointer(

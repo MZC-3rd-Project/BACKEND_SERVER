@@ -2,11 +2,15 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+source "$ROOT/docker/scripts/lib/e2e_support.sh"
+ensure_java21
 LOG_DIR="/tmp/media_product_e2e_logs_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$LOG_DIR"
 
+STORE_PORT="${STORE_PORT:-18072}"
 PRODUCT_PORT="${PRODUCT_PORT:-18084}"
 MEDIA_PORT="${MEDIA_PORT:-18094}"
+GRADLE_USER_HOME="${GRADLE_USER_HOME:-/tmp/.gradle-codex}"
 SELLER_ID="${SELLER_ID:-910001}"
 STORE_ID="${STORE_ID:-920001}"
 
@@ -502,16 +506,20 @@ echo "[INFO] preparing infra"
 
 check_port_free "$PRODUCT_PORT"
 check_port_free "$MEDIA_PORT"
+check_port_free "$STORE_PORT"
 
 MEDIA_DOMAIN="$(resolve_media_domain)"
 echo "[INFO] media public domain: $MEDIA_DOMAIN"
 
-echo "[INFO] starting media-api and product-service"
+echo "[INFO] starting store-service, media-api and product-service"
+store_pid="$(start_store_service "$ROOT" "$LOG_DIR/store.log" "$STORE_PORT" "$GRADLE_USER_HOME")"
+PIDS+=("$store_pid")
+
 (
   cd "$ROOT"
   env AWS_PROFILE="$AWS_PROFILE_NAME" \
       AWS_REGION="$AWS_REGION_NAME" \
-      GRADLE_USER_HOME=/tmp/.gradle-codex \
+      GRADLE_USER_HOME="$GRADLE_USER_HOME" \
       SERVER_PORT="$MEDIA_PORT" \
       APP_GATEWAY_SECURITY_ENABLED=false \
       MEDIA_S3_REGION="$AWS_REGION_NAME" \
@@ -524,14 +532,16 @@ PIDS+=("$!")
 
 (
   cd "$ROOT"
-  env GRADLE_USER_HOME=/tmp/.gradle-codex \
+  env GRADLE_USER_HOME="$GRADLE_USER_HOME" \
       SERVER_PORT="$PRODUCT_PORT" \
       APP_GATEWAY_SECURITY_ENABLED=false \
+      STORE_SERVICE_URL="http://127.0.0.1:${STORE_PORT}" \
       MEDIA_SERVICE_URL="http://127.0.0.1:${MEDIA_PORT}" \
       ./gradlew :servers:services:product:bootRun --no-daemon >"$LOG_DIR/product.log" 2>&1
 ) &
 PIDS+=("$!")
 
+wait_health "store-service" "$STORE_PORT"
 wait_health "media-api" "$MEDIA_PORT"
 wait_health "product-service" "$PRODUCT_PORT"
 
@@ -539,6 +549,12 @@ echo "[INFO] resetting test data"
 psql_exec media_db "TRUNCATE TABLE media_links, media_files, processed_events, dead_letter_messages, outbox_messages RESTART IDENTITY CASCADE;"
 psql_exec product_db "TRUNCATE TABLE item_images, item_goods_links, item_options, shipping_infos, cast_members, seat_grades, performances, item_status_histories, item_media_link_sync_tasks, items, processed_events, dead_letter_messages, outbox_messages RESTART IDENTITY CASCADE;"
 pass "reset media/product test data"
+
+STORE_ID="$(ensure_store_fixture "$STORE_PORT" "$SELLER_ID" "Media Product Store ${SELLER_ID}" "Seoul Media-ro 1" "010-0000-1001" "media product e2e store")" || {
+  fail "store fixture ready"
+  exit 1
+}
+pass "store fixture ready (storeId=${STORE_ID})"
 
 product_item_id=""
 goods_item_id=""

@@ -3,6 +3,7 @@ package com.example.media.controller.query;
 import com.example.api.response.ApiResponse;
 import com.example.media.controller.api.query.MediaQueryApi;
 import com.example.media.dto.query.response.MediaUrlResponse;
+import com.example.media.service.query.MediaAccessContext;
 import com.example.media.service.query.MediaQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,6 +18,6 @@ public class MediaQueryController implements MediaQueryApi {
 
     @Override
     public ApiResponse<MediaUrlResponse> getMediaUrl(Long mediaId, Long userId) {
-        return ApiResponse.success(mediaQueryService.getMediaUrl(mediaId, userId));
+        return ApiResponse.success(mediaQueryService.getMediaUrl(mediaId, MediaAccessContext.fromExternalRequest(userId)));
     }
 }

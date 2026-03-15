@@ -1,0 +1,8 @@
+cart:
+  dynamodb:
+    endpoint: ${CART_DYNAMODB_ENDPOINT:http://localhost:8000}
+    table-name: ${CART_DYNAMODB_TABLE_NAME:donmoa-local-cart-items}
+
+app:
+  gateway-security:
+    enabled: false

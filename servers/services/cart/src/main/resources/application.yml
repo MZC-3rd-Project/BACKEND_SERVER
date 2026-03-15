@@ -1,0 +1,64 @@
+server:
+  port: ${SERVER_PORT:8096}
+
+spring:
+  application:
+    name: cart-service
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+cart:
+  dynamodb:
+    region: ${CART_DYNAMODB_REGION:ap-northeast-2}
+    endpoint: ${CART_DYNAMODB_ENDPOINT:}
+    table-name: ${CART_DYNAMODB_TABLE_NAME:cart_items}
+    credential-profile: ${CART_DYNAMODB_CREDENTIAL_PROFILE:}
+    access-key: ${CART_DYNAMODB_ACCESS_KEY:}
+    secret-key: ${CART_DYNAMODB_SECRET_KEY:}
+  policy:
+    ttl-days: ${CART_TTL_DAYS:30}
+
+app:
+  security:
+    context:
+      signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}
+      max-age-millis: ${APP_SECURITY_CONTEXT_MAX_AGE_MILLIS:300000}
+
+  gateway-security:
+    enabled: ${APP_GATEWAY_SECURITY_ENABLED:true}
+    gateway-auth-enabled: ${APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED:true}
+    internal-auth-header: ${APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}
+    internal-auth-token: ${APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
+    user-id-header: ${APP_GATEWAY_SECURITY_USER_ID_HEADER:X-User-Id}
+    required-paths:
+      - /api/v1/cart/**
+    excluded-paths:
+      - /actuator/**
+      - /v3/api-docs/**
+      - /swagger-ui/**
+
+  service:
+    sales-url: ${SALES_SERVICE_URL:http://localhost:8087}
+    product-url: ${PRODUCT_SERVICE_URL:http://localhost:8084}
+    store-query-url: ${STORE_QUERY_SERVICE_URL:http://localhost:8091}
+
+  openapi:
+    enabled: ${OPENAPI_ENABLED:true}
+    title: "Cart Service API"
+    version: "1.0.0"
+    description: |
+      thin cart service backed by DynamoDB and delegated sales checkout reserve
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${ACTUATOR_ENDPOINTS:health,info,metrics,prometheus}
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.example: ${LOG_LEVEL:INFO}

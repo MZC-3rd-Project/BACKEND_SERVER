@@ -3,6 +3,7 @@ package com.example.stock.entity;
 import com.example.core.exception.BusinessException;
 import com.example.core.id.jpa.SnowflakeGenerated;
 import com.example.data.entity.BaseEntity;
+import com.example.stock.domain.StockTarget;
 import com.example.stock.exception.StockErrorCode;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -51,6 +52,10 @@ public class StockItem extends BaseEntity {
         stockItem.availableQuantity = totalQuantity;
         stockItem.reservedQuantity = 0;
         return stockItem;
+    }
+
+    public StockTarget target() {
+        return StockTarget.of(stockItemType, referenceId);
     }
 
     public void decrease(int quantity) {

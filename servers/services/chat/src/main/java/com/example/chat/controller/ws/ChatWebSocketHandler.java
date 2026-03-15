@@ -6,6 +6,7 @@ import com.example.chat.dto.command.request.CreateChatMessageRequest;
 import com.example.chat.dto.command.response.ChatMessageSendResponse;
 import com.example.chat.dto.command.response.ChatReadUpdateResponse;
 import com.example.chat.dto.query.response.ChatMessageItemResponse;
+import com.example.chat.service.policy.ChatRoomAccessPolicy;
 import com.example.chat.service.command.ChatMessageCommandService;
 import com.example.chat.service.command.ChatReadCommandService;
 import com.example.chat.service.query.ChatRoomQueryService;
@@ -34,6 +35,7 @@ import java.util.Map;
 public class ChatWebSocketHandler extends TextWebSocketHandler {
 
     private final ChatWebSocketSessionRegistry sessionRegistry;
+    private final ChatRoomAccessPolicy chatRoomAccessPolicy;
     private final ChatRoomQueryService chatRoomQueryService;
     private final ChatMessageCommandService chatMessageCommandService;
     private final ChatReadCommandService chatReadCommandService;
@@ -101,7 +103,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
-        chatRoomQueryService.validateRoomAccess(frame.getRoomId(), userId);
+        chatRoomAccessPolicy.requireActiveParticipant(frame.getRoomId(), userId);
         sessionRegistry.subscribeRoom(session, frame.getRoomId());
 
         sendFrame(session, ChatFrameType.SUBSCRIBED, Map.of(

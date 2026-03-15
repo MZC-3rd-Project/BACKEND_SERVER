@@ -26,6 +26,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.ArgumentCaptor;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
@@ -147,6 +148,120 @@ class GoodsCommandServiceTest {
         assertThat(response.getShippingInfo()).isNotNull();
         assertThat(response.getShippingInfo().getShippingFee()).isEqualTo(2500L);
         assertThat(response.getLinkedPerformanceItemIds()).containsExactly(41L);
+    }
+
+    @Test
+    void createGoods_withExtendedShippingMetadata_persistsShippingInfoFields() {
+        GoodsCreateRequest request = new GoodsCreateRequest();
+        ReflectionTestUtils.setField(request, "title", "goods");
+        ReflectionTestUtils.setField(request, "description", "desc");
+        ReflectionTestUtils.setField(request, "price", 1000L);
+        ReflectionTestUtils.setField(request, "storeId", 1L);
+
+        Object shippingInfoRequest = new com.example.product.dto.goods.request.ShippingInfoRequest();
+        ReflectionTestUtils.setField(shippingInfoRequest, "shippingFee", 3000L);
+        ReflectionTestUtils.setField(shippingInfoRequest, "estimatedDays", 2);
+        ReflectionTestUtils.setField(shippingInfoRequest, "returnPolicy", "return");
+        ReflectionTestUtils.setField(shippingInfoRequest, "carrier", "CJ");
+        ReflectionTestUtils.setField(shippingInfoRequest, "shipFrom", "Seoul");
+        ReflectionTestUtils.setField(shippingInfoRequest, "returnAddress", "Incheon");
+        ReflectionTestUtils.setField(shippingInfoRequest, "returnShippingFee", 3500L);
+        ReflectionTestUtils.setField(shippingInfoRequest, "exchangeShippingFee", 7000L);
+        ReflectionTestUtils.setField(shippingInfoRequest, "shippingNotice", "remote area extra");
+        ReflectionTestUtils.setField(request, "shippingInfo", shippingInfoRequest);
+
+        when(itemRepository.save(any(Item.class))).thenAnswer(invocation -> {
+            Item saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 20L);
+            return saved;
+        });
+        when(shippingInfoRepository.save(any(ShippingInfo.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(itemImageRepository.findByItemIdOrderBySortOrder(20L)).thenReturn(List.of());
+
+        goodsCommandService.createGoods(request, 77L);
+
+        ArgumentCaptor<ShippingInfo> captor = ArgumentCaptor.forClass(ShippingInfo.class);
+        verify(shippingInfoRepository).save(captor.capture());
+        ShippingInfo saved = captor.getValue();
+        assertThat(saved.getCarrier()).isEqualTo("CJ");
+        assertThat(saved.getShipFrom()).isEqualTo("Seoul");
+        assertThat(saved.getReturnAddress()).isEqualTo("Incheon");
+        assertThat(saved.getReturnShippingFee()).isEqualTo(3500L);
+        assertThat(saved.getExchangeShippingFee()).isEqualTo(7000L);
+        assertThat(saved.getShippingNotice()).isEqualTo("remote area extra");
+    }
+
+    @Test
+    void updateGoods_withExtendedShippingMetadata_updatesExistingShippingInfoInPlace() {
+        Long itemId = 31L;
+        Long sellerId = 10L;
+        Item item = createItem(itemId, sellerId);
+        GoodsUpdateRequest request = new GoodsUpdateRequest();
+
+        Object shippingInfoRequest = new com.example.product.dto.goods.request.ShippingInfoRequest();
+        ReflectionTestUtils.setField(shippingInfoRequest, "shippingFee", 1000L);
+        ReflectionTestUtils.setField(shippingInfoRequest, "freeShippingThreshold", 20000L);
+        ReflectionTestUtils.setField(shippingInfoRequest, "estimatedDays", 4);
+        ReflectionTestUtils.setField(shippingInfoRequest, "returnPolicy", "updated return");
+        ReflectionTestUtils.setField(shippingInfoRequest, "carrier", "Lotte");
+        ReflectionTestUtils.setField(shippingInfoRequest, "shipFrom", "Daegu");
+        ReflectionTestUtils.setField(shippingInfoRequest, "returnAddress", "Daegu return");
+        ReflectionTestUtils.setField(shippingInfoRequest, "returnShippingFee", 3200L);
+        ReflectionTestUtils.setField(shippingInfoRequest, "exchangeShippingFee", 6400L);
+        ReflectionTestUtils.setField(shippingInfoRequest, "shippingNotice", "first press");
+        ReflectionTestUtils.setField(request, "shippingInfo", shippingInfoRequest);
+
+        ShippingInfo existingShippingInfo = ShippingInfo.create(itemId, 2500L, null, 3, "old policy");
+
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
+        when(itemOptionRepository.findByItemId(itemId)).thenReturn(List.of());
+        when(shippingInfoRepository.findByItemId(itemId)).thenReturn(Optional.of(existingShippingInfo));
+        when(itemGoodsLinkRepository.findByGoodsItemId(itemId)).thenReturn(List.of());
+        when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(List.of());
+
+        GoodsDetailResponse response = goodsCommandService.updateGoods(itemId, request, sellerId);
+
+        verify(shippingInfoRepository, org.mockito.Mockito.never()).softDeleteByItemId(itemId);
+        verify(shippingInfoRepository, org.mockito.Mockito.never()).save(any(ShippingInfo.class));
+        assertThat(existingShippingInfo.getShippingFee()).isEqualTo(1000L);
+        assertThat(existingShippingInfo.getFreeShippingThreshold()).isEqualTo(20000L);
+        assertThat(existingShippingInfo.getEstimatedDays()).isEqualTo(4);
+        assertThat(existingShippingInfo.getReturnPolicy()).isEqualTo("updated return");
+        assertThat(existingShippingInfo.getCarrier()).isEqualTo("Lotte");
+        assertThat(existingShippingInfo.getShipFrom()).isEqualTo("Daegu");
+        assertThat(existingShippingInfo.getReturnAddress()).isEqualTo("Daegu return");
+        assertThat(existingShippingInfo.getReturnShippingFee()).isEqualTo(3200L);
+        assertThat(existingShippingInfo.getExchangeShippingFee()).isEqualTo(6400L);
+        assertThat(existingShippingInfo.getShippingNotice()).isEqualTo("first press");
+        assertThat(response.getShippingInfo()).isNotNull();
+        assertThat(response.getShippingInfo().getCarrier()).isEqualTo("Lotte");
+        assertThat(response.getShippingInfo().getShippingNotice()).isEqualTo("first press");
+    }
+
+    @Test
+    void updateGoods_withSameLinkedPerformance_reusesExistingLinkWithoutReinsert() {
+        Long itemId = 32L;
+        Long sellerId = 10L;
+        Long performanceItemId = 99L;
+        Item item = createItem(itemId, sellerId);
+        Item performanceItem = createItem(performanceItemId, sellerId, ItemType.PERFORMANCE);
+        GoodsUpdateRequest request = new GoodsUpdateRequest();
+        ReflectionTestUtils.setField(request, "linkedPerformanceItemIds", List.of(performanceItemId));
+
+        ItemGoodsLink existingLink = ItemGoodsLink.create(performanceItemId, itemId);
+
+        when(itemRepository.findByIdForUpdate(itemId)).thenReturn(Optional.of(item));
+        when(itemRepository.findAllById(List.of(performanceItemId))).thenReturn(List.of(performanceItem));
+        when(itemOptionRepository.findByItemId(itemId)).thenReturn(List.of());
+        when(shippingInfoRepository.findByItemId(itemId)).thenReturn(Optional.empty());
+        when(itemGoodsLinkRepository.findByGoodsItemId(itemId)).thenReturn(List.of(existingLink));
+        when(itemImageRepository.findByItemIdOrderBySortOrder(itemId)).thenReturn(List.of());
+
+        GoodsDetailResponse response = goodsCommandService.updateGoods(itemId, request, sellerId);
+
+        verify(itemGoodsLinkRepository, org.mockito.Mockito.never()).softDeleteAllByGoodsItemId(itemId);
+        verify(itemGoodsLinkRepository, org.mockito.Mockito.never()).saveAll(any());
+        assertThat(response.getLinkedPerformanceItemIds()).containsExactly(performanceItemId);
     }
 
     private Item createItem(Long id, Long sellerId) {

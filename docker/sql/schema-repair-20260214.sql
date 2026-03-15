@@ -252,6 +252,38 @@ $$;
 
 DO $$
 BEGIN
+    IF to_regclass('public.performances') IS NULL THEN
+        RAISE NOTICE 'performances table not found, skip extended detail columns';
+    ELSE
+        ALTER TABLE performances
+            ADD COLUMN IF NOT EXISTS running_time_minutes INTEGER,
+            ADD COLUMN IF NOT EXISTS age_limit VARCHAR(50),
+            ADD COLUMN IF NOT EXISTS venue_address VARCHAR(255),
+            ADD COLUMN IF NOT EXISTS booking_notice TEXT,
+            ADD COLUMN IF NOT EXISTS organizer VARCHAR(100),
+            ADD COLUMN IF NOT EXISTS host VARCHAR(100);
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
+    IF to_regclass('public.shipping_infos') IS NULL THEN
+        RAISE NOTICE 'shipping_infos table not found, skip extended detail columns';
+    ELSE
+        ALTER TABLE shipping_infos
+            ADD COLUMN IF NOT EXISTS carrier VARCHAR(100),
+            ADD COLUMN IF NOT EXISTS ship_from VARCHAR(255),
+            ADD COLUMN IF NOT EXISTS return_address VARCHAR(255),
+            ADD COLUMN IF NOT EXISTS return_shipping_fee BIGINT,
+            ADD COLUMN IF NOT EXISTS exchange_shipping_fee BIGINT,
+            ADD COLUMN IF NOT EXISTS shipping_notice TEXT;
+    END IF;
+END
+$$;
+
+DO $$
+BEGIN
     IF to_regclass('public.item_images') IS NULL THEN
         RAISE NOTICE 'item_images table not found, skip';
     ELSE

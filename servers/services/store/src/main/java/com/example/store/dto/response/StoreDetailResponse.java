@@ -29,18 +29,4 @@ public record StoreDetailResponse(
     ) {
         this(id, userId, storeName, status, description, address, addressType, null);
     }
-
-
-    public StoreDetailResponse from(StoreImagesResponse images) {
-        return new StoreDetailResponse(
-            this.id,
-            this.userId,
-            this.storeName,
-            this.status,
-            this.description,
-            this.address,
-            this.addressType,
-            images
-        );
-    }
 }

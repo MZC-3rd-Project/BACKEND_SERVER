@@ -104,6 +104,34 @@ public class Item extends BaseEntity {
         }
     }
 
+    public void validateItemType(ItemType expectedType) {
+        if (itemType != expectedType) {
+            throw new BusinessException(ProductErrorCode.ITEM_TYPE_MISMATCH);
+        }
+    }
+
+    public boolean isPubliclyVisible() {
+        return status.isPubliclyVisible();
+    }
+
+    public void validatePublicAccess(ItemType expectedType) {
+        validateItemType(expectedType);
+        if (!isPubliclyVisible()) {
+            throw new BusinessException(ProductErrorCode.ITEM_NOT_FOUND);
+        }
+    }
+
+    public void validateSellerAccess(ItemType expectedType, Long sellerId) {
+        validateItemType(expectedType);
+        validateOwnership(sellerId);
+    }
+
+    public void validateSaleable(ItemStatus expectedStatus) {
+        if (status != expectedStatus) {
+            throw new BusinessException(ProductErrorCode.ITEM_NOT_SALEABLE);
+        }
+    }
+
     public boolean isEditable() {
         return this.status == ItemStatus.DRAFT;
     }

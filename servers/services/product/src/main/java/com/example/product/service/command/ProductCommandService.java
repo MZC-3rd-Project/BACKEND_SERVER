@@ -26,11 +26,14 @@ import com.example.product.repository.ShippingInfoRepository;
 import com.example.product.service.content.ItemContentService;
 import com.example.product.service.command.image.ItemThumbnailSyncService;
 import com.example.product.service.command.image.MediaReferenceService;
+import com.example.product.service.query.detail.ItemCategoryDetailResolver;
+import com.example.product.service.query.detail.ItemCategoryDetailView;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -47,6 +50,7 @@ public class ProductCommandService {
     private final ItemThumbnailSyncService itemThumbnailSyncService;
     private final StoreOwnershipValidator storeOwnershipValidator;
     private final EventPublisher eventPublisher;
+    private final ItemCategoryDetailResolver itemCategoryDetailResolver;
 
     public GoodsDetailResponse createProduct(ProductCreateRequest request, Long sellerId) {
         storeOwnershipValidator.validateOwnership(sellerId, request.getStoreId());
@@ -93,7 +97,13 @@ public class ProductCommandService {
 
         ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(item.getId());
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(item.getId());
-        return GoodsDetailResponse.of(item, options, shippingInfo, List.of(), contentSnapshot, images);
+        ItemCategoryDetailView categoryDetail = resolveCategoryDetail(item);
+        return GoodsDetailResponse.of(
+                item, options, shippingInfo, List.of(), List.of(),
+                categoryDetail != null ? categoryDetail.categoryName() : null,
+                categoryDetail != null ? categoryDetail.categoryPath() : List.of(),
+                contentSnapshot, images
+        );
     }
 
     public GoodsDetailResponse updateProduct(Long itemId, ProductUpdateRequest request, Long sellerId) {
@@ -132,8 +142,7 @@ public class ProductCommandService {
         }
 
         if (request.getShippingInfo() != null) {
-            shippingInfoRepository.softDeleteByItemId(itemId);
-            saveShippingInfo(itemId, request.getShippingInfo());
+            upsertShippingInfo(itemId, request.getShippingInfo());
         }
         if (request.getTags() != null) {
             itemContentService.replaceTags(itemId, request.getTags());
@@ -163,7 +172,13 @@ public class ProductCommandService {
         ShippingInfo currentShippingInfo = shippingInfoRepository.findByItemId(itemId).orElse(null);
         ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(itemId);
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(itemId);
-        return GoodsDetailResponse.of(item, currentOptions, currentShippingInfo, List.of(), contentSnapshot, images);
+        ItemCategoryDetailView categoryDetail = resolveCategoryDetail(item);
+        return GoodsDetailResponse.of(
+                item, currentOptions, currentShippingInfo, List.of(), List.of(),
+                categoryDetail != null ? categoryDetail.categoryName() : null,
+                categoryDetail != null ? categoryDetail.categoryPath() : List.of(),
+                contentSnapshot, images
+        );
     }
 
     public void delete(Long itemId, Long sellerId) {
@@ -204,8 +219,40 @@ public class ProductCommandService {
 
     private ShippingInfo saveShippingInfo(Long itemId, ShippingInfoRequest request) {
         ShippingInfo si = ShippingInfo.create(itemId, request.getShippingFee(),
-                request.getFreeShippingThreshold(), request.getEstimatedDays(), request.getReturnPolicy());
+                request.getFreeShippingThreshold(), request.getEstimatedDays(), request.getReturnPolicy(),
+                request.getCarrier(), request.getShipFrom(), request.getReturnAddress(),
+                request.getReturnShippingFee(), request.getExchangeShippingFee(), request.getShippingNotice());
         return shippingInfoRepository.save(si);
+    }
+
+    private ShippingInfo upsertShippingInfo(Long itemId, ShippingInfoRequest request) {
+        return shippingInfoRepository.findByItemId(itemId)
+                .map(existing -> {
+                    existing.update(
+                            request.getShippingFee(),
+                            request.getFreeShippingThreshold(),
+                            request.getEstimatedDays(),
+                            request.getReturnPolicy(),
+                            request.getCarrier(),
+                            request.getShipFrom(),
+                            request.getReturnAddress(),
+                            request.getReturnShippingFee(),
+                            request.getExchangeShippingFee(),
+                            request.getShippingNotice()
+                    );
+                    return existing;
+                })
+                .orElseGet(() -> saveShippingInfo(itemId, request));
+    }
+
+    private ItemCategoryDetailView resolveCategoryDetail(Item item) {
+        Map<Long, ItemCategoryDetailView> resolved = itemCategoryDetailResolver != null
+                ? itemCategoryDetailResolver.resolve(List.of(item))
+                : Map.of();
+        if (resolved == null) {
+            return null;
+        }
+        return resolved.get(item.getId());
     }
 
     private void validateItemType(Item item, ItemType expectedType) {
