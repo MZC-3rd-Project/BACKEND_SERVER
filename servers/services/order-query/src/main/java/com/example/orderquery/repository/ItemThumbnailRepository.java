@@ -8,7 +8,7 @@ import java.util.Optional;
 
 public interface ItemThumbnailRepository extends JpaRepository<ItemThumbnail, Long> {
 
-    List<ItemThumbnail> findAllByItem_Id(Long itemId);
+    List<ItemThumbnail> findAllByItemId(Long itemId);
 
-    Optional<ItemThumbnail> findFirstByItem_Id(Long itemId);
+    Optional<ItemThumbnail> findFirstByItemId(Long itemId);
 }
