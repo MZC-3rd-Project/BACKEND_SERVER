@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -26,17 +27,20 @@ import java.util.Map;
 @Service
 public class SearchMediaBffService {
 
+    private static final String CODE_SEARCH_DISABLED = "BFF-SEARCH-503";
     private final WebClient searchWebClient;
     private final WebClient mediaWebClient;
     private final GatewaySecurityProperties securityProperties;
     private final SearchThumbnailFallbackEnricher fallbackEnricher;
     private final ObjectMapper objectMapper;
+    private final boolean searchEnabled;
 
     public SearchMediaBffService(
             WebClient.Builder webClientBuilder,
             GatewaySecurityProperties securityProperties,
             SearchThumbnailFallbackEnricher fallbackEnricher,
             ObjectMapper objectMapper,
+            @Value("${app.feature.search-enabled:true}") boolean searchEnabled,
             @Value("${app.service.search-url:http://localhost:8088}") String searchServiceUrl,
             @Value("${app.service.media-url:http://localhost:8094}") String mediaServiceUrl
     ) {
@@ -45,9 +49,14 @@ public class SearchMediaBffService {
         this.securityProperties = securityProperties;
         this.fallbackEnricher = fallbackEnricher;
         this.objectMapper = objectMapper;
+        this.searchEnabled = searchEnabled;
     }
 
     public Mono<ResponseEntity<JsonNode>> search(ServerHttpRequest request) {
+        if (!searchEnabled) {
+            return Mono.just(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(searchDisabledBody()));
+        }
+
         HttpHeaders downstreamHeaders = buildDownstreamHeaders();
         MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>(request.getQueryParams());
 
@@ -133,6 +142,16 @@ public class SearchMediaBffService {
             }
         });
         return builder.build();
+    }
+
+    private JsonNode searchDisabledBody() {
+        var body = objectMapper.createObjectNode();
+        body.put("success", false);
+        body.putNull("data");
+        body.putObject("error")
+                .put("code", CODE_SEARCH_DISABLED)
+                .put("message", "검색 기능이 비활성화되었습니다");
+        return body;
     }
 
     private HttpHeaders buildDownstreamHeaders() {

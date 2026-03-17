@@ -17,9 +17,7 @@ spring:
           globalcors:
             cors-configurations:
               '[/**]':
-                allowedOrigins:
-                  - "http://donmoa-dev-alb-214468272.ap-northeast-2.elb.amazonaws.com"
-                  - "http://localhost:3000"
+                allowedOriginPatterns: ${GATEWAY_CORS_ALLOWED_ORIGIN_PATTERNS:http://localhost:3000}
                 allowedMethods:
                   - GET
                   - POST
@@ -30,10 +28,6 @@ spring:
                 allowedHeaders: "*"
                 allowCredentials: true
           routes:
-            - id: search-service
-              uri: ${app.service.search-url:http://localhost:8088}
-              predicates:
-                - Path=/api/v1/search/**
             - id: media-service
               uri: ${app.service.media-url:http://localhost:8094}
               predicates:
@@ -79,7 +73,7 @@ gateway:
     internal-auth-header: ${GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}
     internal-auth-token: ${GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
     allow-client-identity-headers: ${GATEWAY_SECURITY_ALLOW_CLIENT_IDENTITY_HEADERS:false}
-    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/v1/search,/api/v1/media,/api/v1/chat,/ws/chat,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders}
+    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/v1/media,/api/v1/chat,/ws/chat,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders}
     require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:/api/v1/chat,/ws/chat}
     require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/bff/v1,/api/v1/media,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders}
   session:
@@ -114,6 +108,8 @@ gateway:
     require-auth-or-session-enabled: ${GATEWAY_DEPLOYMENT_REQUIRE_AUTH_OR_SESSION_ENABLED:true}
 
 app:
+  feature:
+    search-enabled: ${APP_FEATURE_SEARCH_ENABLED:true}
   webclient:
     connect-timeout: ${GATEWAY_DOWNSTREAM_CONNECT_TIMEOUT_MS:5000}
     read-timeout: ${GATEWAY_DOWNSTREAM_READ_TIMEOUT_MS:10000}

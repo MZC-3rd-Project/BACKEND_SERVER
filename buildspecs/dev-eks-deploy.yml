@@ -1,0 +1,100 @@
+version: 0.2
+
+env:
+  shell: bash
+  variables:
+    HELM_CHART_PATH: deploy/helm/charts/spring-service
+    EKS_DEPLOY_PLAN_PATH: build-output/eks-deploy-plan.json
+    HELM_TIMEOUT: 10m
+    KUBECTL_ROLLOUT_TIMEOUT: 180s
+    INSTALL_EKS_PLATFORM_ADDONS: "false"
+
+phases:
+  install:
+    commands:
+      - echo "[INFO] install phase started"
+      - aws --version
+      - |
+        if ! command -v kubectl >/dev/null 2>&1; then
+          echo "[INFO] installing kubectl"
+          curl -fsSLo /usr/local/bin/kubectl "https://dl.k8s.io/release/v1.31.14/bin/linux/amd64/kubectl"
+          chmod +x /usr/local/bin/kubectl
+        fi
+      - |
+        if ! command -v helm >/dev/null 2>&1; then
+          echo "[INFO] installing helm"
+          curl -fsSLo /tmp/helm.tgz "https://get.helm.sh/helm-v3.17.3-linux-amd64.tar.gz"
+          tar -xzf /tmp/helm.tgz -C /tmp
+          install -m 0755 /tmp/linux-amd64/helm /usr/local/bin/helm
+        fi
+      - ruby --version
+      - command -v helm >/dev/null 2>&1 || { echo "[ERROR] helm must be available in the deploy image" >&2; exit 1; }
+      - command -v kubectl >/dev/null 2>&1 || { echo "[ERROR] kubectl must be available in the deploy image" >&2; exit 1; }
+      - helm version
+      - kubectl version --client=true
+
+  pre_build:
+    commands:
+      - set -euo pipefail
+      - echo "[INFO] pre_build phase started"
+      - AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-ap-northeast-2}"
+      - EKS_CLUSTER_NAME="${EKS_CLUSTER_NAME:?EKS_CLUSTER_NAME must be set}"
+      - export AWS_DEFAULT_REGION EKS_CLUSTER_NAME HELM_CHART_PATH EKS_DEPLOY_PLAN_PATH HELM_TIMEOUT KUBECTL_ROLLOUT_TIMEOUT INSTALL_EKS_PLATFORM_ADDONS
+      - test -f "${EKS_DEPLOY_PLAN_PATH}" || { echo "[ERROR] missing deploy plan: ${EKS_DEPLOY_PLAN_PATH}" >&2; exit 1; }
+      - aws eks update-kubeconfig --name "${EKS_CLUSTER_NAME}" --region "${AWS_DEFAULT_REGION}"
+      - |
+        if [ "${INSTALL_EKS_PLATFORM_ADDONS}" = "true" ]; then
+          bash ./scripts/ci/install-eks-platform-addons.sh
+        else
+          echo "[INFO] skipping platform addon install"
+        fi
+
+  build:
+    commands:
+      - set -euo pipefail
+      - echo "[INFO] build phase started"
+      - |
+        service_count="$(ruby -rjson -e 'plan = JSON.parse(File.read(ARGV[0])); puts plan.fetch("services", []).size' "${EKS_DEPLOY_PLAN_PATH}")"
+        if [ "${service_count}" = "0" ]; then
+          echo "[INFO] no services selected for deploy"
+          exit 0
+        fi
+      - |
+        while IFS=$'\t' read -r service_key rollout_wave namespace release_name rollout_name values_file image_repository image_tag; do
+          [ -z "${service_key}" ] && continue
+
+          echo "[INFO] Deploying ${service_key} wave=${rollout_wave} namespace=${namespace}"
+          helm upgrade --install "${release_name}" "${HELM_CHART_PATH}" \
+            --namespace "${namespace}" \
+            --create-namespace \
+            --values "${values_file}" \
+            --set "image.repository=${image_repository}" \
+            --set "image.tag=${image_tag}" \
+            --wait \
+            --timeout "${HELM_TIMEOUT}"
+
+          kubectl rollout status "deployment/${rollout_name}" \
+            --namespace "${namespace}" \
+            --timeout "${KUBECTL_ROLLOUT_TIMEOUT}"
+        done < <(
+          ruby -rjson -e '
+            plan = JSON.parse(File.read(ARGV[0]))
+            plan.fetch("services", []).each do |service|
+              puts [
+                service.fetch("key"),
+                service.fetch("rolloutWave"),
+                service.fetch("namespace"),
+                service.fetch("releaseName"),
+                service.fetch("rolloutName"),
+                service.fetch("valuesFile"),
+                service.fetch("imageRepository"),
+                service.fetch("imageTag")
+              ].join("\t")
+            end
+          ' "${EKS_DEPLOY_PLAN_PATH}"
+        )
+
+  post_build:
+    commands:
+      - set -euo pipefail
+      - echo "[INFO] deploy phase completed"

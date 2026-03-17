@@ -23,7 +23,7 @@ class TrustedHeaderSessionAuthenticationWebFilterTest {
     void filter_passesThroughWhenHeadersAbsent() {
         TrustedHeaderSessionAuthenticationWebFilter filter = createFilter(new HmacSigner("test-signing-key"));
         MockServerWebExchange exchange = MockServerWebExchange.from(
-                MockServerHttpRequest.get("/api/v1/search").build()
+                MockServerHttpRequest.get("/api/products").build()
         );
         CapturingChain chain = new CapturingChain();
 

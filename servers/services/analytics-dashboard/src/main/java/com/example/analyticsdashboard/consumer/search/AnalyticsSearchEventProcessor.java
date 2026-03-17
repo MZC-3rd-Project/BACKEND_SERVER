@@ -6,11 +6,13 @@ import com.example.config.kafka.IdempotentConsumerService;
 import com.example.event.consumer.EventEnvelope;
 import com.example.event.consumer.EventSpec;
 import com.example.event.inbox.InboxConsumerBinding;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
 @Component
+@ConditionalOnProperty(prefix = "app.analytics.search-consumer", name = "enabled", havingValue = "true", matchIfMissing = true)
 @InboxConsumerBinding(consumerName = AnalyticsSearchEventProcessor.CONSUMER_NAME)
 public class AnalyticsSearchEventProcessor extends AbstractAnalyticsEventProcessor<AnalyticsSearchEventMessage> {
 

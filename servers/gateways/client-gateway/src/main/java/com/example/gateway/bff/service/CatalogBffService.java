@@ -33,6 +33,7 @@ public class CatalogBffService {
 
     private static final String CODE_INVALID_REQUEST = "BFF-CATALOG-400";
     private static final String CODE_DOWNSTREAM_ERROR = "BFF-CATALOG-502";
+    private static final String CODE_SEARCH_DISABLED = "BFF-CATALOG-503";
     private static final String DEGRADE_QUERY_PARAM = "degrade";
 
     private final WebClient searchWebClient;
@@ -42,6 +43,7 @@ public class CatalogBffService {
     private final CatalogResponseMapper responseMapper;
     private final CatalogMetricsService catalogMetricsService;
     private final ObjectMapper objectMapper;
+    private final boolean searchEnabled;
     private final LongAdder degradeFallbackCounter = new LongAdder();
 
     public CatalogBffService(
@@ -51,6 +53,7 @@ public class CatalogBffService {
             CatalogResponseMapper responseMapper,
             CatalogMetricsService catalogMetricsService,
             ObjectMapper objectMapper,
+            @Value("${app.feature.search-enabled:true}") boolean searchEnabled,
             @Value("${app.service.search-url:http://localhost:8088}") String searchServiceUrl,
             @Value("${app.service.media-url:http://localhost:8094}") String mediaServiceUrl
     ) {
@@ -61,9 +64,15 @@ public class CatalogBffService {
         this.responseMapper = responseMapper;
         this.catalogMetricsService = catalogMetricsService;
         this.objectMapper = objectMapper;
+        this.searchEnabled = searchEnabled;
     }
 
     public Mono<ResponseEntity<CatalogItemsResponse>> listCatalogItems(ServerHttpRequest request) {
+        if (!searchEnabled) {
+            return Mono.just(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(CatalogItemsResponse.error(CODE_SEARCH_DISABLED, "검색 기능이 비활성화되었습니다")));
+        }
+
         long startedAtNanos = System.nanoTime();
         CatalogQueryParams params;
         try {

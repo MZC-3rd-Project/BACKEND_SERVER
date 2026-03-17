@@ -49,9 +49,36 @@ class CatalogBffServiceTest {
                 new CatalogResponseMapper(),
                 catalogMetricsService,
                 objectMapper,
+                true,
                 "http://search",
                 "http://media"
         );
+    }
+
+    @Test
+    void listCatalogItems_returns503WhenSearchFeatureDisabled() {
+        CatalogBffService disabledService = new CatalogBffService(
+                WebClient.builder().exchangeFunction(exchangeFunction),
+                new GatewaySecurityProperties(),
+                new SearchThumbnailFallbackEnricher(objectMapper),
+                new CatalogResponseMapper(),
+                new CatalogMetricsService(new SimpleMeterRegistry()),
+                objectMapper,
+                false,
+                "http://search",
+                "http://media"
+        );
+
+        ResponseEntity<CatalogItemsResponse> response = disabledService.listCatalogItems(
+                MockServerHttpRequest.get("/bff/v1/catalog/items?q=shoe").build()
+        ).block();
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().success()).isFalse();
+        assertThat(response.getBody().error().code()).isEqualTo("BFF-CATALOG-503");
+        assertThat(exchangeFunction.searchRequestUris).isEmpty();
     }
 
     @Test

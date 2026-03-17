@@ -25,9 +25,12 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = merge(local.common_tags, {
-    Name = "${var.name_prefix}-${var.environment}-public-${tonumber(each.key) + 1}"
-    Tier = "public"
-  })
+    Name                     = "${var.name_prefix}-${var.environment}-public-${tonumber(each.key) + 1}"
+    Tier                     = "public"
+    "kubernetes.io/role/elb" = "1"
+    }, var.eks_cluster_name != null ? {
+    "kubernetes.io/cluster/${var.eks_cluster_name}" = "shared"
+  } : {})
 }
 
 resource "aws_subnet" "private" {
@@ -39,9 +42,12 @@ resource "aws_subnet" "private" {
   map_public_ip_on_launch = false
 
   tags = merge(local.common_tags, {
-    Name = "${var.name_prefix}-${var.environment}-private-${tonumber(each.key) + 1}"
-    Tier = "private"
-  })
+    Name                              = "${var.name_prefix}-${var.environment}-private-${tonumber(each.key) + 1}"
+    Tier                              = "private"
+    "kubernetes.io/role/internal-elb" = "1"
+    }, var.eks_cluster_name != null ? {
+    "kubernetes.io/cluster/${var.eks_cluster_name}" = "shared"
+  } : {})
 }
 
 resource "aws_route_table" "public" {

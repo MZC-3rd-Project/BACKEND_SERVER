@@ -1,0 +1,40 @@
+fullnameOverride: sales-service
+
+image:
+  repository: 682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-sales-service
+  tag: latest
+
+service:
+  port: 8087
+
+container:
+  port: 8087
+
+env:
+  SERVER_PORT: "8087"
+  SPRING_PROFILES_ACTIVE: develop
+  DB_URL: jdbc:postgresql://donmoa-dev-aurora.cluster-cfw84sg260sa.ap-northeast-2.rds.amazonaws.com:5432/sales_db
+  DB_USERNAME: postgres
+  REDIS_HOST: donmoa-dev-redis.awmnbx.ng.0001.apn2.cache.amazonaws.com
+  REDIS_PORT: "6379"
+  KAFKA_BOOTSTRAP_SERVERS: 10.30.130.193:9092
+  SPRING_KAFKA_LISTENER_AUTO_STARTUP: "false"
+  STOCK_SERVICE_URL: http://stock-service:8085
+  PRODUCT_SERVICE_URL: http://product-service:8084
+  APP_GATEWAY_SECURITY_ENABLED: "true"
+  APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED: "true"
+  APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER: X-Gateway-Auth
+  APP_GATEWAY_SECURITY_USER_ID_HEADER: X-User-Id
+  APP_SECURITY_CONTEXT_MAX_AGE_MILLIS: "300000"
+  STOCK_CANCEL_RETRY_PROCESSING_STALE_THRESHOLD_SECONDS: "120"
+
+secretEnv:
+  DB_PASSWORD:
+    remoteRef: donmoa/dev/sales-db
+    property: password
+  APP_SECURITY_CONTEXT_SIGNING_KEY:
+    remoteRef: donmoa/dev/common
+    property: APP_SECURITY_CONTEXT_SIGNING_KEY
+  APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:
+    remoteRef: donmoa/dev/common
+    property: APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN

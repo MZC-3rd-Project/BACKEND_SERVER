@@ -1,0 +1,36 @@
+fullnameOverride: auth-service
+
+image:
+  repository: 682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-auth-service
+  tag: latest
+
+service:
+  port: 8081
+
+container:
+  port: 8081
+
+env:
+  SERVER_PORT: "8081"
+  SPRING_PROFILES_ACTIVE: develop
+  DB_URL: jdbc:postgresql://donmoa-dev-aurora.cluster-cfw84sg260sa.ap-northeast-2.rds.amazonaws.com:5432/auth_db
+  DB_USERNAME: postgres
+  KAFKA_BOOTSTRAP_SERVERS: 10.30.130.193:9092
+  KC_SERVER_URL: http://keycloak:8080
+  KC_REALM: don-moa
+  KC_ADMIN_CLIENT_ID: don-moa-admin
+  KC_DIRECT_GRANT_CLIENT_ID: don-moa-gateway
+  PROFILE_SERVICE_URL: http://profile-service:8071
+  APP_GATEWAY_SECURITY_ENABLED: "true"
+  APP_SECURITY_CONTEXT_MAX_AGE_MILLIS: "300000"
+
+secretEnv:
+  DB_PASSWORD:
+    remoteRef: donmoa/dev/auth-db
+    property: password
+  APP_SECURITY_CONTEXT_SIGNING_KEY:
+    remoteRef: donmoa/dev/common
+    property: APP_SECURITY_CONTEXT_SIGNING_KEY
+  KC_ADMIN_CLIENT_SECRET:
+    remoteRef: donmoa/dev/common
+    property: KC_ADMIN_CLIENT_SECRET

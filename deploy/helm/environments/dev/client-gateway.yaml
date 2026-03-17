@@ -1,0 +1,79 @@
+fullnameOverride: client-gateway
+
+image:
+  repository: 682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-client-gateway
+  tag: latest
+
+service:
+  port: 8080
+
+container:
+  port: 8080
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/group.name: donmoa-dev-gateway
+    alb.ingress.kubernetes.io/healthcheck-path: /actuator/health
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/success-codes: 200-399
+    alb.ingress.kubernetes.io/target-type: ip
+  hosts:
+    - paths:
+        - path: /
+          pathType: Prefix
+
+env:
+  SERVER_PORT: "8080"
+  SPRING_PROFILES_ACTIVE: local
+  APP_FEATURE_SEARCH_ENABLED: "false"
+  GATEWAY_AUTH_ENABLED: "false"
+  GATEWAY_PROFILE_ROUTE_ENABLED: "true"
+  GATEWAY_PROFILE_ROUTE_DUMMY_USER_ID: "9000001"
+  GATEWAY_OAUTH2_ISSUER_URI: http://id.dev.example.com/realms/don-moa
+  GATEWAY_OAUTH2_CLIENT_ID: don-moa-gateway
+  GATEWAY_OAUTH2_CLIENT_AUTHENTICATION_METHOD: client_secret_basic
+  GATEWAY_OAUTH2_SCOPES: openid,profile,email
+  GATEWAY_CORS_ALLOWED_ORIGIN_PATTERNS: http://localhost:3000,http://*.dev.example.com
+  GATEWAY_SECURITY_INTERNAL_AUTH_HEADER: X-Gateway-Auth
+  GATEWAY_SECURITY_ALLOW_CLIENT_IDENTITY_HEADERS: "true"
+  GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES: ""
+  GATEWAY_SESSION_ENABLED: "false"
+  GATEWAY_SESSION_TRUSTED_HEADER_AUTH_ENABLED: "false"
+  GATEWAY_SESSION_KEYCLOAK_LOGOUT_URL: http://id.dev.example.com/realms/don-moa/protocol/openid-connect/logout
+  APP_SECURITY_CONTEXT_MAX_AGE_MILLIS: "300000"
+  APP_SERVICE_AUTH_URL: http://auth-service:8081
+  APP_SERVICE_USER_URL: http://profile-service:8071
+  APP_SERVICE_PRODUCT_URL: http://product-service:8084
+  APP_SERVICE_FUNDING_URL: http://funding-service:8086
+  APP_SERVICE_SALES_URL: http://sales-service:8087
+  APP_SERVICE_HOT_DEAL_URL: http://hot-deal-service:8089
+  APP_SERVICE_NOTIFICATION_URL: http://notification-service:8092
+  APP_SERVICE_CHAT_URL: http://chat-service:8093
+  APP_SERVICE_CHAT_WS_URL: ws://chat-service:8093
+  APP_SERVICE_MEDIA_URL: http://media-api:8094
+  APP_SERVICE_ORDER_URL: http://order-service:8090
+  ANALYTICS_DASHBOARD_SERVICE_URL: http://analytics-dashboard:8095
+  REDIS_HOST: donmoa-dev-redis.awmnbx.ng.0001.apn2.cache.amazonaws.com
+  REDIS_PORT: "6379"
+  SPRING_DATA_REDIS_HOST: donmoa-dev-redis.awmnbx.ng.0001.apn2.cache.amazonaws.com
+  SPRING_DATA_REDIS_PORT: "6379"
+
+secretEnv:
+  APP_SECURITY_CONTEXT_SIGNING_KEY:
+    remoteRef: donmoa/dev/common
+    property: APP_SECURITY_CONTEXT_SIGNING_KEY
+  GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:
+    remoteRef: donmoa/dev/common
+    property: APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN
+  GATEWAY_OAUTH2_CLIENT_SECRET:
+    remoteRef: donmoa/dev/common
+    property: GATEWAY_OAUTH2_CLIENT_SECRET
+  GATEWAY_SESSION_REFRESH_TOKEN_HASH_PEPPER:
+    remoteRef: donmoa/dev/common
+    property: GATEWAY_SESSION_REFRESH_TOKEN_HASH_PEPPER
+  GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_TOKEN:
+    remoteRef: donmoa/dev/common
+    property: GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_TOKEN

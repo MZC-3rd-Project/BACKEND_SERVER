@@ -2,7 +2,7 @@ name: Trigger CodePipeline
 
 on:
   push:
-    branches: [prod]
+    branches: [develop]
   workflow_dispatch:
     inputs:
       target:
@@ -102,8 +102,10 @@ jobs:
                 [[ -z "${file}" ]] && continue
 
                 case "${file}" in
-                  libs/*|gradle/*|build.gradle.kts|settings.gradle.kts|gradlew|init/*|infra/terraform/ecs-app/*|.github/workflows/*)
+                  libs/*|gradle/*|build.gradle.kts|settings.gradle.kts|gradlew|init/*|buildspecs/*|deploy/*|scripts/*|infra/terraform/ecs-app/*|infra/terraform/eks-foundation/*|.github/workflows/*)
                     full_deploy="true"
+                    ;;
+                  servers/services/search/*|servers/test/test-server/*)
                     ;;
                   servers/services/*)
                     service_name="$(echo "${file}" | cut -d/ -f3)"

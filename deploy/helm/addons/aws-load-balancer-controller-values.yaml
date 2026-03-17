@@ -1,0 +1,20 @@
+clusterName: ""
+region: ""
+vpcId: ""
+
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller
+  annotations: {}
+
+replicaCount: 2
+
+createIngressClassResource: true
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 200m
+    memory: 512Mi

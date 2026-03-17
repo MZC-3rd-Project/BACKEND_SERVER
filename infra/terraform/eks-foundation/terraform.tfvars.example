@@ -1,0 +1,37 @@
+aws_region       = "ap-northeast-2"
+environment      = "dev"
+name_prefix      = "donmoa"
+cluster_version  = "1.31"
+
+default_tags = {
+  Team    = "backend"
+  Managed = "terraform"
+}
+
+# Reuse outputs from infra/terraform/foundation
+vpc_id = "vpc-xxxxxxxx"
+
+private_subnet_ids = [
+  "subnet-private-a",
+  "subnet-private-b"
+]
+
+cluster_endpoint_private_access = true
+cluster_endpoint_public_access  = true
+
+cluster_endpoint_public_access_cidrs = [
+  "<your-ip>/32"
+]
+
+node_group_instance_types = [
+  "t3.large"
+]
+
+node_group_capacity_type = "ON_DEMAND"
+node_group_desired_size  = 3
+node_group_min_size      = 1
+node_group_max_size      = 4
+
+external_secrets_secret_arns = [
+  "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/dev/*"
+]

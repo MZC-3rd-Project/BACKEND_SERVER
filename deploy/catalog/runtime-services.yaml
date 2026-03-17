@@ -1,0 +1,479 @@
+apiVersion: platform.donmoa/v1alpha1
+kind: RuntimeServiceCatalog
+metadata:
+  name: donmoa-eks-runtime-services
+spec:
+  environment: dev
+  namespace: donmoa-dev
+  defaultChart: spring-service
+  exclusions:
+    - search
+    - test-server
+  services:
+    - key: client-gateway
+      runtime:
+        type: spring-boot
+        applicationName: client-gateway
+      build:
+        type: gradle
+        gradleModule: "servers:gateways:client-gateway"
+      image:
+        ecrRepository: donmoa-dev-client-gateway
+        foundationRepositorySuffix: client-gateway
+      deployment:
+        namespace: donmoa-dev
+        releaseName: client-gateway
+        serviceName: client-gateway
+        containerPort: 8080
+        public: true
+        ingressHost: api.dev.<domain>
+        rolloutWave: 3
+      datastore:
+        type: none
+        readWriteSplit: false
+      externalDependencies:
+        - redis
+        - keycloak
+
+    - key: keycloak
+      runtime:
+        type: keycloak
+        applicationName: keycloak
+      build:
+        type: external-image
+        sourceImage: quay.io/keycloak/keycloak:24.0.5
+      image:
+        ecrRepository: donmoa-dev-keycloak
+        foundationRepositorySuffix: keycloak
+      deployment:
+        namespace: donmoa-dev
+        releaseName: keycloak
+        serviceName: keycloak
+        containerPort: 8080
+        public: true
+        ingressHost: id.dev.<domain>
+        rolloutWave: 2
+      datastore:
+        type: aurora-postgresql
+        databaseName: keycloak_db
+        readWriteSplit: false
+      externalDependencies:
+        - aurora-postgresql
+        - secrets-manager
+
+    - key: auth
+      runtime:
+        type: spring-boot
+        applicationName: auth-service
+      build:
+        type: gradle
+        gradleModule: "servers:services:auth"
+      image:
+        ecrRepository: donmoa-dev-auth-service
+        foundationRepositorySuffix: auth-service
+      deployment:
+        namespace: donmoa-dev
+        releaseName: auth
+        serviceName: auth-service
+        containerPort: 8081
+        public: false
+        rolloutWave: 2
+      datastore:
+        type: aurora-postgresql
+        databaseName: auth_db
+        readWriteSplit: false
+      externalDependencies:
+        - aurora-postgresql
+        - kafka
+
+    - key: profile
+      runtime:
+        type: spring-boot
+        applicationName: profile-service
+      build:
+        type: gradle
+        gradleModule: "servers:services:profile"
+      image:
+        ecrRepository: donmoa-dev-profile-service
+        foundationRepositorySuffix: profile-service
+      deployment:
+        namespace: donmoa-dev
+        releaseName: profile
+        serviceName: profile-service
+        containerPort: 8071
+        public: false
+        rolloutWave: 2
+      datastore:
+        type: aurora-postgresql
+        databaseName: profile_db
+        readWriteSplit: false
+      externalDependencies:
+        - aurora-postgresql
+        - redis
+        - kafka
+
+    - key: product
+      runtime:
+        type: spring-boot
+        applicationName: product-service
+      build:
+        type: gradle
+        gradleModule: "servers:services:product"
+      image:
+        ecrRepository: donmoa-dev-product-service
+        foundationRepositorySuffix: product-service
+      deployment:
+        namespace: donmoa-dev
+        releaseName: product
+        serviceName: product-service
+        containerPort: 8084
+        public: false
+        rolloutWave: 4
+      datastore:
+        type: aurora-postgresql
+        databaseName: product_db
+        readWriteSplit: true
+      externalDependencies:
+        - aurora-postgresql
+        - redis
+        - kafka
+
+    - key: stock
+      runtime:
+        type: spring-boot
+        applicationName: stock-service
+      build:
+        type: gradle
+        gradleModule: "servers:services:stock"
+      image:
+        ecrRepository: donmoa-dev-stock-service
+        foundationRepositorySuffix: stock-service
+      deployment:
+        namespace: donmoa-dev
+        releaseName: stock
+        serviceName: stock-service
+        containerPort: 8085
+        public: false
+        rolloutWave: 4
+      datastore:
+        type: aurora-postgresql
+        databaseName: stock_db
+        readWriteSplit: true
+      externalDependencies:
+        - aurora-postgresql
+        - redis
+        - kafka
+
+    - key: funding
+      runtime:
+        type: spring-boot
+        applicationName: funding-service
+      build:
+        type: gradle
+        gradleModule: "servers:services:funding"
+      image:
+        ecrRepository: donmoa-dev-funding-service
+        foundationRepositorySuffix: funding-service
+      deployment:
+        namespace: donmoa-dev
+        releaseName: funding
+        serviceName: funding-service
+        containerPort: 8086
+        public: false
+        rolloutWave: 4
+      datastore:
+        type: aurora-postgresql
+        databaseName: funding_db
+        readWriteSplit: true
+      externalDependencies:
+        - aurora-postgresql
+        - redis
+        - kafka
+
+    - key: sales
+      runtime:
+        type: spring-boot
+        applicationName: sales-service
+      build:
+        type: gradle
+        gradleModule: "servers:services:sales"
+      image:
+        ecrRepository: donmoa-dev-sales-service
+        foundationRepositorySuffix: sales-service
+      deployment:
+        namespace: donmoa-dev
+        releaseName: sales
+        serviceName: sales-service
+        containerPort: 8087
+        public: false
+        rolloutWave: 4
+      datastore:
+        type: aurora-postgresql
+        databaseName: sales_db
+        readWriteSplit: false
+      externalDependencies:
+        - aurora-postgresql
+        - redis
+        - kafka
+
+    - key: hot-deal
+      runtime:
+        type: spring-boot
+        applicationName: hot-deal-service
+      build:
+        type: gradle
+        gradleModule: "servers:services:hot-deal"
+      image:
+        ecrRepository: donmoa-dev-hot-deal-service
+        foundationRepositorySuffix: hot-deal-service
+      deployment:
+        namespace: donmoa-dev
+        releaseName: hot-deal
+        serviceName: hot-deal-service
+        containerPort: 8089
+        public: false
+        rolloutWave: 4
+      datastore:
+        type: aurora-postgresql
+        databaseName: hotdeal_db
+        readWriteSplit: true
+      externalDependencies:
+        - aurora-postgresql
+        - redis
+        - kafka
+
+    - key: order
+      runtime:
+        type: spring-boot
+        applicationName: order-service
+      build:
+        type: gradle
+        gradleModule: "servers:services:order"
+      image:
+        ecrRepository: donmoa-dev-order-service
+        foundationRepositorySuffix: order-service
+      deployment:
+        namespace: donmoa-dev
+        releaseName: order
+        serviceName: order-service
+        containerPort: 8090
+        public: false
+        rolloutWave: 5
+      datastore:
+        type: aurora-postgresql
+        databaseName: order_db
+        readWriteSplit: false
+      externalDependencies:
+        - aurora-postgresql
+        - redis
+        - kafka
+
+    - key: store
+      runtime:
+        type: spring-boot
+        applicationName: store-service
+      build:
+        type: gradle
+        gradleModule: "servers:services:store"
+      image:
+        ecrRepository: donmoa-dev-store-service
+        foundationRepositorySuffix: store-service
+      deployment:
+        namespace: donmoa-dev
+        releaseName: store
+        serviceName: store-service
+        containerPort: 8072
+        public: false
+        rolloutWave: 5
+      datastore:
+        type: aurora-postgresql
+        databaseName: store_db
+        readWriteSplit: false
+      externalDependencies:
+        - aurora-postgresql
+        - redis
+        - kafka
+
+    - key: store-query
+      runtime:
+        type: spring-boot
+        applicationName: store-query-service
+      build:
+        type: gradle
+        gradleModule: "servers:services:store-query"
+      image:
+        ecrRepository: donmoa-dev-store-query-service
+        foundationRepositorySuffix: store-query-service
+      deployment:
+        namespace: donmoa-dev
+        releaseName: store-query
+        serviceName: store-query-service
+        containerPort: 8091
+        public: false
+        rolloutWave: 5
+      datastore:
+        type: aurora-postgresql
+        databaseName: store_query_db
+        readWriteSplit: false
+      externalDependencies:
+        - aurora-postgresql
+        - redis
+        - kafka
+
+    - key: notification
+      runtime:
+        type: spring-boot
+        applicationName: notification-service
+      build:
+        type: gradle
+        gradleModule: "servers:services:notification"
+      image:
+        ecrRepository: donmoa-dev-notification-service
+        foundationRepositorySuffix: notification-service
+      deployment:
+        namespace: donmoa-dev
+        releaseName: notification
+        serviceName: notification-service
+        containerPort: 8092
+        public: false
+        rolloutWave: 6
+      datastore:
+        type: aurora-postgresql
+        databaseName: notification_db
+        readWriteSplit: false
+      externalDependencies:
+        - aurora-postgresql
+        - redis
+        - kafka
+        - ses-or-smtp
+
+    - key: chat
+      runtime:
+        type: spring-boot
+        applicationName: chat-service
+      build:
+        type: gradle
+        gradleModule: "servers:services:chat"
+      image:
+        ecrRepository: donmoa-dev-chat-service
+        foundationRepositorySuffix: chat-service
+      deployment:
+        namespace: donmoa-dev
+        releaseName: chat
+        serviceName: chat-service
+        containerPort: 8093
+        public: false
+        rolloutWave: 6
+      datastore:
+        type: aurora-postgresql
+        databaseName: chat_db
+        readWriteSplit: false
+      externalDependencies:
+        - aurora-postgresql
+        - redis
+        - kafka
+
+    - key: media-api
+      runtime:
+        type: spring-boot
+        applicationName: media-api
+      build:
+        type: gradle
+        gradleModule: "servers:services:media-api"
+      image:
+        ecrRepository: donmoa-dev-media-api
+        foundationRepositorySuffix: media-api
+      deployment:
+        namespace: donmoa-dev
+        releaseName: media-api
+        serviceName: media-api
+        containerPort: 8094
+        public: false
+        rolloutWave: 7
+      datastore:
+        type: aurora-postgresql
+        databaseName: media_db
+        readWriteSplit: false
+      externalDependencies:
+        - aurora-postgresql
+        - redis
+        - kafka
+        - s3
+        - cloudfront
+
+    - key: media-worker
+      runtime:
+        type: spring-boot
+        applicationName: media-worker
+      build:
+        type: gradle
+        gradleModule: "servers:services:media-worker"
+      image:
+        ecrRepository: donmoa-dev-media-worker
+        foundationRepositorySuffix: media-worker
+      deployment:
+        namespace: donmoa-dev
+        releaseName: media-worker
+        serviceName: media-worker
+        containerPort: 8095
+        public: false
+        rolloutWave: 7
+      datastore:
+        type: aurora-postgresql
+        databaseName: media_db
+        readWriteSplit: false
+      externalDependencies:
+        - aurora-postgresql
+        - kafka
+        - s3
+        - cloudfront
+
+    - key: analytics-dashboard
+      runtime:
+        type: spring-boot
+        applicationName: analytics-dashboard-service
+      build:
+        type: gradle
+        gradleModule: "servers:services:analytics-dashboard"
+      image:
+        ecrRepository: donmoa-dev-analytics-dashboard-service
+        foundationRepositorySuffix: analytics-dashboard-service
+      deployment:
+        namespace: donmoa-dev
+        releaseName: analytics-dashboard
+        serviceName: analytics-dashboard
+        containerPort: 8095
+        public: false
+        rolloutWave: 8
+      datastore:
+        type: aurora-postgresql
+        databaseName: analytics_db
+        readWriteSplit: true
+      externalDependencies:
+        - aurora-postgresql
+        - redis
+        - kafka
+
+    - key: cart
+      runtime:
+        type: spring-boot
+        applicationName: cart-service
+      build:
+        type: gradle
+        gradleModule: "servers:services:cart"
+      image:
+        ecrRepository: donmoa-dev-cart-service
+        foundationRepositorySuffix: cart-service
+      deployment:
+        namespace: donmoa-dev
+        releaseName: cart
+        serviceName: cart-service
+        containerPort: 8096
+        public: false
+        rolloutWave: 9
+      datastore:
+        type: dynamodb
+        tableName: cart_items
+        readWriteSplit: false
+      externalDependencies:
+        - dynamodb

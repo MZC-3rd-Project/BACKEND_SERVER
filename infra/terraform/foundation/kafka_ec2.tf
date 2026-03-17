@@ -30,6 +30,18 @@ resource "aws_security_group" "ec2_kafka" {
     security_groups = [aws_security_group.ecs_service.id]
   }
 
+  dynamic "ingress" {
+    for_each = var.runtime_ingress_cidr_blocks
+
+    content {
+      description = "Kafka from runtime CIDR"
+      from_port   = 9092
+      to_port     = 9092
+      protocol    = "tcp"
+      cidr_blocks = [ingress.value]
+    }
+  }
+
   ingress {
     description = "Controller listener (self)"
     from_port   = 9093

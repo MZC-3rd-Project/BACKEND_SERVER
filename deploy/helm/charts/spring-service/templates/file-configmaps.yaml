@@ -1,0 +1,24 @@
+{{- range $cfg := .Values.fileConfigMaps }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "spring-service.fileConfigMapName" (dict "root" $ "name" $cfg.name) }}
+  labels:
+    {{- include "spring-service.labels" $ | nindent 4 }}
+data:
+  {{- range $filename, $spec := $cfg.files }}
+  {{ $filename }}: |
+    {{- if kindIs "map" $spec }}
+    {{- if hasKey $spec "chartFile" }}
+{{ $.Files.Get $spec.chartFile | nindent 4 }}
+    {{- else if hasKey $spec "content" }}
+{{ $spec.content | nindent 4 }}
+    {{- else }}
+{{ fail (printf "fileConfigMaps.%s.files.%s must define chartFile or content" $cfg.name $filename) }}
+    {{- end }}
+    {{- else }}
+{{ $spec | nindent 4 }}
+    {{- end }}
+  {{- end }}
+{{- end }}

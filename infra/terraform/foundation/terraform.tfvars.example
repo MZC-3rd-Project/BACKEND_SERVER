@@ -31,13 +31,22 @@ gateway_health_check_path = "/actuator/health"
 ecr_repositories = [
   "client-gateway",
   "keycloak",
+  "auth-service",
+  "profile-service",
   "product-service",
   "stock-service",
-  "search-service",
   "sales-service",
   "funding-service",
   "hot-deal-service",
-  "analytics-dashboard-service"
+  "order-service",
+  "store-service",
+  "store-query-service",
+  "notification-service",
+  "chat-service",
+  "media-api",
+  "media-worker",
+  "analytics-dashboard-service",
+  "cart-service"
 ]
 
 # Aurora PostgreSQL (writer + reader)

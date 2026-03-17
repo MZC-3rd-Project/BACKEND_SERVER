@@ -1,0 +1,34 @@
+fullnameOverride: media-worker
+
+image:
+  repository: 682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-media-worker
+  tag: latest
+
+serviceAccount:
+  annotations:
+    # Replace with the real IRSA role before deploy.
+    eks.amazonaws.com/role-arn: arn:aws:iam::682405977339:role/donmoa-dev-media-s3-role
+
+service:
+  port: 8095
+
+container:
+  port: 8095
+
+env:
+  SERVER_PORT: "8095"
+  SPRING_PROFILES_ACTIVE: develop
+  DB_URL: jdbc:postgresql://donmoa-dev-aurora.cluster-cfw84sg260sa.ap-northeast-2.rds.amazonaws.com:5432/media_db
+  DB_USERNAME: postgres
+  KAFKA_BOOTSTRAP_SERVERS: 10.30.130.193:9092
+  MEDIA_S3_REGION: ap-northeast-2
+  MEDIA_S3_BUCKET: team2-donmoa-media-raw
+  MEDIA_S3_KEY_PREFIX: team2-donmoa-media
+
+secretEnv:
+  DB_PASSWORD:
+    remoteRef: donmoa/dev/media-db
+    property: password
+  APP_SECURITY_CONTEXT_SIGNING_KEY:
+    remoteRef: donmoa/dev/common
+    property: APP_SECURITY_CONTEXT_SIGNING_KEY

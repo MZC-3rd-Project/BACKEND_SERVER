@@ -1,0 +1,94 @@
+fullnameOverride: keycloak
+
+image:
+  repository: quay.io/keycloak/keycloak
+  tag: 24.0.5
+  pullPolicy: IfNotPresent
+
+service:
+  port: 8080
+
+container:
+  port: 8080
+  command:
+    - /bin/sh
+    - -ec
+  args:
+    - |
+      mkdir -p /opt/keycloak/data/import
+      escape_sed_replacement() {
+        printf '%s' "$1" | sed -e 's/[&|\\]/\\&/g'
+      }
+      kc_admin_client_secret="$(escape_sed_replacement "${KEYCLOAK_REALM_ADMIN_CLIENT_SECRET}")"
+      gateway_client_secret="$(escape_sed_replacement "${KEYCLOAK_REALM_GATEWAY_CLIENT_SECRET}")"
+      gateway_redirect_uri="$(escape_sed_replacement "${KEYCLOAK_GATEWAY_REDIRECT_URI}")"
+      gateway_web_origin="$(escape_sed_replacement "${KEYCLOAK_GATEWAY_WEB_ORIGIN}")"
+      gateway_post_logout_redirect_uri="$(escape_sed_replacement "${KEYCLOAK_GATEWAY_POST_LOGOUT_REDIRECT_URI}")"
+      sed \
+        -e "s|__KC_ADMIN_CLIENT_SECRET__|${kc_admin_client_secret}|g" \
+        -e "s|__GATEWAY_OAUTH2_CLIENT_SECRET__|${gateway_client_secret}|g" \
+        -e "s|__KEYCLOAK_GATEWAY_REDIRECT_URI__|${gateway_redirect_uri}|g" \
+        -e "s|__KEYCLOAK_GATEWAY_WEB_ORIGIN__|${gateway_web_origin}|g" \
+        -e "s|__KEYCLOAK_GATEWAY_POST_LOGOUT_REDIRECT_URI__|${gateway_post_logout_redirect_uri}|g" \
+        /opt/keycloak/bootstrap/don-moa-realm.eks.example.json > /opt/keycloak/data/import/don-moa-realm.json
+      exec /opt/keycloak/bin/kc.sh start --import-realm
+  extraVolumeMounts:
+    - name: file-cm-realm-template
+      mountPath: /opt/keycloak/bootstrap
+      readOnly: true
+
+fileConfigMaps:
+  - name: realm-template
+    files:
+      don-moa-realm.eks.example.json:
+        chartFile: files/keycloak/don-moa-realm.eks.example.json
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/group.name: donmoa-dev-public
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/success-codes: 200-399
+    alb.ingress.kubernetes.io/target-type: ip
+  hosts:
+    - paths:
+        - path: /
+          pathType: Prefix
+
+env:
+  KC_DB: postgres
+  KC_DB_URL_HOST: donmoa-dev-aurora.cluster-cfw84sg260sa.ap-northeast-2.rds.amazonaws.com
+  KC_DB_URL_PORT: "5432"
+  KC_DB_URL_DATABASE: keycloak_db
+  KC_DB_USERNAME: postgres
+  KC_HTTP_ENABLED: "true"
+  KC_HEALTH_ENABLED: "true"
+  KC_METRICS_ENABLED: "true"
+  KC_PROXY_HEADERS: xforwarded
+  KC_HOSTNAME_STRICT: "false"
+  KEYCLOAK_GATEWAY_REDIRECT_URI: http://api.dev.example.com/login/oauth2/code/keycloak
+  KEYCLOAK_GATEWAY_WEB_ORIGIN: http://frontend.dev.example.com
+  KEYCLOAK_GATEWAY_POST_LOGOUT_REDIRECT_URI: http://api.dev.example.com
+  KEYCLOAK_ADMIN: admin
+
+secretEnv:
+  KC_DB_PASSWORD:
+    remoteRef: donmoa/dev/keycloak-db
+    property: password
+  KEYCLOAK_ADMIN_PASSWORD:
+    remoteRef: donmoa/dev/keycloak-admin
+    property: password
+  KEYCLOAK_REALM_ADMIN_CLIENT_SECRET:
+    remoteRef: donmoa/dev/common
+    property: KC_ADMIN_CLIENT_SECRET
+  KEYCLOAK_REALM_GATEWAY_CLIENT_SECRET:
+    remoteRef: donmoa/dev/common
+    property: GATEWAY_OAUTH2_CLIENT_SECRET
+
+probes:
+  liveness:
+    enabled: false
+  readiness:
+    enabled: false

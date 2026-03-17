@@ -74,6 +74,18 @@ resource "aws_security_group" "db" {
   }
 
   dynamic "ingress" {
+    for_each = var.runtime_ingress_cidr_blocks
+
+    content {
+      description = "PostgreSQL from runtime CIDR"
+      from_port   = 5432
+      to_port     = 5432
+      protocol    = "tcp"
+      cidr_blocks = [ingress.value]
+    }
+  }
+
+  dynamic "ingress" {
     for_each = var.enable_ec2_bastion ? [aws_security_group.ec2_bastion[0].id] : []
 
     content {
@@ -106,6 +118,18 @@ resource "aws_security_group" "redis" {
     to_port         = var.redis_port
     protocol        = "tcp"
     security_groups = [aws_security_group.ecs_service.id]
+  }
+
+  dynamic "ingress" {
+    for_each = var.runtime_ingress_cidr_blocks
+
+    content {
+      description = "Redis from runtime CIDR"
+      from_port   = var.redis_port
+      to_port     = var.redis_port
+      protocol    = "tcp"
+      cidr_blocks = [ingress.value]
+    }
   }
 
   egress {

@@ -80,7 +80,7 @@ public class StoreReadModel extends BaseEntity {
     @Column(name = "latest_item_updated_at")
     private LocalDateTime latestItemUpdatedAt;
 
-    @Column(name = "search_text")
+    @Column(name = "search_text", columnDefinition = "TEXT")
     private String searchText;
 
     @Column(name = "search_tsv", insertable = false, updatable = false, columnDefinition = "tsvector")

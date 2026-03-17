@@ -1,0 +1,38 @@
+fullnameOverride: cart-service
+
+image:
+  repository: 682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-cart-service
+  tag: latest
+
+serviceAccount:
+  annotations:
+    # Replace with the real IRSA role before deploy.
+    eks.amazonaws.com/role-arn: arn:aws:iam::682405977339:role/donmoa-dev-cart-dynamodb-role
+
+service:
+  port: 8096
+
+container:
+  port: 8096
+
+env:
+  SERVER_PORT: "8096"
+  SPRING_PROFILES_ACTIVE: develop
+  CART_DYNAMODB_REGION: ap-northeast-2
+  CART_DYNAMODB_TABLE_NAME: cart_items
+  SALES_SERVICE_URL: http://sales-service:8087
+  PRODUCT_SERVICE_URL: http://product-service:8084
+  STORE_QUERY_SERVICE_URL: http://store-query-service:8091
+  APP_GATEWAY_SECURITY_ENABLED: "true"
+  APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED: "true"
+  APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER: X-Gateway-Auth
+  APP_GATEWAY_SECURITY_USER_ID_HEADER: X-User-Id
+  APP_SECURITY_CONTEXT_MAX_AGE_MILLIS: "300000"
+
+secretEnv:
+  APP_SECURITY_CONTEXT_SIGNING_KEY:
+    remoteRef: donmoa/dev/common
+    property: APP_SECURITY_CONTEXT_SIGNING_KEY
+  APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:
+    remoteRef: donmoa/dev/common
+    property: APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN

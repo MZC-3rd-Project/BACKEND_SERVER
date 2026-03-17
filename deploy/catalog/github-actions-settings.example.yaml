@@ -1,0 +1,40 @@
+apiVersion: platform.donmoa/v1alpha1
+kind: GithubActionsDeployConfig
+metadata:
+  name: donmoa-eks-github-actions-example
+spec:
+  purpose: >
+    Example repository-level GitHub Actions settings for triggering AWS CodePipeline
+    with OIDC. Runtime application secrets remain in AWS Secrets Manager.
+  repositorySecrets:
+    - name: AWS_DEPLOY_ROLE_ARN
+      required: true
+      sampleValue: arn:aws:iam::<ACCOUNT_ID>:role/donmoa-github-actions-deploy-role
+      description: IAM role ARN assumed by GitHub Actions via OIDC
+  repositoryVariables:
+    - name: AWS_REGION
+      required: true
+      sampleValue: ap-northeast-2
+      description: AWS region used by configure-aws-credentials and CodePipeline
+    - name: AWS_CODEPIPELINE_DEV_NAME
+      required: true
+      sampleValue: donmoa-dev-eks-deploy
+      description: Default dev CodePipeline name used for full deploy fallback
+    - name: AWS_CODEPIPELINE_PROD_NAME
+      required: false
+      sampleValue: donmoa-prod-eks-deploy
+      description: Manual prod pipeline name
+    - name: AWS_PROD_CD_ENABLED
+      required: true
+      sampleValue: "false"
+      description: Keep false until prod manual dispatch should be allowed
+    - name: AWS_CODEPIPELINE_DEV_SERVICE_MAP
+      required: false
+      sampleValueFromFile: deploy/catalog/github-actions-dev-service-map.example.json
+      description: Optional JSON map for selective service deployment
+  runtimeSecretPolicy:
+    sourceOfTruth: deploy/catalog/dev-secrets-inventory.yaml
+    rules:
+      - Do not store application or database passwords in GitHub Secrets
+      - Store runtime secrets in AWS Secrets Manager and sync them with ExternalSecret
+      - Prefer OIDC role assumption over static AWS access keys

@@ -1,0 +1,29 @@
+fullnameOverride: order-service
+
+image:
+  repository: 682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-order-service
+  tag: latest
+
+service:
+  port: 8090
+
+container:
+  port: 8090
+
+env:
+  SERVER_PORT: "8090"
+  SPRING_PROFILES_ACTIVE: develop
+  DB_URL: jdbc:postgresql://donmoa-dev-aurora.cluster-cfw84sg260sa.ap-northeast-2.rds.amazonaws.com:5432/order_db
+  DB_USERNAME: postgres
+  REDIS_HOST: donmoa-dev-redis.awmnbx.ng.0001.apn2.cache.amazonaws.com
+  REDIS_PORT: "6379"
+  KAFKA_BOOTSTRAP_SERVERS: 10.30.130.193:9092
+  APP_GATEWAY_SECURITY_ENABLED: "true"
+
+secretEnv:
+  DB_PASSWORD:
+    remoteRef: donmoa/dev/order-db
+    property: password
+  APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:
+    remoteRef: donmoa/dev/common
+    property: APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN

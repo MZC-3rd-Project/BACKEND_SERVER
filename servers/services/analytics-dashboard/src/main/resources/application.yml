@@ -65,11 +65,9 @@ app:
     datacenter-id: ${SNOWFLAKE_DATACENTER_ID:1}
     worker-id: ${SNOWFLAKE_WORKER_ID:12}
 
-  service:
-    product-url: ${PRODUCT_SERVICE_URL:http://localhost:8084}
-    stock-url: ${STOCK_SERVICE_URL:http://localhost:8085}
-    sales-url: ${SALES_SERVICE_URL:http://localhost:8087}
-    search-url: ${SEARCH_SERVICE_URL:http://localhost:8088}
+  analytics:
+    search-consumer:
+      enabled: ${APP_ANALYTICS_SEARCH_CONSUMER_ENABLED:true}
 
   openapi:
     enabled: ${OPENAPI_ENABLED:true}
