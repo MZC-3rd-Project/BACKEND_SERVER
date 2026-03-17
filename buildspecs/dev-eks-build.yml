@@ -83,5 +83,6 @@ phases:
 artifacts:
   files:
     - build-output/**/*
+    - buildspecs/**/*
     - deploy/**/*
     - scripts/**/*

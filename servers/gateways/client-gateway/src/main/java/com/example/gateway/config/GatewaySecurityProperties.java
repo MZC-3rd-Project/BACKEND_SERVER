@@ -19,6 +19,8 @@ public class GatewaySecurityProperties {
     private boolean allowClientIdentityHeaders = false;
     private List<String> relayPathPrefixes = List.of(
             "/bff/v1",
+            "/api/store",
+            "/api/v1/cart",
             "/api/v1/media",
             "/api/v1/chat",
             "/ws/chat",
@@ -33,9 +35,11 @@ public class GatewaySecurityProperties {
             "/api/v1/notifications",
             "/api/v1/orders"
     );
-    private List<String> requireAuthPathPrefixes = List.of("/api/v1/chat", "/ws/chat");
+    private List<String> requireAuthPathPrefixes = List.of("/api/v1/chat", "/ws/chat", "/api/v1/cart");
     private List<String> requireAuthWritePathPrefixes = List.of(
             "/bff/v1",
+            "/api/store",
+            "/api/v1/cart",
             "/api/v1/media",
             "/api/products",
             "/api/goods",

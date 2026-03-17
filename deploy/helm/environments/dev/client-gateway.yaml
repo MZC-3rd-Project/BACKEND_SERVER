@@ -46,6 +46,8 @@ env:
   APP_SECURITY_CONTEXT_MAX_AGE_MILLIS: "300000"
   APP_SERVICE_AUTH_URL: http://auth-service:8081
   APP_SERVICE_USER_URL: http://profile-service:8071
+  APP_SERVICE_STORE_URL: http://store-service:8072
+  APP_SERVICE_CART_URL: http://cart-service:8096
   APP_SERVICE_PRODUCT_URL: http://product-service:8084
   APP_SERVICE_FUNDING_URL: http://funding-service:8086
   APP_SERVICE_SALES_URL: http://sales-service:8087

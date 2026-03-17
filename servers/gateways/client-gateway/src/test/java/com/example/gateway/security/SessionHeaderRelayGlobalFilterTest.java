@@ -28,10 +28,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class SessionHeaderRelayGlobalFilterTest {
 
-    private static final List<String> AUTH_REQUIRED_PATHS = List.of("/api/v1/chat", "/ws/chat");
+    private static final List<String> AUTH_REQUIRED_PATHS = List.of("/api/v1/chat", "/ws/chat", "/api/v1/cart");
     private static final List<String> AUTH_WRITE_REQUIRED_PATHS =
             List.of(
                     "/bff/v1",
+                    "/api/store",
+                    "/api/v1/cart",
                     "/api/v1/media",
                     "/api/products",
                     "/api/goods",
@@ -45,7 +47,8 @@ class SessionHeaderRelayGlobalFilterTest {
             );
     private static final List<String> RELAY_PATHS = List.of(
             "/bff/v1",
-            "/api/v1/search",
+            "/api/store",
+            "/api/v1/cart",
             "/api/v1/media",
             "/api/v1/chat",
             "/ws/chat",
@@ -117,9 +120,9 @@ class SessionHeaderRelayGlobalFilterTest {
     }
 
     @Test
-    void filter_allowsAnonymousSearchAndRemovesSpoofedHeaders() {
+    void filter_allowsAnonymousStoreListReadAndRemovesSpoofedHeaders() {
         SessionHeaderRelayGlobalFilter filter = createFilter("", null);
-        MockServerHttpRequest request = MockServerHttpRequest.get("/api/v1/search?q=airpods")
+        MockServerHttpRequest request = MockServerHttpRequest.get("/api/store/store_list?page=0&size=10")
                 .header(HttpHeaderNames.USER_ID, "12345")
                 .header(HttpHeaderNames.USER_ROLES, "ADMIN")
                 .header(HttpHeaderNames.GATEWAY_CONTEXT, "spoofed")
@@ -231,6 +234,40 @@ class SessionHeaderRelayGlobalFilterTest {
         MockServerHttpRequest request = MockServerHttpRequest.post("/api/v1/media/upload-intents")
                 .header(HttpHeaderNames.USER_ID, "777")
                 .build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+        CapturingChain chain = new CapturingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertThat(chain.called).isFalse();
+        assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void filter_allowsStoreReadWithoutSessionAndRemovesSpoofedHeaders() {
+        SessionHeaderRelayGlobalFilter filter = createFilter("gw-internal-token", null);
+        MockServerHttpRequest request = MockServerHttpRequest.get("/api/store/100")
+                .header(HttpHeaderNames.USER_ID, "777")
+                .header(HttpHeaderNames.USER_ROLES, "ADMIN")
+                .header(HttpHeaderNames.GATEWAY_CONTEXT, "spoofed")
+                .build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+        CapturingChain chain = new CapturingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertThat(chain.called).isTrue();
+        ServerHttpRequest forwardedRequest = chain.exchange.getRequest();
+        assertThat(forwardedRequest.getHeaders().containsKey(HttpHeaderNames.USER_ID)).isFalse();
+        assertThat(forwardedRequest.getHeaders().containsKey(HttpHeaderNames.USER_ROLES)).isFalse();
+        assertThat(forwardedRequest.getHeaders().containsKey(HttpHeaderNames.GATEWAY_CONTEXT)).isFalse();
+        assertThat(forwardedRequest.getHeaders().getFirst(HttpHeaderNames.GATEWAY_AUTH)).isEqualTo("gw-internal-token");
+    }
+
+    @Test
+    void filter_returns401WhenCartReadRequestHasNoSession() {
+        SessionHeaderRelayGlobalFilter filter = createFilter("gw-internal-token", null);
+        MockServerHttpRequest request = MockServerHttpRequest.get("/api/v1/cart").build();
         MockServerWebExchange exchange = MockServerWebExchange.from(request);
         CapturingChain chain = new CapturingChain();
 

@@ -28,6 +28,14 @@ spring:
                 allowedHeaders: "*"
                 allowCredentials: true
           routes:
+            - id: store-service
+              uri: ${app.service.store-url:http://localhost:8072}
+              predicates:
+                - Path=/api/store/**
+            - id: cart-service
+              uri: ${app.service.cart-url:http://localhost:8096}
+              predicates:
+                - Path=/api/v1/cart/**
             - id: media-service
               uri: ${app.service.media-url:http://localhost:8094}
               predicates:
@@ -73,9 +81,9 @@ gateway:
     internal-auth-header: ${GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}
     internal-auth-token: ${GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
     allow-client-identity-headers: ${GATEWAY_SECURITY_ALLOW_CLIENT_IDENTITY_HEADERS:false}
-    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/v1/media,/api/v1/chat,/ws/chat,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders}
-    require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:/api/v1/chat,/ws/chat}
-    require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/bff/v1,/api/v1/media,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders}
+    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/store,/api/v1/cart,/api/v1/media,/api/v1/chat,/ws/chat,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders}
+    require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:/api/v1/chat,/ws/chat,/api/v1/cart}
+    require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/bff/v1,/api/store,/api/v1/cart,/api/v1/media,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders}
   session:
     enabled: ${GATEWAY_SESSION_ENABLED:false}
     relay-header-enabled: ${GATEWAY_SESSION_RELAY_HEADER_ENABLED:true}
