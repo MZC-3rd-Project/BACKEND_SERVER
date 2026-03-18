@@ -6,6 +6,7 @@ dependencies {
     implementation(project(":libs:core:exception"))
     implementation(project(":libs:core:util"))
     implementation(project(":libs:core:id"))
+    implementation(project(":libs:clients:media-client"))
     implementation(project(":libs:clients:product-client"))
     implementation(project(":libs:api:response"))
     implementation(project(":libs:api:exception-handler"))
