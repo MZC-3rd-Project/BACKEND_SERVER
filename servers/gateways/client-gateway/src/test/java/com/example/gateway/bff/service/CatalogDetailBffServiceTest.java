@@ -362,17 +362,29 @@ class CatalogDetailBffServiceTest {
 
         assertThat(response).isNotNull();
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().path("data").path("campaignId").asLong()).isEqualTo(1001L);
-        assertThat(response.getBody().path("data").path("itemId").asLong()).isEqualTo(2001L);
+        assertThat(response.getBody().path("data").path("campaignId").isTextual()).isTrue();
+        assertThat(response.getBody().path("data").path("campaignId").asText()).isEqualTo("1001");
+        assertThat(response.getBody().path("data").path("itemId").isTextual()).isTrue();
+        assertThat(response.getBody().path("data").path("itemId").asText()).isEqualTo("2001");
         assertThat(response.getBody().path("data").path("salesChannel").asText()).isEqualTo("FUNDING");
-        assertThat(response.getBody().path("data").path("checkout").path("campaignId").asLong()).isEqualTo(1001L);
+        assertThat(response.getBody().path("data").path("checkout").path("campaignId").isTextual()).isTrue();
+        assertThat(response.getBody().path("data").path("checkout").path("campaignId").asText()).isEqualTo("1001");
         assertThat(response.getBody().path("data").path("rewardOptions").get(0).path("title").asText())
                 .isEqualTo("펀딩 얼리버드");
-        assertThat(response.getBody().path("data").path("rewardOptions").get(0).path("itemOptionId").asLong())
-                .isEqualTo(501L);
+        assertThat(response.getBody().path("data").path("rewardOptions").get(0).path("id").isTextual()).isTrue();
+        assertThat(response.getBody().path("data").path("rewardOptions").get(0).path("id").asText())
+                .isEqualTo("91");
+        assertThat(response.getBody().path("data").path("rewardOptions").get(0).path("itemOptionId").isTextual()).isTrue();
+        assertThat(response.getBody().path("data").path("rewardOptions").get(0).path("itemOptionId").asText())
+                .isEqualTo("501");
         assertThat(response.getBody().path("data").path("stock").path("soldQuantity").asInt()).isEqualTo(18);
-        assertThat(response.getBody().path("data").path("stock").path("optionStocks").get(0).path("itemOptionId").asLong())
-                .isEqualTo(501L);
+        assertThat(response.getBody().path("data").path("stock").path("optionStocks").get(0).path("itemOptionId").isTextual()).isTrue();
+        assertThat(response.getBody().path("data").path("stock").path("optionStocks").get(0).path("itemOptionId").asText())
+                .isEqualTo("501");
+        assertThat(response.getBody().path("data").path("store").path("id").isTextual()).isTrue();
+        assertThat(response.getBody().path("data").path("store").path("id").asText()).isEqualTo("31");
+        assertThat(response.getBody().path("data").path("thumbnailMediaId").isTextual()).isTrue();
+        assertThat(response.getBody().path("data").path("thumbnailMediaId").asText()).isEqualTo("3001");
         assertThat(response.getBody().path("data").path("store").path("name").asText()).isEqualTo("도모아랩");
     }
 

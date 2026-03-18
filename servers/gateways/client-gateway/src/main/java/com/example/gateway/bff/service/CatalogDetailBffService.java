@@ -63,7 +63,8 @@ public class CatalogDetailBffService {
                 .onErrorResume(e -> {
                     log.warn("[CatalogDetail] route failed. itemId={}, channel={}", request.itemId(), request.salesChannel(), e);
                     return Mono.just(badGateway("상세 조회에 실패했습니다"));
-                });
+                })
+                .map(this::normalizeSnowflakeIds);
     }
 
     public Mono<ResponseEntity<JsonNode>> getFundingCampaignDetail(Long campaignId) {
@@ -80,7 +81,8 @@ public class CatalogDetailBffService {
                 .onErrorResume(e -> {
                     log.warn("[CatalogDetail] funding detail failed. campaignId={}", campaignId, e);
                     return Mono.just(badGateway("펀딩 상세 조회에 실패했습니다"));
-                });
+                })
+                .map(this::normalizeSnowflakeIds);
     }
 
     private Mono<ResponseEntity<JsonNode>> routePrimary(CatalogDetailRequest request, HttpHeaders headers) {
@@ -1057,6 +1059,14 @@ public class CatalogDetailBffService {
         error.put("code", code);
         error.put("message", message);
         return body;
+    }
+
+    private ResponseEntity<JsonNode> normalizeSnowflakeIds(ResponseEntity<JsonNode> response) {
+        if (response == null) {
+            return null;
+        }
+        SnowflakeJsonFieldNormalizer.normalizeSuccessData(response.getBody());
+        return response;
     }
 
     private record CatalogDetailRequest(Long itemId,

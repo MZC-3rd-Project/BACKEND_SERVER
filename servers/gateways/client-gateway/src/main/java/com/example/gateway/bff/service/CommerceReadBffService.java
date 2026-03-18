@@ -94,7 +94,8 @@ public class CommerceReadBffService {
                 .onErrorResume(e -> {
                     log.warn("[CommerceReadBff] funding list failed", e);
                     return Mono.just(badGateway("펀딩 목록 조회에 실패했습니다"));
-                });
+                })
+                .map(this::normalizeSnowflakeIds);
     }
 
     public Mono<ResponseEntity<JsonNode>> findFundingCampaignDetail(Long campaignId) {
@@ -108,7 +109,8 @@ public class CommerceReadBffService {
                 .onErrorResume(e -> {
                     log.warn("[CommerceReadBff] funding detail failed. campaignId={}", campaignId, e);
                     return Mono.just(badGateway("펀딩 상세 조회에 실패했습니다"));
-                });
+                })
+                .map(this::normalizeSnowflakeIds);
     }
 
     public Mono<ResponseEntity<JsonNode>> findHotDeals(ServerHttpRequest request) {
@@ -123,7 +125,8 @@ public class CommerceReadBffService {
                 .onErrorResume(e -> {
                     log.warn("[CommerceReadBff] hot-deal list failed", e);
                     return Mono.just(badGateway("핫딜 목록 조회에 실패했습니다"));
-                });
+                })
+                .map(this::normalizeSnowflakeIds);
     }
 
     public Mono<ResponseEntity<JsonNode>> findHotDealDetail(Long hotDealId) {
@@ -137,7 +140,8 @@ public class CommerceReadBffService {
                 .onErrorResume(e -> {
                     log.warn("[CommerceReadBff] hot-deal detail failed. hotDealId={}", hotDealId, e);
                     return Mono.just(badGateway("핫딜 상세 조회에 실패했습니다"));
-                });
+                })
+                .map(this::normalizeSnowflakeIds);
     }
 
     public Mono<ResponseEntity<JsonNode>> findSalesProducts(ServerHttpRequest request) {
@@ -152,7 +156,8 @@ public class CommerceReadBffService {
                     .onErrorResume(e -> {
                         log.warn("[CommerceReadBff] sales product list failed", e);
                         return Mono.just(badGateway("일반 판매 목록 조회에 실패했습니다"));
-                    });
+                    })
+                    .map(this::normalizeSnowflakeIds);
         });
     }
 
@@ -167,7 +172,8 @@ public class CommerceReadBffService {
                         .onErrorResume(e -> {
                             log.warn("[CommerceReadBff] sales product detail failed. saleId={}", saleId, e);
                             return Mono.just(badGateway("일반 판매 상세 조회에 실패했습니다"));
-                        }));
+                        })
+                        .map(this::normalizeSnowflakeIds));
     }
 
     private Mono<ResponseEntity<JsonNode>> enrichFundingCampaignList(ResponseEntity<JsonNode> response,
@@ -1034,5 +1040,13 @@ public class CommerceReadBffService {
         error.put("message", message);
         body.put("timestamp", Instant.now().toString());
         return body;
+    }
+
+    private ResponseEntity<JsonNode> normalizeSnowflakeIds(ResponseEntity<JsonNode> response) {
+        if (response == null) {
+            return null;
+        }
+        SnowflakeJsonFieldNormalizer.normalizeSuccessData(response.getBody());
+        return response;
     }
 }

@@ -158,8 +158,11 @@ class CommerceReadBffServiceTest {
 
         assertThat(response).isNotNull();
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody().path("data").path("items").get(0).path("thumbnailMediaId").asLong())
-                .isEqualTo(9001L);
+        assertThat(response.getBody().path("data").path("items").get(0).path("id").isTextual()).isTrue();
+        assertThat(response.getBody().path("data").path("items").get(0).path("id").asText()).isEqualTo("101");
+        assertThat(response.getBody().path("data").path("items").get(0).path("thumbnailMediaId").isTextual()).isTrue();
+        assertThat(response.getBody().path("data").path("items").get(0).path("thumbnailMediaId").asText())
+                .isEqualTo("9001");
         assertThat(response.getBody().path("data").path("items").get(0).path("thumbnailUrl").asText())
                 .isEqualTo("https://cdn.example.com/items/9001.png");
     }
