@@ -1,33 +1,28 @@
 package com.example.orderquery.entity;
 
-import com.example.core.id.jpa.SnowflakeGenerated;
 import com.example.data.entity.BaseEntity;
 import com.example.orderquery.entity.Enums.DeliveryType;
 import com.example.orderquery.entity.Enums.ShipmentStatus;
 import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.Immutable;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "shipments")
-@Immutable
 @SQLRestriction("deleted_at IS NULL")
 @Getter
-@Builder
-@AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Shipment extends BaseEntity {
 
     @Id
-    @SnowflakeGenerated
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "order_id", nullable = false, unique = true)
-    private Orders order;
+    @Column(name = "order_id", nullable = false, unique = true)
+    private Long orderId;
 
     @Column(name = "recipient_name", nullable = false, length = 50)
     private String recipientName;
