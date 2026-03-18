@@ -1,6 +1,7 @@
 dependencies {
     // Web
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
 
     // Common libs
     implementation(project(":libs:core:exception"))
@@ -48,4 +49,3 @@ dependencies {
     testImplementation("org.springframework:spring-webflux")
 
 }
-
