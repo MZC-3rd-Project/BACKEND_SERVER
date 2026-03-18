@@ -23,6 +23,7 @@ env:
   SALES_SERVICE_URL: http://sales-service:8087
   PRODUCT_SERVICE_URL: http://product-service:8084
   STORE_QUERY_SERVICE_URL: http://store-query-service:8091
+  APP_SERVICE_MEDIA_URL: http://media-api:8094
   APP_GATEWAY_SECURITY_ENABLED: "true"
   APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED: "true"
   APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER: X-Gateway-Auth
