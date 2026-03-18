@@ -19,6 +19,7 @@ CODEBUILD_BUILD_PROJECT_NAME="${CODEBUILD_BUILD_PROJECT_NAME:-donmoa-dev-eks-bui
 CODEBUILD_DEPLOY_PROJECT_NAME="${CODEBUILD_DEPLOY_PROJECT_NAME:-donmoa-dev-eks-helm-deploy}"
 EKS_CLUSTER_NAME="${EKS_CLUSTER_NAME:-donmoa-dev-eks}"
 INSTALL_EKS_PLATFORM_ADDONS="${INSTALL_EKS_PLATFORM_ADDONS:-false}"
+START_PIPELINE_EXECUTION="${START_PIPELINE_EXECUTION:-true}"
 
 GITHUB_ROLE_NAME="${GITHUB_ROLE_NAME:-donmoa-dev-github-actions-deploy-role}"
 CODEPIPELINE_ROLE_NAME="${CODEPIPELINE_ROLE_NAME:-donmoa-dev-codepipeline-role}"
@@ -186,6 +187,11 @@ cat > "${TMP_DIR}/pipeline.json" <<EOF
         "name": "deployTargets",
         "defaultValue": "__FULL__",
         "description": "Comma-separated service keys for selective deploy"
+      },
+      {
+        "name": "deployMode",
+        "defaultValue": "build-and-deploy",
+        "description": "build-and-deploy or deploy-only"
       }
     ],
     "stages": [
@@ -232,7 +238,7 @@ cat > "${TMP_DIR}/pipeline.json" <<EOF
             "runOrder": 1,
             "configuration": {
               "ProjectName": "${CODEBUILD_BUILD_PROJECT_NAME}",
-              "EnvironmentVariables": "[{\"name\":\"DEPLOY_TARGETS\",\"value\":\"#{variables.deployTargets}\",\"type\":\"PLAINTEXT\"}]"
+              "EnvironmentVariables": "[{\"name\":\"DEPLOY_TARGETS\",\"value\":\"#{variables.deployTargets}\",\"type\":\"PLAINTEXT\"},{\"name\":\"DEPLOY_MODE\",\"value\":\"#{variables.deployMode}\",\"type\":\"PLAINTEXT\"}]"
             },
             "inputArtifacts": [
               {
@@ -294,8 +300,13 @@ gh variable set AWS_PROD_CD_ENABLED --body "false"
 gh variable set AWS_CODEPIPELINE_DEV_SERVICE_MAP --body "$(cat deploy/catalog/github-actions-dev-service-map.example.json)"
 gh secret set AWS_DEPLOY_ROLE_ARN --body "${GITHUB_ROLE_ARN}"
 
-echo "[INFO] starting first pipeline execution"
-EXEC_ID="$(retry_out 6 aws_cmd codepipeline start-pipeline-execution --name "${PIPELINE_NAME}" --query pipelineExecutionId --output text)"
+EXEC_ID=""
+if [ "${START_PIPELINE_EXECUTION}" = "true" ]; then
+  echo "[INFO] starting first pipeline execution"
+  EXEC_ID="$(retry_out 6 aws_cmd codepipeline start-pipeline-execution --name "${PIPELINE_NAME}" --query pipelineExecutionId --output text)"
+else
+  echo "[INFO] skipping initial pipeline execution"
+fi
 
 echo "===== DEV CI/CD SETUP COMPLETE ====="
 echo "pipeline=${PIPELINE_NAME}"
@@ -303,4 +314,6 @@ echo "execution=${EXEC_ID}"
 echo "codebuild_build=${CODEBUILD_BUILD_PROJECT_NAME}"
 echo "codebuild_deploy=${CODEBUILD_DEPLOY_PROJECT_NAME}"
 echo "role=${GITHUB_ROLE_ARN}"
-echo "console=https://${AWS_REGION}.console.aws.amazon.com/codesuite/codepipeline/pipelines/${PIPELINE_NAME}/executions/${EXEC_ID}/timeline?region=${AWS_REGION}"
+if [ -n "${EXEC_ID}" ]; then
+  echo "console=https://${AWS_REGION}.console.aws.amazon.com/codesuite/codepipeline/pipelines/${PIPELINE_NAME}/executions/${EXEC_ID}/timeline?region=${AWS_REGION}"
+fi

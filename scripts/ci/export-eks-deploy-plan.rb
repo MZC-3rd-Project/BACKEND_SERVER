@@ -48,6 +48,9 @@ selected_services =
 aws_region = ENV["AWS_DEFAULT_REGION"] || ENV["AWS_REGION"]
 account_id = ENV["ACCOUNT_ID"] || ENV["AWS_ACCOUNT_ID"]
 image_tag = ENV["SHORT_TAG"] || ENV["IMAGE_TAG"] || "latest"
+image_tag_mode = ENV.fetch("IMAGE_TAG_MODE", "source")
+
+abort("Unsupported IMAGE_TAG_MODE: #{image_tag_mode}") unless %w[source values].include?(image_tag_mode)
 
 plan_services = selected_services.map do |service|
   key = service.fetch("key")
@@ -76,7 +79,7 @@ plan_services = selected_services.map do |service|
     end
 
   resolved_image_tag =
-    if build_type == "external-image"
+    if build_type == "external-image" || image_tag_mode == "values"
       values.dig("image", "tag").to_s.strip.empty? ? "latest" : values.dig("image", "tag").to_s.strip
     else
       image_tag

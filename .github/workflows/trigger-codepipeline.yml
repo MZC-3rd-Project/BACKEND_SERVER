@@ -12,6 +12,18 @@ on:
         options:
           - dev
           - prod
+      deploy_mode:
+        description: "Deployment mode for manual dev runs"
+        type: choice
+        required: false
+        default: build-and-deploy
+        options:
+          - build-and-deploy
+          - deploy-only
+      deploy_targets:
+        description: "Comma-separated service keys for manual dev runs; empty means full"
+        type: string
+        required: false
 
 permissions:
   id-token: write
@@ -37,13 +49,13 @@ jobs:
         env:
           DEV_PIPELINE: ${{ vars.AWS_CODEPIPELINE_DEV_NAME }}
           PROD_PIPELINE: ${{ vars.AWS_CODEPIPELINE_PROD_NAME }}
-          DEV_SERVICE_MAP: ${{ vars.AWS_CODEPIPELINE_DEV_SERVICE_MAP }}
           PROD_CD_ENABLED: ${{ vars.AWS_PROD_CD_ENABLED }}
         run: |
           set -euo pipefail
           should_trigger="true"
           reason="ok"
           deploy_targets=""
+          deploy_mode="build-and-deploy"
           pipelines=()
 
           dedupe_and_output() {
@@ -56,13 +68,27 @@ jobs:
             echo "EOF" >> "$GITHUB_OUTPUT"
           }
 
+          require_dev_pipeline() {
+            if [[ -z "${DEV_PIPELINE}" ]]; then
+              echo "::error::AWS_CODEPIPELINE_DEV_NAME is empty."
+              exit 1
+            fi
+          }
+
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             case "${{ github.event.inputs.target }}" in
               dev)
-                if [[ -z "${DEV_PIPELINE}" ]]; then
-                  echo "::error::AWS_CODEPIPELINE_DEV_NAME is empty."
-                  exit 1
-                fi
+                require_dev_pipeline
+                deploy_mode="${{ github.event.inputs.deploy_mode }}"
+                deploy_targets="$(printf '%s' "${{ github.event.inputs.deploy_targets }}" | tr -d '[:space:]')"
+                case "${deploy_mode}" in
+                  build-and-deploy|deploy-only)
+                    ;;
+                  *)
+                    echo "::error::Unsupported deploy_mode: ${deploy_mode}"
+                    exit 1
+                    ;;
+                esac
                 pipelines+=("${DEV_PIPELINE}")
                 ;;
               prod)
@@ -95,67 +121,73 @@ jobs:
               should_trigger="false"
               reason="no file changes detected"
             else
-              full_deploy="false"
-              declare -A changed_services=()
+              manual_dispatch_only="false"
+              full_build_deploy="false"
+              full_deploy_only="false"
+              declare -A changed_build_services=()
+              declare -A changed_deploy_services=()
 
               while IFS= read -r file; do
                 [[ -z "${file}" ]] && continue
 
                 case "${file}" in
-                  libs/*|gradle/*|build.gradle.kts|settings.gradle.kts|gradlew|init/*|buildspecs/*|deploy/*|scripts/*|infra/terraform/ecs-app/*|infra/terraform/eks-foundation/*|.github/workflows/*)
-                    full_deploy="true"
+                  buildspecs/*|scripts/*|infra/terraform/*|.github/workflows/*)
+                    manual_dispatch_only="true"
+                    ;;
+                  libs/*|gradle/*|build.gradle.kts|settings.gradle.kts|gradlew|init/*)
+                    full_build_deploy="true"
                     ;;
                   servers/services/search/*|servers/test/test-server/*)
                     ;;
                   servers/services/*)
                     service_name="$(echo "${file}" | cut -d/ -f3)"
-                    [[ -n "${service_name}" ]] && changed_services["${service_name}"]=1
+                    [[ -n "${service_name}" ]] && changed_build_services["${service_name}"]=1
                     ;;
                   servers/gateways/client-gateway/*)
-                    changed_services["client-gateway"]=1
+                    changed_build_services["client-gateway"]=1
+                    ;;
+                  deploy/helm/environments/dev/*.yaml)
+                    service_name="$(basename "${file}" .yaml)"
+                    [[ -n "${service_name}" ]] && changed_deploy_services["${service_name}"]=1
+                    ;;
+                  deploy/*)
+                    full_deploy_only="true"
                     ;;
                 esac
               done <<< "${changed_files}"
 
-              if [[ "${full_deploy}" == "true" ]]; then
-                if [[ -z "${DEV_PIPELINE}" ]]; then
-                  echo "::error::AWS_CODEPIPELINE_DEV_NAME is empty."
-                  exit 1
-                fi
+              if [[ "${manual_dispatch_only}" == "true" ]]; then
+                should_trigger="false"
+                reason="infra or pipeline changes require manual workflow dispatch"
+              elif [[ "${full_build_deploy}" == "true" ]]; then
+                require_dev_pipeline
                 pipelines+=("${DEV_PIPELINE}")
-              else
-                if [[ "${#changed_services[@]}" -eq 0 ]]; then
-                  should_trigger="false"
-                  reason="no deployable service/gateway changes"
+                deploy_mode="build-and-deploy"
+              elif [[ "${#changed_build_services[@]}" -gt 0 ]]; then
+                require_dev_pipeline
+                pipelines+=("${DEV_PIPELINE}")
+                deploy_mode="build-and-deploy"
+
+                if [[ "${full_deploy_only}" == "true" ]]; then
+                  deploy_targets=""
                 else
-                  mapfile -t changed_service_list < <(printf '%s\n' "${!changed_services[@]}" | sort)
+                  mapfile -t changed_service_list < <(printf '%s\n' "${!changed_build_services[@]}" "${!changed_deploy_services[@]}" | awk 'NF > 0 && !seen[$0]++' | sort)
                   deploy_targets="$(IFS=,; echo "${changed_service_list[*]}")"
-
-                  if [[ -z "${DEV_SERVICE_MAP}" || "${DEV_SERVICE_MAP}" == "{}" ]]; then
-                    if [[ -z "${DEV_PIPELINE}" ]]; then
-                      echo "::error::AWS_CODEPIPELINE_DEV_NAME is empty."
-                      exit 1
-                    fi
-                    pipelines+=("${DEV_PIPELINE}")
-                  else
-                    missing_mapping="false"
-                    for svc in "${!changed_services[@]}"; do
-                      mapped_pipeline="$(echo "${DEV_SERVICE_MAP}" | jq -r --arg svc "${svc}" '.[$svc] // empty')"
-                      if [[ -z "${mapped_pipeline}" ]]; then
-                        missing_mapping="true"
-                        break
-                      fi
-                      pipelines+=("${mapped_pipeline}")
-                    done
-
-                    if [[ "${missing_mapping}" == "true" ]]; then
-                      if [[ -z "${DEV_PIPELINE}" ]]; then
-                        echo "::error::AWS_CODEPIPELINE_DEV_NAME is empty."
-                        exit 1
-                      fi
-                      pipelines=("${DEV_PIPELINE}")
-                    fi
-                  fi
+                fi
+              elif [[ "${full_deploy_only}" == "true" ]]; then
+                require_dev_pipeline
+                pipelines+=("${DEV_PIPELINE}")
+                deploy_mode="deploy-only"
+              else
+                if [[ "${#changed_deploy_services[@]}" -eq 0 ]]; then
+                  should_trigger="false"
+                  reason="no deployable service/gateway or helm changes"
+                else
+                  require_dev_pipeline
+                  pipelines+=("${DEV_PIPELINE}")
+                  deploy_mode="deploy-only"
+                  mapfile -t changed_service_list < <(printf '%s\n' "${!changed_deploy_services[@]}" | sort)
+                  deploy_targets="$(IFS=,; echo "${changed_service_list[*]}")"
                 fi
               fi
             fi
@@ -169,10 +201,12 @@ jobs:
           echo "should_trigger=${should_trigger}" >> "$GITHUB_OUTPUT"
           echo "reason=${reason}" >> "$GITHUB_OUTPUT"
           echo "deploy_targets=${deploy_targets}" >> "$GITHUB_OUTPUT"
+          echo "deploy_mode=${deploy_mode}" >> "$GITHUB_OUTPUT"
           dedupe_and_output "${pipelines[@]}"
 
           echo "should trigger: ${should_trigger}"
           echo "reason: ${reason}"
+          echo "deploy mode: ${deploy_mode}"
           echo "deploy targets: ${deploy_targets:-<full>}"
           printf 'resolved pipelines:\n%s\n' "${pipelines[@]}"
 
@@ -191,15 +225,24 @@ jobs:
           summary_file="$(mktemp)"
           pipelines="${{ steps.resolve.outputs.pipelines }}"
           deploy_targets="${{ steps.resolve.outputs.deploy_targets }}"
+          deploy_mode="${{ steps.resolve.outputs.deploy_mode }}"
 
           while IFS= read -r pipeline; do
             [[ -z "${pipeline}" ]] && continue
 
+            variable_args=()
             if [[ -n "${deploy_targets}" ]]; then
+              variable_args+=(name=deployTargets,value="${deploy_targets}")
+            fi
+            if [[ -n "${deploy_mode}" ]]; then
+              variable_args+=(name=deployMode,value="${deploy_mode}")
+            fi
+
+            if [[ "${#variable_args[@]}" -gt 0 ]]; then
               set +e
               execution_id="$(aws codepipeline start-pipeline-execution \
                 --name "${pipeline}" \
-                --variables name=deployTargets,value="${deploy_targets}" \
+                --variables "${variable_args[@]}" \
                 --query "pipelineExecutionId" \
                 --output text 2>/tmp/codepipeline_start.err)"
               start_rc=$?
