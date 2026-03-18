@@ -1,6 +1,7 @@
 package com.example.gateway.security;
 
 import com.example.contracts.http.HttpHeaderNames;
+import com.example.gateway.config.GatewayDevLoginProperties;
 import com.example.gateway.config.GatewaySessionProperties;
 import com.example.gateway.config.GatewaySecurityProperties;
 import com.example.gateway.security.session.application.GatewaySessionPrincipalResolver;
@@ -12,12 +13,14 @@ import org.springframework.beans.factory.support.StaticListableBeanFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextImpl;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.mock.web.server.MockServerWebExchange;
+import org.springframework.security.web.server.context.WebSessionServerSecurityContextRepository;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
@@ -278,6 +281,31 @@ class SessionHeaderRelayGlobalFilterTest {
     }
 
     @Test
+    void filter_readsDevLoginPrincipalFromWebSessionForCartRequest() {
+        SessionHeaderRelayGlobalFilter filter = createFilter("gw-internal-token", null);
+        MockServerHttpRequest request = MockServerHttpRequest.get("/api/v1/cart").build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                "test",
+                "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_BUYER"))
+        );
+        exchange.getSession().block().getAttributes().put(
+                WebSessionServerSecurityContextRepository.DEFAULT_SPRING_SECURITY_CONTEXT_ATTR_NAME,
+                new SecurityContextImpl(authentication)
+        );
+        CapturingChain chain = new CapturingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertThat(chain.called).isTrue();
+        ServerHttpRequest forwardedRequest = chain.exchange.getRequest();
+        assertThat(forwardedRequest.getHeaders().getFirst(HttpHeaderNames.USER_ID)).isEqualTo("9000001");
+        assertThat(forwardedRequest.getHeaders().getFirst(HttpHeaderNames.USER_ROLES)).isEqualTo("USER,BUYER");
+        assertThat(forwardedRequest.getHeaders().getFirst(HttpHeaderNames.SESSION_ID)).isEqualTo("dev-login-test");
+    }
+
+    @Test
     void filter_preservesClientSignedContextHeaderWhenExplicitlyAllowed() {
         SessionHeaderRelayGlobalFilter filter = createFilter(
                 "gw-internal-token",
@@ -424,8 +452,16 @@ class SessionHeaderRelayGlobalFilterTest {
         if (sessionValidator != null) {
             beanFactory.addBean("gatewaySessionValidator", sessionValidator);
         }
+        GatewayDevLoginProperties devLoginProperties = new GatewayDevLoginProperties();
+        devLoginProperties.setEnabled(true);
+        devLoginProperties.setUsername("test");
+        devLoginProperties.setUserId(9000001L);
+        devLoginProperties.setRoles(List.of("USER", "BUYER", "SELLER"));
+        devLoginProperties.setSessionIdPrefix("dev-login");
+        GatewaySessionPrincipalResolver resolver = new GatewaySessionPrincipalResolver(new SessionClaimParser());
+        resolver.setDevLoginProperties(devLoginProperties);
         return new SessionHeaderRelayGlobalFilter(
-                new GatewaySessionPrincipalResolver(new SessionClaimParser()),
+                resolver,
                 properties,
                 sessionProperties,
                 beanFactory.getBeanProvider(HmacSigner.class),

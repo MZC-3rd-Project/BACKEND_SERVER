@@ -6,6 +6,7 @@ import com.example.gateway.security.SessionClaimParser;
 import org.springframework.beans.factory.annotation.Autowired;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal;
@@ -13,6 +14,7 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
+import org.springframework.security.web.server.context.WebSessionServerSecurityContextRepository;
 import reactor.core.publisher.Mono;
 
 import java.util.LinkedHashMap;
@@ -29,15 +31,14 @@ public class GatewaySessionPrincipalResolver {
     private GatewayDevLoginProperties devLoginProperties;
 
     @Autowired(required = false)
-    void setDevLoginProperties(GatewayDevLoginProperties devLoginProperties) {
+    public void setDevLoginProperties(GatewayDevLoginProperties devLoginProperties) {
         this.devLoginProperties = devLoginProperties;
     }
 
     public Mono<GatewaySessionPrincipal> resolve(ServerWebExchange exchange) {
-        return exchange.getPrincipal()
-                .ofType(Authentication.class)
-                .filter(Authentication::isAuthenticated)
-                .flatMap(this::mapAuthenticationToPrincipal);
+        return resolveFromExchangePrincipal(exchange)
+                .switchIfEmpty(resolveFromSecurityContext())
+                .switchIfEmpty(resolveFromWebSession(exchange));
     }
 
     public Mono<GatewaySessionPrincipal> resolveFromSecurityContext() {
@@ -46,6 +47,30 @@ public class GatewaySessionPrincipalResolver {
                 .filter(Objects::nonNull)
                 .filter(Authentication::isAuthenticated)
                 .flatMap(this::mapAuthenticationToPrincipal);
+    }
+
+    private Mono<GatewaySessionPrincipal> resolveFromExchangePrincipal(ServerWebExchange exchange) {
+        return exchange.getPrincipal()
+                .ofType(Authentication.class)
+                .filter(Authentication::isAuthenticated)
+                .flatMap(this::mapAuthenticationToPrincipal);
+    }
+
+    private Mono<GatewaySessionPrincipal> resolveFromWebSession(ServerWebExchange exchange) {
+        return exchange.getSession()
+                .flatMap(session -> {
+                    Object securityContext =
+                            session.getAttributes()
+                                    .get(WebSessionServerSecurityContextRepository.DEFAULT_SPRING_SECURITY_CONTEXT_ATTR_NAME);
+                    if (!(securityContext instanceof SecurityContext context)) {
+                        return Mono.empty();
+                    }
+                    Authentication authentication = context.getAuthentication();
+                    if (authentication == null || !authentication.isAuthenticated()) {
+                        return Mono.empty();
+                    }
+                    return mapAuthenticationToPrincipal(authentication);
+                });
     }
 
     private Mono<GatewaySessionPrincipal> mapAuthenticationToPrincipal(Authentication authentication) {
