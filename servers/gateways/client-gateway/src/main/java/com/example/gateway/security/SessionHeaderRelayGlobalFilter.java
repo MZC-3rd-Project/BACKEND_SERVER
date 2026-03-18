@@ -178,6 +178,8 @@ public class SessionHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
 
     private void removeSensitiveHeaders(HttpHeaders headers, GatewaySessionPrincipal principal) {
         boolean preserveClientIdentityHeaders = securityProperties.isAllowClientIdentityHeaders() && principal == null;
+        boolean preserveClientSignedContextHeader =
+                securityProperties.isAllowClientSignedContextHeader() && principal == null;
         if (!preserveClientIdentityHeaders) {
             headers.remove(HttpHeaderNames.USER_ID);
             headers.remove(HttpHeaderNames.USER_ROLES);
@@ -185,7 +187,9 @@ public class SessionHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
         headers.remove(HttpHeaderNames.NONCE);
         headers.remove(HttpHeaderNames.TIMESTAMP);
         headers.remove(HttpHeaderNames.SIGNATURE);
-        headers.remove(HttpHeaderNames.GATEWAY_CONTEXT);
+        if (!preserveClientSignedContextHeader) {
+            headers.remove(HttpHeaderNames.GATEWAY_CONTEXT);
+        }
         headers.remove(HttpHeaderNames.GATEWAY_AUTH);
         headers.remove(HttpHeaderNames.SESSION_ID);
     }

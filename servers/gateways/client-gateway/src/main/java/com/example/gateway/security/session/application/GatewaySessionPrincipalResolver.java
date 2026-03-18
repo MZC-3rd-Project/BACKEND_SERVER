@@ -1,7 +1,9 @@
 package com.example.gateway.security.session.application;
 
+import com.example.gateway.config.GatewayDevLoginProperties;
 import com.example.gateway.security.GatewaySessionPrincipal;
 import com.example.gateway.security.SessionClaimParser;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -24,6 +26,12 @@ import java.util.stream.Collectors;
 public class GatewaySessionPrincipalResolver {
 
     private final SessionClaimParser sessionClaimParser;
+    private GatewayDevLoginProperties devLoginProperties;
+
+    @Autowired(required = false)
+    void setDevLoginProperties(GatewayDevLoginProperties devLoginProperties) {
+        this.devLoginProperties = devLoginProperties;
+    }
 
     public Mono<GatewaySessionPrincipal> resolve(ServerWebExchange exchange) {
         return exchange.getPrincipal()
@@ -55,6 +63,9 @@ public class GatewaySessionPrincipalResolver {
             claims.putAll(oidcUser.getClaims());
         } else if (principal instanceof OAuth2AuthenticatedPrincipal oauth2Principal) {
             claims.putAll(oauth2Principal.getAttributes());
+        } else if (supportsDevLogin(authentication)) {
+            claims.put("userId", devLoginProperties.getUserId());
+            claims.put("sid", devLoginProperties.getSessionIdPrefix() + "-" + authentication.getName());
         } else {
             return Map.of();
         }
@@ -70,6 +81,16 @@ public class GatewaySessionPrincipalResolver {
             }
         }
         return claims;
+    }
+
+    private boolean supportsDevLogin(Authentication authentication) {
+        return devLoginProperties != null
+                && devLoginProperties.isEnabled()
+                && authentication != null
+                && StringUtils.hasText(authentication.getName())
+                && authentication.getName().equals(devLoginProperties.getUsername())
+                && devLoginProperties.getUserId() != null
+                && devLoginProperties.getUserId() > 0;
     }
 
     private String normalizeRoleAuthority(String authority) {

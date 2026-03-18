@@ -278,6 +278,29 @@ class SessionHeaderRelayGlobalFilterTest {
     }
 
     @Test
+    void filter_preservesClientSignedContextHeaderWhenExplicitlyAllowed() {
+        SessionHeaderRelayGlobalFilter filter = createFilter(
+                "gw-internal-token",
+                null,
+                principal -> Mono.just(SessionValidationResult.allow()),
+                true,
+                List.of(),
+                List.of()
+        );
+        MockServerHttpRequest request = MockServerHttpRequest.post("/api/v1/media/upload-intents")
+                .header(HttpHeaderNames.GATEWAY_CONTEXT, "signed-context-token")
+                .build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+        CapturingChain chain = new CapturingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertThat(chain.called).isTrue();
+        assertThat(chain.exchange.getRequest().getHeaders().getFirst(HttpHeaderNames.GATEWAY_CONTEXT))
+                .isEqualTo("signed-context-token");
+    }
+
+    @Test
     void filter_returns401WhenBffWriteRequestHasNoSession() {
         SessionHeaderRelayGlobalFilter filter = createFilter("gw-internal-token", null);
         MockServerHttpRequest request = MockServerHttpRequest.post("/bff/v1/products")
@@ -358,18 +381,38 @@ class SessionHeaderRelayGlobalFilterTest {
         return createFilter(
                 internalToken,
                 signer,
-                principal -> Mono.just(SessionValidationResult.allow())
+                principal -> Mono.just(SessionValidationResult.allow()),
+                false,
+                AUTH_REQUIRED_PATHS,
+                AUTH_WRITE_REQUIRED_PATHS
         );
     }
 
     private SessionHeaderRelayGlobalFilter createFilter(String internalToken,
-                                                    HmacSigner signer,
-                                                    GatewaySessionValidator sessionValidator) {
+                                                        HmacSigner signer,
+                                                        GatewaySessionValidator sessionValidator) {
+        return createFilter(
+                internalToken,
+                signer,
+                sessionValidator,
+                false,
+                AUTH_REQUIRED_PATHS,
+                AUTH_WRITE_REQUIRED_PATHS
+        );
+    }
+
+    private SessionHeaderRelayGlobalFilter createFilter(String internalToken,
+                                                        HmacSigner signer,
+                                                        GatewaySessionValidator sessionValidator,
+                                                        boolean allowClientSignedContextHeader,
+                                                        List<String> requireAuthPathPrefixes,
+                                                        List<String> requireAuthWritePathPrefixes) {
         GatewaySecurityProperties properties = new GatewaySecurityProperties();
         properties.setInternalAuthToken(internalToken);
         properties.setRelayPathPrefixes(RELAY_PATHS);
-        properties.setRequireAuthPathPrefixes(AUTH_REQUIRED_PATHS);
-        properties.setRequireAuthWritePathPrefixes(AUTH_WRITE_REQUIRED_PATHS);
+        properties.setRequireAuthPathPrefixes(requireAuthPathPrefixes);
+        properties.setRequireAuthWritePathPrefixes(requireAuthWritePathPrefixes);
+        properties.setAllowClientSignedContextHeader(allowClientSignedContextHeader);
 
         GatewaySessionProperties sessionProperties = new GatewaySessionProperties();
         sessionProperties.setRelayHeaderEnabled(true);

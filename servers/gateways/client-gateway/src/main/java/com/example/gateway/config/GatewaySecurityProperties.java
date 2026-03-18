@@ -17,6 +17,7 @@ public class GatewaySecurityProperties {
     private String internalAuthHeader = HttpHeaderNames.GATEWAY_AUTH;
     private String internalAuthToken = "";
     private boolean allowClientIdentityHeaders = false;
+    private boolean allowClientSignedContextHeader = false;
     private List<String> relayPathPrefixes = List.of(
             "/bff/v1",
             "/api/store",
