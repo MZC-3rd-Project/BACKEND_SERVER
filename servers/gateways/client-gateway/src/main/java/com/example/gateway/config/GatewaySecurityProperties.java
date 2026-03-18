@@ -21,6 +21,7 @@ public class GatewaySecurityProperties {
     private List<String> relayPathPrefixes = List.of(
             "/bff/v1",
             "/api/store",
+            "/api/v1/store-query",
             "/api/v1/cart",
             "/api/v1/media",
             "/api/v1/chat",
