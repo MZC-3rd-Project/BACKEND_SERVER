@@ -29,14 +29,15 @@ public class ChatRoomQueryService {
     private final ChatMessagePresenter chatMessagePresenter;
 
     public CursorResponse<ChatRoomSummaryResponse> findMyRooms(Long userId, String cursor, int size) {
-        Long cursorId = CursorUtils.decodeLong(cursor);
-        PageRequest pageable = PageRequest.of(0, size + 1);
+        ChatRoomListCursorCodec.Cursor decodedCursor = ChatRoomListCursorCodec.decode(cursor);
 
-        List<ChatRoomParticipant> participants = cursorId == null
-                ? chatRoomParticipantRepository.findByUserIdAndStatusOrderByRoomIdDesc(
-                userId, ChatParticipantStatus.ACTIVE, pageable)
-                : chatRoomParticipantRepository.findByUserIdAndStatusAndRoomIdLessThanOrderByRoomIdDesc(
-                userId, ChatParticipantStatus.ACTIVE, cursorId, pageable);
+        List<ChatRoomParticipant> participants = chatRoomParticipantRepository.findActiveParticipantsOrderByLatestMessage(
+                userId,
+                ChatParticipantStatus.ACTIVE.name(),
+                decodedCursor == null ? null : decodedCursor.lastMessageId(),
+                decodedCursor == null ? null : decodedCursor.roomId(),
+                size + 1
+        );
 
         boolean hasNext = participants.size() > size;
         List<ChatRoomParticipant> pageParticipants = hasNext ? participants.subList(0, size) : participants;
@@ -45,13 +46,17 @@ public class ChatRoomQueryService {
             return CursorResponse.empty();
         }
 
-        List<ChatRoomSummaryResponse> content = chatRoomSummaryReader.readSummaries(pageParticipants);
+        List<ChatRoomSummaryResponse> content = chatRoomSummaryReader.readSummaries(userId, pageParticipants);
 
-        String nextCursor = hasNext
-                ? CursorUtils.encode(pageParticipants.get(pageParticipants.size() - 1).getRoomId())
-                : null;
+        String nextCursor = hasNext ? encodeNextCursor(content) : null;
 
         return CursorResponse.of(content, nextCursor);
+    }
+
+    private String encodeNextCursor(List<ChatRoomSummaryResponse> content) {
+        ChatRoomSummaryResponse lastRoom = content.get(content.size() - 1);
+        Long lastMessageId = lastRoom.getLastMessage() == null ? 0L : lastRoom.getLastMessage().getMessageId();
+        return ChatRoomListCursorCodec.encode(lastMessageId, lastRoom.getRoomId());
     }
 
     public CursorResponse<ChatMessageItemResponse> findRoomMessages(Long roomId, Long userId, String cursor, int size) {

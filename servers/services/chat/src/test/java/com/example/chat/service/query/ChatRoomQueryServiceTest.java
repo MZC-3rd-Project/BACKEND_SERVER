@@ -6,6 +6,7 @@ import com.example.chat.dto.query.response.ChatRoomSummaryResponse;
 import com.example.chat.entity.message.ChatMessage;
 import com.example.chat.entity.message.ChatMessageType;
 import com.example.chat.entity.participant.ChatParticipantRole;
+import com.example.chat.entity.room.ChatSalesChannel;
 import com.example.chat.entity.participant.ChatRoomParticipant;
 import com.example.chat.exception.ChatErrorCode;
 import com.example.chat.repository.ChatMessageRepository;
@@ -58,12 +59,13 @@ class ChatRoomQueryServiceTest {
         ChatRoomParticipant participant1 = ChatRoomParticipant.create(200L, 10L, ChatParticipantRole.PARTICIPANT);
         ChatRoomParticipant participant2 = ChatRoomParticipant.create(100L, 10L, ChatParticipantRole.PARTICIPANT);
 
-        when(chatRoomParticipantRepository.findByUserIdAndStatusOrderByRoomIdDesc(eq(10L), any(), any(Pageable.class)))
+        when(chatRoomParticipantRepository.findActiveParticipantsOrderByLatestMessage(10L, "ACTIVE", null, null, 2))
                 .thenReturn(List.of(participant1, participant2));
-        when(chatRoomSummaryReader.readSummaries(List.of(participant1))).thenReturn(List.of(
+        when(chatRoomSummaryReader.readSummaries(10L, List.of(participant1))).thenReturn(List.of(
             ChatRoomSummaryResponse.builder()
                 .roomId(200L)
                 .title("문의방")
+                .salesChannel(ChatSalesChannel.NORMAL_SALE)
                 .unreadCount(5L)
                 .lastMessage(ChatRoomLastMessageResponse.builder()
                     .messageId(999L)
@@ -77,7 +79,9 @@ class ChatRoomQueryServiceTest {
 
         assertThat(response.getItems()).hasSize(1);
         assertThat(response.isHasNext()).isTrue();
-        assertThat(CursorUtils.decodeLong(response.getNextCursor())).isEqualTo(200L);
+        ChatRoomListCursorCodec.Cursor nextCursor = ChatRoomListCursorCodec.decode(response.getNextCursor());
+        assertThat(nextCursor.lastMessageId()).isEqualTo(999L);
+        assertThat(nextCursor.roomId()).isEqualTo(200L);
 
         ChatRoomSummaryResponse room = response.getItems().get(0);
         assertThat(room.getRoomId()).isEqualTo(200L);

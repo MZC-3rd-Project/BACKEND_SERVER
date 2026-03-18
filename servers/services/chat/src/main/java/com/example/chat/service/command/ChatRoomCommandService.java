@@ -1,7 +1,7 @@
 package com.example.chat.service.command;
 
-import com.example.clients.product.facade.ProductItemSummaryClientFacade;
-import com.example.clients.product.dto.ProductItemSummary;
+import com.example.chat.client.ChatProductLookupClient;
+import com.example.chat.client.ChatProductSnapshot;
 import com.example.chat.dto.command.request.CreateInquiryRoomRequest;
 import com.example.chat.dto.command.response.ChatRoomCreateResponse;
 import com.example.chat.entity.audit.ChatAuditEventType;
@@ -12,12 +12,12 @@ import com.example.chat.exception.ChatErrorCode;
 import com.example.chat.repository.ChatRoomParticipantRepository;
 import com.example.chat.repository.ChatRoomRepository;
 import com.example.chat.service.audit.ChatAuditService;
+import com.example.chat.service.query.ChatSalesChannelResolver;
 import com.example.core.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Map;
@@ -28,10 +28,11 @@ public class ChatRoomCommandService {
 
     private static final String INQUIRY_ROOM_KEY_FORMAT = "inquiry:%d:%d:%d";
 
-    private final ProductItemSummaryClientFacade productClient;
+    private final ChatProductLookupClient productLookupClient;
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomParticipantRepository chatRoomParticipantRepository;
     private final ChatAuditService chatAuditService;
+    private final ChatSalesChannelResolver chatSalesChannelResolver;
 
     @Transactional
     public ChatRoomCreateResponse createInquiryRoom(CreateInquiryRoomRequest request, Long buyerId) {
@@ -39,12 +40,12 @@ public class ChatRoomCommandService {
             throw new BusinessException(ChatErrorCode.INVALID_INQUIRY_REQUEST);
         }
 
-        ProductItemSummary itemSummary = productClient.findItemSummary(request.getItemId());
-        if (itemSummary == null || itemSummary.sellerId() == null) {
+        ChatProductSnapshot itemSnapshot = productLookupClient.findItem(request.getItemId());
+        if (itemSnapshot == null || itemSnapshot.sellerId() == null) {
             throw new BusinessException(ChatErrorCode.PRODUCT_SERVICE_ERROR);
         }
 
-        Long sellerId = itemSummary.sellerId();
+        Long sellerId = itemSnapshot.sellerId();
         if (buyerId.equals(sellerId)) {
             throw new BusinessException(ChatErrorCode.INVALID_INQUIRY_REQUEST);
         }
@@ -55,7 +56,10 @@ public class ChatRoomCommandService {
             return toResponse(existing);
         }
 
-        String roomTitle = StringUtils.hasText(itemSummary.title()) ? itemSummary.title() : "상품 문의";
+        String roomTitle = chatSalesChannelResolver.toInquiryTitle(
+                chatSalesChannelResolver.resolve(itemSnapshot),
+                itemSnapshot.title()
+        );
 
         try {
             ChatRoom room = chatRoomRepository.save(

@@ -16,7 +16,7 @@ dependencies {
 
     // Data
     implementation(project(":libs:data:entity"))
-    implementation(project(":libs:clients:product-client"))
+    implementation(project(":libs:clients:media-client"))
 
     // Config
     implementation(project(":libs:config:kafka"))

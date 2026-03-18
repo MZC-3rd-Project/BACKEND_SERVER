@@ -3,6 +3,8 @@ package com.example.chat.repository;
 import com.example.chat.entity.participant.ChatParticipantRole;
 import com.example.chat.entity.participant.ChatParticipantStatus;
 import com.example.chat.entity.participant.ChatRoomParticipant;
+import com.example.chat.entity.message.ChatMessage;
+import com.example.chat.entity.message.ChatMessageType;
 import com.example.chat.entity.room.ChatRoom;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,9 @@ class ChatRoomParticipantRepositoryTest {
 
     @Autowired
     private ChatRoomParticipantRepository chatRoomParticipantRepository;
+
+    @Autowired
+    private ChatMessageRepository chatMessageRepository;
 
     @Test
     void findByUserIdAndStatusOrderByRoomIdDesc_filtersByStatus() {
@@ -63,5 +68,52 @@ class ChatRoomParticipantRepositoryTest {
                 .findByRoomIdAndStatusOrderByIdAsc(room.getId(), ChatParticipantStatus.ACTIVE);
 
         assertThat(participants).isEmpty();
+    }
+
+    @Test
+    void findActiveParticipantsOrderByLatestMessage_ordersByLastMessageIdDesc() {
+        ChatRoom roomWithoutMessage = chatRoomRepository.save(ChatRoom.createInquiryRoom(
+                "inquiry:4:10:20", 4L, 20L, "room4"
+        ));
+        ChatRoom olderRoom = chatRoomRepository.save(ChatRoom.createInquiryRoom(
+                "inquiry:5:10:20", 5L, 20L, "room5"
+        ));
+        ChatRoom newestRoom = chatRoomRepository.save(ChatRoom.createInquiryRoom(
+                "inquiry:6:10:20", 6L, 20L, "room6"
+        ));
+
+        chatRoomParticipantRepository.save(ChatRoomParticipant.create(roomWithoutMessage.getId(), 10L, ChatParticipantRole.PARTICIPANT));
+        chatRoomParticipantRepository.save(ChatRoomParticipant.create(olderRoom.getId(), 10L, ChatParticipantRole.PARTICIPANT));
+        chatRoomParticipantRepository.save(ChatRoomParticipant.create(newestRoom.getId(), 10L, ChatParticipantRole.PARTICIPANT));
+
+        ChatMessage olderMessage = chatMessageRepository.save(ChatMessage.create(
+                olderRoom.getId(), 20L, ChatMessageType.CHAT, "c1", "older", "older", null
+        ));
+        ChatMessage newestMessage = chatMessageRepository.save(ChatMessage.create(
+                newestRoom.getId(), 20L, ChatMessageType.CHAT, "c2", "newest", "newest", null
+        ));
+
+        List<ChatRoomParticipant> result = chatRoomParticipantRepository.findActiveParticipantsOrderByLatestMessage(
+                10L,
+                ChatParticipantStatus.ACTIVE.name(),
+                null,
+                null,
+                10
+        );
+
+        assertThat(result).extracting(ChatRoomParticipant::getRoomId)
+                .containsExactly(newestRoom.getId(), olderRoom.getId(), roomWithoutMessage.getId());
+
+        List<ChatRoomParticipant> nextPage = chatRoomParticipantRepository.findActiveParticipantsOrderByLatestMessage(
+                10L,
+                ChatParticipantStatus.ACTIVE.name(),
+                olderMessage.getId(),
+                olderRoom.getId(),
+                10
+        );
+
+        assertThat(nextPage).extracting(ChatRoomParticipant::getRoomId)
+                .containsExactly(roomWithoutMessage.getId());
+        assertThat(newestMessage.getId()).isGreaterThan(olderMessage.getId());
     }
 }

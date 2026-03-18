@@ -1,16 +1,18 @@
 package com.example.chat.service.command;
 
-import com.example.clients.product.dto.ProductItemSummary;
-import com.example.clients.product.facade.ProductItemSummaryClientFacade;
+import com.example.chat.client.ChatProductLookupClient;
+import com.example.chat.client.ChatProductSnapshot;
 import com.example.chat.dto.command.request.CreateInquiryRoomRequest;
 import com.example.chat.dto.command.response.ChatRoomCreateResponse;
 import com.example.chat.entity.participant.ChatParticipantRole;
 import com.example.chat.entity.participant.ChatRoomParticipant;
 import com.example.chat.entity.room.ChatRoom;
+import com.example.chat.entity.room.ChatSalesChannel;
 import com.example.chat.exception.ChatErrorCode;
 import com.example.chat.repository.ChatRoomParticipantRepository;
 import com.example.chat.repository.ChatRoomRepository;
 import com.example.chat.service.audit.ChatAuditService;
+import com.example.chat.service.query.ChatSalesChannelResolver;
 import com.example.core.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,7 +36,7 @@ import static org.mockito.Mockito.when;
 class ChatRoomCommandServiceTest {
 
     @Mock
-    private ProductItemSummaryClientFacade productClient;
+    private ChatProductLookupClient productLookupClient;
 
     @Mock
     private ChatRoomRepository chatRoomRepository;
@@ -45,6 +47,9 @@ class ChatRoomCommandServiceTest {
     @Mock
     private ChatAuditService chatAuditService;
 
+    @Mock
+    private ChatSalesChannelResolver chatSalesChannelResolver;
+
     @InjectMocks
     private ChatRoomCommandService chatRoomCommandService;
 
@@ -54,12 +59,15 @@ class ChatRoomCommandServiceTest {
                 .itemId(100L)
                 .build();
 
-        when(productClient.findItemSummary(100L))
-                .thenReturn(new ProductItemSummary(100L, 300L, "상품 A"));
+        ChatProductSnapshot itemSnapshot = new ChatProductSnapshot(100L, 300L, 400L, "상품 A", "FUNDING", 900L);
+        when(productLookupClient.findItem(100L)).thenReturn(itemSnapshot);
+        when(chatSalesChannelResolver.resolve(itemSnapshot)).thenReturn(ChatSalesChannel.FUNDING);
+        when(chatSalesChannelResolver.toInquiryTitle(ChatSalesChannel.FUNDING, "상품 A"))
+            .thenReturn("[펀딩] 상품 A 문의");
         when(chatRoomRepository.findByRoomKey("inquiry:100:200:300"))
                 .thenReturn(Optional.empty());
 
-        ChatRoom savedRoom = ChatRoom.createInquiryRoom("inquiry:100:200:300", 100L, 300L, "상품 A");
+        ChatRoom savedRoom = ChatRoom.createInquiryRoom("inquiry:100:200:300", 100L, 300L, "[펀딩] 상품 A 문의");
         ReflectionTestUtils.setField(savedRoom, "id", 1000L);
         when(chatRoomRepository.save(any(ChatRoom.class))).thenReturn(savedRoom);
 
@@ -72,6 +80,7 @@ class ChatRoomCommandServiceTest {
 
         assertThat(response.getRoomId()).isEqualTo(1000L);
         assertThat(response.getItemId()).isEqualTo(100L);
+        assertThat(response.getTitle()).isEqualTo("[펀딩] 상품 A 문의");
         assertThat(response.getParticipants()).hasSize(2);
         assertThat(response.getParticipants()).extracting(ChatRoomCreateResponse.ParticipantSummary::getUserId)
                 .containsExactly(200L, 300L);
@@ -86,10 +95,10 @@ class ChatRoomCommandServiceTest {
                 .itemId(100L)
                 .build();
 
-        when(productClient.findItemSummary(100L))
-                .thenReturn(new ProductItemSummary(100L, 300L, "상품 A"));
+        ChatProductSnapshot itemSnapshot = new ChatProductSnapshot(100L, 300L, 400L, "상품 A", "FUNDING", 900L);
+        when(productLookupClient.findItem(100L)).thenReturn(itemSnapshot);
 
-        ChatRoom existing = ChatRoom.createInquiryRoom("inquiry:100:200:300", 100L, 300L, "상품 A");
+        ChatRoom existing = ChatRoom.createInquiryRoom("inquiry:100:200:300", 100L, 300L, "[펀딩] 상품 A 문의");
         ReflectionTestUtils.setField(existing, "id", 2000L);
         when(chatRoomRepository.findByRoomKey("inquiry:100:200:300"))
                 .thenReturn(Optional.of(existing));
@@ -112,7 +121,7 @@ class ChatRoomCommandServiceTest {
                 .itemId(100L)
                 .build();
 
-        when(productClient.findItemSummary(100L)).thenReturn(null);
+        when(productLookupClient.findItem(100L)).thenReturn(null);
 
         assertThatThrownBy(() -> chatRoomCommandService.createInquiryRoom(request, 200L))
                 .isInstanceOf(BusinessException.class)
