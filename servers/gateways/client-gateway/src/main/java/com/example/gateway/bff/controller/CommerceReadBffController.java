@@ -1,6 +1,7 @@
 package com.example.gateway.bff.controller;
 
 import com.example.gateway.bff.service.CommerceReadBffService;
+import com.example.gateway.bff.service.CatalogDetailBffService;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import reactor.core.publisher.Mono;
 public class CommerceReadBffController {
 
     private final CommerceReadBffService commerceReadBffService;
+    private final CatalogDetailBffService catalogDetailBffService;
 
     @GetMapping("/funding/campaigns")
     public Mono<ResponseEntity<JsonNode>> findFundingCampaigns(ServerHttpRequest request) {
@@ -25,7 +27,7 @@ public class CommerceReadBffController {
 
     @GetMapping("/funding/campaigns/{campaignId}")
     public Mono<ResponseEntity<JsonNode>> findFundingCampaignDetail(@PathVariable Long campaignId) {
-        return commerceReadBffService.findFundingCampaignDetail(campaignId);
+        return catalogDetailBffService.getFundingCampaignDetail(campaignId);
     }
 
     @GetMapping("/hot-deals")

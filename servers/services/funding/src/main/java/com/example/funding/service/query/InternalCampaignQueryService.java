@@ -19,17 +19,18 @@ import java.util.List;
 public class InternalCampaignQueryService {
 
     private final FundingCampaignRepository campaignRepository;
+    private final FundingRewardOptionResolver fundingRewardOptionResolver;
 
     public CampaignResponse findById(Long campaignId) {
         FundingCampaign campaign = campaignRepository.findById(campaignId)
                 .orElseThrow(() -> new BusinessException(FundingErrorCode.CAMPAIGN_NOT_FOUND));
-        return CampaignResponse.from(campaign);
+        return CampaignResponse.from(campaign, fundingRewardOptionResolver.resolveByItemId(campaign.getItemId()));
     }
 
     public CampaignResponse findByItemId(Long itemId) {
         FundingCampaign campaign = campaignRepository.findByItemId(itemId)
                 .orElseThrow(() -> new BusinessException(FundingErrorCode.CAMPAIGN_NOT_FOUND));
-        return CampaignResponse.from(campaign);
+        return CampaignResponse.from(campaign, fundingRewardOptionResolver.resolveByItemId(campaign.getItemId()));
     }
 
     public List<CampaignResponse> findByIds(List<Long> campaignIds) {

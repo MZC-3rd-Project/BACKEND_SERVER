@@ -21,6 +21,8 @@ public class WebClientCatalogDetailDownstreamClient implements CatalogDetailDown
     private final WebClient hotDealWebClient;
     private final WebClient fundingWebClient;
     private final WebClient productWebClient;
+    private final WebClient stockWebClient;
+    private final WebClient storeQueryWebClient;
     private final WebClient mediaWebClient;
     private final ObjectMapper objectMapper;
 
@@ -30,11 +32,15 @@ public class WebClientCatalogDetailDownstreamClient implements CatalogDetailDown
             @Value("${app.service.hot-deal-url:http://localhost:8089}") String hotDealServiceUrl,
             @Value("${app.service.funding-url:http://localhost:8086}") String fundingServiceUrl,
             @Value("${app.service.product-url:http://localhost:8084}") String productServiceUrl,
+            @Value("${app.service.stock-url:http://localhost:8085}") String stockServiceUrl,
+            @Value("${app.service.store-query-url:http://localhost:8091}") String storeQueryServiceUrl,
             @Value("${app.service.media-url:http://localhost:8094}") String mediaServiceUrl
     ) {
         this.hotDealWebClient = webClientBuilder.baseUrl(hotDealServiceUrl).build();
         this.fundingWebClient = webClientBuilder.baseUrl(fundingServiceUrl).build();
         this.productWebClient = webClientBuilder.baseUrl(productServiceUrl).build();
+        this.stockWebClient = webClientBuilder.baseUrl(stockServiceUrl).build();
+        this.storeQueryWebClient = webClientBuilder.baseUrl(storeQueryServiceUrl).build();
         this.mediaWebClient = webClientBuilder.baseUrl(mediaServiceUrl).build();
         this.objectMapper = objectMapper;
     }
@@ -60,8 +66,23 @@ public class WebClientCatalogDetailDownstreamClient implements CatalogDetailDown
     }
 
     @Override
+    public Mono<ResponseEntity<JsonNode>> fetchItemSummary(Long itemId, HttpHeaders headers) {
+        return callGet(productWebClient, "/internal/v1/items/" + itemId, headers);
+    }
+
+    @Override
     public Mono<ResponseEntity<JsonNode>> fetchFundingParticipations(Long campaignId, HttpHeaders headers) {
         return callGet(fundingWebClient, "/api/campaigns/" + campaignId + "/participations", headers);
+    }
+
+    @Override
+    public Mono<ResponseEntity<JsonNode>> fetchStockSummary(Long itemId, HttpHeaders headers) {
+        return callGet(stockWebClient, "/internal/v1/stock/items/" + itemId, headers);
+    }
+
+    @Override
+    public Mono<ResponseEntity<JsonNode>> fetchStoreDetail(Long storeId, HttpHeaders headers) {
+        return callGet(storeQueryWebClient, "/api/v1/store-query/stores/" + storeId, headers);
     }
 
     @Override

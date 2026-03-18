@@ -138,6 +138,13 @@ class CatalogDetailBffServiceTest {
                           "currentAmount": 250
                         }
                         """)));
+        when(downstreamClient.fetchItemSummary(eq(22L), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successResponse("""
+                        {
+                          "id": 22,
+                          "itemType": "PRODUCT"
+                        }
+                        """)));
         when(downstreamClient.fetchNormalDetail(eq(BffItemType.PRODUCT), eq(22L), any(HttpHeaders.class)))
                 .thenReturn(Mono.just(successResponse("""
                         {
@@ -153,6 +160,19 @@ class CatalogDetailBffServiceTest {
                         """)));
         when(downstreamClient.fetchFundingParticipations(eq(77L), any(HttpHeaders.class)))
                 .thenReturn(Mono.just(successArrayResponse("[{\"id\":1},{\"id\":2}]")));
+        when(downstreamClient.fetchStockSummary(eq(22L), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successResponse("""
+                        {
+                          "itemId": 22,
+                          "stocks": [
+                            {
+                              "stockItemType": "ITEM_OPTION",
+                              "referenceId": 501,
+                              "availableQuantity": 12
+                            }
+                          ]
+                        }
+                        """)));
         when(downstreamClient.fetchMediaUrls(eq(List.of(3001L)), any(HttpHeaders.class)))
                 .thenReturn(Mono.just(successArrayResponse("""
                         [
@@ -172,6 +192,11 @@ class CatalogDetailBffServiceTest {
         assertThat(response.getBody().path("data").path("progressRate").asDouble()).isEqualTo(25.0);
         assertThat(response.getBody().path("data").path("supporterCount").asInt()).isEqualTo(2);
         assertThat(response.getBody().path("data").path("title").asText()).isEqualTo("일반 상품");
+        assertThat(response.getBody().path("data").path("campaignId").asLong()).isEqualTo(77L);
+        assertThat(response.getBody().path("data").path("salesChannel").asText()).isEqualTo("FUNDING");
+        assertThat(response.getBody().path("data").path("stock").path("availableQuantity").asInt()).isEqualTo(12);
+        assertThat(response.getBody().path("data").path("stock").path("optionStocks").get(0).path("itemOptionId").asLong())
+                .isEqualTo(501L);
         assertThat(response.getBody().path("data").path("thumbnailUrl").asText())
                 .isEqualTo("https://cdn.example.com/3001.webp");
     }
@@ -187,6 +212,13 @@ class CatalogDetailBffServiceTest {
                           "endAt": "%s"
                         }
                         """.formatted(endAt))));
+        when(downstreamClient.fetchItemSummary(eq(11L), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successResponse("""
+                        {
+                          "id": 11,
+                          "itemType": "PRODUCT"
+                        }
+                        """)));
         when(downstreamClient.fetchNormalDetail(eq(BffItemType.PRODUCT), eq(11L), any(HttpHeaders.class)))
                 .thenReturn(Mono.just(successResponse("""
                         {
@@ -196,6 +228,13 @@ class CatalogDetailBffServiceTest {
                               "mediaId": 1010
                             }
                           }
+                        }
+                        """)));
+        when(downstreamClient.fetchStockSummary(eq(11L), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successResponse("""
+                        {
+                          "itemId": 11,
+                          "stocks": []
                         }
                         """)));
         when(downstreamClient.fetchMediaUrls(eq(List.of(1010L)), any(HttpHeaders.class)))
@@ -216,8 +255,125 @@ class CatalogDetailBffServiceTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody().path("data").path("leftLabel").asText()).isNotBlank();
         assertThat(response.getBody().path("data").path("title").asText()).isEqualTo("핫딜 상품");
+        assertThat(response.getBody().path("data").path("salesChannel").asText()).isEqualTo("HOT_DEAL");
         assertThat(response.getBody().path("data").path("thumbnailUrl").asText())
                 .isEqualTo("https://cdn.example.com/1010.webp");
+    }
+
+    @Test
+    void getFundingCampaignDetail_enrichesFundingReadModel() {
+        when(downstreamClient.fetchFundingDetail(eq(1001L), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successResponse("""
+                        {
+                          "id": 1001,
+                          "itemId": 2001,
+                          "summary": "펀딩 요약",
+                          "goalAmount": 1000000,
+                          "currentAmount": 500000,
+                          "status": "ACTIVE",
+                          "rewardOptions": [
+                            {
+                              "id": 91,
+                              "title": "펀딩 얼리버드",
+                              "price": 39000,
+                              "shippingText": "4월 말 순차배송",
+                              "itemOptionId": 501
+                            }
+                          ]
+                        }
+                        """)));
+        when(downstreamClient.fetchItemSummary(eq(2001L), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successResponse("""
+                        {
+                          "id": 2001,
+                          "itemType": "PRODUCT",
+                          "storeId": 31
+                        }
+                        """)));
+        when(downstreamClient.fetchNormalDetail(eq(BffItemType.PRODUCT), eq(2001L), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successResponse("""
+                        {
+                          "itemId": 2001,
+                          "title": "무선 포터블 스피커",
+                          "price": 49000,
+                          "storeId": 31,
+                          "options": [
+                            {
+                              "id": 501,
+                              "optionName": "얼리버드",
+                              "additionalPrice": 0
+                            }
+                          ],
+                          "shippingInfo": {
+                            "shippingNotice": "4월 말 순차배송"
+                          },
+                          "images": {
+                            "thumbnail": {
+                              "mediaId": 3001
+                            }
+                          }
+                        }
+                        """)));
+        when(downstreamClient.fetchFundingParticipations(eq(1001L), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successArrayResponse("[{\"id\":1},{\"id\":2},{\"id\":3}]")));
+        when(downstreamClient.fetchStockSummary(eq(2001L), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successResponse("""
+                        {
+                          "itemId": 2001,
+                          "availableQuantity": 12,
+                          "soldQuantity": 18,
+                          "soldOut": false,
+                          "optionStocks": [
+                            {
+                              "itemOptionId": 501,
+                              "availableQuantity": 12,
+                              "soldOut": false
+                            }
+                          ],
+                          "stocks": [
+                            {
+                              "stockItemType": "ITEM_OPTION",
+                              "referenceId": 501,
+                              "totalQuantity": 30,
+                              "availableQuantity": 12
+                            }
+                          ]
+                        }
+                        """)));
+        when(downstreamClient.fetchStoreDetail(eq(31L), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successResponse("""
+                        {
+                          "storeId": 31,
+                          "storeName": "도모아랩",
+                          "description": "프로젝트를 운영하는 파트너 스토어"
+                        }
+                        """)));
+        when(downstreamClient.fetchMediaUrls(eq(List.of(3001L)), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successArrayResponse("""
+                        [
+                          {
+                            "mediaId": 3001,
+                            "mediaUrl": "https://cdn.example.com/items/2001-thumb.jpg"
+                          }
+                        ]
+                        """)));
+
+        ResponseEntity<JsonNode> response = service.getFundingCampaignDetail(1001L).block();
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().path("data").path("campaignId").asLong()).isEqualTo(1001L);
+        assertThat(response.getBody().path("data").path("itemId").asLong()).isEqualTo(2001L);
+        assertThat(response.getBody().path("data").path("salesChannel").asText()).isEqualTo("FUNDING");
+        assertThat(response.getBody().path("data").path("checkout").path("campaignId").asLong()).isEqualTo(1001L);
+        assertThat(response.getBody().path("data").path("rewardOptions").get(0).path("title").asText())
+                .isEqualTo("펀딩 얼리버드");
+        assertThat(response.getBody().path("data").path("rewardOptions").get(0).path("itemOptionId").asLong())
+                .isEqualTo(501L);
+        assertThat(response.getBody().path("data").path("stock").path("soldQuantity").asInt()).isEqualTo(18);
+        assertThat(response.getBody().path("data").path("stock").path("optionStocks").get(0).path("itemOptionId").asLong())
+                .isEqualTo(501L);
+        assertThat(response.getBody().path("data").path("store").path("name").asText()).isEqualTo("도모아랩");
     }
 
     private ResponseEntity<JsonNode> response(HttpStatus status, String source) {

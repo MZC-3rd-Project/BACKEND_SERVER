@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 @Builder
@@ -39,8 +40,14 @@ public class CampaignResponse {
     private LocalDateTime endAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private List<FundingRewardOptionResponse> rewardOptions;
 
     public static CampaignResponse from(FundingCampaign campaign) {
+        return from(campaign, List.of());
+    }
+
+    public static CampaignResponse from(FundingCampaign campaign,
+                                        List<FundingRewardOptionResponse> rewardOptions) {
         return CampaignResponse.builder()
                 .id(campaign.getId())
                 .itemId(campaign.getItemId())
@@ -61,6 +68,7 @@ public class CampaignResponse {
                 .endAt(campaign.getEndAt())
                 .createdAt(campaign.getCreatedAt())
                 .updatedAt(campaign.getUpdatedAt())
+                .rewardOptions(rewardOptions == null ? List.of() : List.copyOf(rewardOptions))
                 .build();
     }
 }

@@ -11,6 +11,12 @@ import java.util.List;
 public class StockSummaryQueryResponse {
 
     private Long itemId;
+    private int totalQuantity;
+    private int availableQuantity;
+    private int reservedQuantity;
+    private int soldQuantity;
+    private boolean soldOut;
+    private List<OptionStockDetail> optionStocks;
     private List<StockDetail> stocks;
 
     @Getter
@@ -22,5 +28,14 @@ public class StockSummaryQueryResponse {
         private int totalQuantity;
         private int availableQuantity;
         private int reservedQuantity;
+    }
+
+    @Getter
+    @Builder
+    public static class OptionStockDetail {
+        private Long itemOptionId;
+        private int availableQuantity;
+        private int soldQuantity;
+        private boolean soldOut;
     }
 }

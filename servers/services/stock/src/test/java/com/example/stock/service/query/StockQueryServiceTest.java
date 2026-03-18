@@ -79,6 +79,11 @@ class StockQueryServiceTest {
         var response = stockQueryService.getStocksByItemId(100L);
 
         assertThat(response.getItemId()).isEqualTo(100L);
+        assertThat(response.getAvailableQuantity()).isEqualTo(34);
+        assertThat(response.getSoldQuantity()).isEqualTo(0);
+        assertThat(response.isSoldOut()).isFalse();
+        assertThat(response.getOptionStocks()).hasSize(1);
+        assertThat(response.getOptionStocks().getFirst().getItemOptionId()).isEqualTo(501L);
         assertThat(response.getStocks()).hasSize(2);
         assertThat(response.getStocks().getFirst().getStockItemType()).isEqualTo(StockItemType.ITEM_OPTION);
         assertThat(response.getStocks().getFirst().getReferenceId()).isEqualTo(501L);

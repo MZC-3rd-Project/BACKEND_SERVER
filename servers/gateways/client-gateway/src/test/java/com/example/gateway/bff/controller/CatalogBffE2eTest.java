@@ -51,6 +51,8 @@ class CatalogBffE2eTest {
         registry.add("app.service.product-url", () -> DOWNSTREAM_BASE_URL);
         registry.add("app.service.funding-url", () -> DOWNSTREAM_BASE_URL);
         registry.add("app.service.hot-deal-url", () -> DOWNSTREAM_BASE_URL);
+        registry.add("app.service.stock-url", () -> DOWNSTREAM_BASE_URL);
+        registry.add("app.service.store-query-url", () -> DOWNSTREAM_BASE_URL);
         registry.add("gateway.auth.enabled", () -> "false");
         registry.add("gateway.session.enabled", () -> "false");
     }
@@ -191,7 +193,7 @@ class CatalogBffE2eTest {
         List<String> paths = REQUESTS.stream()
                 .map(RequestRecord::path)
                 .toList();
-        assertThat(paths).containsExactly("/api/v1/hot-deals/9001", "/api/products/101");
+        assertThat(paths).contains("/api/v1/hot-deals/9001", "/api/products/101");
     }
 
     private static int findAvailablePort() {

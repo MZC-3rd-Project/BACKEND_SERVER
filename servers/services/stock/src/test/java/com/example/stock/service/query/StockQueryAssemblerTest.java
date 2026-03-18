@@ -39,6 +39,14 @@ class StockQueryAssemblerTest {
         var response = stockQueryAssembler.toStockSummaryResponse(100L, views);
 
         assertThat(response.getItemId()).isEqualTo(100L);
+        assertThat(response.getTotalQuantity()).isEqualTo(42);
+        assertThat(response.getAvailableQuantity()).isEqualTo(34);
+        assertThat(response.getReservedQuantity()).isEqualTo(8);
+        assertThat(response.getSoldQuantity()).isEqualTo(0);
+        assertThat(response.isSoldOut()).isFalse();
+        assertThat(response.getOptionStocks()).hasSize(1);
+        assertThat(response.getOptionStocks().getFirst().getItemOptionId()).isEqualTo(501L);
+        assertThat(response.getOptionStocks().getFirst().getAvailableQuantity()).isEqualTo(24);
         assertThat(response.getStocks()).hasSize(2);
         assertThat(response.getStocks().getFirst().getStockItemType()).isEqualTo(StockItemType.ITEM_OPTION);
         assertThat(response.getStocks().getFirst().getReferenceId()).isEqualTo(501L);

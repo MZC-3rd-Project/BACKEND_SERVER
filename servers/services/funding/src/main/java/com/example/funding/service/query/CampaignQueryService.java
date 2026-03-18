@@ -25,19 +25,20 @@ public class CampaignQueryService {
 
     private final FundingCampaignRepository campaignRepository;
     private final FundingStatusHistoryRepository statusHistoryRepository;
+    private final FundingRewardOptionResolver fundingRewardOptionResolver;
 
     @UseWriteDataSource
     public CampaignResponse findById(Long campaignId) {
         FundingCampaign campaign = campaignRepository.findById(campaignId)
                 .orElseThrow(() -> new BusinessException(FundingErrorCode.CAMPAIGN_NOT_FOUND));
-        return CampaignResponse.from(campaign);
+        return CampaignResponse.from(campaign, fundingRewardOptionResolver.resolveByItemId(campaign.getItemId()));
     }
 
     @UseWriteDataSource
     public CampaignResponse findByItemId(Long itemId) {
         FundingCampaign campaign = campaignRepository.findByItemId(itemId)
                 .orElseThrow(() -> new BusinessException(FundingErrorCode.CAMPAIGN_NOT_FOUND));
-        return CampaignResponse.from(campaign);
+        return CampaignResponse.from(campaign, fundingRewardOptionResolver.resolveByItemId(campaign.getItemId()));
     }
 
     public CursorResponse<CampaignResponse> findList(String cursor, int size, String status) {
