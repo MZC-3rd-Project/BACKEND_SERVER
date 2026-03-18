@@ -10,12 +10,15 @@ import com.example.order.domain.OrderStatus;
 import com.example.order.dto.request.InternalCreateOrderRequest;
 import com.example.order.dto.response.InternalCreateOrderResponse;
 import com.example.order.event.OrderCancelledEvent;
+import com.example.order.event.OrderCreatedEvent;
 import com.example.order.event.OrderRefundRequestedEvent;
 import com.example.order.exception.OrderErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Slf4j
 @Service
@@ -58,6 +61,35 @@ public class OrderCommandService {
         orderRepository.save(order);
         log.info("주문 생성 완료: orderId={}", order.getId());
 
+        List<OrderCreatedEvent.OrderItemPayload> itemPayloads = request.getLineItems().stream()
+                .map(lineItem -> new OrderCreatedEvent.OrderItemPayload(
+                        lineItem.getItemId(),
+                        lineItem.getStoreId(),
+                        lineItem.getChannelType(),
+                        lineItem.getChannelRefId(),
+                        lineItem.getQuantity(),
+                        lineItem.getFinalUnitPrice(),
+                        lineItem.getLineAmount(),
+                        lineItem.getTitle(),
+                        lineItem.getItemType()
+                ))
+                .toList();
+
+        eventPublisher.publish(
+                new OrderCreatedEvent(
+                        order.getId(),
+                        order.getUserId(),
+                        order.getTotalAmount(),
+                        order.getRecipientName(),
+                        order.getRecipientPhone(),
+                        order.getDeliveryAddressId(),
+                        order.getDeliveryMemo(),
+                        order.getExpiresAt(),
+                        itemPayloads
+                ),
+                EventMetadata.of("Order", String.valueOf(order.getId()))
+        );
+
         return InternalCreateOrderResponse.builder()
                 .orderId(order.getId())
                 .status(order.getStatus().name())
@@ -99,7 +131,6 @@ public class OrderCommandService {
         );
 
         log.info("환불 요청 완료: orderId={}", orderId);
-        // TODO: 부분 환불 지원 시 refundAmount 필드 추가
     }
 
     private Order getOrderByIdAndUserId(Long orderId, Long userId) {

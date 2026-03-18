@@ -19,22 +19,35 @@ public class OrderDetailController implements OrderQueryApi {
 
     private final OrderDetailQueryService orderDetailQueryService;
 
-    @GetMapping("/{orderId}")
-    public ApiResponse<OrderDetailResponse> getOrderDetail(
-            @PathVariable Long orderId,
-            @CurrentUserId Long userId
-    ) {
+    @Override
+    public ApiResponse<OrderDetailResponse> getOrderDetail(Long orderId, Long userId) {
         return ApiResponse.success(orderDetailQueryService.getOrderDetail(orderId, userId));
     }
 
-    @GetMapping("/my-orders")
-    public ApiResponse<List<OrderListResponse>> getMyOrders(
-            @RequestParam(required = false) OrderStatus status,
-            @CurrentUserId Long userId
-    ) {
+    @Override
+    public ApiResponse<List<OrderListResponse>> getMyOrders(OrderStatus status, Long userId) {
         if (status != null) {
             return ApiResponse.success(orderDetailQueryService.getMyOrdersByStatus(userId, status));
         }
         return ApiResponse.success(orderDetailQueryService.getMyOrders(userId));
     }
+
+//    @GetMapping("/{orderId}")
+//    public ApiResponse<OrderDetailResponse> getOrderDetail(
+//            @PathVariable Long orderId,
+//            @CurrentUserId Long userId
+//    ) {
+//        return ApiResponse.success(orderDetailQueryService.getOrderDetail(orderId, userId));
+//    }
+//
+//    @GetMapping("/my-orders")
+//    public ApiResponse<List<OrderListResponse>> getMyOrders(
+//            @RequestParam(required = false) OrderStatus status,
+//            @CurrentUserId Long userId
+//    ) {
+//        if (status != null) {
+//            return ApiResponse.success(orderDetailQueryService.getMyOrdersByStatus(userId, status));
+//        }
+//        return ApiResponse.success(orderDetailQueryService.getMyOrders(userId));
+//    }
 }
