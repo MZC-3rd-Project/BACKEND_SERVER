@@ -72,6 +72,135 @@ spring:
               uri: ${app.service.chat-ws-url:ws://localhost:8093}
               predicates:
                 - Path=/ws/chat,/ws/chat/**
+            - id: auth-service-docs
+              uri: ${app.service.auth-url:http://localhost:8081}
+              predicates:
+                - Path=/v3/api-docs/auth
+              filters:
+                - SetPath=/v3/api-docs
+            - id: profile-service-docs
+              uri: ${app.service.user-url:http://localhost:8071}
+              predicates:
+                - Path=/v3/api-docs/profile
+              filters:
+                - SetPath=/v3/api-docs
+            - id: product-service-docs
+              uri: ${app.service.product-url:http://localhost:8084}
+              predicates:
+                - Path=/v3/api-docs/product
+              filters:
+                - SetPath=/v3/api-docs
+            - id: stock-service-docs
+              uri: ${app.service.stock-url:http://localhost:8085}
+              predicates:
+                - Path=/v3/api-docs/stock
+              filters:
+                - SetPath=/v3/api-docs
+            - id: funding-service-docs
+              uri: ${app.service.funding-url:http://localhost:8086}
+              predicates:
+                - Path=/v3/api-docs/funding
+              filters:
+                - SetPath=/v3/api-docs
+            - id: sales-service-docs
+              uri: ${app.service.sales-url:http://localhost:8087}
+              predicates:
+                - Path=/v3/api-docs/sales
+              filters:
+                - SetPath=/v3/api-docs
+            - id: hot-deal-service-docs
+              uri: ${app.service.hot-deal-url:http://localhost:8089}
+              predicates:
+                - Path=/v3/api-docs/hot-deal
+              filters:
+                - SetPath=/v3/api-docs
+            - id: order-service-docs
+              uri: ${app.service.order-url:http://localhost:8090}
+              predicates:
+                - Path=/v3/api-docs/order
+              filters:
+                - SetPath=/v3/api-docs
+            - id: store-service-docs
+              uri: ${app.service.store-url:http://localhost:8072}
+              predicates:
+                - Path=/v3/api-docs/store
+              filters:
+                - SetPath=/v3/api-docs
+            - id: store-query-service-docs
+              uri: ${app.service.store-query-url:http://localhost:8091}
+              predicates:
+                - Path=/v3/api-docs/store-query
+              filters:
+                - SetPath=/v3/api-docs
+            - id: notification-service-docs
+              uri: ${app.service.notification-url:http://localhost:8092}
+              predicates:
+                - Path=/v3/api-docs/notification
+              filters:
+                - SetPath=/v3/api-docs
+            - id: chat-service-docs
+              uri: ${app.service.chat-url:http://localhost:8093}
+              predicates:
+                - Path=/v3/api-docs/chat
+              filters:
+                - SetPath=/v3/api-docs
+            - id: media-api-docs
+              uri: ${app.service.media-url:http://localhost:8094}
+              predicates:
+                - Path=/v3/api-docs/media-api
+              filters:
+                - SetPath=/v3/api-docs
+            - id: analytics-dashboard-docs
+              uri: ${app.service.analytics-dashboard-url:http://localhost:8095}
+              predicates:
+                - Path=/v3/api-docs/analytics-dashboard
+              filters:
+                - SetPath=/v3/api-docs
+            - id: cart-service-docs
+              uri: ${app.service.cart-url:http://localhost:8096}
+              predicates:
+                - Path=/v3/api-docs/cart
+              filters:
+                - SetPath=/v3/api-docs
+
+springdoc:
+  swagger-ui:
+    disable-swagger-default-url: true
+    urls-primary-name: gateway
+    urls:
+      - name: gateway
+        url: /v3/api-docs
+      - name: auth
+        url: /v3/api-docs/auth
+      - name: profile
+        url: /v3/api-docs/profile
+      - name: product
+        url: /v3/api-docs/product
+      - name: stock
+        url: /v3/api-docs/stock
+      - name: funding
+        url: /v3/api-docs/funding
+      - name: sales
+        url: /v3/api-docs/sales
+      - name: hot-deal
+        url: /v3/api-docs/hot-deal
+      - name: order
+        url: /v3/api-docs/order
+      - name: store
+        url: /v3/api-docs/store
+      - name: store-query
+        url: /v3/api-docs/store-query
+      - name: notification
+        url: /v3/api-docs/notification
+      - name: chat
+        url: /v3/api-docs/chat
+      - name: media-api
+        url: /v3/api-docs/media-api
+      - name: analytics-dashboard
+        url: /v3/api-docs/analytics-dashboard
+      - name: cart
+        url: /v3/api-docs/cart
+
 gateway:
   auth:
     enabled: ${GATEWAY_AUTH_ENABLED:false}
