@@ -22,7 +22,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -193,22 +195,19 @@ public class StoreCommandService {
         StoreContact storeContact = storeContactRepository.findByStoreIdAndIsPrimaryTrueAndDeletedAtIsNull(storeId)
             .orElseThrow(() -> new BusinessException(StoreErrorCode.CONTACT_NOT_FOUND));
         storeContact.updateStoreContact(request.contactValue(), request.contactType());
-        // 이벤트 발행 추가
-        if (request.images() != null) {
-            storeImageRepository.saveAll(
-                request.images()
-                    .stream()
-                    .map(img -> StoreImage.of(findStore, img.imageType(), img.mediaId(), img.sortOrder()))
-                    .toList()
-            );
+        List<StoreUpdateRequest.StoreImageRequest> normalizedImages = normalizeStoreImages(request.images());
+
+        if (normalizedImages != null) {
+            replaceStoreImages(findStore, storeId, normalizedImages);
         }
-        List<StoreUpdateResponse.StoreImageResponse> imgList = Optional.ofNullable(request.images())
+
+        List<StoreUpdateResponse.StoreImageResponse> imgList = Optional.ofNullable(normalizedImages)
             .orElse(List.of())
             .stream()
             .map(img -> new StoreUpdateResponse.StoreImageResponse(img.imageType(), img.sortOrder(), img.mediaId()))
             .toList();
 
-        storeMediaReferenceService.syncStoreImagesOnUpdate(storeId, request.images());
+        storeMediaReferenceService.syncStoreImagesOnUpdate(storeId, normalizedImages);
         eventPublisher.publish(
             new StoreUpdateEvent(
                 findStore.getId(),
@@ -237,6 +236,41 @@ public class StoreCommandService {
             storeContact.getContactType(),
             imgList
         );
+    }
+
+    private void replaceStoreImages(
+        Stores store,
+        Long storeId,
+        List<StoreUpdateRequest.StoreImageRequest> images
+    ) {
+        storeImageRepository.findAllByStoreIdAndDeletedAtIsNull(storeId)
+            .forEach(StoreImage::softDelete);
+
+        if (images.isEmpty()) {
+            return;
+        }
+
+        storeImageRepository.saveAll(
+            images.stream()
+                .map(img -> StoreImage.of(store, img.imageType(), img.mediaId(), img.sortOrder()))
+                .toList()
+        );
+    }
+
+    private List<StoreUpdateRequest.StoreImageRequest> normalizeStoreImages(
+        List<StoreUpdateRequest.StoreImageRequest> images
+    ) {
+        if (images == null) {
+            return null;
+        }
+
+        Map<String, StoreUpdateRequest.StoreImageRequest> deduped = new LinkedHashMap<>();
+        for (StoreUpdateRequest.StoreImageRequest image : images) {
+            String key = image.imageType() + ":" + image.sortOrder();
+            deduped.remove(key);
+            deduped.put(key, image);
+        }
+        return List.copyOf(deduped.values());
     }
 
     private void validatorOwner(Long storeId, Long userId){

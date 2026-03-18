@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
@@ -114,6 +115,8 @@ class StoreCommandServiceUpdateTest {
     private void givenStoreFound() {
         given(storesRepository.findByIdAndDeletedAtIsNull(STORE_ID))
             .willReturn(Optional.of(mockStore()));
+        lenient().when(storeImageRepository.findAllByStoreIdAndDeletedAtIsNull(STORE_ID))
+            .thenReturn(List.of());
     }
 
     private void givenAddressFound() {
@@ -173,6 +176,38 @@ class StoreCommandServiceUpdateTest {
             storeCommandService.update(USER_ID, STORE_ID, fullRequest());
 
             // then
+            then(storeImageRepository).should(times(1)).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("이미지 포함 시 기존 active 이미지를 soft delete한 뒤 교체한다")
+        void update_withImages_softDeletesExistingImagesBeforeSave() {
+            // given
+            givenStoreFound();
+            givenAddressFound();
+            givenContactFound();
+            givenProfileFound();
+            StoreImage existingThumbnail = StoreImage.builder()
+                .store(mockStore())
+                .imageType(ImageType.THUMBNAIL)
+                .mediaId(999L)
+                .sortOrder(0)
+                .build();
+            StoreImage existingGallery = StoreImage.builder()
+                .store(mockStore())
+                .imageType(ImageType.GALLERY)
+                .mediaId(1000L)
+                .sortOrder(1)
+                .build();
+            given(storeImageRepository.findAllByStoreIdAndDeletedAtIsNull(STORE_ID))
+                .willReturn(List.of(existingThumbnail, existingGallery));
+
+            // when
+            storeCommandService.update(USER_ID, STORE_ID, fullRequest());
+
+            // then
+            assertThat(existingThumbnail.isDeleted()).isTrue();
+            assertThat(existingGallery.isDeleted()).isTrue();
             then(storeImageRepository).should(times(1)).saveAll(any());
         }
 

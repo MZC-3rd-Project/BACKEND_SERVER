@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
@@ -81,6 +82,8 @@ class StoreImageSaveTest {
             .willReturn(Optional.of(mockContact()));
         given(storeProfileRepository.findByStoreId(STORE_ID))
             .willReturn(Optional.empty());
+        lenient().when(storeImageRepository.findAllByStoreIdAndDeletedAtIsNull(STORE_ID))
+            .thenReturn(List.of());
     }
 
     private StoreUpdateRequest requestWithImages(List<StoreUpdateRequest.StoreImageRequest> images) {
@@ -218,6 +221,34 @@ class StoreImageSaveTest {
             assertThat(saved.getImageType()).isEqualTo(ImageType.THUMBNAIL);
             assertThat(saved.getSortOrder()).isEqualTo(3);
             assertThat(saved.getMediaId()).isNull();
+        }
+
+        @Test
+        @DisplayName("같은 imageType과 sortOrder가 중복되면 마지막 요청 값만 저장된다")
+        void save_duplicateImageTypeAndSortOrder_keepsLastRequest() {
+            // given
+            givenBaseMocks();
+            List<StoreUpdateRequest.StoreImageRequest> images = List.of(
+                new StoreUpdateRequest.StoreImageRequest(ImageType.THUMBNAIL, 1L, 0),
+                new StoreUpdateRequest.StoreImageRequest(ImageType.THUMBNAIL, 2L, 0),
+                new StoreUpdateRequest.StoreImageRequest(ImageType.GALLERY, 3L, 1)
+            );
+
+            // when
+            storeCommandService.update(USER_ID, STORE_ID, requestWithImages(images));
+
+            // then
+            ArgumentCaptor<List<StoreImage>> captor = ArgumentCaptor.forClass(List.class);
+            then(storeImageRepository).should(times(1)).saveAll(captor.capture());
+
+            List<StoreImage> saved = captor.getValue();
+            assertThat(saved).hasSize(2);
+            assertThat(saved)
+                .extracting(StoreImage::getImageType, StoreImage::getSortOrder, StoreImage::getMediaId)
+                .containsExactly(
+                    org.assertj.core.groups.Tuple.tuple(ImageType.THUMBNAIL, 0, 2L),
+                    org.assertj.core.groups.Tuple.tuple(ImageType.GALLERY, 1, 3L)
+                );
         }
     }
 }
