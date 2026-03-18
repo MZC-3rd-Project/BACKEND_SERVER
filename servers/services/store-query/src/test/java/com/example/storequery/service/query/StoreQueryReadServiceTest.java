@@ -71,13 +71,34 @@ class StoreQueryReadServiceTest {
 
     @Test
     void keyword가_없으면_cursor_list_repository를_사용한다() {
-        when(storeReadModelRepository.findListWithCursor(eq(StoreQueryStatus.ACTIVE), eq(null), eq(null), eq(PageRequest.of(0, 21))))
+        when(storeReadModelRepository.findListFirstPage(eq(StoreQueryStatus.ACTIVE), eq(PageRequest.of(0, 21))))
             .thenReturn(List.of(model()));
 
         CursorResponse<StoreQueryListResponse> result = service.getStores(null, StoreQueryStatus.ACTIVE, null, 20);
 
         assertThat(result.getItems()).hasSize(1);
-        verify(storeReadModelRepository).findListWithCursor(StoreQueryStatus.ACTIVE, null, null, PageRequest.of(0, 21));
+        verify(storeReadModelRepository).findListFirstPage(StoreQueryStatus.ACTIVE, PageRequest.of(0, 21));
+    }
+
+    @Test
+    void cursor가_있으면_cursor_list_repository를_사용한다() {
+        String cursor = StoreQueryCursorCodec.encodeList(LocalDateTime.parse("2026-03-18T06:10:00"), 10L);
+        when(storeReadModelRepository.findListWithCursor(
+            eq(StoreQueryStatus.ACTIVE),
+            eq(LocalDateTime.parse("2026-03-18T06:10:00")),
+            eq(10L),
+            eq(PageRequest.of(0, 21))
+        )).thenReturn(List.of(model()));
+
+        CursorResponse<StoreQueryListResponse> result = service.getStores(null, StoreQueryStatus.ACTIVE, cursor, 20);
+
+        assertThat(result.getItems()).hasSize(1);
+        verify(storeReadModelRepository).findListWithCursor(
+            StoreQueryStatus.ACTIVE,
+            LocalDateTime.parse("2026-03-18T06:10:00"),
+            10L,
+            PageRequest.of(0, 21)
+        );
     }
 
     @Test

@@ -66,12 +66,17 @@ public class StoreQueryReadService {
 
     private CursorResponse<StoreQueryListResponse> findStores(StoreQueryStatus status, CursorRequest request) {
         StoreQueryCursorCodec.ListCursor cursor = StoreQueryCursorCodec.decodeList(request.getCursor());
-        List<StoreReadModel> stores = storeReadModelRepository.findListWithCursor(
-                status,
-                cursor == null ? null : cursor.sourceUpdatedAt(),
-                cursor == null ? null : cursor.storeId(),
-                PageRequest.of(0, request.getSize() + 1)
-        );
+        List<StoreReadModel> stores = cursor == null
+                ? storeReadModelRepository.findListFirstPage(
+                        status,
+                        PageRequest.of(0, request.getSize() + 1)
+                )
+                : storeReadModelRepository.findListWithCursor(
+                        status,
+                        cursor.sourceUpdatedAt(),
+                        cursor.storeId(),
+                        PageRequest.of(0, request.getSize() + 1)
+                );
 
         boolean hasNext = stores.size() > request.getSize();
         List<StoreReadModel> pageItems = hasNext ? stores.subList(0, request.getSize()) : stores;

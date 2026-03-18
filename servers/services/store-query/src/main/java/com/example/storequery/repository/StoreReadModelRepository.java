@@ -18,9 +18,20 @@ public interface StoreReadModelRepository extends JpaRepository<StoreReadModel, 
           from StoreReadModel s
          where s.deletedAt is null
            and (:status is null or s.status = :status)
+         order by s.sourceUpdatedAt desc, s.storeId desc
+        """)
+    List<StoreReadModel> findListFirstPage(
+        @Param("status") StoreQueryStatus status,
+        Pageable pageable
+    );
+
+    @Query("""
+        select s
+          from StoreReadModel s
+         where s.deletedAt is null
+           and (:status is null or s.status = :status)
            and (
-                :cursorUpdatedAt is null
-                or s.sourceUpdatedAt < :cursorUpdatedAt
+                s.sourceUpdatedAt < :cursorUpdatedAt
                 or (s.sourceUpdatedAt = :cursorUpdatedAt and s.storeId < :cursorStoreId)
            )
          order by s.sourceUpdatedAt desc, s.storeId desc
