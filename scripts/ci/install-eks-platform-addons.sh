@@ -10,6 +10,7 @@ CLUSTER_SECRET_STORE_NAME="${CLUSTER_SECRET_STORE_NAME:-aws-secretsmanager}"
 AWS_LOAD_BALANCER_CONTROLLER_CHART_VERSION="${AWS_LOAD_BALANCER_CONTROLLER_CHART_VERSION:-1.17.1}"
 EXTERNAL_SECRETS_CHART_VERSION="${EXTERNAL_SECRETS_CHART_VERSION:-1.3.2}"
 METRICS_SERVER_CHART_VERSION="${METRICS_SERVER_CHART_VERSION:-3.13.0}"
+ARGO_ROLLOUTS_CHART_VERSION="${ARGO_ROLLOUTS_CHART_VERSION:-2.40.5}"
 
 terraform_output() {
   local module_dir="$1"
@@ -85,6 +86,7 @@ fi
 
 echo "[INFO] ensuring Helm repositories exist"
 helm repo add eks https://aws.github.io/eks-charts >/dev/null 2>&1 || true
+helm repo add argo https://argoproj.github.io/argo-helm >/dev/null 2>&1 || true
 helm repo add external-secrets https://charts.external-secrets.io >/dev/null 2>&1 || true
 helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/ >/dev/null 2>&1 || true
 helm repo update >/dev/null
@@ -139,6 +141,18 @@ helm upgrade --install metrics-server metrics-server/metrics-server \
   --timeout 10m
 
 kubectl rollout status deployment/metrics-server \
+  --namespace "${SYSTEM_NAMESPACE}" \
+  --timeout 180s
+
+echo "[INFO] installing argo-rollouts"
+helm upgrade --install argo-rollouts argo/argo-rollouts \
+  --namespace "${SYSTEM_NAMESPACE}" \
+  --version "${ARGO_ROLLOUTS_CHART_VERSION}" \
+  --values "${ROOT_DIR}/deploy/helm/addons/argo-rollouts-values.yaml" \
+  --wait \
+  --timeout 10m
+
+kubectl rollout status deployment/argo-rollouts \
   --namespace "${SYSTEM_NAMESPACE}" \
   --timeout 180s
 

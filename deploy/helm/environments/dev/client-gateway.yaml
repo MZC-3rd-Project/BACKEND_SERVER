@@ -10,6 +10,13 @@ service:
 container:
   port: 8080
 
+deploymentStrategy:
+  type: blueGreen
+  blueGreen:
+    autoPromotionEnabled: true
+    scaleDownDelaySeconds: 30
+    scaleDownDelayRevisionLimit: 1
+
 ingress:
   enabled: true
   className: alb

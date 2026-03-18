@@ -64,10 +64,44 @@ phases:
           exit 0
         fi
       - |
-        while IFS=$'\t' read -r service_key rollout_wave namespace release_name rollout_name values_file image_repository image_tag; do
+        wait_for_rollout() {
+          local namespace="$1"
+          local rollout_name="$2"
+          local timeout="$3"
+          local start_ts phase elapsed timeout_seconds
+
+          start_ts="$(date +%s)"
+          timeout_seconds="${timeout%s}"
+
+          while true; do
+            phase="$(kubectl get "rollout.argoproj.io/${rollout_name}" --namespace "${namespace}" -o jsonpath='{.status.phase}' 2>/dev/null || true)"
+
+            if [ "${phase}" = "Healthy" ]; then
+              echo "[INFO] rollout/${rollout_name} is Healthy"
+              return 0
+            fi
+
+            if [ "${phase}" = "Degraded" ]; then
+              kubectl describe "rollout.argoproj.io/${rollout_name}" --namespace "${namespace}" || true
+              echo "[ERROR] rollout/${rollout_name} is Degraded" >&2
+              return 1
+            fi
+
+            elapsed="$(( $(date +%s) - start_ts ))"
+            if [ "${elapsed}" -ge "${timeout_seconds}" ]; then
+              kubectl get "rollout.argoproj.io/${rollout_name}" --namespace "${namespace}" -o yaml || true
+              echo "[ERROR] rollout/${rollout_name} did not become Healthy within ${timeout}" >&2
+              return 1
+            fi
+
+            sleep 5
+          done
+        }
+
+        while IFS=$'\t' read -r service_key workload_kind rollout_wave namespace release_name rollout_name values_file image_repository image_tag; do
           [ -z "${service_key}" ] && continue
 
-          echo "[INFO] Deploying ${service_key} wave=${rollout_wave} namespace=${namespace}"
+          echo "[INFO] Deploying ${service_key} kind=${workload_kind} wave=${rollout_wave} namespace=${namespace}"
           helm upgrade --install "${release_name}" "${HELM_CHART_PATH}" \
             --namespace "${namespace}" \
             --create-namespace \
@@ -77,15 +111,20 @@ phases:
             --wait \
             --timeout "${HELM_TIMEOUT}"
 
-          kubectl rollout status "deployment/${rollout_name}" \
-            --namespace "${namespace}" \
-            --timeout "${KUBECTL_ROLLOUT_TIMEOUT}"
+          if [ "${workload_kind}" = "Rollout" ]; then
+            wait_for_rollout "${namespace}" "${rollout_name}" "${KUBECTL_ROLLOUT_TIMEOUT}"
+          else
+            kubectl rollout status "deployment/${rollout_name}" \
+              --namespace "${namespace}" \
+              --timeout "${KUBECTL_ROLLOUT_TIMEOUT}"
+          fi
         done < <(
           ruby -rjson -e '
             plan = JSON.parse(File.read(ARGV[0]))
             plan.fetch("services", []).each do |service|
               puts [
                 service.fetch("key"),
+                service.fetch("workloadKind"),
                 service.fetch("rolloutWave"),
                 service.fetch("namespace"),
                 service.fetch("releaseName"),

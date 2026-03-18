@@ -1,0 +1,25 @@
+{{- if eq (include "spring-service.strategyType" .) "blueGreen" }}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ include "spring-service.fullname" . }}
+  labels:
+    {{- include "spring-service.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  selector:
+    matchLabels:
+      {{- include "spring-service.selectorLabels" . | nindent 6 }}
+  strategy:
+    blueGreen:
+      activeService: {{ include "spring-service.activeServiceName" . }}
+      previewService: {{ include "spring-service.previewServiceName" . }}
+      autoPromotionEnabled: {{ .Values.deploymentStrategy.blueGreen.autoPromotionEnabled }}
+      scaleDownDelaySeconds: {{ .Values.deploymentStrategy.blueGreen.scaleDownDelaySeconds }}
+      scaleDownDelayRevisionLimit: {{ .Values.deploymentStrategy.blueGreen.scaleDownDelayRevisionLimit }}
+      {{- with .Values.deploymentStrategy.blueGreen.previewReplicaCount }}
+      previewReplicaCount: {{ . }}
+      {{- end }}
+  {{- include "spring-service.podTemplate" . | nindent 2 }}
+{{- end }}

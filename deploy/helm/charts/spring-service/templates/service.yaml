@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "spring-service.fullname" . }}
+  name: {{ include "spring-service.activeServiceName" . }}
   labels:
     {{- include "spring-service.labels" . | nindent 4 }}
 spec:
@@ -13,3 +13,21 @@ spec:
       name: http
   selector:
     {{- include "spring-service.selectorLabels" . | nindent 4 }}
+{{- if eq (include "spring-service.strategyType" .) "blueGreen" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "spring-service.previewServiceName" . }}
+  labels:
+    {{- include "spring-service.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "spring-service.selectorLabels" . | nindent 4 }}
+{{- end }}

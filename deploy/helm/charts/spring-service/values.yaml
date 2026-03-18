@@ -2,6 +2,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 replicaCount: 1
+revisionHistoryLimit: 3
 
 image:
   repository: ""
@@ -49,6 +50,17 @@ ingress:
   annotations: {}
   hosts: []
   tls: []
+
+deploymentStrategy:
+  type: rolling
+  rollingUpdate:
+    maxSurge: 25%
+    maxUnavailable: 25%
+  blueGreen:
+    autoPromotionEnabled: true
+    scaleDownDelaySeconds: 30
+    scaleDownDelayRevisionLimit: 1
+    previewReplicaCount: null
 
 resources:
   requests:

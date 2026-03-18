@@ -62,6 +62,9 @@ plan_services = selected_services.map do |service|
   release_name = service.dig("deployment", "releaseName") || key
   rollout_name = values["fullnameOverride"].to_s.strip
   rollout_name = release_name if rollout_name.empty?
+  strategy_type = values.dig("deploymentStrategy", "type").to_s.strip
+  strategy_type = "rolling" if strategy_type.empty?
+  workload_kind = strategy_type == "blueGreen" ? "Rollout" : "Deployment"
 
   image_repository =
     if build_type == "external-image"
@@ -92,6 +95,7 @@ plan_services = selected_services.map do |service|
     "namespace" => service.dig("deployment", "namespace") || namespace_default,
     "releaseName" => release_name,
     "rolloutName" => rollout_name,
+    "workloadKind" => workload_kind,
     "rolloutWave" => service.dig("deployment", "rolloutWave") || 999,
     "serviceName" => service.dig("deployment", "serviceName"),
     "valuesFile" => Pathname.new(values_path).relative_path_from(Pathname.new(ROOT_DIR)).to_s,
