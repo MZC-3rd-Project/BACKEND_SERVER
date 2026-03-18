@@ -10,6 +10,14 @@ service:
 container:
   port: 8091
 
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
 env:
   SERVER_PORT: "8091"
   SPRING_PROFILES_ACTIVE: develop
