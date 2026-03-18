@@ -53,7 +53,9 @@ app:
     internal-auth-token: ${APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
     user-id-header: ${APP_GATEWAY_SECURITY_USER_ID_HEADER:X-User-Id}
     required-paths:
-      - /api/v1/sales/**
+      - /api/v1/sales/checkout/**
+    optional-user-context-paths:
+      - /api/v1/sales/products/**
     excluded-paths:
       - /actuator/**
       - /v3/api-docs/**

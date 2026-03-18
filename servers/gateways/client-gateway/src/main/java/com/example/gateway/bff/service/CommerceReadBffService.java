@@ -1,10 +1,17 @@
 package com.example.gateway.bff.service;
 
+import com.example.contracts.http.HttpHeaderNames;
 import com.example.gateway.bff.dto.BffItemType;
 import com.example.gateway.config.GatewaySecurityProperties;
+import com.example.gateway.security.GatewaySessionPrincipal;
+import com.example.gateway.security.SessionClaimParseException;
+import com.example.gateway.security.session.application.GatewaySessionPrincipalResolver;
+import com.example.security.gateway.GatewayContextHeaderCodec;
+import com.example.security.signature.HmacSigner;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.springframework.beans.factory.ObjectProvider;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -31,6 +38,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Function;
 
 @Slf4j
 @Service
@@ -44,12 +54,16 @@ public class CommerceReadBffService {
     private final WebClient salesWebClient;
     private final WebClient productWebClient;
     private final WebClient mediaWebClient;
+    private final GatewaySessionPrincipalResolver sessionPrincipalResolver;
     private final GatewaySecurityProperties securityProperties;
+    private final ObjectProvider<HmacSigner> hmacSignerProvider;
     private final ObjectMapper objectMapper;
 
     public CommerceReadBffService(
             WebClient.Builder webClientBuilder,
+            GatewaySessionPrincipalResolver sessionPrincipalResolver,
             GatewaySecurityProperties securityProperties,
+            ObjectProvider<HmacSigner> hmacSignerProvider,
             ObjectMapper objectMapper,
             @Value("${app.service.funding-url:http://localhost:8086}") String fundingServiceUrl,
             @Value("${app.service.hot-deal-url:http://localhost:8089}") String hotDealServiceUrl,
@@ -62,7 +76,9 @@ public class CommerceReadBffService {
         this.salesWebClient = webClientBuilder.baseUrl(salesServiceUrl).build();
         this.productWebClient = webClientBuilder.baseUrl(productServiceUrl).build();
         this.mediaWebClient = webClientBuilder.baseUrl(mediaServiceUrl).build();
+        this.sessionPrincipalResolver = sessionPrincipalResolver;
         this.securityProperties = securityProperties;
+        this.hmacSignerProvider = hmacSignerProvider;
         this.objectMapper = objectMapper;
     }
 
@@ -125,18 +141,19 @@ public class CommerceReadBffService {
     }
 
     public Mono<ResponseEntity<JsonNode>> findSalesProducts(ServerHttpRequest request) {
-        HttpHeaders headers = buildDownstreamHeaders();
-        MultiValueMap<String, String> queryParams = copyAllowedQueryParams(
-                request,
-                List.of("cursor", "size")
-        );
+        return withOptionalUserContextHeaders(headers -> {
+            MultiValueMap<String, String> queryParams = copyAllowedQueryParams(
+                    request,
+                    List.of("cursor", "size")
+            );
 
-        return callGet(salesWebClient, "/api/v1/sales/products", queryParams, headers)
-                .flatMap(response -> enrichSalesProductList(response, headers))
-                .onErrorResume(e -> {
-                    log.warn("[CommerceReadBff] sales product list failed", e);
-                    return Mono.just(badGateway("일반 판매 목록 조회에 실패했습니다"));
-                });
+            return callGet(salesWebClient, "/api/v1/sales/products", queryParams, headers)
+                    .flatMap(response -> enrichSalesProductList(response, headers))
+                    .onErrorResume(e -> {
+                        log.warn("[CommerceReadBff] sales product list failed", e);
+                        return Mono.just(badGateway("일반 판매 목록 조회에 실패했습니다"));
+                    });
+        });
     }
 
     public Mono<ResponseEntity<JsonNode>> findSalesProductDetail(Long saleId) {
@@ -144,13 +161,13 @@ public class CommerceReadBffService {
             return Mono.just(badRequest("saleId는 양수여야 합니다"));
         }
 
-        HttpHeaders headers = buildDownstreamHeaders();
-        return callGet(salesWebClient, "/api/v1/sales/products/" + saleId, headers)
-                .flatMap(response -> enrichSalesProductDetail(response, headers))
-                .onErrorResume(e -> {
-                    log.warn("[CommerceReadBff] sales product detail failed. saleId={}", saleId, e);
-                    return Mono.just(badGateway("일반 판매 상세 조회에 실패했습니다"));
-                });
+        return withOptionalUserContextHeaders(headers ->
+                callGet(salesWebClient, "/api/v1/sales/products/" + saleId, headers)
+                        .flatMap(response -> enrichSalesProductDetail(response, headers))
+                        .onErrorResume(e -> {
+                            log.warn("[CommerceReadBff] sales product detail failed. saleId={}", saleId, e);
+                            return Mono.just(badGateway("일반 판매 상세 조회에 실패했습니다"));
+                        }));
     }
 
     private Mono<ResponseEntity<JsonNode>> enrichFundingCampaignList(ResponseEntity<JsonNode> response,
@@ -941,13 +958,54 @@ public class CommerceReadBffService {
     }
 
     private HttpHeaders buildDownstreamHeaders() {
+        return buildDownstreamHeaders(null);
+    }
+
+    private HttpHeaders buildDownstreamHeaders(GatewaySessionPrincipal principal) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         if (StringUtils.hasText(securityProperties.getInternalAuthToken())
                 && StringUtils.hasText(securityProperties.getInternalAuthHeader())) {
             headers.set(securityProperties.getInternalAuthHeader(), securityProperties.getInternalAuthToken());
         }
+        if (principal == null) {
+            return headers;
+        }
+        headers.set(HttpHeaderNames.USER_ID, String.valueOf(principal.userId()));
+        headers.set(HttpHeaderNames.USER_ROLES, principal.rolesHeaderValue());
+        if (StringUtils.hasText(principal.sessionId())) {
+            headers.set(HttpHeaderNames.SESSION_ID, principal.sessionId());
+        }
+        String gatewayContext = createSignedContextHeader(principal);
+        if (StringUtils.hasText(gatewayContext)) {
+            headers.set(HttpHeaderNames.GATEWAY_CONTEXT, gatewayContext);
+        }
         return headers;
+    }
+
+    private Mono<ResponseEntity<JsonNode>> withOptionalUserContextHeaders(
+            Function<HttpHeaders, Mono<ResponseEntity<JsonNode>>> callback) {
+        return sessionPrincipalResolver.resolveFromSecurityContext()
+                .map(Optional::of)
+                .onErrorResume(SessionClaimParseException.class, error -> {
+                    log.info("[CommerceReadBff] optional user context skipped. reason={}", error.getMessage());
+                    return Mono.just(Optional.empty());
+                })
+                .defaultIfEmpty(Optional.empty())
+                .flatMap(optionalPrincipal -> callback.apply(buildDownstreamHeaders(optionalPrincipal.orElse(null))));
+    }
+
+    private String createSignedContextHeader(GatewaySessionPrincipal principal) {
+        HmacSigner signer = hmacSignerProvider.getIfAvailable();
+        if (signer == null) {
+            return null;
+        }
+
+        String userId = String.valueOf(principal.userId());
+        String roles = principal.rolesHeaderValue();
+        String nonce = UUID.randomUUID().toString();
+        long timestamp = System.currentTimeMillis();
+        return GatewayContextHeaderCodec.encodeSigned(userId, roles, nonce, timestamp, signer);
     }
 
     private ResponseEntity<JsonNode> badRequest(String message) {
