@@ -13,6 +13,12 @@ import java.util.Objects;
 @Component
 public class StoreThumbnailResolver {
 
+    private final StoreQueryMediaUrlNormalizer mediaUrlNormalizer;
+
+    public StoreThumbnailResolver(StoreQueryMediaUrlNormalizer mediaUrlNormalizer) {
+        this.mediaUrlNormalizer = mediaUrlNormalizer;
+    }
+
     public StoreQueryImageResponse resolve(StoreSummarySource source) {
         if (source.thumbnailMediaId() == null) {
             return null;
@@ -67,7 +73,7 @@ public class StoreThumbnailResolver {
     ) {
         return StoreQueryImageResponse.builder()
             .mediaId(mediaId)
-            .mediaUrl(mediaUrl)
+            .mediaUrl(mediaUrlNormalizer.normalize(mediaUrl))
             .imageType(imageType)
             .sortOrder(sortOrder)
             .build();

@@ -46,13 +46,15 @@ class StoreQueryReadServiceTest {
 
     @BeforeEach
     void setUp() {
-        StoreThumbnailResolver storeThumbnailResolver = new StoreThumbnailResolver();
+        StoreQueryMediaUrlNormalizer mediaUrlNormalizer =
+            new StoreQueryMediaUrlNormalizer("https://d179i4pv5hzdkg.cloudfront.net");
+        StoreThumbnailResolver storeThumbnailResolver = new StoreThumbnailResolver(mediaUrlNormalizer);
         service = new StoreQueryReadService(
             storeReadModelRepository,
             storeReadImageRepository,
             storeReadItemRepository,
             new StoreSummaryAssembler(storeThumbnailResolver),
-            new StoreDetailAssembler(storeThumbnailResolver)
+            new StoreDetailAssembler(storeThumbnailResolver, mediaUrlNormalizer)
         );
     }
 

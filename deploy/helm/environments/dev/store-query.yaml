@@ -31,6 +31,7 @@ env:
   PRODUCT_SERVICE_URL: http://product-service:8084
   PROFILE_SERVICE_URL: http://profile-service:8071
   STORE_SERVICE_URL: http://store-service:8072
+  MEDIA_CLOUDFRONT_DOMAIN: https://d179i4pv5hzdkg.cloudfront.net
   APP_GATEWAY_SECURITY_ENABLED: "true"
   APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED: "false"
   APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER: X-Gateway-Auth

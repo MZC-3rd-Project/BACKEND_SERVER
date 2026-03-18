@@ -14,7 +14,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class StoreDetailAssemblerTest {
 
-    private final StoreDetailAssembler storeDetailAssembler = new StoreDetailAssembler(new StoreThumbnailResolver());
+    private final StoreQueryMediaUrlNormalizer mediaUrlNormalizer =
+        new StoreQueryMediaUrlNormalizer("https://d179i4pv5hzdkg.cloudfront.net");
+    private final StoreDetailAssembler storeDetailAssembler =
+        new StoreDetailAssembler(new StoreThumbnailResolver(mediaUrlNormalizer), mediaUrlNormalizer);
 
     @Test
     void toDetailResponse_buildsThumbnailGalleryAndItemSummaries() {
@@ -24,7 +27,7 @@ class StoreDetailAssemblerTest {
             100L,
             "MZC Store",
             "owner",
-            "https://owner",
+            "https://team2-donmoa-media-raw.s3.ap-northeast-2.amazonaws.com/team2-donmoa-media/raw/2026/03/18/owner.png",
             StoreQueryStatus.ACTIVE,
             "desc",
             "Seoul",
@@ -32,7 +35,7 @@ class StoreDetailAssemblerTest {
             "010-1234-5678",
             null,
             10L,
-            "https://thumb",
+            "https://team2-donmoa-media-raw.s3.ap-northeast-2.amazonaws.com/team2-donmoa-media/raw/2026/03/18/thumb.png",
             0,
             2,
             1,
@@ -43,11 +46,31 @@ class StoreDetailAssemblerTest {
             now
         );
         List<StoreReadImage> images = List.of(
-            StoreReadImage.of(1L, StoreQueryImageType.THUMBNAIL, 10L, "https://thumb", 0, now, now),
+            StoreReadImage.of(
+                1L,
+                StoreQueryImageType.THUMBNAIL,
+                10L,
+                "https://team2-donmoa-media-raw.s3.ap-northeast-2.amazonaws.com/team2-donmoa-media/raw/2026/03/18/thumb.png",
+                0,
+                now,
+                now
+            ),
             StoreReadImage.of(1L, StoreQueryImageType.GALLERY, 11L, "https://gallery", 1, now, now)
         );
         List<StoreReadItem> items = List.of(
-            StoreReadItem.of(1000L, 1L, 100L, "item1", 1000L, "GOODS", "ON_SALE", 21L, "https://i1", now, now)
+            StoreReadItem.of(
+                1000L,
+                1L,
+                100L,
+                "item1",
+                1000L,
+                "GOODS",
+                "ON_SALE",
+                21L,
+                "https://team2-donmoa-media-raw.s3.ap-northeast-2.amazonaws.com/team2-donmoa-media/raw/2026/03/18/item.png",
+                now,
+                now
+            )
         );
 
         var response = storeDetailAssembler.toDetailResponse(model, images, items);
@@ -60,5 +83,11 @@ class StoreDetailAssemblerTest {
         assertThat(response.items()).hasSize(1);
         assertThat(response.items().getFirst().itemId()).isEqualTo(1000L);
         assertThat(response.items().getFirst().thumbnailMediaId()).isEqualTo(21L);
+        assertThat(response.ownerProfileImageUrl())
+            .isEqualTo("https://d179i4pv5hzdkg.cloudfront.net/team2-donmoa-media/raw/2026/03/18/owner.png");
+        assertThat(response.images().thumbnail().mediaUrl())
+            .isEqualTo("https://d179i4pv5hzdkg.cloudfront.net/team2-donmoa-media/raw/2026/03/18/thumb.png");
+        assertThat(response.items().getFirst().thumbnailUrl())
+            .isEqualTo("https://d179i4pv5hzdkg.cloudfront.net/team2-donmoa-media/raw/2026/03/18/item.png");
     }
 }

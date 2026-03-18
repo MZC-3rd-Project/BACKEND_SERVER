@@ -10,7 +10,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class StoreSummaryAssemblerTest {
 
-    private final StoreSummaryAssembler storeSummaryAssembler = new StoreSummaryAssembler(new StoreThumbnailResolver());
+    private final StoreQueryMediaUrlNormalizer mediaUrlNormalizer =
+        new StoreQueryMediaUrlNormalizer("https://d179i4pv5hzdkg.cloudfront.net");
+    private final StoreSummaryAssembler storeSummaryAssembler =
+        new StoreSummaryAssembler(new StoreThumbnailResolver(mediaUrlNormalizer));
 
     @Test
     void toListResponse_mapsSearchRowSourceWithTypedStatusAndThumbnail() {

@@ -13,7 +13,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class StoreThumbnailResolverTest {
 
-    private final StoreThumbnailResolver storeThumbnailResolver = new StoreThumbnailResolver();
+    private final StoreQueryMediaUrlNormalizer mediaUrlNormalizer =
+        new StoreQueryMediaUrlNormalizer("https://d179i4pv5hzdkg.cloudfront.net");
+    private final StoreThumbnailResolver storeThumbnailResolver = new StoreThumbnailResolver(mediaUrlNormalizer);
 
     @Test
     void resolve_usesSummarySourceThumbnailWhenPresent() {
@@ -47,6 +49,7 @@ class StoreThumbnailResolverTest {
         assertThat(thumbnail).isNotNull();
         assertThat(thumbnail.mediaId()).isEqualTo(10L);
         assertThat(thumbnail.imageType()).isEqualTo(StoreQueryImageType.THUMBNAIL);
+        assertThat(thumbnail.mediaUrl()).isEqualTo("https://thumb");
     }
 
     @Test
@@ -77,13 +80,22 @@ class StoreThumbnailResolverTest {
         );
         List<StoreReadImage> images = List.of(
             StoreReadImage.of(1L, StoreQueryImageType.GALLERY, 11L, "https://gallery", 1, now, now),
-            StoreReadImage.of(1L, StoreQueryImageType.THUMBNAIL, 12L, "https://thumb", 0, now, now)
+            StoreReadImage.of(
+                1L,
+                StoreQueryImageType.THUMBNAIL,
+                12L,
+                "https://team2-donmoa-media-raw.s3.ap-northeast-2.amazonaws.com/team2-donmoa-media/raw/2026/03/18/thumb.png",
+                0,
+                now,
+                now
+            )
         );
 
         var thumbnail = storeThumbnailResolver.resolve(model, images);
 
         assertThat(thumbnail).isNotNull();
         assertThat(thumbnail.mediaId()).isEqualTo(12L);
-        assertThat(thumbnail.mediaUrl()).isEqualTo("https://thumb");
+        assertThat(thumbnail.mediaUrl())
+            .isEqualTo("https://d179i4pv5hzdkg.cloudfront.net/team2-donmoa-media/raw/2026/03/18/thumb.png");
     }
 }

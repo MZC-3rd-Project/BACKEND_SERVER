@@ -15,9 +15,12 @@ import java.util.List;
 public class StoreDetailAssembler {
 
     private final StoreThumbnailResolver storeThumbnailResolver;
+    private final StoreQueryMediaUrlNormalizer mediaUrlNormalizer;
 
-    public StoreDetailAssembler(StoreThumbnailResolver storeThumbnailResolver) {
+    public StoreDetailAssembler(StoreThumbnailResolver storeThumbnailResolver,
+                                StoreQueryMediaUrlNormalizer mediaUrlNormalizer) {
         this.storeThumbnailResolver = storeThumbnailResolver;
+        this.mediaUrlNormalizer = mediaUrlNormalizer;
     }
 
     public StoreQueryDetailResponse toDetailResponse(
@@ -39,7 +42,7 @@ public class StoreDetailAssembler {
             .contactValue(model.getPrimaryContactValue())
             .contactType(model.getPrimaryContactType())
             .ownerNickname(model.getOwnerNickname())
-            .ownerProfileImageUrl(model.getOwnerProfileImageUrl())
+            .ownerProfileImageUrl(mediaUrlNormalizer.normalize(model.getOwnerProfileImageUrl()))
             .activeItemCount(model.getActiveItemCount())
             .latestItemUpdatedAt(model.getLatestItemUpdatedAt())
             .images(StoreQueryImagesResponse.builder()
@@ -59,7 +62,7 @@ public class StoreDetailAssembler {
             .itemType(item.getItemType())
             .status(item.getStatus())
             .thumbnailMediaId(item.getThumbnailMediaId())
-            .thumbnailUrl(item.getThumbnailUrl())
+            .thumbnailUrl(mediaUrlNormalizer.normalize(item.getThumbnailUrl()))
             .build();
     }
 }

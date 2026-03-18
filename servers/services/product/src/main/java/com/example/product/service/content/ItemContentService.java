@@ -28,6 +28,7 @@ public class ItemContentService {
     private final ItemTagRepository itemTagRepository;
     private final ItemFeatureRepository itemFeatureRepository;
     private final ItemDetailSectionRepository itemDetailSectionRepository;
+    private final ProductMediaUrlNormalizer productMediaUrlNormalizer;
 
     @Transactional
     public void replaceTags(Long itemId, List<String> tags) {
@@ -87,7 +88,7 @@ public class ItemContentService {
                 .toList();
         List<ItemDetailSectionResponse> detailSections = itemDetailSectionRepository.findByItemIdOrderBySortOrderAsc(itemId)
                 .stream()
-                .map(ItemDetailSectionResponse::from)
+                .map(this::toResponse)
                 .toList();
         return new ItemContentSnapshot(tags, features, detailSections);
     }
@@ -120,7 +121,7 @@ public class ItemContentService {
                 .findByItemIdInOrderByItemIdAscSortOrderAsc(distinctItemIds).stream()
                 .collect(Collectors.groupingBy(
                         ItemDetailSection::getItemId,
-                        Collectors.mapping(ItemDetailSectionResponse::from, Collectors.toList())));
+                        Collectors.mapping(this::toResponse, Collectors.toList())));
 
         Map<Long, ItemContentSnapshot> result = new LinkedHashMap<>();
         for (Long itemId : distinctItemIds) {
@@ -145,6 +146,15 @@ public class ItemContentService {
             return null;
         }
         return ItemDetailSection.create(itemId, title, description, imageUrl, highlights, sortOrder);
+    }
+
+    private ItemDetailSectionResponse toResponse(ItemDetailSection detailSection) {
+        return ItemDetailSectionResponse.builder()
+                .title(detailSection.getTitle())
+                .description(detailSection.getDescription())
+                .imageUrl(productMediaUrlNormalizer.normalize(detailSection.getImageUrl()))
+                .highlights(detailSection.getHighlights())
+                .build();
     }
 
     private List<String> normalizeStrings(List<String> values) {
