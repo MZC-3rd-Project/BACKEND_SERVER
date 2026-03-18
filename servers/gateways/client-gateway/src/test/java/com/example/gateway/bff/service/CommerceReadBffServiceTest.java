@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.support.StaticListableBeanFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -85,7 +86,7 @@ class CommerceReadBffServiceTest {
 
         assertThat(exchangeFunction.salesRequests).hasSize(1);
         ClientRequest forwardedRequest = exchangeFunction.salesRequests.get(0);
-        assertThat(forwardedRequest.url().getPath()).isEqualTo("/api/v1/sales/products");
+        assertThat(forwardedRequest.url().getPath()).isEqualTo("/api/products");
         assertThat(forwardedRequest.url().getQuery()).contains("cursor=abc");
         assertThat(forwardedRequest.url().getQuery()).contains("size=12");
         assertThat(forwardedRequest.headers().getFirst(HttpHeaderNames.GATEWAY_AUTH)).isEqualTo("internal-secret");
@@ -119,6 +120,50 @@ class CommerceReadBffServiceTest {
         assertThat(forwardedRequest.headers().containsKey(HttpHeaderNames.GATEWAY_CONTEXT)).isFalse();
     }
 
+    @Test
+    void findSalesProducts_enrichesThumbnailUrlFromProductResponse() {
+        exchangeFunction.enqueueSalesProducts(HttpStatus.OK, """
+                {
+                  "success": true,
+                  "data": {
+                    "items": [
+                      {
+                        "id": 101,
+                        "title": "seed product",
+                        "images": {
+                          "thumbnail": {
+                            "mediaId": 9001
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+                """);
+        exchangeFunction.enqueueMediaUrls(HttpStatus.OK, """
+                {
+                  "success": true,
+                  "data": [
+                    {
+                      "mediaId": 9001,
+                      "mediaUrl": "https://cdn.example.com/items/9001.png"
+                    }
+                  ]
+                }
+                """);
+
+        ResponseEntity<com.fasterxml.jackson.databind.JsonNode> response = service.findSalesProducts(
+                MockServerHttpRequest.get("/bff/v1/sales/products").build()
+        ).block();
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().path("data").path("items").get(0).path("thumbnailMediaId").asLong())
+                .isEqualTo(9001L);
+        assertThat(response.getBody().path("data").path("items").get(0).path("thumbnailUrl").asText())
+                .isEqualTo("https://cdn.example.com/items/9001.png");
+    }
+
     private Authentication authenticatedUser() {
         List<SimpleGrantedAuthority> authorities = List.of(new SimpleGrantedAuthority("ROLE_BUYER"));
         DefaultOAuth2User principal = new DefaultOAuth2User(
@@ -132,12 +177,13 @@ class CommerceReadBffServiceTest {
     private static final class StubExchangeFunction implements ExchangeFunction {
 
         private final Queue<ResponseStub> salesProductResponses = new ArrayDeque<>();
+        private final Queue<ResponseStub> mediaUrlResponses = new ArrayDeque<>();
         private final List<ClientRequest> salesRequests = new ArrayList<>();
 
         @Override
         public Mono<ClientResponse> exchange(ClientRequest request) {
             URI url = request.url();
-            if ("/api/v1/sales/products".equals(url.getPath())) {
+            if ("/api/products".equals(url.getPath())) {
                 salesRequests.add(request);
                 ResponseStub stub = salesProductResponses.poll();
                 if (stub == null) {
@@ -150,9 +196,13 @@ class CommerceReadBffServiceTest {
             }
 
             if ("/internal/v1/media/urls/batch".equals(url.getPath())) {
-                return Mono.just(ClientResponse.create(HttpStatus.OK)
+                ResponseStub stub = mediaUrlResponses.poll();
+                if (stub == null) {
+                    stub = new ResponseStub(HttpStatus.OK, "{\"success\":true,\"data\":[]}");
+                }
+                return Mono.just(ClientResponse.create(stub.status())
                         .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-                        .body("{\"success\":true,\"data\":[]}")
+                        .body(stub.body())
                         .build());
             }
 
@@ -161,6 +211,10 @@ class CommerceReadBffServiceTest {
 
         void enqueueSalesProducts(HttpStatus status, String body) {
             salesProductResponses.add(new ResponseStub(status, body));
+        }
+
+        void enqueueMediaUrls(HttpStatus status, String body) {
+            mediaUrlResponses.add(new ResponseStub(status, body));
         }
     }
 

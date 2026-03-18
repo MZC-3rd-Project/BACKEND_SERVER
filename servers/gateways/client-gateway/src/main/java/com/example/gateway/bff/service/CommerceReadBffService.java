@@ -147,7 +147,7 @@ public class CommerceReadBffService {
                     List.of("cursor", "size")
             );
 
-            return callGet(salesWebClient, "/api/v1/sales/products", queryParams, headers)
+            return callGet(productWebClient, "/api/products", queryParams, headers)
                     .flatMap(response -> enrichSalesProductList(response, headers))
                     .onErrorResume(e -> {
                         log.warn("[CommerceReadBff] sales product list failed", e);
@@ -162,7 +162,7 @@ public class CommerceReadBffService {
         }
 
         return withOptionalUserContextHeaders(headers ->
-                callGet(salesWebClient, "/api/v1/sales/products/" + saleId, headers)
+                callGet(productWebClient, "/api/products/" + saleId, headers)
                         .flatMap(response -> enrichSalesProductDetail(response, headers))
                         .onErrorResume(e -> {
                             log.warn("[CommerceReadBff] sales product detail failed. saleId={}", saleId, e);
@@ -454,7 +454,7 @@ public class CommerceReadBffService {
 
         List<Long> mediaIds = new ArrayList<>();
         for (JsonNode node : itemsNode) {
-            Long mediaId = positiveLong(node.path("thumbnailMediaId"), null);
+            Long mediaId = resolveThumbnailMediaId(node);
             if (mediaId != null) {
                 mediaIds.add(mediaId);
             }
@@ -467,7 +467,8 @@ public class CommerceReadBffService {
                             continue;
                         }
                         ObjectNode item = (ObjectNode) node;
-                        Long mediaId = positiveLong(item.path("thumbnailMediaId"), null);
+                        Long mediaId = resolveThumbnailMediaId(item);
+                        putIfNull(item, "thumbnailMediaId", mediaId);
                         if (mediaId != null) {
                             putIfBlank(item, "thumbnailUrl", mediaUrlMap.get(mediaId));
                         }
@@ -488,6 +489,7 @@ public class CommerceReadBffService {
             return Mono.just(response);
         }
 
+        putIfNull(data, "thumbnailMediaId", resolveThumbnailMediaId(data));
         ensureSalesDetailPlaceholders(data);
         return enrichThumbnailUrl(data, headers, response)
                 .onErrorResume(e -> {
@@ -623,6 +625,14 @@ public class CommerceReadBffService {
             }
         }
         return mediaIds;
+    }
+
+    private Long resolveThumbnailMediaId(JsonNode node) {
+        Long directMediaId = positiveLong(node.path("thumbnailMediaId"), null);
+        if (directMediaId != null) {
+            return directMediaId;
+        }
+        return positiveLong(node.path("images").path("thumbnail").path("mediaId"), null);
     }
 
     private Mono<ResponseEntity<JsonNode>> enrichThumbnailUrl(ObjectNode target,
