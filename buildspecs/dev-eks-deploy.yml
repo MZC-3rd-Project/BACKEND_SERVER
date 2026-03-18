@@ -40,7 +40,11 @@ phases:
       - AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-ap-northeast-2}"
       - EKS_CLUSTER_NAME="${EKS_CLUSTER_NAME:?EKS_CLUSTER_NAME must be set}"
       - export AWS_DEFAULT_REGION EKS_CLUSTER_NAME HELM_CHART_PATH EKS_DEPLOY_PLAN_PATH HELM_TIMEOUT KUBECTL_ROLLOUT_TIMEOUT INSTALL_EKS_PLATFORM_ADDONS
-      - test -f "${EKS_DEPLOY_PLAN_PATH}" || { echo "[ERROR] missing deploy plan: ${EKS_DEPLOY_PLAN_PATH}" >&2; exit 1; }
+      - |
+        test -f "${EKS_DEPLOY_PLAN_PATH}" || {
+          echo "[ERROR] missing deploy plan: ${EKS_DEPLOY_PLAN_PATH}" >&2
+          exit 1
+        }
       - aws eks update-kubeconfig --name "${EKS_CLUSTER_NAME}" --region "${AWS_DEFAULT_REGION}"
       - |
         if [ "${INSTALL_EKS_PLATFORM_ADDONS}" = "true" ]; then
