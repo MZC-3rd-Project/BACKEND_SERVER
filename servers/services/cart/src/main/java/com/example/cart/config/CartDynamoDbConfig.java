@@ -10,6 +10,7 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.WebIdentityTokenFileCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClientBuilder;
@@ -55,6 +56,12 @@ public class CartDynamoDbConfig {
 
         if (StringUtils.hasText(properties.getEndpoint())) {
             return StaticCredentialsProvider.create(AwsBasicCredentials.create("local", "local"));
+        }
+
+        String webIdentityTokenFile = System.getenv("AWS_WEB_IDENTITY_TOKEN_FILE");
+        String roleArn = System.getenv("AWS_ROLE_ARN");
+        if (StringUtils.hasText(webIdentityTokenFile) && StringUtils.hasText(roleArn)) {
+            return WebIdentityTokenFileCredentialsProvider.create();
         }
 
         return DefaultCredentialsProvider.create();
