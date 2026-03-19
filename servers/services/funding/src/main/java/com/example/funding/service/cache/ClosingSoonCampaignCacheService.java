@@ -80,9 +80,22 @@ public class ClosingSoonCampaignCacheService {
     }
 
     private ClosingSoonCampaignCachePayload readPayload() {
-        Object cached = redisTemplate.opsForValue().get(CACHE_KEY);
-        if (cached instanceof ClosingSoonCampaignCachePayload payload) {
-            return payload;
+        try {
+            Object cached = redisTemplate.opsForValue().get(CACHE_KEY);
+            if (cached instanceof ClosingSoonCampaignCachePayload payload) {
+                return payload;
+            }
+            if (cached != null) {
+                log.warn("unexpected closing soon cache payload type={}, evicting stale entry", cached.getClass().getName());
+                redisTemplate.delete(CACHE_KEY);
+            }
+        } catch (Exception e) {
+            log.warn("failed to read closing soon cache, evicting stale entry and rebuilding from DB", e);
+            try {
+                redisTemplate.delete(CACHE_KEY);
+            } catch (Exception deleteException) {
+                log.warn("failed to evict closing soon cache after read error", deleteException);
+            }
         }
         return null;
     }

@@ -26,6 +26,7 @@ public class RedisConfig {
         objectMapper.activateDefaultTyping(
                 BasicPolymorphicTypeValidator.builder()
                         .allowIfBaseType("com.example.")
+                        .allowIfSubType("com.example.")
                         .allowIfSubType("java.util.")
                         .allowIfSubType("java.time.")
                         .build(),
