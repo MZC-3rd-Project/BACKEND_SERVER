@@ -196,6 +196,87 @@ class CatalogBffE2eTest {
         assertThat(paths).contains("/api/v1/hot-deals/9001", "/api/products/101");
     }
 
+    @Test
+    void fundingBff_allowsCorsForConfiguredOrigin() {
+        DISPATCHER.set(request -> {
+            if ("GET".equals(request.method()) && "/api/campaigns".equals(request.path())) {
+                return StubResponse.json(200, """
+                        {
+                          "success": true,
+                          "data": {
+                            "items": [
+                              {
+                                "id": 101,
+                                "itemId": 501,
+                                "title": "cors-check",
+                                "goalAmount": 100000,
+                                "currentAmount": 25000,
+                                "currentQuantity": 2,
+                                "goalQuantity": 10,
+                                "status": "ACTIVE",
+                                "endAt": "2099-12-31T23:59:59"
+                              }
+                            ],
+                            "size": 1,
+                            "hasNext": false
+                          }
+                        }
+                        """);
+            }
+            if ("GET".equals(request.method()) && "/api/v1/items/batch".equals(request.path())) {
+                return StubResponse.json(200, """
+                        {
+                          "success": true,
+                          "data": [
+                            {
+                              "id": 501,
+                              "images": {
+                                "thumbnail": {
+                                  "mediaId": 9001
+                                }
+                              }
+                            }
+                          ]
+                        }
+                        """);
+            }
+            if ("GET".equals(request.method()) && "/api/campaigns/101/participations".equals(request.path())) {
+                return StubResponse.json(200, """
+                        {
+                          "success": true,
+                          "data": [
+                            {"id": 1}
+                          ]
+                        }
+                        """);
+            }
+            if ("GET".equals(request.method()) && "/api/v1/media/urls".equals(request.path())) {
+                return StubResponse.json(200, """
+                        {
+                          "success": true,
+                          "data": [
+                            {
+                              "mediaId": 9001,
+                              "mediaUrl": "https://cdn.example.com/funding/9001.png"
+                            }
+                          ]
+                        }
+                        """);
+            }
+            return StubResponse.json(404, "{\"success\":false}");
+        });
+
+        webTestClient.get()
+                .uri("/bff/v1/funding/campaigns?size=1")
+                .header("Origin", "http://localhost:3001")
+                .exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueMatches("Access-Control-Allow-Origin", "http://localhost:3001|\\*")
+                .expectBody()
+                .jsonPath("$.success").isEqualTo(true)
+                .jsonPath("$.data.items.length()").isEqualTo(1);
+    }
+
     private static int findAvailablePort() {
         try (ServerSocket socket = new ServerSocket(0)) {
             return socket.getLocalPort();
