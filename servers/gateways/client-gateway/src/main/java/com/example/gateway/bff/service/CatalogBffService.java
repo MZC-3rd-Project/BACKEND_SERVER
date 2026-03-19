@@ -1,11 +1,18 @@
 package com.example.gateway.bff.service;
 
+import com.example.contracts.http.HttpHeaderNames;
 import com.example.gateway.bff.dto.catalog.CatalogItemsResponse;
 import com.example.gateway.bff.dto.catalog.CatalogQueryParams;
 import com.example.gateway.config.GatewaySecurityProperties;
+import com.example.gateway.security.GatewaySessionPrincipal;
+import com.example.gateway.security.SessionClaimParseException;
+import com.example.gateway.security.session.application.GatewaySessionPrincipalResolver;
+import com.example.security.gateway.GatewayContextHeaderCodec;
+import com.example.security.signature.HmacSigner;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -25,7 +32,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.atomic.LongAdder;
+import java.util.function.Function;
 
 @Slf4j
 @Service
@@ -38,32 +48,38 @@ public class CatalogBffService {
 
     private final WebClient searchWebClient;
     private final WebClient mediaWebClient;
+    private final GatewaySessionPrincipalResolver sessionPrincipalResolver;
     private final GatewaySecurityProperties securityProperties;
     private final SearchThumbnailFallbackEnricher fallbackEnricher;
     private final CatalogResponseMapper responseMapper;
     private final CatalogMetricsService catalogMetricsService;
     private final ObjectMapper objectMapper;
+    private final ObjectProvider<HmacSigner> hmacSignerProvider;
     private final boolean searchEnabled;
     private final LongAdder degradeFallbackCounter = new LongAdder();
 
     public CatalogBffService(
             WebClient.Builder webClientBuilder,
+            GatewaySessionPrincipalResolver sessionPrincipalResolver,
             GatewaySecurityProperties securityProperties,
             SearchThumbnailFallbackEnricher fallbackEnricher,
             CatalogResponseMapper responseMapper,
             CatalogMetricsService catalogMetricsService,
             ObjectMapper objectMapper,
+            ObjectProvider<HmacSigner> hmacSignerProvider,
             @Value("${app.feature.search-enabled:true}") boolean searchEnabled,
             @Value("${app.service.search-url:http://localhost:8088}") String searchServiceUrl,
             @Value("${app.service.media-url:http://localhost:8094}") String mediaServiceUrl
     ) {
         this.searchWebClient = webClientBuilder.baseUrl(searchServiceUrl).build();
         this.mediaWebClient = webClientBuilder.baseUrl(mediaServiceUrl).build();
+        this.sessionPrincipalResolver = sessionPrincipalResolver;
         this.securityProperties = securityProperties;
         this.fallbackEnricher = fallbackEnricher;
         this.responseMapper = responseMapper;
         this.catalogMetricsService = catalogMetricsService;
         this.objectMapper = objectMapper;
+        this.hmacSignerProvider = hmacSignerProvider;
         this.searchEnabled = searchEnabled;
     }
 
@@ -77,39 +93,39 @@ public class CatalogBffService {
         CatalogQueryParams params;
         try {
             params = CatalogQueryParams.from(request);
-        } catch (IllegalArgumentException e) {
-            return Mono.just(badRequest(e.getMessage()));
+        } catch (IllegalArgumentException error) {
+            return Mono.just(badRequest(error.getMessage()));
         }
 
         boolean degradeRequested = isDegradeRequested(request);
-        HttpHeaders downstreamHeaders = buildDownstreamHeaders();
         MultiValueMap<String, String> primaryQueryParams = params.toSearchQueryParams();
 
-        return queryCatalog(primaryQueryParams, params, downstreamHeaders)
-                .onErrorResume(CatalogQueryException.class, e -> handleCatalogQueryFailure(
-                        params,
-                        downstreamHeaders,
-                        degradeRequested,
-                        e.reason(),
-                        e.status(),
-                        e.getMessage()
-                ))
-                .onErrorResume(e -> {
-                    log.warn("[CatalogBff] catalog query failed with exception", e);
-                    return handleCatalogQueryFailure(
-                            params,
-                            downstreamHeaders,
-                            degradeRequested,
-                            "primary_exception",
-                            HttpStatus.BAD_GATEWAY,
-                            "통합 목록 조회에 실패했습니다"
-                    );
-                })
+        return withOptionalUserContextHeaders(downstreamHeaders ->
+                queryCatalog(primaryQueryParams, params, downstreamHeaders)
+                        .onErrorResume(CatalogQueryException.class, error -> handleCatalogQueryFailure(
+                                params,
+                                downstreamHeaders,
+                                degradeRequested,
+                                error.reason(),
+                                error.status(),
+                                error.getMessage()
+                        ))
+                        .onErrorResume(error -> {
+                            log.warn("[CatalogBff] catalog query failed with exception", error);
+                            return handleCatalogQueryFailure(
+                                    params,
+                                    downstreamHeaders,
+                                    degradeRequested,
+                                    "primary_exception",
+                                    HttpStatus.BAD_GATEWAY,
+                                    "통합 목록 조회에 실패했습니다"
+                            );
+                        }))
                 .doOnSuccess(response -> catalogMetricsService.recordQueryCompleted(
                         Duration.ofNanos(System.nanoTime() - startedAtNanos),
                         response
                 ))
-                .doOnError(e -> catalogMetricsService.recordQueryException(
+                .doOnError(error -> catalogMetricsService.recordQueryException(
                         Duration.ofNanos(System.nanoTime() - startedAtNanos),
                         "exception"
                 ));
@@ -140,8 +156,8 @@ public class CatalogBffService {
         return fetchMediaUrlMap(fallbackMediaIds, downstreamHeaders)
                 .map(mediaUrlMap -> fallbackEnricher.applyFallbackUrls(body, mediaUrlMap))
                 .map(enrichedBody -> ResponseEntity.status(searchResponse.getStatusCode()).body(enrichedBody))
-                .onErrorResume(e -> {
-                    log.warn("[CatalogBff] thumbnail fallback failed. mediaCount={}", fallbackMediaIds.size(), e);
+                .onErrorResume(error -> {
+                    log.warn("[CatalogBff] thumbnail fallback failed. mediaCount={}", fallbackMediaIds.size(), error);
                     return Mono.just(searchResponse);
                 });
     }
@@ -220,11 +236,11 @@ public class CatalogBffService {
         try {
             CatalogItemsResponse response = responseMapper.toCatalogResponse(searchResponse.getBody(), params);
             return Mono.just(ResponseEntity.ok(response));
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException error) {
             return Mono.error(new CatalogQueryException(
                     "primary_mapping_error",
                     HttpStatus.BAD_GATEWAY,
-                    e.getMessage()
+                    error.getMessage()
             ));
         }
     }
@@ -248,15 +264,15 @@ public class CatalogBffService {
                 reason, fallbackCount, params.query(), params.channel());
 
         return queryCatalog(params.toDegradeSearchQueryParams(), params, downstreamHeaders)
-                .onErrorResume(CatalogQueryException.class, e -> {
-                    log.warn("[CatalogBff] degrade query failed. reason={}, status={}", e.reason(), e.status().value());
-                    if (e.status() == HttpStatus.BAD_GATEWAY) {
-                        return Mono.just(badGateway(e.getMessage()));
+                .onErrorResume(CatalogQueryException.class, error -> {
+                    log.warn("[CatalogBff] degrade query failed. reason={}, status={}", error.reason(), error.status().value());
+                    if (error.status() == HttpStatus.BAD_GATEWAY) {
+                        return Mono.just(badGateway(error.getMessage()));
                     }
-                    return Mono.just(downstreamError(e.status(), e.getMessage()));
+                    return Mono.just(downstreamError(error.status(), error.getMessage()));
                 })
-                .onErrorResume(e -> {
-                    log.warn("[CatalogBff] degrade query failed with exception. reason={}", reason, e);
+                .onErrorResume(error -> {
+                    log.warn("[CatalogBff] degrade query failed with exception. reason={}", reason, error);
                     return Mono.just(badGateway("통합 목록 조회에 실패했습니다"));
                 });
     }
@@ -305,6 +321,19 @@ public class CatalogBffService {
         return degradeFallbackCounter.sum();
     }
 
+    private Mono<ResponseEntity<CatalogItemsResponse>> withOptionalUserContextHeaders(
+            Function<HttpHeaders, Mono<ResponseEntity<CatalogItemsResponse>>> callback
+    ) {
+        return sessionPrincipalResolver.resolveFromSecurityContext()
+                .map(Optional::of)
+                .onErrorResume(SessionClaimParseException.class, error -> {
+                    log.info("[CatalogBff] optional user context skipped. reason={}", error.getMessage());
+                    return Mono.just(Optional.empty());
+                })
+                .defaultIfEmpty(Optional.empty())
+                .flatMap(optionalPrincipal -> callback.apply(buildDownstreamHeaders(optionalPrincipal.orElse(null))));
+    }
+
     private ResponseEntity<CatalogItemsResponse> badRequest(String message) {
         return ResponseEntity.badRequest()
                 .body(CatalogItemsResponse.error(CODE_INVALID_REQUEST, message));
@@ -320,14 +349,41 @@ public class CatalogBffService {
                 .body(CatalogItemsResponse.error(CODE_DOWNSTREAM_ERROR, message));
     }
 
-    private HttpHeaders buildDownstreamHeaders() {
+    private HttpHeaders buildDownstreamHeaders(GatewaySessionPrincipal principal) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         if (StringUtils.hasText(securityProperties.getInternalAuthToken())
                 && StringUtils.hasText(securityProperties.getInternalAuthHeader())) {
             headers.set(securityProperties.getInternalAuthHeader(), securityProperties.getInternalAuthToken());
         }
+        if (principal == null) {
+            return headers;
+        }
+
+        headers.set(HttpHeaderNames.USER_ID, String.valueOf(principal.userId()));
+        headers.set(HttpHeaderNames.USER_ROLES, principal.rolesHeaderValue());
+        if (StringUtils.hasText(principal.sessionId())) {
+            headers.set(HttpHeaderNames.SESSION_ID, principal.sessionId());
+        }
+
+        String gatewayContext = createSignedContextHeader(principal);
+        if (StringUtils.hasText(gatewayContext)) {
+            headers.set(HttpHeaderNames.GATEWAY_CONTEXT, gatewayContext);
+        }
         return headers;
+    }
+
+    private String createSignedContextHeader(GatewaySessionPrincipal principal) {
+        HmacSigner signer = hmacSignerProvider.getIfAvailable();
+        if (signer == null) {
+            return null;
+        }
+
+        String userId = String.valueOf(principal.userId());
+        String roles = principal.rolesHeaderValue();
+        String nonce = UUID.randomUUID().toString();
+        long timestamp = System.currentTimeMillis();
+        return GatewayContextHeaderCodec.encodeSigned(userId, roles, nonce, timestamp, signer);
     }
 
     private static final class CatalogQueryException extends RuntimeException {

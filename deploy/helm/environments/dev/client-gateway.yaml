@@ -35,7 +35,7 @@ ingress:
 env:
   SERVER_PORT: "8080"
   SPRING_PROFILES_ACTIVE: local
-  APP_FEATURE_SEARCH_ENABLED: "false"
+  APP_FEATURE_SEARCH_ENABLED: "true"
   GATEWAY_AUTH_ENABLED: "false"
   GATEWAY_DEV_LOGIN_ENABLED: "true"
   GATEWAY_DEV_LOGIN_USERNAME: test
@@ -73,6 +73,7 @@ env:
   APP_SERVICE_CHAT_WS_URL: ws://chat-service:8093
   APP_SERVICE_MEDIA_URL: http://media-api:8094
   APP_SERVICE_ORDER_URL: http://order-service:8090
+  APP_SERVICE_SEARCH_URL: http://search-service:8088
   ANALYTICS_DASHBOARD_SERVICE_URL: http://analytics-dashboard:8095
   REDIS_HOST: donmoa-dev-redis.awmnbx.ng.0001.apn2.cache.amazonaws.com
   REDIS_PORT: "6379"

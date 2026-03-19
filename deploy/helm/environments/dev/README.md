@@ -8,6 +8,7 @@ Suggested naming:
 - `keycloak.yaml`
 - `auth.yaml`
 - `profile.yaml`
+- `search.yaml`
 - `product.yaml`
 - `stock.yaml`
 - `funding.yaml`

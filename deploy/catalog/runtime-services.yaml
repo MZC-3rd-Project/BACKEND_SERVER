@@ -7,7 +7,6 @@ spec:
   namespace: donmoa-dev
   defaultChart: spring-service
   exclusions:
-    - search
     - test-server
   services:
     - key: client-gateway
@@ -111,6 +110,32 @@ spec:
         - aurora-postgresql
         - redis
         - kafka
+
+    - key: search
+      runtime:
+        type: spring-boot
+        applicationName: search-service
+      build:
+        type: gradle
+        gradleModule: "servers:services:search"
+      image:
+        ecrRepository: donmoa-dev-search-service
+        foundationRepositorySuffix: search-service
+      deployment:
+        namespace: donmoa-dev
+        releaseName: search
+        serviceName: search-service
+        containerPort: 8088
+        public: false
+        rolloutWave: 2
+      datastore:
+        type: aurora-postgresql
+        databaseName: search_db
+        readWriteSplit: false
+      externalDependencies:
+        - aurora-postgresql
+        - kafka
+        - opensearch
 
     - key: product
       runtime:

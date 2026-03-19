@@ -3,6 +3,7 @@
   "keycloak": "donmoa-dev-eks-deploy",
   "auth": "donmoa-dev-eks-deploy",
   "profile": "donmoa-dev-eks-deploy",
+  "search": "donmoa-dev-eks-deploy",
   "product": "donmoa-dev-eks-deploy",
   "stock": "donmoa-dev-eks-deploy",
   "funding": "donmoa-dev-eks-deploy",

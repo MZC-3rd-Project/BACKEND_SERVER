@@ -2,10 +2,16 @@ package com.example.gateway.bff.service;
 
 import com.example.gateway.bff.dto.catalog.CatalogItemsResponse;
 import com.example.gateway.config.GatewaySecurityProperties;
+import com.example.gateway.security.GatewaySessionPrincipal;
+import com.example.gateway.security.session.application.GatewaySessionPrincipalResolver;
+import com.example.security.signature.HmacSigner;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.support.StaticListableBeanFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -24,17 +30,24 @@ import java.util.List;
 import java.util.Queue;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class CatalogBffServiceTest {
 
     private ObjectMapper objectMapper;
     private StubExchangeFunction exchangeFunction;
     private CatalogBffService catalogBffService;
+    private GatewaySessionPrincipalResolver sessionPrincipalResolver;
+    private ObjectProvider<HmacSigner> hmacSignerProvider;
 
     @BeforeEach
     void setUp() {
         objectMapper = new ObjectMapper();
         exchangeFunction = new StubExchangeFunction();
+        sessionPrincipalResolver = mock(GatewaySessionPrincipalResolver.class);
+        when(sessionPrincipalResolver.resolveFromSecurityContext()).thenReturn(Mono.empty());
+        hmacSignerProvider = new StaticListableBeanFactory().getBeanProvider(HmacSigner.class);
 
         GatewaySecurityProperties securityProperties = new GatewaySecurityProperties();
         securityProperties.setInternalAuthHeader("X-Gateway-Auth");
@@ -44,11 +57,13 @@ class CatalogBffServiceTest {
         CatalogMetricsService catalogMetricsService = new CatalogMetricsService(new SimpleMeterRegistry());
         catalogBffService = new CatalogBffService(
                 webClientBuilder,
+                sessionPrincipalResolver,
                 securityProperties,
                 new SearchThumbnailFallbackEnricher(objectMapper),
                 new CatalogResponseMapper(),
                 catalogMetricsService,
                 objectMapper,
+                hmacSignerProvider,
                 true,
                 "http://search",
                 "http://media"
@@ -59,11 +74,13 @@ class CatalogBffServiceTest {
     void listCatalogItems_returns503WhenSearchFeatureDisabled() {
         CatalogBffService disabledService = new CatalogBffService(
                 WebClient.builder().exchangeFunction(exchangeFunction),
+                sessionPrincipalResolver,
                 new GatewaySecurityProperties(),
                 new SearchThumbnailFallbackEnricher(objectMapper),
                 new CatalogResponseMapper(),
                 new CatalogMetricsService(new SimpleMeterRegistry()),
                 objectMapper,
+                hmacSignerProvider,
                 false,
                 "http://search",
                 "http://media"
@@ -144,10 +161,31 @@ class CatalogBffServiceTest {
         assertThat(exchangeFunction.searchRequestUris).hasSize(1);
     }
 
-    private static class StubExchangeFunction implements ExchangeFunction {
+    @Test
+    void listCatalogItems_relaysOptionalUserHeadersToSearch() {
+        when(sessionPrincipalResolver.resolveFromSecurityContext()).thenReturn(
+                Mono.just(new GatewaySessionPrincipal(101L, List.of("USER", "SELLER"), "sess-abc"))
+        );
+        exchangeFunction.enqueueSearch(HttpStatus.OK, """
+                {"success":true,"data":{"items":[],"nextCursor":null,"totalCount":0}}
+                """);
+
+        ServerHttpRequest request = MockServerHttpRequest.get("/bff/v1/catalog/items?q=shoe").build();
+
+        ResponseEntity<CatalogItemsResponse> response = catalogBffService.listCatalogItems(request).block();
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(exchangeFunction.searchRequestHeaders.getFirst("X-User-Id")).isEqualTo("101");
+        assertThat(exchangeFunction.searchRequestHeaders.getFirst("X-User-Roles")).isEqualTo("USER,SELLER");
+        assertThat(exchangeFunction.searchRequestHeaders.getFirst("X-Session-Id")).isEqualTo("sess-abc");
+    }
+
+    private static final class StubExchangeFunction implements ExchangeFunction {
 
         private final Queue<ResponseStub> searchResponses = new ArrayDeque<>();
         private final List<URI> searchRequestUris = new ArrayList<>();
+        private HttpHeaders searchRequestHeaders;
 
         @Override
         public Mono<ClientResponse> exchange(ClientRequest request) {
@@ -155,6 +193,8 @@ class CatalogBffServiceTest {
 
             if ("/api/v1/search".equals(path)) {
                 searchRequestUris.add(request.url());
+                searchRequestHeaders = new HttpHeaders();
+                request.headers().forEach((name, values) -> searchRequestHeaders.put(name, new ArrayList<>(values)));
                 ResponseStub stub = searchResponses.poll();
                 if (stub == null) {
                     return Mono.error(new IllegalStateException("search response stub is empty"));
