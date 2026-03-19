@@ -1,6 +1,8 @@
 package com.example.product.service.query;
 
 import com.example.core.exception.BusinessException;
+import com.example.core.pagination.CursorResponse;
+import com.example.core.pagination.CursorUtils;
 import com.example.data.entity.datasource.UseWriteDataSource;
 import com.example.product.dto.item.response.InternalStoreItemSummaryResponse;
 import com.example.product.dto.item.response.ItemContentSnapshot;
@@ -16,6 +18,7 @@ import com.example.product.service.content.ItemContentService;
 import com.example.product.service.query.detail.ItemCategoryDetailResolver;
 import com.example.product.service.query.detail.ItemCategoryDetailView;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -113,5 +116,44 @@ public class InternalItemQueryService {
                         contentSnapshotMap.getOrDefault(item.getId(), ItemContentSnapshot.empty())
                 ))
                 .toList();
+    }
+
+    public CursorResponse<ItemSearchDocumentResponse> findSearchDocuments(String cursor, int size) {
+        Long cursorId = CursorUtils.decodeLong(cursor);
+        int normalizedSize = normalizeSize(size);
+        PageRequest pageable = PageRequest.of(0, normalizedSize + 1);
+        List<ItemStatus> visibleStatuses = itemAccessPolicy.visibleStatuses();
+
+        List<Item> items = cursorId == null
+                ? itemRepository.findByStatusInOrderByIdDesc(visibleStatuses, pageable)
+                : itemRepository.findByStatusInAndIdLessThanOrderByIdDesc(visibleStatuses, cursorId, pageable);
+
+        boolean hasNext = items.size() > normalizedSize;
+        List<Item> pageItems = hasNext ? items.subList(0, normalizedSize) : items;
+
+        Map<Long, ItemCategoryDetailView> categoryDetailMap = itemCategoryDetailResolver.resolve(pageItems);
+        Map<Long, ItemContentSnapshot> contentSnapshotMap = itemContentService.findByItemIds(
+                pageItems.stream().map(Item::getId).toList()
+        );
+
+        List<ItemSearchDocumentResponse> content = pageItems.stream()
+                .map(item -> ItemSearchDocumentResponse.from(
+                        item,
+                        categoryDetailMap.get(item.getId()),
+                        contentSnapshotMap.getOrDefault(item.getId(), ItemContentSnapshot.empty())
+                ))
+                .toList();
+
+        String nextCursor = hasNext
+                ? CursorUtils.encode(pageItems.get(pageItems.size() - 1).getId())
+                : null;
+        return CursorResponse.of(content, nextCursor);
+    }
+
+    private int normalizeSize(int size) {
+        if (size <= 0) {
+            return 100;
+        }
+        return Math.min(size, 500);
     }
 }

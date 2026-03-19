@@ -36,6 +36,14 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
     @Query("SELECT i FROM Item i WHERE i.id < :cursor ORDER BY i.id DESC")
     List<Item> findByIdLessThan(@Param("cursor") Long cursor, Pageable pageable);
 
+    @Query("SELECT i FROM Item i WHERE i.status IN :statuses ORDER BY i.id DESC")
+    List<Item> findByStatusInOrderByIdDesc(@Param("statuses") List<ItemStatus> statuses, Pageable pageable);
+
+    @Query("SELECT i FROM Item i WHERE i.status IN :statuses AND i.id < :cursor ORDER BY i.id DESC")
+    List<Item> findByStatusInAndIdLessThanOrderByIdDesc(@Param("statuses") List<ItemStatus> statuses,
+                                                        @Param("cursor") Long cursor,
+                                                        Pageable pageable);
+
     List<Item> findBySellerIdOrderByIdDesc(Long sellerId, Pageable pageable);
 
     List<Item> findByCategoryIdOrderByIdDesc(Long categoryId, Pageable pageable);

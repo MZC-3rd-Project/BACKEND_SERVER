@@ -1,6 +1,7 @@
 package com.example.search.client;
 
 import com.example.search.client.dto.ProductSearchDocument;
+import com.example.search.client.dto.SearchDocumentPage;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -117,6 +118,43 @@ public class ProductSearchSourceClient {
         }
     }
 
+    public SearchDocumentPage findSearchDocuments(String cursor, int size) {
+        int normalizedSize = normalizePageSize(size);
+
+        try {
+            JsonNode response = webClient.get()
+                    .uri(uriBuilder -> {
+                        var builder = uriBuilder.path("/internal/v1/items/search-documents")
+                                .queryParam("size", normalizedSize);
+                        if (cursor != null && !cursor.isBlank()) {
+                            builder.queryParam("cursor", cursor);
+                        }
+                        return builder.build();
+                    })
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block();
+
+            JsonNode data = extractData(response);
+            if (data == null || !data.isObject()) {
+                return new SearchDocumentPage(List.of(), null);
+            }
+
+            JsonNode itemsNode = data.path("items");
+            List<ProductSearchDocument> documents = new ArrayList<>();
+            if (itemsNode.isArray()) {
+                for (JsonNode node : itemsNode) {
+                    documents.add(toSearchDocument(node));
+                }
+            }
+            String nextCursor = data.path("nextCursor").isTextual() ? data.path("nextCursor").asText() : null;
+            return new SearchDocumentPage(documents, nextCursor);
+        } catch (Exception exception) {
+            log.warn("Product paged search document lookup failed. cursor={}, size={}", cursor, normalizedSize, exception);
+            throw new IllegalStateException("product paged search document lookup failed", exception);
+        }
+    }
+
     private JsonNode extractData(JsonNode response) {
         if (response == null || !response.path("success").asBoolean(false)) {
             return null;
@@ -132,5 +170,12 @@ public class ProductSearchSourceClient {
         } catch (Exception exception) {
             throw new IllegalStateException("product search document payload conversion failed", exception);
         }
+    }
+
+    private int normalizePageSize(int size) {
+        if (size <= 0) {
+            return 100;
+        }
+        return Math.min(size, 500);
     }
 }

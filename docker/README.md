@@ -57,6 +57,53 @@ docker-compose down
 docker-compose down -v
 ```
 
+## Search Local Bootstrap
+
+Elasticsearch is included in the local stack with the Korean `analysis-nori` plugin already baked in.
+
+### 1. Start only the infra needed for search
+
+```bash
+cd docker
+docker compose up -d postgres redis zookeeper kafka elasticsearch
+```
+
+### 2. Check Elasticsearch health
+
+```bash
+curl -fsS http://localhost:23173/_cluster/health
+curl -fsS http://localhost:23173/_nodes/plugins | grep analysis-nori
+```
+
+### 3. Start `product` and `search` locally
+
+```bash
+export JAVA_HOME=/Users/ddingjoo/Library/Java/JavaVirtualMachines/corretto-21.0.10/Contents/Home
+export PATH="$JAVA_HOME/bin:$PATH"
+
+./gradlew :servers:services:product:bootRun
+```
+
+In another terminal:
+
+```bash
+export JAVA_HOME=/Users/ddingjoo/Library/Java/JavaVirtualMachines/corretto-21.0.10/Contents/Home
+export PATH="$JAVA_HOME/bin:$PATH"
+export ELASTICSEARCH_URIS=http://localhost:23173
+
+./gradlew :servers:services:search:bootRun
+```
+
+### 4. Recreate the index and backfill existing items
+
+```bash
+curl -X POST http://localhost:8088/internal/v1/search/tasks/reindex-items \
+  -H 'Content-Type: application/json' \
+  -d '{"recreateIndex":true,"size":100,"maxPages":20}'
+```
+
+If there are more items than one run should process, call the same endpoint again with the returned `nextCursor`.
+
 ## Database Setup
 
 The PostgreSQL init script automatically creates service databases:

@@ -1,6 +1,7 @@
 package com.example.product.controller.query;
 
 import com.example.api.response.ApiResponse;
+import com.example.core.pagination.CursorResponse;
 import com.example.product.dto.item.response.InternalStoreItemSummaryResponse;
 import com.example.product.dto.item.response.ItemSearchDocumentResponse;
 import com.example.product.dto.item.response.ItemSummaryResponse;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 
@@ -59,5 +61,14 @@ public class InternalItemQueryController {
     @PostMapping("/search-documents/batch")
     public ApiResponse<List<ItemSearchDocumentResponse>> findSearchDocuments(@RequestBody List<Long> itemIds) {
         return ApiResponse.success(internalItemQueryService.findSearchDocuments(itemIds));
+    }
+
+    @Operation(summary = "상품 검색 문서 페이지 조회 (내부)")
+    @GetMapping("/search-documents")
+    public ApiResponse<CursorResponse<ItemSearchDocumentResponse>> findSearchDocuments(
+            @RequestParam(name = "cursor", required = false) String cursor,
+            @RequestParam(name = "size", required = false, defaultValue = "100") Integer size
+    ) {
+        return ApiResponse.success(internalItemQueryService.findSearchDocuments(cursor, size));
     }
 }

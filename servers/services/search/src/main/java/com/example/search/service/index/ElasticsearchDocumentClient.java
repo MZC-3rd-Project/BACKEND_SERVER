@@ -16,6 +16,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient.RequestHeadersSpec;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClient.RequestBodyUriSpec;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -75,17 +76,46 @@ public class ElasticsearchDocumentClient {
             return;
         }
 
-        RawResponse response = exchange(
-                "document delete",
-                HttpMethod.DELETE,
-                "/" + properties.getIndexName() + "/_doc/" + itemId,
-                null
-        );
+        RawResponse response;
+        try {
+            response = exchange(
+                    "document delete",
+                    HttpMethod.DELETE,
+                    "/" + properties.getIndexName() + "/_doc/" + itemId,
+                    null
+            );
+        } catch (WebClientResponseException.NotFound exception) {
+            return;
+        }
         if (response.status().value() == 404) {
             return;
         }
         if (!response.status().is2xxSuccessful()) {
             throw backendFailure("document delete failed", response);
+        }
+    }
+
+    public void recreateIndex() {
+        synchronized (indexInitMonitor) {
+            RawResponse deleteResponse;
+            try {
+                deleteResponse = exchange(
+                        "index delete",
+                        HttpMethod.DELETE,
+                        "/" + properties.getIndexName(),
+                        null
+                );
+            } catch (WebClientResponseException.NotFound exception) {
+                deleteResponse = new RawResponse(HttpStatusCode.valueOf(404), "");
+            }
+            if (deleteResponse.status().value() != 404 && !deleteResponse.status().is2xxSuccessful()) {
+                throw backendFailure("index delete failed", deleteResponse);
+            }
+
+            indexReady.set(false);
+            createIndex();
+            indexReady.set(true);
+            log.info("Search index recreated. indexName={}, uri={}", properties.getIndexName(), properties.primaryUri());
         }
     }
 
@@ -99,12 +129,17 @@ public class ElasticsearchDocumentClient {
                 return;
             }
 
-            RawResponse existsResponse = exchange(
-                    "index exists check",
-                    HttpMethod.HEAD,
-                    "/" + properties.getIndexName(),
-                    null
-            );
+            RawResponse existsResponse;
+            try {
+                existsResponse = exchange(
+                        "index exists check",
+                        HttpMethod.HEAD,
+                        "/" + properties.getIndexName(),
+                        null
+                );
+            } catch (WebClientResponseException.NotFound exception) {
+                existsResponse = new RawResponse(HttpStatusCode.valueOf(404), "");
+            }
             if (existsResponse.status().is2xxSuccessful()) {
                 indexReady.set(true);
                 return;
@@ -113,16 +148,7 @@ public class ElasticsearchDocumentClient {
                 throw backendFailure("index existence check failed", existsResponse);
             }
 
-            RawResponse createResponse = exchange(
-                    "index create",
-                    HttpMethod.PUT,
-                    "/" + properties.getIndexName(),
-                    createIndexBody()
-            );
-            if (!createResponse.status().is2xxSuccessful()) {
-                throw backendFailure("index create failed", createResponse);
-            }
-
+            createIndex();
             indexReady.set(true);
             log.info("Search index ready. indexName={}, uri={}", properties.getIndexName(), properties.primaryUri());
         }
@@ -147,6 +173,8 @@ public class ElasticsearchDocumentClient {
                 );
             }
             return response;
+        } catch (WebClientResponseException.NotFound exception) {
+            throw exception;
         } catch (Exception exception) {
             throw new TechnicalException(
                     CommonErrorCode.EXTERNAL_API_ERROR,
@@ -158,6 +186,22 @@ public class ElasticsearchDocumentClient {
 
     private ObjectNode createIndexBody() {
         ObjectNode root = objectMapper.createObjectNode();
+        ObjectNode settingsNode = root.putObject("settings");
+        settingsNode.put("number_of_shards", 1);
+        settingsNode.put("number_of_replicas", 0);
+
+        ObjectNode analysisNode = settingsNode.putObject("analysis");
+        analysisNode.putObject("tokenizer")
+                .putObject("korean_nori_tokenizer")
+                .put("type", "nori_tokenizer")
+                .put("decompound_mode", "mixed");
+        analysisNode.putObject("analyzer")
+                .putObject("korean_nori")
+                .put("type", "custom")
+                .put("tokenizer", "korean_nori_tokenizer")
+                .putArray("filter")
+                .add("lowercase");
+
         ObjectNode propertiesNode = root.putObject("mappings").putObject("properties");
 
         addLongField(propertiesNode, "itemId");
@@ -196,16 +240,33 @@ public class ElasticsearchDocumentClient {
     }
 
     private void addTextField(ObjectNode propertiesNode, String fieldName) {
-        propertiesNode.putObject(fieldName).put("type", "text");
+        propertiesNode.putObject(fieldName)
+                .put("type", "text")
+                .put("analyzer", "korean_nori")
+                .put("search_analyzer", "korean_nori");
     }
 
     private void addTextWithKeywordField(ObjectNode propertiesNode, String fieldName) {
         ObjectNode field = propertiesNode.putObject(fieldName);
         field.put("type", "text");
+        field.put("analyzer", "korean_nori");
+        field.put("search_analyzer", "korean_nori");
         field.putObject("fields")
                 .putObject("keyword")
                 .put("type", "keyword")
                 .put("ignore_above", 256);
+    }
+
+    private void createIndex() {
+        RawResponse createResponse = exchange(
+                "index create",
+                HttpMethod.PUT,
+                "/" + properties.getIndexName(),
+                createIndexBody()
+        );
+        if (!createResponse.status().is2xxSuccessful()) {
+            throw backendFailure("index create failed", createResponse);
+        }
     }
 
     private void addLongField(ObjectNode propertiesNode, String fieldName) {

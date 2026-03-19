@@ -104,6 +104,13 @@ resource "aws_instance" "ec2_elasticsearch" {
     mkdir -p /opt/elasticsearch-data
     chown -R 1000:1000 /opt/elasticsearch-data
 
+    mkdir -p /opt/elasticsearch-image
+    cat <<'DOCKERFILE' >/opt/elasticsearch-image/Dockerfile
+    FROM docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    RUN /usr/share/elasticsearch/bin/elasticsearch-plugin install --batch analysis-nori
+    DOCKERFILE
+    docker build -t project03-elasticsearch:8.13.4-nori /opt/elasticsearch-image
+
     docker rm -f elasticsearch || true
     docker run -d \
       --name elasticsearch \
@@ -114,7 +121,7 @@ resource "aws_instance" "ec2_elasticsearch" {
       -e discovery.type=single-node \
       -e xpack.security.enabled=false \
       -e ES_JAVA_OPTS="-Xms${var.ec2_elasticsearch_heap_size} -Xmx${var.ec2_elasticsearch_heap_size}" \
-      docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+      project03-elasticsearch:8.13.4-nori
   EOF
 
   tags = merge(local.common_tags, {
