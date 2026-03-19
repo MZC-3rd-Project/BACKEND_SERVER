@@ -1,6 +1,7 @@
 package com.example.analyticsdashboard.service.query;
 
 import com.example.analyticsdashboard.dto.query.SellerDashboardOverviewQuery;
+import com.example.analyticsdashboard.dto.response.SellerDashboardFunnelResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardOverviewResponse;
 import com.example.analyticsdashboard.entity.AnalyticsRawSalesEvent;
 import com.example.analyticsdashboard.entity.AnalyticsRawSearchEvent;
@@ -39,6 +40,9 @@ class SellerDashboardOverviewQueryServiceTest {
     @Mock
     private AnalyticsDimItemSnapshotRepository dimItemSnapshotRepository;
 
+    @Mock
+    private SellerDashboardFunnelQueryService sellerDashboardFunnelQueryService;
+
     @InjectMocks
     private SellerDashboardOverviewQueryService service;
 
@@ -62,6 +66,7 @@ class SellerDashboardOverviewQueryServiceTest {
         assertThat(response.getQueryRange().getTo()).isEqualTo("2026-02-26");
         assertThat(response.getSeries()).hasSize(1);
         assertThat(response.getSeries().get(0).getBucketStart()).isEqualTo("2026-02-26");
+        assertThat(response.getExtensions()).containsKey("funnel");
     }
 
     @Test
@@ -238,6 +243,10 @@ class SellerDashboardOverviewQueryServiceTest {
     }
 
     private void stubEmptyRepos() {
+        lenient().when(sellerDashboardFunnelQueryService.getFunnel(anyLong(), any()))
+                .thenReturn(SellerDashboardFunnelResponse.builder().apiVersion("v1").build());
+        lenient().when(sellerDashboardFunnelQueryService.getFunnelByStore(anyLong(), any(), any()))
+                .thenReturn(SellerDashboardFunnelResponse.builder().apiVersion("v1").build());
         lenient().when(rawSalesEventRepository.findByStoreIdAndOccurredAtBetween(anyLong(), any(), any()))
                 .thenReturn(List.of());
         lenient().when(rawSalesEventRepository.findBySellerIdAndOccurredAtBetween(anyLong(), any(), any()))

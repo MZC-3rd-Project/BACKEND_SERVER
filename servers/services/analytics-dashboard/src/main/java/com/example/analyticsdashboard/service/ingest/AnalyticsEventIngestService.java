@@ -1,14 +1,20 @@
 package com.example.analyticsdashboard.service.ingest;
 
+import com.example.analyticsdashboard.consumer.funding.AnalyticsFundingEventMessage;
+import com.example.analyticsdashboard.consumer.hotdeal.AnalyticsHotDealEventMessage;
 import com.example.analyticsdashboard.consumer.item.AnalyticsItemEventMessage;
+import com.example.analyticsdashboard.consumer.order.AnalyticsOrderEventMessage;
 import com.example.analyticsdashboard.consumer.sales.AnalyticsSalesEventMessage;
 import com.example.analyticsdashboard.consumer.search.AnalyticsSearchEventMessage;
 import com.example.analyticsdashboard.entity.AnalyticsDimItemSnapshot;
+import com.example.analyticsdashboard.entity.AnalyticsJourneyEvent;
 import com.example.analyticsdashboard.entity.AnalyticsRawSalesEvent;
 import com.example.analyticsdashboard.entity.AnalyticsRawSearchEvent;
 import com.example.analyticsdashboard.repository.AnalyticsDimItemSnapshotRepository;
+import com.example.analyticsdashboard.repository.AnalyticsJourneyEventRepository;
 import com.example.analyticsdashboard.repository.AnalyticsRawSalesEventRepository;
 import com.example.analyticsdashboard.repository.AnalyticsRawSearchEventRepository;
+import com.example.core.util.JsonUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,7 +25,10 @@ import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -31,9 +40,18 @@ public class AnalyticsEventIngestService {
     private static final String ITEM_STATUS_DELETED = "DELETED";
     private static final String ITEM_TYPE_UNKNOWN = "UNKNOWN";
 
+    private static final String DOMAIN_SEARCH = "SEARCH";
+    private static final String DOMAIN_NORMAL = "NORMAL";
+    private static final String DOMAIN_FUNDING = "FUNDING";
+    private static final String DOMAIN_HOT_DEAL = "HOT_DEAL";
+    private static final String DOMAIN_ORDER = "ORDER";
+
+    private static final String ORDER_CREATED_EVENT = "ORDER_CREATED_EVENT";
+
     private final AnalyticsDimItemSnapshotRepository dimItemSnapshotRepository;
     private final AnalyticsRawSalesEventRepository rawSalesEventRepository;
     private final AnalyticsRawSearchEventRepository rawSearchEventRepository;
+    private final AnalyticsJourneyEventRepository journeyEventRepository;
 
     @Transactional
     public void ingestItemEvent(AnalyticsItemEventMessage event) {
@@ -68,8 +86,20 @@ public class AnalyticsEventIngestService {
             return;
         }
 
+        LocalDateTime occurredAt = parseOccurredAt(event.getOccurredAt());
+        LocalDateTime ingestedAt = LocalDateTime.now();
         Long signedNetAmount = resolveSignedNetAmount(event, eventType, ownership.referenceTotalAmount());
         Long grossAmount = "PURCHASE_CREATED".equals(eventType) ? nullToZero(event.getTotalAmount()) : 0L;
+        String resolvedJourneyId = resolveJourneyId(
+                event.getJourneyId(),
+                event.getCorrelationId(),
+                event.getSessionId(),
+                event.getUserId(),
+                event.getOrderId(),
+                null,
+                null,
+                event.getPurchaseId()
+        );
 
         AnalyticsRawSalesEvent rawEvent = AnalyticsRawSalesEvent.builder()
                 .eventId(event.getEventId())
@@ -79,13 +109,39 @@ public class AnalyticsEventIngestService {
                 .itemId(ownership.itemId())
                 .orderId(event.getOrderId())
                 .purchaseId(event.getPurchaseId())
+                .userId(event.getUserId())
+                .sessionId(event.getSessionId())
+                .journeyId(resolvedJourneyId)
+                .correlationId(event.getCorrelationId())
+                .causationId(event.getCausationId())
                 .quantity(event.getQuantity())
                 .grossAmount(grossAmount)
                 .netAmount(signedNetAmount)
-                .occurredAt(parseOccurredAt(event.getOccurredAt()))
-                .ingestedAt(LocalDateTime.now())
+                .occurredAt(occurredAt)
+                .ingestedAt(ingestedAt)
                 .build();
         rawSalesEventRepository.save(rawEvent);
+
+        journeyEventRepository.save(AnalyticsJourneyEvent.builder()
+                .eventId(event.getEventId())
+                .eventType(eventType)
+                .domainType(DOMAIN_NORMAL)
+                .channelType(DOMAIN_NORMAL)
+                .userId(event.getUserId())
+                .sessionId(event.getSessionId())
+                .journeyId(resolvedJourneyId)
+                .correlationId(event.getCorrelationId())
+                .causationId(event.getCausationId())
+                .sellerId(ownership.sellerId())
+                .storeId(ownership.storeId())
+                .itemId(ownership.itemId())
+                .orderId(event.getOrderId())
+                .purchaseId(event.getPurchaseId())
+                .quantity(event.getQuantity())
+                .amount(event.getTotalAmount())
+                .occurredAt(occurredAt)
+                .ingestedAt(ingestedAt)
+                .build());
     }
 
     @Transactional
@@ -111,6 +167,19 @@ public class AnalyticsEventIngestService {
             }
         }
 
+        LocalDateTime occurredAt = parseOccurredAt(event.getOccurredAt());
+        LocalDateTime ingestedAt = LocalDateTime.now();
+        String resolvedJourneyId = resolveJourneyId(
+                event.getJourneyId(),
+                event.getCorrelationId(),
+                event.getSessionId(),
+                event.getUserId(),
+                null,
+                null,
+                null,
+                null
+        );
+
         AnalyticsRawSearchEvent rawEvent = AnalyticsRawSearchEvent.builder()
                 .eventId(event.getEventId())
                 .eventType(normalize(event.getEventType()))
@@ -118,11 +187,297 @@ public class AnalyticsEventIngestService {
                 .sellerId(resolvedSellerId)
                 .itemId(resolvedItemId)
                 .queryHash(event.getQueryHash())
+                .userId(event.getUserId())
                 .sessionId(event.getSessionId())
-                .occurredAt(parseOccurredAt(event.getOccurredAt()))
-                .ingestedAt(LocalDateTime.now())
+                .journeyId(resolvedJourneyId)
+                .correlationId(event.getCorrelationId())
+                .causationId(event.getCausationId())
+                .occurredAt(occurredAt)
+                .ingestedAt(ingestedAt)
                 .build();
         rawSearchEventRepository.save(rawEvent);
+
+        journeyEventRepository.save(AnalyticsJourneyEvent.builder()
+                .eventId(event.getEventId())
+                .eventType(normalize(event.getEventType()))
+                .domainType(DOMAIN_SEARCH)
+                .channelType(null)
+                .userId(event.getUserId())
+                .sessionId(event.getSessionId())
+                .journeyId(resolvedJourneyId)
+                .correlationId(event.getCorrelationId())
+                .causationId(event.getCausationId())
+                .sellerId(resolvedSellerId)
+                .storeId(resolvedStoreId)
+                .itemId(resolvedItemId)
+                .queryHash(event.getQueryHash())
+                .occurredAt(occurredAt)
+                .ingestedAt(ingestedAt)
+                .build());
+    }
+
+    @Transactional
+    public void ingestOrderEvent(AnalyticsOrderEventMessage event) {
+        if (event == null || event.getEventId() == null || event.getEventType() == null || event.getOrderId() == null) {
+            return;
+        }
+
+        String eventType = normalize(event.getEventType());
+        LocalDateTime occurredAt = parseOccurredAt(event.getOccurredAt());
+        if (ORDER_CREATED_EVENT.equals(eventType)) {
+            ingestOrderCreatedEvent(event, occurredAt);
+            return;
+        }
+        ingestOrderLifecycleEvent(event, eventType, occurredAt);
+    }
+
+    @Transactional
+    public void ingestFundingEvent(AnalyticsFundingEventMessage event) {
+        if (event == null || event.getEventId() == null || event.getEventType() == null || event.getCampaignId() == null) {
+            return;
+        }
+
+        Ownership ownership = resolveOwnership(event.getItemId(), null, event.getSellerId());
+        LocalDateTime occurredAt = parseOccurredAt(event.getOccurredAt());
+        LocalDateTime ingestedAt = LocalDateTime.now();
+
+        Map<String, Object> properties = new LinkedHashMap<>();
+        properties.put("fundingType", event.getFundingType());
+
+        journeyEventRepository.save(AnalyticsJourneyEvent.builder()
+                .eventId(event.getEventId())
+                .eventType(normalize(event.getEventType()))
+                .domainType(DOMAIN_FUNDING)
+                .channelType(DOMAIN_FUNDING)
+                .userId(event.getUserId())
+                .journeyId(resolveJourneyId(
+                        null,
+                        null,
+                        null,
+                        event.getUserId(),
+                        event.getOrderId(),
+                        event.getCampaignId(),
+                        null,
+                        null
+                ))
+                .sellerId(ownership.sellerId())
+                .storeId(ownership.storeId())
+                .itemId(ownership.itemId())
+                .campaignId(event.getCampaignId())
+                .orderId(event.getOrderId())
+                .participationId(event.getParticipationId())
+                .quantity(event.getQuantity())
+                .amount(event.getAmount())
+                .propertiesJson(toJson(properties))
+                .occurredAt(occurredAt)
+                .ingestedAt(ingestedAt)
+                .build());
+    }
+
+    @Transactional
+    public void ingestHotDealEvent(AnalyticsHotDealEventMessage event) {
+        if (event == null || event.getEventId() == null || event.getEventType() == null) {
+            return;
+        }
+
+        Ownership ownership = resolveOwnership(event.getItemId(), null, event.getSellerId());
+        LocalDateTime occurredAt = parseOccurredAt(event.getOccurredAt());
+        LocalDateTime ingestedAt = LocalDateTime.now();
+
+        Map<String, Object> properties = new LinkedHashMap<>();
+        putIfPresent(properties, "title", event.getTitle());
+        putIfPresent(properties, "discountedPrice", event.getDiscountedPrice());
+        putIfPresent(properties, "discountRate", event.getDiscountRate());
+        putIfPresent(properties, "maxQuantity", event.getMaxQuantity());
+
+        journeyEventRepository.save(AnalyticsJourneyEvent.builder()
+                .eventId(event.getEventId())
+                .eventType(normalize(event.getEventType()))
+                .domainType(DOMAIN_HOT_DEAL)
+                .channelType(DOMAIN_HOT_DEAL)
+                .userId(event.getUserId())
+                .journeyId(resolveJourneyId(
+                        null,
+                        null,
+                        null,
+                        event.getUserId(),
+                        event.getOrderId(),
+                        null,
+                        event.getHotDealId(),
+                        null
+                ))
+                .sellerId(ownership.sellerId())
+                .storeId(ownership.storeId())
+                .itemId(ownership.itemId())
+                .hotDealId(event.getHotDealId())
+                .orderId(event.getOrderId())
+                .quantity(event.getQuantity())
+                .amount(event.getTotalAmount())
+                .propertiesJson(toJson(properties))
+                .occurredAt(occurredAt)
+                .ingestedAt(ingestedAt)
+                .build());
+    }
+
+    private void ingestOrderCreatedEvent(AnalyticsOrderEventMessage event, LocalDateTime occurredAt) {
+        LocalDateTime ingestedAt = LocalDateTime.now();
+        List<AnalyticsOrderEventMessage.OrderItemPayload> items =
+                event.getItems() == null ? List.of() : event.getItems();
+        if (items.isEmpty()) {
+            journeyEventRepository.save(buildOrderJourneyEvent(
+                    event,
+                    occurredAt,
+                    ingestedAt,
+                    DOMAIN_ORDER,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    event.getTotalAmount(),
+                    null,
+                    null
+            ));
+            return;
+        }
+
+        for (AnalyticsOrderEventMessage.OrderItemPayload item : items) {
+            Ownership ownership = resolveOwnership(item.getItemId(), item.getStoreId(), null);
+            String channelType = normalizeChannelType(item.getChannelType());
+            String domainType = resolveOrderDomainType(channelType);
+
+            Map<String, Object> properties = new LinkedHashMap<>();
+            putIfPresent(properties, "titleSnap", item.getTitleSnap());
+            putIfPresent(properties, "itemTypeSnap", item.getItemTypeSnap());
+            putIfPresent(properties, "unitPrice", item.getUnitPrice());
+
+            journeyEventRepository.save(buildOrderJourneyEvent(
+                    event,
+                    occurredAt,
+                    ingestedAt,
+                    domainType,
+                    channelType,
+                    ownership.storeId(),
+                    ownership.sellerId(),
+                    ownership.itemId(),
+                    resolveCampaignId(channelType, item.getChannelRefId()),
+                    resolveHotDealId(channelType, item.getChannelRefId()),
+                    item.getQuantity(),
+                    firstNonNull(item.getLineAmount(), item.getUnitPrice(), event.getTotalAmount()),
+                    null,
+                    toJson(properties)
+            ));
+        }
+    }
+
+    private void ingestOrderLifecycleEvent(AnalyticsOrderEventMessage event, String eventType, LocalDateTime occurredAt) {
+        LocalDateTime ingestedAt = LocalDateTime.now();
+        List<AnalyticsJourneyEvent> createdEvents =
+                journeyEventRepository.findByOrderIdAndEventTypeOrderByOccurredAtAsc(event.getOrderId(), ORDER_CREATED_EVENT);
+        if (createdEvents.isEmpty()) {
+            journeyEventRepository.save(buildOrderJourneyEvent(
+                    event,
+                    occurredAt,
+                    ingestedAt,
+                    DOMAIN_ORDER,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    event.getTotalAmount(),
+                    eventType,
+                    null
+            ));
+            return;
+        }
+
+        for (AnalyticsJourneyEvent createdEvent : createdEvents) {
+            journeyEventRepository.save(AnalyticsJourneyEvent.builder()
+                    .eventId(event.getEventId())
+                    .eventType(eventType)
+                    .domainType(defaultIfBlank(createdEvent.getDomainType(), DOMAIN_ORDER))
+                    .channelType(createdEvent.getChannelType())
+                    .userId(event.getUserId() != null ? event.getUserId() : createdEvent.getUserId())
+                    .sessionId(createdEvent.getSessionId())
+                    .journeyId(resolveJourneyId(
+                            createdEvent.getJourneyId(),
+                            createdEvent.getCorrelationId(),
+                            createdEvent.getSessionId(),
+                            event.getUserId() != null ? event.getUserId() : createdEvent.getUserId(),
+                            event.getOrderId(),
+                            createdEvent.getCampaignId(),
+                            createdEvent.getHotDealId(),
+                            createdEvent.getPurchaseId()
+                    ))
+                    .correlationId(createdEvent.getCorrelationId())
+                    .causationId(createdEvent.getCausationId())
+                    .sellerId(createdEvent.getSellerId())
+                    .storeId(createdEvent.getStoreId())
+                    .itemId(createdEvent.getItemId())
+                    .campaignId(createdEvent.getCampaignId())
+                    .hotDealId(createdEvent.getHotDealId())
+                    .orderId(event.getOrderId())
+                    .purchaseId(createdEvent.getPurchaseId())
+                    .participationId(createdEvent.getParticipationId())
+                    .quantity(createdEvent.getQuantity())
+                    .amount(firstNonNull(event.getTotalAmount(), createdEvent.getAmount(), null))
+                    .queryHash(createdEvent.getQueryHash())
+                    .propertiesJson(createdEvent.getPropertiesJson())
+                    .occurredAt(occurredAt)
+                    .ingestedAt(ingestedAt)
+                    .build());
+        }
+    }
+
+    private AnalyticsJourneyEvent buildOrderJourneyEvent(
+            AnalyticsOrderEventMessage event,
+            LocalDateTime occurredAt,
+            LocalDateTime ingestedAt,
+            String domainType,
+            String channelType,
+            Long storeId,
+            Long sellerId,
+            Long itemId,
+            Long campaignId,
+            Long hotDealId,
+            Integer quantity,
+            Long amount,
+            String overrideEventType,
+            String propertiesJson
+    ) {
+        return AnalyticsJourneyEvent.builder()
+                .eventId(event.getEventId())
+                .eventType(defaultIfBlank(overrideEventType, normalize(event.getEventType())))
+                .domainType(domainType)
+                .channelType(channelType)
+                .userId(event.getUserId())
+                .journeyId(resolveJourneyId(
+                        null,
+                        null,
+                        null,
+                        event.getUserId(),
+                        event.getOrderId(),
+                        campaignId,
+                        hotDealId,
+                        null
+                ))
+                .sellerId(sellerId)
+                .storeId(storeId)
+                .itemId(itemId)
+                .campaignId(campaignId)
+                .hotDealId(hotDealId)
+                .orderId(event.getOrderId())
+                .quantity(quantity)
+                .amount(amount)
+                .propertiesJson(propertiesJson)
+                .occurredAt(occurredAt)
+                .ingestedAt(ingestedAt)
+                .build();
     }
 
     private void handleItemCreated(AnalyticsItemEventMessage event) {
@@ -241,6 +596,21 @@ public class AnalyticsEventIngestService {
         return new Ownership(itemId, storeId, sellerId, referenceAmount);
     }
 
+    private Ownership resolveOwnership(Long itemId, Long storeId, Long sellerId) {
+        if ((storeId != null && sellerId != null) || itemId == null) {
+            return new Ownership(itemId, storeId, sellerId, null);
+        }
+
+        return dimItemSnapshotRepository.findById(itemId)
+                .map(snapshot -> new Ownership(
+                        itemId,
+                        storeId != null ? storeId : snapshot.getStoreId(),
+                        sellerId != null ? sellerId : snapshot.getSellerId(),
+                        null
+                ))
+                .orElse(new Ownership(itemId, storeId, sellerId, null));
+    }
+
     private Long resolveSignedNetAmount(AnalyticsSalesEventMessage event, String eventType, Long fallbackAmount) {
         Long amount = event.getTotalAmount() != null ? event.getTotalAmount() : fallbackAmount;
         if (amount == null) {
@@ -283,6 +653,66 @@ public class AnalyticsEventIngestService {
         return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
     }
 
+    private String normalizeChannelType(String channelType) {
+        String normalized = normalize(channelType);
+        return normalized.isBlank() ? null : normalized;
+    }
+
+    private String resolveOrderDomainType(String channelType) {
+        if (DOMAIN_FUNDING.equals(channelType)) {
+            return DOMAIN_FUNDING;
+        }
+        if (DOMAIN_HOT_DEAL.equals(channelType)) {
+            return DOMAIN_HOT_DEAL;
+        }
+        return DOMAIN_NORMAL;
+    }
+
+    private Long resolveCampaignId(String channelType, Long channelRefId) {
+        return DOMAIN_FUNDING.equals(channelType) ? channelRefId : null;
+    }
+
+    private Long resolveHotDealId(String channelType, Long channelRefId) {
+        return DOMAIN_HOT_DEAL.equals(channelType) ? channelRefId : null;
+    }
+
+    private String resolveJourneyId(
+            String journeyId,
+            String correlationId,
+            String sessionId,
+            Long userId,
+            Long orderId,
+            Long campaignId,
+            Long hotDealId,
+            Long purchaseId
+    ) {
+        if (journeyId != null && !journeyId.isBlank()) {
+            return journeyId;
+        }
+        if (correlationId != null && !correlationId.isBlank()) {
+            return correlationId;
+        }
+        if (sessionId != null && !sessionId.isBlank()) {
+            return sessionId;
+        }
+        if (orderId != null) {
+            return "order-" + orderId;
+        }
+        if (campaignId != null) {
+            return "campaign-" + campaignId;
+        }
+        if (hotDealId != null) {
+            return "hotdeal-" + hotDealId;
+        }
+        if (purchaseId != null) {
+            return "purchase-" + purchaseId;
+        }
+        if (userId != null) {
+            return "user-" + userId;
+        }
+        return null;
+    }
+
     private String defaultIfBlank(String value, String fallback) {
         if (value == null || value.isBlank()) {
             return fallback;
@@ -292,6 +722,29 @@ public class AnalyticsEventIngestService {
 
     private Long nullToZero(Long value) {
         return value == null ? 0L : value;
+    }
+
+    private Long firstNonNull(Long first, Long second, Long third) {
+        if (first != null) {
+            return first;
+        }
+        if (second != null) {
+            return second;
+        }
+        return third;
+    }
+
+    private String toJson(Map<String, Object> properties) {
+        if (properties == null || properties.isEmpty()) {
+            return null;
+        }
+        return JsonUtils.toJson(properties);
+    }
+
+    private void putIfPresent(Map<String, Object> properties, String key, Object value) {
+        if (value != null) {
+            properties.put(key, value);
+        }
     }
 
     private record Ownership(Long itemId, Long storeId, Long sellerId, Long referenceTotalAmount) {

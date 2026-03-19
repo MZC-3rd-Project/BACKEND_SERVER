@@ -22,4 +22,8 @@ public class AnalyticsSalesEventMessage implements EventEnvelope {
 
     private Long sellerId;
     private Long storeId;
+    private String sessionId;
+    private String journeyId;
+    private String correlationId;
+    private String causationId;
 }

@@ -1,12 +1,15 @@
 package com.example.analyticsdashboard.service.ingest;
 
 import com.example.analyticsdashboard.consumer.item.AnalyticsItemEventMessage;
+import com.example.analyticsdashboard.consumer.order.AnalyticsOrderEventMessage;
 import com.example.analyticsdashboard.consumer.sales.AnalyticsSalesEventMessage;
 import com.example.analyticsdashboard.consumer.search.AnalyticsSearchEventMessage;
 import com.example.analyticsdashboard.entity.AnalyticsDimItemSnapshot;
+import com.example.analyticsdashboard.entity.AnalyticsJourneyEvent;
 import com.example.analyticsdashboard.entity.AnalyticsRawSalesEvent;
 import com.example.analyticsdashboard.entity.AnalyticsRawSearchEvent;
 import com.example.analyticsdashboard.repository.AnalyticsDimItemSnapshotRepository;
+import com.example.analyticsdashboard.repository.AnalyticsJourneyEventRepository;
 import com.example.analyticsdashboard.repository.AnalyticsRawSalesEventRepository;
 import com.example.analyticsdashboard.repository.AnalyticsRawSearchEventRepository;
 import com.example.core.util.JsonUtils;
@@ -18,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,6 +40,9 @@ class AnalyticsEventIngestServiceTest {
 
     @Mock
     private AnalyticsRawSearchEventRepository rawSearchEventRepository;
+
+    @Mock
+    private AnalyticsJourneyEventRepository analyticsJourneyEventRepository;
 
     @InjectMocks
     private AnalyticsEventIngestService service;
@@ -104,6 +111,11 @@ class AnalyticsEventIngestServiceTest {
         assertThat(saved.getSellerId()).isEqualTo(22L);
         assertThat(saved.getItemId()).isEqualTo(33L);
         assertThat(saved.getNetAmount()).isEqualTo(-10000L);
+        assertThat(saved.getJourneyId()).isEqualTo("purchase-99");
+
+        ArgumentCaptor<AnalyticsJourneyEvent> journeyCaptor = ArgumentCaptor.forClass(AnalyticsJourneyEvent.class);
+        verify(analyticsJourneyEventRepository).save(journeyCaptor.capture());
+        assertThat(journeyCaptor.getValue().getPurchaseId()).isEqualTo(99L);
     }
 
     @Test
@@ -141,5 +153,53 @@ class AnalyticsEventIngestServiceTest {
         assertThat(saved.getSellerId()).isEqualTo(555L);
         assertThat(saved.getItemId()).isEqualTo(333L);
         assertThat(saved.getQueryHash()).isEqualTo("hash-value");
+
+        ArgumentCaptor<AnalyticsJourneyEvent> journeyCaptor = ArgumentCaptor.forClass(AnalyticsJourneyEvent.class);
+        verify(analyticsJourneyEventRepository).save(journeyCaptor.capture());
+        AnalyticsJourneyEvent journeyEvent = journeyCaptor.getValue();
+        assertThat(journeyEvent.getDomainType()).isEqualTo("SEARCH");
+        assertThat(journeyEvent.getSessionId()).isEqualTo("sess-1");
+    }
+
+    @Test
+    void ingestOrderEvent_paid_clonesCreatedJourneyContext() {
+        AnalyticsJourneyEvent created = AnalyticsJourneyEvent.builder()
+                .eventId("evt-order-created")
+                .eventType("ORDER_CREATED_EVENT")
+                .domainType("NORMAL")
+                .channelType("NORMAL")
+                .userId(77L)
+                .journeyId("order-9001")
+                .sellerId(200L)
+                .storeId(100L)
+                .itemId(300L)
+                .orderId(9001L)
+                .quantity(2)
+                .amount(12000L)
+                .occurredAt(LocalDateTime.now().minusMinutes(3))
+                .ingestedAt(LocalDateTime.now().minusMinutes(3))
+                .build();
+        when(analyticsJourneyEventRepository.findByOrderIdAndEventTypeOrderByOccurredAtAsc(9001L, "ORDER_CREATED_EVENT"))
+                .thenReturn(List.of(created));
+
+        AnalyticsOrderEventMessage event = JsonUtils.fromJson("""
+                {
+                  "eventId": "evt-order-paid",
+                  "eventType": "ORDER_PAID_EVENT",
+                  "orderId": 9001,
+                  "userId": 77
+                }
+                """, AnalyticsOrderEventMessage.class);
+
+        service.ingestOrderEvent(event);
+
+        ArgumentCaptor<AnalyticsJourneyEvent> journeyCaptor = ArgumentCaptor.forClass(AnalyticsJourneyEvent.class);
+        verify(analyticsJourneyEventRepository).save(journeyCaptor.capture());
+        AnalyticsJourneyEvent saved = journeyCaptor.getValue();
+        assertThat(saved.getEventType()).isEqualTo("ORDER_PAID_EVENT");
+        assertThat(saved.getStoreId()).isEqualTo(100L);
+        assertThat(saved.getSellerId()).isEqualTo(200L);
+        assertThat(saved.getItemId()).isEqualTo(300L);
+        assertThat(saved.getJourneyId()).isEqualTo("order-9001");
     }
 }

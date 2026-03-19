@@ -53,6 +53,21 @@ public class AnalyticsRawSalesEvent extends BaseEntity {
     @Column(name = "purchase_id")
     private Long purchaseId;
 
+    @Column(name = "user_id")
+    private Long userId;
+
+    @Column(name = "session_id", length = 120)
+    private String sessionId;
+
+    @Column(name = "journey_id", length = 120)
+    private String journeyId;
+
+    @Column(name = "correlation_id", length = 120)
+    private String correlationId;
+
+    @Column(name = "causation_id", length = 120)
+    private String causationId;
+
     @Column(name = "quantity")
     private Integer quantity;
 
@@ -77,6 +92,11 @@ public class AnalyticsRawSalesEvent extends BaseEntity {
             Long itemId,
             Long orderId,
             Long purchaseId,
+            Long userId,
+            String sessionId,
+            String journeyId,
+            String correlationId,
+            String causationId,
             Integer quantity,
             Long grossAmount,
             Long netAmount,
@@ -90,6 +110,11 @@ public class AnalyticsRawSalesEvent extends BaseEntity {
         this.itemId = itemId;
         this.orderId = orderId;
         this.purchaseId = purchaseId;
+        this.userId = userId;
+        this.sessionId = sessionId;
+        this.journeyId = journeyId;
+        this.correlationId = correlationId;
+        this.causationId = causationId;
         this.quantity = quantity;
         this.grossAmount = grossAmount;
         this.netAmount = netAmount;

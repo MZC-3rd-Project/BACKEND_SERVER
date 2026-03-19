@@ -51,8 +51,20 @@ public class AnalyticsRawSearchEvent extends BaseEntity {
     @Column(name = "query_hash", length = 128)
     private String queryHash;
 
+    @Column(name = "user_id")
+    private Long userId;
+
     @Column(name = "session_id", length = 120)
     private String sessionId;
+
+    @Column(name = "journey_id", length = 120)
+    private String journeyId;
+
+    @Column(name = "correlation_id", length = 120)
+    private String correlationId;
+
+    @Column(name = "causation_id", length = 120)
+    private String causationId;
 
     @Column(name = "occurred_at", nullable = false)
     private LocalDateTime occurredAt;
@@ -68,7 +80,11 @@ public class AnalyticsRawSearchEvent extends BaseEntity {
             Long sellerId,
             Long itemId,
             String queryHash,
+            Long userId,
             String sessionId,
+            String journeyId,
+            String correlationId,
+            String causationId,
             LocalDateTime occurredAt,
             LocalDateTime ingestedAt
     ) {
@@ -78,7 +94,11 @@ public class AnalyticsRawSearchEvent extends BaseEntity {
         this.sellerId = sellerId;
         this.itemId = itemId;
         this.queryHash = queryHash;
+        this.userId = userId;
         this.sessionId = sessionId;
+        this.journeyId = journeyId;
+        this.correlationId = correlationId;
+        this.causationId = causationId;
         this.occurredAt = occurredAt;
         this.ingestedAt = ingestedAt;
     }

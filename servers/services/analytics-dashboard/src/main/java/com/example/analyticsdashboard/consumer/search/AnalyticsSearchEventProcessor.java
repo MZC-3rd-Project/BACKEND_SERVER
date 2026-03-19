@@ -28,7 +28,8 @@ public class AnalyticsSearchEventProcessor extends AbstractAnalyticsEventProcess
         super(idempotentConsumerService, AnalyticsSearchEventMessage.class);
         this.analyticsEventIngestService = analyticsEventIngestService;
         this.eventSpecs = Map.of(
-                "SEARCH_EXECUTED", eventSpec(this::isPresent, this::ingestSearchEvent)
+                "SEARCH_EXECUTED", eventSpec(this::isPresent, this::ingestSearchEvent),
+                "SEARCH_ITEM_CLICKED", eventSpec(this::isPresent, this::ingestSearchEvent)
         );
     }
 

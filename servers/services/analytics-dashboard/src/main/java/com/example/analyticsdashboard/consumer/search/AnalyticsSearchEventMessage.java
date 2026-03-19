@@ -15,7 +15,11 @@ public class AnalyticsSearchEventMessage implements EventEnvelope {
     private Long itemId;
     private Long storeId;
     private Long sellerId;
+    private Long userId;
 
     private String queryHash;
     private String sessionId;
+    private String journeyId;
+    private String correlationId;
+    private String causationId;
 }

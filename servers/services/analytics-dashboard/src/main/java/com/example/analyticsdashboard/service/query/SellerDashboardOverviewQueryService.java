@@ -4,6 +4,7 @@ import com.example.analyticsdashboard.dto.query.DashboardQueryMode;
 import com.example.analyticsdashboard.dto.query.DashboardSeriesBucket;
 import com.example.analyticsdashboard.dto.query.SellerDashboardOverviewQuery;
 import com.example.analyticsdashboard.dto.response.DashboardLagStatus;
+import com.example.analyticsdashboard.dto.response.SellerDashboardFunnelResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardItemKpiResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardOverviewResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardQueryRangeResponse;
@@ -45,6 +46,7 @@ public class SellerDashboardOverviewQueryService {
     private final AnalyticsRawSalesEventRepository rawSalesEventRepository;
     private final AnalyticsRawSearchEventRepository rawSearchEventRepository;
     private final AnalyticsDimItemSnapshotRepository dimItemSnapshotRepository;
+    private final SellerDashboardFunnelQueryService sellerDashboardFunnelQueryService;
 
     public SellerDashboardOverviewResponse getOverview(Long sellerId, SellerDashboardOverviewQuery query) {
         validateSellerId(sellerId);
@@ -62,7 +64,14 @@ public class SellerDashboardOverviewQueryService {
         );
         List<AnalyticsDimItemSnapshot> itemSnapshots = dimItemSnapshotRepository.findBySellerId(sellerId);
 
-        return buildOverviewResponse(query, queryRangeContext, rawSalesEvents, rawSearchEvents, itemSnapshots);
+        return buildOverviewResponse(
+                query,
+                queryRangeContext,
+                rawSalesEvents,
+                rawSearchEvents,
+                itemSnapshots,
+                sellerDashboardFunnelQueryService.getFunnel(sellerId, query)
+        );
     }
 
     public SellerDashboardOverviewResponse getOverviewByStore(Long storeId,
@@ -103,14 +112,22 @@ public class SellerDashboardOverviewQueryService {
             itemSnapshots = dimItemSnapshotRepository.findByStoreId(storeId);
         }
 
-        return buildOverviewResponse(query, queryRangeContext, rawSalesEvents, rawSearchEvents, itemSnapshots);
+        return buildOverviewResponse(
+                query,
+                queryRangeContext,
+                rawSalesEvents,
+                rawSearchEvents,
+                itemSnapshots,
+                sellerDashboardFunnelQueryService.getFunnelByStore(storeId, sellerId, query)
+        );
     }
 
     private SellerDashboardOverviewResponse buildOverviewResponse(SellerDashboardOverviewQuery query,
                                                                   QueryRangeContext queryRangeContext,
                                                                   List<AnalyticsRawSalesEvent> rawSalesEvents,
                                                                   List<AnalyticsRawSearchEvent> rawSearchEvents,
-                                                                  List<AnalyticsDimItemSnapshot> itemSnapshots) {
+                                                                  List<AnalyticsDimItemSnapshot> itemSnapshots,
+                                                                  SellerDashboardFunnelResponse funnel) {
         SellerDashboardQueryRangeResponse queryRange = toQueryRange(queryRangeContext, query.timezone().getId());
         SellerDashboardSalesKpiResponse sales = toSalesKpi(rawSalesEvents);
         SellerDashboardSearchKpiResponse search = toSearchKpi(rawSearchEvents);
@@ -123,6 +140,7 @@ public class SellerDashboardOverviewQueryService {
         extensions.put("hotDeal", null);
         extensions.put("store", null);
         extensions.put("review", null);
+        extensions.put("funnel", funnel);
 
         return SellerDashboardOverviewResponse.builder()
                 .mode(query.mode())
