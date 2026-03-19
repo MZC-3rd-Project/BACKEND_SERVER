@@ -1,0 +1,36 @@
+{
+  "environment": "dev",
+  "namespace": "donmoa-dev",
+  "fullDeploy": false,
+  "selectedTargets": [
+    "auth",
+    "keycloak"
+  ],
+  "generatedAt": "2026-03-16T14:06:35Z",
+  "services": [
+    {
+      "key": "keycloak",
+      "buildType": "external-image",
+      "gradleModule": null,
+      "namespace": "donmoa-dev",
+      "releaseName": "keycloak",
+      "rolloutName": "keycloak",
+      "serviceName": "keycloak",
+      "valuesFile": "deploy/helm/environments/dev/keycloak.yaml",
+      "imageRepository": "quay.io/keycloak/keycloak",
+      "imageTag": "24.0.5"
+    },
+    {
+      "key": "auth",
+      "buildType": "gradle",
+      "gradleModule": "servers:services:auth",
+      "namespace": "donmoa-dev",
+      "releaseName": "auth",
+      "rolloutName": "auth-service",
+      "serviceName": "auth-service",
+      "valuesFile": "deploy/helm/environments/dev/auth.yaml",
+      "imageRepository": "000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-auth-service",
+      "imageTag": "test1234"
+    }
+  ]
+}

@@ -54,6 +54,15 @@ public interface FundingCampaignRepository extends JpaRepository<FundingCampaign
                                                   org.springframework.data.domain.Pageable pageable);
 
     @Query("SELECT c FROM FundingCampaign c " +
+            "WHERE c.status = :status " +
+            "AND c.startAt <= :now " +
+            "AND c.endAt > :now " +
+            "ORDER BY c.endAt ASC, c.id DESC")
+    List<FundingCampaign> findClosingSoonActiveCampaigns(@Param("status") FundingStatus status,
+                                                         @Param("now") LocalDateTime now,
+                                                         org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT c FROM FundingCampaign c " +
             "WHERE (:cursor IS NULL OR c.id < :cursor) ORDER BY c.id DESC")
     List<FundingCampaign> findAllWithCursor(@Param("cursor") Long cursor,
                                              org.springframework.data.domain.Pageable pageable);

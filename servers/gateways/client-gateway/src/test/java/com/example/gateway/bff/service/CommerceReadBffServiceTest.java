@@ -68,6 +68,85 @@ class CommerceReadBffServiceTest {
     }
 
     @Test
+    void findClosingSoonFundingCampaigns_enrichesSliderFields() {
+        exchangeFunction.enqueueFundingClosingSoon(HttpStatus.OK, """
+                {
+                  "success": true,
+                  "data": {
+                    "items": [
+                      {
+                        "id": 101,
+                        "itemId": 501,
+                        "title": "마감 임박 펀딩",
+                        "goalAmount": 100000,
+                        "currentAmount": 55000,
+                        "currentQuantity": 3,
+                        "goalQuantity": 10,
+                        "status": "ACTIVE",
+                        "endAt": "2099-12-31T23:59:59"
+                      }
+                    ],
+                    "size": 1,
+                    "hasNext": false
+                  }
+                }
+                """);
+        exchangeFunction.enqueueProductBatch(HttpStatus.OK, """
+                {
+                  "success": true,
+                  "data": [
+                    {
+                      "id": 501,
+                      "title": "마감 임박 펀딩",
+                      "images": {
+                        "thumbnail": {
+                          "mediaId": 9001
+                        }
+                      }
+                    }
+                  ]
+                }
+                """);
+        exchangeFunction.enqueueFundingParticipations(HttpStatus.OK, """
+                {
+                  "success": true,
+                  "data": [
+                    {"id": 1},
+                    {"id": 2},
+                    {"id": 3}
+                  ]
+                }
+                """);
+        exchangeFunction.enqueueMediaUrls(HttpStatus.OK, """
+                {
+                  "success": true,
+                  "data": [
+                    {
+                      "mediaId": 9001,
+                      "mediaUrl": "https://cdn.example.com/funding/9001.png"
+                    }
+                  ]
+                }
+                """);
+
+        ResponseEntity<com.fasterxml.jackson.databind.JsonNode> response = service.findClosingSoonFundingCampaigns(
+                MockServerHttpRequest.get("/bff/v1/main/funding/closing-soon?size=5").build()
+        ).block();
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(exchangeFunction.fundingRequests).hasSize(1);
+        ClientRequest forwardedRequest = exchangeFunction.fundingRequests.getFirst();
+        assertThat(forwardedRequest.url().getPath()).isEqualTo("/api/campaigns/closing-soon");
+        assertThat(forwardedRequest.url().getQuery()).contains("size=5");
+        assertThat(response.getBody().path("data").path("items").get(0).path("progressRate").asDouble()).isEqualTo(55.0);
+        assertThat(response.getBody().path("data").path("items").get(0).path("supporterCount").asInt()).isEqualTo(3);
+        assertThat(response.getBody().path("data").path("items").get(0).path("thumbnailUrl").asText())
+                .isEqualTo("https://cdn.example.com/funding/9001.png");
+        assertThat(response.getBody().path("data").path("items").get(0).path("leftLabel").asText()).isNotBlank();
+    }
+
+    @Test
     void findSalesProducts_propagatesOptionalUserContextWhenAuthenticated() {
         exchangeFunction.enqueueSalesProducts(HttpStatus.OK, """
                 {
@@ -179,18 +258,56 @@ class CommerceReadBffServiceTest {
 
     private static final class StubExchangeFunction implements ExchangeFunction {
 
+        private final Queue<ResponseStub> fundingClosingSoonResponses = new ArrayDeque<>();
+        private final Queue<ResponseStub> fundingParticipationResponses = new ArrayDeque<>();
+        private final Queue<ResponseStub> productBatchResponses = new ArrayDeque<>();
         private final Queue<ResponseStub> salesProductResponses = new ArrayDeque<>();
         private final Queue<ResponseStub> mediaUrlResponses = new ArrayDeque<>();
+        private final List<ClientRequest> fundingRequests = new ArrayList<>();
         private final List<ClientRequest> salesRequests = new ArrayList<>();
 
         @Override
         public Mono<ClientResponse> exchange(ClientRequest request) {
             URI url = request.url();
+            if ("/api/campaigns/closing-soon".equals(url.getPath())) {
+                fundingRequests.add(request);
+                ResponseStub stub = fundingClosingSoonResponses.poll();
+                if (stub == null) {
+                    return Mono.error(new IllegalStateException("funding closing soon stub is empty"));
+                }
+                return Mono.just(ClientResponse.create(stub.status())
+                        .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                        .body(stub.body())
+                        .build());
+            }
+
+            if (url.getPath().matches("/api/campaigns/\\d+/participations")) {
+                ResponseStub stub = fundingParticipationResponses.poll();
+                if (stub == null) {
+                    stub = new ResponseStub(HttpStatus.OK, "{\"success\":true,\"data\":[]}");
+                }
+                return Mono.just(ClientResponse.create(stub.status())
+                        .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                        .body(stub.body())
+                        .build());
+            }
+
             if ("/api/products".equals(url.getPath())) {
                 salesRequests.add(request);
                 ResponseStub stub = salesProductResponses.poll();
                 if (stub == null) {
                     return Mono.error(new IllegalStateException("sales response stub is empty"));
+                }
+                return Mono.just(ClientResponse.create(stub.status())
+                        .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                        .body(stub.body())
+                        .build());
+            }
+
+            if ("/internal/v1/items/batch".equals(url.getPath())) {
+                ResponseStub stub = productBatchResponses.poll();
+                if (stub == null) {
+                    stub = new ResponseStub(HttpStatus.OK, "{\"success\":true,\"data\":[]}");
                 }
                 return Mono.just(ClientResponse.create(stub.status())
                         .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
@@ -214,6 +331,18 @@ class CommerceReadBffServiceTest {
 
         void enqueueSalesProducts(HttpStatus status, String body) {
             salesProductResponses.add(new ResponseStub(status, body));
+        }
+
+        void enqueueFundingClosingSoon(HttpStatus status, String body) {
+            fundingClosingSoonResponses.add(new ResponseStub(status, body));
+        }
+
+        void enqueueFundingParticipations(HttpStatus status, String body) {
+            fundingParticipationResponses.add(new ResponseStub(status, body));
+        }
+
+        void enqueueProductBatch(HttpStatus status, String body) {
+            productBatchResponses.add(new ResponseStub(status, body));
         }
 
         void enqueueMediaUrls(HttpStatus status, String body) {

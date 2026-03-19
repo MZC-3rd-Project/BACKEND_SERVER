@@ -98,6 +98,22 @@ public class CommerceReadBffService {
                 .map(this::normalizeSnowflakeIds);
     }
 
+    public Mono<ResponseEntity<JsonNode>> findClosingSoonFundingCampaigns(ServerHttpRequest request) {
+        HttpHeaders headers = buildDownstreamHeaders();
+        MultiValueMap<String, String> queryParams = copyAllowedQueryParams(
+                request,
+                List.of("size")
+        );
+
+        return callGet(fundingWebClient, "/api/campaigns/closing-soon", queryParams, headers)
+                .flatMap(response -> enrichFundingCampaignList(response, headers))
+                .onErrorResume(e -> {
+                    log.warn("[CommerceReadBff] funding closing soon failed", e);
+                    return Mono.just(badGateway("마감 임박 펀딩 조회에 실패했습니다"));
+                })
+                .map(this::normalizeSnowflakeIds);
+    }
+
     public Mono<ResponseEntity<JsonNode>> findFundingCampaignDetail(Long campaignId) {
         if (campaignId == null || campaignId <= 0) {
             return Mono.just(badRequest("campaignId는 양수여야 합니다"));

@@ -43,6 +43,14 @@ public interface CampaignQueryApi {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String status);
 
+    @Operation(summary = "메인 노출용 마감 임박 펀딩 조회")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공")
+    })
+    @GetMapping("/closing-soon")
+    ApiResponse<CursorResponse<CampaignResponse>> findClosingSoon(
+            @RequestParam(defaultValue = "5") int size);
+
     @Operation(summary = "펀딩 진행률 조회 (실시간 캐시)")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),

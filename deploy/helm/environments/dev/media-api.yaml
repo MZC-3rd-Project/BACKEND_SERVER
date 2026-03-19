@@ -26,6 +26,7 @@ env:
   MEDIA_S3_REGION: ap-northeast-2
   MEDIA_S3_BUCKET: team2-donmoa-media-raw
   MEDIA_S3_KEY_PREFIX: team2-donmoa-media
+  MEDIA_CLOUDFRONT_DOMAIN: https://d179i4pv5hzdkg.cloudfront.net
   MEDIA_S3_PRESIGNED_PUT_TTL_SECONDS: "300"
   APP_GATEWAY_SECURITY_ENABLED: "true"
   APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED: "true"

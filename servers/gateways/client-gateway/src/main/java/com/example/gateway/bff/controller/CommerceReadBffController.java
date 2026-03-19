@@ -25,6 +25,11 @@ public class CommerceReadBffController {
         return commerceReadBffService.findFundingCampaigns(request);
     }
 
+    @GetMapping("/main/funding/closing-soon")
+    public Mono<ResponseEntity<JsonNode>> findClosingSoonFundingCampaigns(ServerHttpRequest request) {
+        return commerceReadBffService.findClosingSoonFundingCampaigns(request);
+    }
+
     @GetMapping("/funding/campaigns/{campaignId}")
     public Mono<ResponseEntity<JsonNode>> findFundingCampaignDetail(@PathVariable Long campaignId) {
         return catalogDetailBffService.getFundingCampaignDetail(campaignId);

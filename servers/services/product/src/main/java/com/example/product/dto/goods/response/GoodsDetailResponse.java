@@ -1,6 +1,7 @@
 package com.example.product.dto.goods.response;
 
 import com.example.core.id.jackson.SnowflakeId;
+import com.example.product.dto.image.response.ItemImageResponse;
 import com.example.product.dto.image.response.ItemImagesResponse;
 import com.example.product.dto.item.response.ItemContentSnapshot;
 import com.example.product.dto.item.response.ItemDetailSectionResponse;
@@ -54,6 +55,23 @@ public class GoodsDetailResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    @SnowflakeId
+    public Long getItemId() {
+        return id;
+    }
+
+    public ItemImageResponse getThumbnail() {
+        return images != null ? images.getThumbnail() : null;
+    }
+
+    public CategorySummary getCategory() {
+        if (categoryId == null && categoryName == null
+                && (categoryPath == null || categoryPath.isEmpty())) {
+            return null;
+        }
+        return new CategorySummary(categoryId, categoryName, categoryPath);
+    }
+
     public static GoodsDetailResponse of(Item item, List<ItemOption> options,
                                          ShippingInfo shippingInfo, List<Long> linkedIds,
                                          ItemContentSnapshot content, List<ItemImage> images) {
@@ -94,5 +112,20 @@ public class GoodsDetailResponse {
                 .createdAt(item.getCreatedAt())
                 .updatedAt(item.getUpdatedAt())
                 .build();
+    }
+
+    @Getter
+    public static class CategorySummary {
+
+        @SnowflakeId
+        private final Long id;
+        private final String name;
+        private final List<String> path;
+
+        private CategorySummary(Long id, String name, List<String> path) {
+            this.id = id;
+            this.name = name;
+            this.path = path == null ? List.of() : List.copyOf(path);
+        }
     }
 }

@@ -24,6 +24,7 @@ env:
   MEDIA_S3_REGION: ap-northeast-2
   MEDIA_S3_BUCKET: team2-donmoa-media-raw
   MEDIA_S3_KEY_PREFIX: team2-donmoa-media
+  MEDIA_CLOUDFRONT_DOMAIN: https://d179i4pv5hzdkg.cloudfront.net
 
 secretEnv:
   DB_PASSWORD:

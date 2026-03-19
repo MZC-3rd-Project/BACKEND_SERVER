@@ -61,16 +61,22 @@ docker-compose down -v
 
 The PostgreSQL init script automatically creates service databases:
 - `auth_db`
-- `user_db`
+- `profile_db`
 - `test_db`
 - `product_db`
 - `stock_db`
 - `funding_db`
 - `sales_db`
+- `order_db`
 - `hotdeal_db`
 - `search_db`
 - `notification_db`
 - `chat_db`
+- `store_db`
+- `store_query_db`
+- `media_db`
+- `analytics_db`
+- `keycloak_db`
 
 All databases have the `uuid-ossp` extension enabled.
 
