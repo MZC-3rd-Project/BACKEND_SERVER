@@ -26,7 +26,7 @@ public class GatewayBffCorsConfig {
             @Value("${GATEWAY_CORS_ALLOWED_ORIGIN_PATTERNS:*}") String allowedOriginPatterns
     ) {
         this.corsConfiguration = new CorsConfiguration();
-        this.corsConfiguration.setAllowCredentials(false);
+        this.corsConfiguration.setAllowCredentials(true);
         this.corsConfiguration.addAllowedHeader(CorsConfiguration.ALL);
         this.corsConfiguration.addAllowedMethod(CorsConfiguration.ALL);
         this.corsConfiguration.setMaxAge(3600L);
@@ -58,6 +58,7 @@ public class GatewayBffCorsConfig {
             headers.add(HttpHeaders.VARY, HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD);
             headers.add(HttpHeaders.VARY, HttpHeaders.ACCESS_CONTROL_REQUEST_HEADERS);
             headers.setAccessControlAllowOrigin(allowedOrigin);
+            headers.setAccessControlAllowCredentials(true);
             headers.setAccessControlAllowMethods(List.of(
                     HttpMethod.GET,
                     HttpMethod.POST,

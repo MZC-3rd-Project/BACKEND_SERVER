@@ -35,6 +35,7 @@ class CatalogBffE2eTest {
 
     private static final int DOWNSTREAM_PORT = findAvailablePort();
     private static final String DOWNSTREAM_BASE_URL = "http://127.0.0.1:" + DOWNSTREAM_PORT;
+    private static final String TEST_ORIGIN = "http://localhost:" + findAvailablePort();
 
     private static final AtomicReference<DownstreamDispatcher> DISPATCHER = new AtomicReference<>();
     private static final List<RequestRecord> REQUESTS = new CopyOnWriteArrayList<>();
@@ -268,10 +269,11 @@ class CatalogBffE2eTest {
 
         webTestClient.get()
                 .uri("/bff/v1/funding/campaigns?size=1")
-                .header("Origin", "http://localhost:3001")
+                .header("Origin", TEST_ORIGIN)
                 .exchange()
                 .expectStatus().isOk()
-                .expectHeader().valueMatches("Access-Control-Allow-Origin", "http://localhost:3001|\\*")
+                .expectHeader().valueEquals("Access-Control-Allow-Origin", TEST_ORIGIN)
+                .expectHeader().valueEquals("Access-Control-Allow-Credentials", "true")
                 .expectBody()
                 .jsonPath("$.success").isEqualTo(true)
                 .jsonPath("$.data.items.length()").isEqualTo(1);
