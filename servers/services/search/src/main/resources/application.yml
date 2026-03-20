@@ -65,6 +65,10 @@ search:
   elasticsearch:
     uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
     index-name: ${SEARCH_INDEX_NAME:items}
+  ai-enrichment:
+    enabled: ${SEARCH_AI_ENRICHMENT_ENABLED:false}
+    queue-url: ${SEARCH_AI_ENRICHMENT_QUEUE_URL:}
+    aws-region: ${SEARCH_AI_ENRICHMENT_AWS_REGION:ap-northeast-2}
 
 management:
   endpoints:

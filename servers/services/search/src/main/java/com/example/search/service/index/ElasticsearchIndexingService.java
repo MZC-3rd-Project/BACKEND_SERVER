@@ -7,6 +7,7 @@ import com.example.search.client.dto.ProductSearchDocument;
 import com.example.search.client.dto.StockSummary;
 import com.example.search.client.dto.StoreSnapshot;
 import com.example.search.document.ItemDocument;
+import com.example.search.service.enrichment.SearchAiEnrichmentTaskPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +22,7 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
     private final StockSummaryClient stockSummaryClient;
     private final StoreSnapshotClient storeSnapshotClient;
     private final ElasticsearchDocumentClient elasticsearchDocumentClient;
+    private final SearchAiEnrichmentTaskPublisher searchAiEnrichmentTaskPublisher;
 
     @Override
     public void upsertItem(Long itemId) {
@@ -33,6 +35,7 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         StoreSnapshot storeSnapshot = resolveStore(productDocument.get().storeId());
         Integer availableStock = resolveAvailableStock(itemId);
         elasticsearchDocumentClient.upsert(ItemDocument.from(productDocument.get(), storeSnapshot, availableStock));
+        searchAiEnrichmentTaskPublisher.publish(productDocument.get(), "ITEM_UPDATED");
     }
 
     @Override
@@ -57,6 +60,7 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         for (ProductSearchDocument document : documents) {
             Integer availableStock = resolveAvailableStock(document.itemId());
             elasticsearchDocumentClient.upsert(ItemDocument.from(document, storeSnapshot, availableStock));
+            searchAiEnrichmentTaskPublisher.publish(document, "STORE_REINDEX");
         }
     }
 

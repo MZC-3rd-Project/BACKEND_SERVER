@@ -1,13 +1,20 @@
 package com.example.search.service.query;
 
 import com.example.search.service.index.ElasticsearchDocumentClient;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class SearchQueryServiceTest {
@@ -85,6 +92,20 @@ class SearchQueryServiceTest {
         assertThat(response.getItems().get(0).stock()).isEqualTo(20);
         assertThat(response.getItems().get(0).availableStock()).isEqualTo(12);
         assertThat(response.getItems().get(1).activeHotDealId()).isEqualTo(9001L);
+
+        ArgumentCaptor<ObjectNode> requestCaptor = ArgumentCaptor.forClass(ObjectNode.class);
+        verify(elasticsearchDocumentClient).search(requestCaptor.capture());
+        JsonNode fields = requestCaptor.getValue()
+                .path("query")
+                .path("bool")
+                .path("must")
+                .path(0)
+                .path("multi_match")
+                .path("fields");
+        assertThat(fields.isArray()).isTrue();
+        List<String> fieldNames = new ArrayList<>();
+        fields.forEach(node -> fieldNames.add(node.asText()));
+        assertThat(fieldNames).contains("aiTags^3", "aiKeywords^2", "aiSummary^1.5");
     }
 
     @Test

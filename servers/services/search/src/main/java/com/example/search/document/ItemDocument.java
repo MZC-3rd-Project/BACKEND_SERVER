@@ -5,6 +5,7 @@ import com.example.search.client.dto.StoreSnapshot;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
 
@@ -31,6 +32,13 @@ public record ItemDocument(
         List<String> detailTitles,
         List<String> detailDescriptions,
         List<String> detailHighlights,
+        List<String> aiTags,
+        List<String> aiKeywords,
+        String aiSummary,
+        String aiSourceHash,
+        String aiModel,
+        String aiStatus,
+        OffsetDateTime aiEnrichedAt,
         Integer stock,
         Integer availableStock,
         Long activeHotDealId,
@@ -46,6 +54,8 @@ public record ItemDocument(
         detailTitles = immutableList(detailTitles);
         detailDescriptions = immutableList(detailDescriptions);
         detailHighlights = immutableList(detailHighlights);
+        aiTags = immutableList(aiTags);
+        aiKeywords = immutableList(aiKeywords);
     }
 
     public static ItemDocument from(ProductSearchDocument productDocument, StoreSnapshot storeSnapshot, Integer availableStock) {
@@ -75,6 +85,13 @@ public record ItemDocument(
                 productDocument.detailTitles(),
                 productDocument.detailDescriptions(),
                 productDocument.detailHighlights(),
+                List.of(),
+                List.of(),
+                null,
+                null,
+                null,
+                null,
+                null,
                 productDocument.stock(),
                 availableStock,
                 null,

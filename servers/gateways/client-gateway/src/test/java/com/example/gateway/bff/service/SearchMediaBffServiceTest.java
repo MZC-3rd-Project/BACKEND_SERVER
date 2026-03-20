@@ -52,6 +52,35 @@ class SearchMediaBffServiceTest {
     }
 
     @Test
+    void suggestions_returns503WhenSearchFeatureDisabled() {
+        GatewaySessionPrincipalResolver sessionPrincipalResolver = mock(GatewaySessionPrincipalResolver.class);
+        ObjectProvider<HmacSigner> hmacSignerProvider = new StaticListableBeanFactory().getBeanProvider(HmacSigner.class);
+        SearchClickRelayService searchClickRelayService = mock(SearchClickRelayService.class);
+
+        SearchMediaBffService service = new SearchMediaBffService(
+                WebClient.builder(),
+                sessionPrincipalResolver,
+                new GatewaySecurityProperties(),
+                new SearchThumbnailFallbackEnricher(new ObjectMapper()),
+                searchClickRelayService,
+                new ObjectMapper(),
+                hmacSignerProvider,
+                false,
+                "http://search",
+                "http://media"
+        );
+
+        ResponseEntity<JsonNode> response = service.suggestions(
+                MockServerHttpRequest.get("/bff/v1/search/suggestions?q=%EA%B5%AC%EC%9E%A5").build()
+        ).block();
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().path("error").path("code").asText()).isEqualTo("BFF-SEARCH-503");
+    }
+
+    @Test
     void trackClick_relaysOptionalUserHeadersToSearch() {
         GatewaySessionPrincipalResolver sessionPrincipalResolver = mock(GatewaySessionPrincipalResolver.class);
         ObjectProvider<HmacSigner> hmacSignerProvider = new StaticListableBeanFactory().getBeanProvider(HmacSigner.class);

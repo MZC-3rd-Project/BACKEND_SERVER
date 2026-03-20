@@ -4,6 +4,7 @@ import com.example.core.exception.CommonErrorCode;
 import com.example.core.exception.TechnicalException;
 import com.example.search.config.SearchElasticsearchProperties;
 import com.example.search.document.ItemDocument;
+import com.example.search.document.ItemEnrichmentPatch;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -105,6 +106,46 @@ public class ElasticsearchDocumentClient {
         }
     }
 
+    public void updateAiEnrichment(Long itemId, ItemEnrichmentPatch patch) {
+        if (itemId == null || itemId <= 0L || patch == null) {
+            return;
+        }
+
+        ensureIndexExists();
+
+        ObjectNode requestBody = objectMapper.createObjectNode();
+        ObjectNode docNode = requestBody.putObject("doc");
+        setTextArrayField(docNode, "aiTags", patch.aiTags());
+        setTextArrayField(docNode, "aiKeywords", patch.aiKeywords());
+        setNullableTextField(docNode, "aiSummary", patch.aiSummary());
+        setNullableTextField(docNode, "aiSourceHash", patch.aiSourceHash());
+        setNullableTextField(docNode, "aiModel", patch.aiModel());
+        setNullableTextField(docNode, "aiStatus", patch.aiStatus());
+        if (patch.aiEnrichedAt() == null) {
+            docNode.putNull("aiEnrichedAt");
+        } else {
+            docNode.put("aiEnrichedAt", patch.aiEnrichedAt().toString());
+        }
+
+        RawResponse response;
+        try {
+            response = exchange(
+                    "ai enrichment update",
+                    HttpMethod.POST,
+                    "/" + properties.getIndexName() + "/_update/" + itemId,
+                    requestBody
+            );
+        } catch (WebClientResponseException.NotFound exception) {
+            return;
+        }
+        if (response.status().value() == 404) {
+            return;
+        }
+        if (!response.status().is2xxSuccessful()) {
+            throw backendFailure("ai enrichment update failed", response);
+        }
+    }
+
     public void delete(Long itemId) {
         if (itemId == null || itemId <= 0L) {
             return;
@@ -175,6 +216,7 @@ public class ElasticsearchDocumentClient {
                 existsResponse = new RawResponse(HttpStatusCode.valueOf(404), "");
             }
             if (existsResponse.status().is2xxSuccessful()) {
+                updateIndexMappings();
                 indexReady.set(true);
                 return;
             }
@@ -260,6 +302,13 @@ public class ElasticsearchDocumentClient {
         addTextField(propertiesNode, "detailTitles");
         addTextField(propertiesNode, "detailDescriptions");
         addTextField(propertiesNode, "detailHighlights");
+        addTextWithKeywordField(propertiesNode, "aiTags");
+        addTextWithKeywordField(propertiesNode, "aiKeywords");
+        addTextField(propertiesNode, "aiSummary");
+        addKeywordField(propertiesNode, "aiSourceHash");
+        addKeywordField(propertiesNode, "aiModel");
+        addKeywordField(propertiesNode, "aiStatus");
+        addDateField(propertiesNode, "aiEnrichedAt");
         addIntegerField(propertiesNode, "stock");
         addIntegerField(propertiesNode, "availableStock");
         addLongField(propertiesNode, "activeHotDealId");
@@ -302,6 +351,49 @@ public class ElasticsearchDocumentClient {
         if (!createResponse.status().is2xxSuccessful()) {
             throw backendFailure("index create failed", createResponse);
         }
+    }
+
+    private void updateIndexMappings() {
+        ObjectNode requestBody = objectMapper.createObjectNode();
+        ObjectNode propertiesNode = requestBody.putObject("properties");
+        addTextWithKeywordField(propertiesNode, "aiTags");
+        addTextWithKeywordField(propertiesNode, "aiKeywords");
+        addTextField(propertiesNode, "aiSummary");
+        addKeywordField(propertiesNode, "aiSourceHash");
+        addKeywordField(propertiesNode, "aiModel");
+        addKeywordField(propertiesNode, "aiStatus");
+        addDateField(propertiesNode, "aiEnrichedAt");
+
+        RawResponse response = exchange(
+                "index mapping update",
+                HttpMethod.PUT,
+                "/" + properties.getIndexName() + "/_mapping",
+                requestBody
+        );
+        if (!response.status().is2xxSuccessful()) {
+            throw backendFailure("index mapping update failed", response);
+        }
+    }
+
+    private void setTextArrayField(ObjectNode docNode, String fieldName, Iterable<String> values) {
+        if (values == null) {
+            docNode.putArray(fieldName);
+            return;
+        }
+        var arrayNode = docNode.putArray(fieldName);
+        for (String value : values) {
+            if (StringUtils.hasText(value)) {
+                arrayNode.add(value.trim());
+            }
+        }
+    }
+
+    private void setNullableTextField(ObjectNode docNode, String fieldName, String value) {
+        if (!StringUtils.hasText(value)) {
+            docNode.putNull(fieldName);
+            return;
+        }
+        docNode.put(fieldName, value.trim());
     }
 
     private void addLongField(ObjectNode propertiesNode, String fieldName) {

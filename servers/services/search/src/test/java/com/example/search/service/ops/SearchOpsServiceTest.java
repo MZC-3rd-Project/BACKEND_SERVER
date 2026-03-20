@@ -9,6 +9,7 @@ import com.example.search.client.dto.StockSummary;
 import com.example.search.client.dto.StoreSnapshot;
 import com.example.search.dto.request.SearchReindexRequest;
 import com.example.search.dto.response.SearchReindexResponse;
+import com.example.search.service.enrichment.SearchAiEnrichmentTaskPublisher;
 import com.example.search.service.index.ElasticsearchDocumentClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,7 @@ class SearchOpsServiceTest {
     private StockSummaryClient stockSummaryClient;
     private StoreSnapshotClient storeSnapshotClient;
     private ElasticsearchDocumentClient elasticsearchDocumentClient;
+    private SearchAiEnrichmentTaskPublisher searchAiEnrichmentTaskPublisher;
     private SearchOpsService searchOpsService;
 
     @BeforeEach
@@ -39,11 +41,13 @@ class SearchOpsServiceTest {
         stockSummaryClient = mock(StockSummaryClient.class);
         storeSnapshotClient = mock(StoreSnapshotClient.class);
         elasticsearchDocumentClient = mock(ElasticsearchDocumentClient.class);
+        searchAiEnrichmentTaskPublisher = mock(SearchAiEnrichmentTaskPublisher.class);
         searchOpsService = new SearchOpsService(
                 productSearchSourceClient,
                 stockSummaryClient,
                 storeSnapshotClient,
-                elasticsearchDocumentClient
+                elasticsearchDocumentClient,
+                searchAiEnrichmentTaskPublisher
         );
     }
 
@@ -75,6 +79,7 @@ class SearchOpsServiceTest {
         assertThat(response.recreatedIndex()).isTrue();
         verify(elasticsearchDocumentClient).recreateIndex();
         verify(elasticsearchDocumentClient, times(3)).upsert(any());
+        verify(searchAiEnrichmentTaskPublisher, times(3)).publish(any(), eq("REINDEX"));
         verify(storeSnapshotClient, times(1)).findStore(10L);
         verify(storeSnapshotClient, times(1)).findStore(11L);
     }
@@ -98,6 +103,7 @@ class SearchOpsServiceTest {
         assertThat(response.finished()).isFalse();
         assertThat(response.nextCursor()).isEqualTo("cursor-2");
         verify(elasticsearchDocumentClient, times(1)).upsert(any());
+        verify(searchAiEnrichmentTaskPublisher, times(1)).publish(any(), eq("REINDEX"));
         verify(elasticsearchDocumentClient, times(0)).recreateIndex();
     }
 

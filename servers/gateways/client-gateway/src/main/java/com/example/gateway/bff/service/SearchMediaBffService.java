@@ -83,6 +83,16 @@ public class SearchMediaBffService {
                         .flatMap(response -> enrichWithMediaFallback(response, downstreamHeaders)));
     }
 
+    public Mono<ResponseEntity<JsonNode>> suggestions(ServerHttpRequest request) {
+        if (!searchEnabled) {
+            return Mono.just(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(searchDisabledBody()));
+        }
+
+        MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>(request.getQueryParams());
+        return withOptionalUserContextHeaders(downstreamHeaders ->
+                callSuggestions(queryParams, downstreamHeaders));
+    }
+
     public Mono<ResponseEntity<JsonNode>> trackClick(JsonNode requestBody) {
         return searchClickRelayService.trackClick(requestBody);
     }
@@ -91,6 +101,16 @@ public class SearchMediaBffService {
                                                       HttpHeaders downstreamHeaders) {
         return searchWebClient.method(HttpMethod.GET)
                 .uri(uriBuilder -> buildSearchUri(uriBuilder, queryParams))
+                .headers(headers -> headers.addAll(downstreamHeaders))
+                .exchangeToMono(response -> response.bodyToMono(JsonNode.class)
+                        .defaultIfEmpty(objectMapper.createObjectNode())
+                        .map(payload -> ResponseEntity.status(response.statusCode()).body(payload)));
+    }
+
+    private Mono<ResponseEntity<JsonNode>> callSuggestions(MultiValueMap<String, String> queryParams,
+                                                           HttpHeaders downstreamHeaders) {
+        return searchWebClient.method(HttpMethod.GET)
+                .uri(uriBuilder -> buildSuggestionsUri(uriBuilder, queryParams))
                 .headers(headers -> headers.addAll(downstreamHeaders))
                 .exchangeToMono(response -> response.bodyToMono(JsonNode.class)
                         .defaultIfEmpty(objectMapper.createObjectNode())
@@ -151,7 +171,14 @@ public class SearchMediaBffService {
     }
 
     private java.net.URI buildSearchUri(UriBuilder uriBuilder, MultiValueMap<String, String> queryParams) {
-        UriBuilder builder = uriBuilder.path("/api/v1/search");
+        return buildQueryUri(uriBuilder.path("/api/v1/search"), queryParams);
+    }
+
+    private java.net.URI buildSuggestionsUri(UriBuilder uriBuilder, MultiValueMap<String, String> queryParams) {
+        return buildQueryUri(uriBuilder.path("/api/v1/search/suggestions"), queryParams);
+    }
+
+    private java.net.URI buildQueryUri(UriBuilder builder, MultiValueMap<String, String> queryParams) {
         if (queryParams == null || queryParams.isEmpty()) {
             return builder.build();
         }

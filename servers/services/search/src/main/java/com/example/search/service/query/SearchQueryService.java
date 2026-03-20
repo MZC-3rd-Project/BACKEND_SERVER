@@ -126,7 +126,10 @@ public class SearchQueryService {
         fields.add("category^2");
         fields.add("categoryPath^2");
         fields.add("storeName^2");
+        fields.add("aiTags^3");
+        fields.add("aiKeywords^2");
         fields.add("description^1.5");
+        fields.add("aiSummary^1.5");
         fields.add("detailTitles^1.5");
         fields.add("detailDescriptions");
 

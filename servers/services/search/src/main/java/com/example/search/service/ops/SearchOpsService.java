@@ -10,6 +10,7 @@ import com.example.search.client.dto.StoreSnapshot;
 import com.example.search.document.ItemDocument;
 import com.example.search.dto.request.SearchReindexRequest;
 import com.example.search.dto.response.SearchReindexResponse;
+import com.example.search.service.enrichment.SearchAiEnrichmentTaskPublisher;
 import com.example.search.service.index.ElasticsearchDocumentClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +36,7 @@ public class SearchOpsService {
     private final StockSummaryClient stockSummaryClient;
     private final StoreSnapshotClient storeSnapshotClient;
     private final ElasticsearchDocumentClient elasticsearchDocumentClient;
+    private final SearchAiEnrichmentTaskPublisher searchAiEnrichmentTaskPublisher;
 
     @Transactional(readOnly = true)
     public SearchReindexResponse reindexItems(SearchReindexRequest request) {
@@ -66,6 +68,7 @@ public class SearchOpsService {
                 StoreSnapshot storeSnapshot = resolveStore(storeSnapshotCache, document.storeId());
                 Integer availableStock = resolveAvailableStock(document.itemId());
                 elasticsearchDocumentClient.upsert(ItemDocument.from(document, storeSnapshot, availableStock));
+                searchAiEnrichmentTaskPublisher.publish(document, "REINDEX");
                 indexedCount++;
             }
 
