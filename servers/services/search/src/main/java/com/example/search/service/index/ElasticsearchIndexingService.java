@@ -1,8 +1,10 @@
 package com.example.search.service.index;
 
 import com.example.search.client.ProductSearchSourceClient;
+import com.example.search.client.StockSummaryClient;
 import com.example.search.client.StoreSnapshotClient;
 import com.example.search.client.dto.ProductSearchDocument;
+import com.example.search.client.dto.StockSummary;
 import com.example.search.client.dto.StoreSnapshot;
 import com.example.search.document.ItemDocument;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ import java.util.Optional;
 public class ElasticsearchIndexingService implements SearchIndexingService {
 
     private final ProductSearchSourceClient productSearchSourceClient;
+    private final StockSummaryClient stockSummaryClient;
     private final StoreSnapshotClient storeSnapshotClient;
     private final ElasticsearchDocumentClient elasticsearchDocumentClient;
 
@@ -28,7 +31,13 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         }
 
         StoreSnapshot storeSnapshot = resolveStore(productDocument.get().storeId());
-        elasticsearchDocumentClient.upsert(ItemDocument.from(productDocument.get(), storeSnapshot));
+        Integer availableStock = resolveAvailableStock(itemId);
+        elasticsearchDocumentClient.upsert(ItemDocument.from(productDocument.get(), storeSnapshot, availableStock));
+    }
+
+    @Override
+    public void updateAvailableStock(Long itemId, Integer availableStock) {
+        elasticsearchDocumentClient.updateAvailableStock(itemId, availableStock);
     }
 
     @Override
@@ -46,11 +55,18 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         StoreSnapshot storeSnapshot = resolveStore(storeId);
         List<ProductSearchDocument> documents = productSearchSourceClient.findSearchDocuments(itemIds);
         for (ProductSearchDocument document : documents) {
-            elasticsearchDocumentClient.upsert(ItemDocument.from(document, storeSnapshot));
+            Integer availableStock = resolveAvailableStock(document.itemId());
+            elasticsearchDocumentClient.upsert(ItemDocument.from(document, storeSnapshot, availableStock));
         }
     }
 
     private StoreSnapshot resolveStore(Long storeId) {
         return storeSnapshotClient.findStore(storeId).orElse(null);
+    }
+
+    private Integer resolveAvailableStock(Long itemId) {
+        return stockSummaryClient.findByItemId(itemId)
+                .map(StockSummary::availableQuantity)
+                .orElse(null);
     }
 }

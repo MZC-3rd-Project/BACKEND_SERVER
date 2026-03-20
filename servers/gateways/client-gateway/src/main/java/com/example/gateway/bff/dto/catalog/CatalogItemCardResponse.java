@@ -12,6 +12,7 @@ public record CatalogItemCardResponse(
         String status,
         CatalogPriceResponse price,
         Integer stock,
+        Integer availableStock,
         Long thumbnailMediaId,
         String thumbnailUrl,
         Long activeHotDealId,

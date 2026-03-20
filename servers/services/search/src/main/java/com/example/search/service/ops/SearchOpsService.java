@@ -1,9 +1,11 @@
 package com.example.search.service.ops;
 
 import com.example.search.client.ProductSearchSourceClient;
+import com.example.search.client.StockSummaryClient;
 import com.example.search.client.StoreSnapshotClient;
 import com.example.search.client.dto.ProductSearchDocument;
 import com.example.search.client.dto.SearchDocumentPage;
+import com.example.search.client.dto.StockSummary;
 import com.example.search.client.dto.StoreSnapshot;
 import com.example.search.document.ItemDocument;
 import com.example.search.dto.request.SearchReindexRequest;
@@ -30,6 +32,7 @@ public class SearchOpsService {
     private static final int MAX_MAX_PAGES = 1_000;
 
     private final ProductSearchSourceClient productSearchSourceClient;
+    private final StockSummaryClient stockSummaryClient;
     private final StoreSnapshotClient storeSnapshotClient;
     private final ElasticsearchDocumentClient elasticsearchDocumentClient;
 
@@ -61,7 +64,8 @@ public class SearchOpsService {
 
             for (ProductSearchDocument document : page.items()) {
                 StoreSnapshot storeSnapshot = resolveStore(storeSnapshotCache, document.storeId());
-                elasticsearchDocumentClient.upsert(ItemDocument.from(document, storeSnapshot));
+                Integer availableStock = resolveAvailableStock(document.itemId());
+                elasticsearchDocumentClient.upsert(ItemDocument.from(document, storeSnapshot, availableStock));
                 indexedCount++;
             }
 
@@ -102,6 +106,12 @@ public class SearchOpsService {
             return null;
         }
         return storeSnapshotCache.computeIfAbsent(storeId, storeSnapshotClient::findStore).orElse(null);
+    }
+
+    private Integer resolveAvailableStock(Long itemId) {
+        return stockSummaryClient.findByItemId(itemId)
+                .map(StockSummary::availableQuantity)
+                .orElse(null);
     }
 
     private int normalizeSize(Integer size) {

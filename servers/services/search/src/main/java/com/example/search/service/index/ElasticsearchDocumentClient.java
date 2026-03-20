@@ -71,6 +71,40 @@ public class ElasticsearchDocumentClient {
         }
     }
 
+    public void updateAvailableStock(Long itemId, Integer availableStock) {
+        if (itemId == null || itemId <= 0L) {
+            return;
+        }
+
+        ensureIndexExists();
+
+        ObjectNode requestBody = objectMapper.createObjectNode();
+        ObjectNode docNode = requestBody.putObject("doc");
+        if (availableStock == null) {
+            docNode.putNull("availableStock");
+        } else {
+            docNode.put("availableStock", availableStock);
+        }
+
+        RawResponse response;
+        try {
+            response = exchange(
+                    "available stock update",
+                    HttpMethod.POST,
+                    "/" + properties.getIndexName() + "/_update/" + itemId,
+                    requestBody
+            );
+        } catch (WebClientResponseException.NotFound exception) {
+            return;
+        }
+        if (response.status().value() == 404) {
+            return;
+        }
+        if (!response.status().is2xxSuccessful()) {
+            throw backendFailure("available stock update failed", response);
+        }
+    }
+
     public void delete(Long itemId) {
         if (itemId == null || itemId <= 0L) {
             return;
@@ -227,6 +261,7 @@ public class ElasticsearchDocumentClient {
         addTextField(propertiesNode, "detailDescriptions");
         addTextField(propertiesNode, "detailHighlights");
         addIntegerField(propertiesNode, "stock");
+        addIntegerField(propertiesNode, "availableStock");
         addLongField(propertiesNode, "activeHotDealId");
         addLongField(propertiesNode, "activeCampaignId");
         addDateField(propertiesNode, "sourceCreatedAt");

@@ -32,6 +32,7 @@ public record ItemDocument(
         List<String> detailDescriptions,
         List<String> detailHighlights,
         Integer stock,
+        Integer availableStock,
         Long activeHotDealId,
         Long activeCampaignId,
         LocalDateTime sourceCreatedAt,
@@ -47,7 +48,7 @@ public record ItemDocument(
         detailHighlights = immutableList(detailHighlights);
     }
 
-    public static ItemDocument from(ProductSearchDocument productDocument, StoreSnapshot storeSnapshot) {
+    public static ItemDocument from(ProductSearchDocument productDocument, StoreSnapshot storeSnapshot, Integer availableStock) {
         String status = trimToNull(productDocument.status());
         Long price = productDocument.price();
 
@@ -75,6 +76,7 @@ public record ItemDocument(
                 productDocument.detailDescriptions(),
                 productDocument.detailHighlights(),
                 productDocument.stock(),
+                availableStock,
                 null,
                 null,
                 productDocument.sourceCreatedAt(),

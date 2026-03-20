@@ -53,6 +53,7 @@ class SearchAnalyticsEventServiceTest {
                         null,
                         null,
                         null,
+                        null,
                         null
                 ))
                 .toList();

@@ -1,9 +1,11 @@
 package com.example.search.service.ops;
 
 import com.example.search.client.ProductSearchSourceClient;
+import com.example.search.client.StockSummaryClient;
 import com.example.search.client.StoreSnapshotClient;
 import com.example.search.client.dto.ProductSearchDocument;
 import com.example.search.client.dto.SearchDocumentPage;
+import com.example.search.client.dto.StockSummary;
 import com.example.search.client.dto.StoreSnapshot;
 import com.example.search.dto.request.SearchReindexRequest;
 import com.example.search.dto.response.SearchReindexResponse;
@@ -26,6 +28,7 @@ import static org.mockito.Mockito.when;
 class SearchOpsServiceTest {
 
     private ProductSearchSourceClient productSearchSourceClient;
+    private StockSummaryClient stockSummaryClient;
     private StoreSnapshotClient storeSnapshotClient;
     private ElasticsearchDocumentClient elasticsearchDocumentClient;
     private SearchOpsService searchOpsService;
@@ -33,10 +36,12 @@ class SearchOpsServiceTest {
     @BeforeEach
     void setUp() {
         productSearchSourceClient = mock(ProductSearchSourceClient.class);
+        stockSummaryClient = mock(StockSummaryClient.class);
         storeSnapshotClient = mock(StoreSnapshotClient.class);
         elasticsearchDocumentClient = mock(ElasticsearchDocumentClient.class);
         searchOpsService = new SearchOpsService(
                 productSearchSourceClient,
+                stockSummaryClient,
                 storeSnapshotClient,
                 elasticsearchDocumentClient
         );
@@ -52,6 +57,9 @@ class SearchOpsServiceTest {
                 .thenReturn(new SearchDocumentPage(List.of(first, second), "cursor-2"));
         when(productSearchSourceClient.findSearchDocuments("cursor-2", 2))
                 .thenReturn(new SearchDocumentPage(List.of(third), null));
+        when(stockSummaryClient.findByItemId(100L)).thenReturn(Optional.of(new StockSummary(100L, 17, 11, 0, 6, false)));
+        when(stockSummaryClient.findByItemId(90L)).thenReturn(Optional.of(new StockSummary(90L, 17, 10, 0, 7, false)));
+        when(stockSummaryClient.findByItemId(80L)).thenReturn(Optional.of(new StockSummary(80L, 17, 9, 0, 8, false)));
         when(storeSnapshotClient.findStore(10L))
                 .thenReturn(Optional.of(new StoreSnapshot(10L, "스토어A", "ACTIVE")));
         when(storeSnapshotClient.findStore(11L))
@@ -77,6 +85,7 @@ class SearchOpsServiceTest {
 
         when(productSearchSourceClient.findSearchDocuments(null, 1))
                 .thenReturn(new SearchDocumentPage(List.of(first), "cursor-2"));
+        when(stockSummaryClient.findByItemId(100L)).thenReturn(Optional.of(new StockSummary(100L, 17, 11, 0, 6, false)));
         when(storeSnapshotClient.findStore(10L))
                 .thenReturn(Optional.of(new StoreSnapshot(10L, "스토어A", "ACTIVE")));
 

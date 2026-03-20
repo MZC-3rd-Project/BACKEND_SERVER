@@ -52,6 +52,7 @@ app:
   service:
     product-url: ${PRODUCT_SERVICE_URL:http://localhost:8084}
     store-url: ${STORE_SERVICE_URL:http://localhost:8072}
+    stock-url: ${STOCK_SERVICE_URL:http://localhost:8085}
 
   openapi:
     enabled: ${OPENAPI_ENABLED:true}

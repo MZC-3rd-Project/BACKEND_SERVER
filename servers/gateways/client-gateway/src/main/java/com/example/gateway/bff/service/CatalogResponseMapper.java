@@ -86,6 +86,7 @@ public class CatalogResponseMapper {
                 status,
                 price,
                 asNullableInteger(itemNode.path("stock")),
+                asNullableInteger(itemNode.path("availableStock")),
                 asNullableLong(itemNode.path("thumbnailMediaId")),
                 textOrNull(itemNode.path("thumbnailUrl")),
                 activeHotDealId,

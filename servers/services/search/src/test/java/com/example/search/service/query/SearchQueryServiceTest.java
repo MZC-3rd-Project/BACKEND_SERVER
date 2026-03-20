@@ -39,6 +39,8 @@ class SearchQueryServiceTest {
                           "price": 32000,
                           "basePrice": 32000,
                           "effectivePrice": 29000,
+                          "stock": 20,
+                          "availableStock": 12,
                           "thumbnailMediaId": 501
                         }
                       },
@@ -80,6 +82,8 @@ class SearchQueryServiceTest {
         assertThat(response.getNextCursor()).isNotBlank();
         assertThat(response.getItems().get(0).itemId()).isEqualTo(101L);
         assertThat(response.getItems().get(0).salesChannel()).isEqualTo("NORMAL");
+        assertThat(response.getItems().get(0).stock()).isEqualTo(20);
+        assertThat(response.getItems().get(0).availableStock()).isEqualTo(12);
         assertThat(response.getItems().get(1).activeHotDealId()).isEqualTo(9001L);
     }
 
