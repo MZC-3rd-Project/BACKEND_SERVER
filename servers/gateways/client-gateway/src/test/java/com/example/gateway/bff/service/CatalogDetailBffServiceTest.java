@@ -23,6 +23,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -33,6 +34,8 @@ class CatalogDetailBffServiceTest {
 
     @Mock
     private CatalogDetailDownstreamClient downstreamClient;
+    @Mock
+    private SearchClickRelayService searchClickRelayService;
 
     private CatalogDetailBffService service;
     private ObjectMapper objectMapper;
@@ -45,7 +48,14 @@ class CatalogDetailBffServiceTest {
 
         objectMapper = new ObjectMapper();
         CatalogMetricsService catalogMetricsService = new CatalogMetricsService(new SimpleMeterRegistry());
-        service = new CatalogDetailBffService(downstreamClient, securityProperties, catalogMetricsService, objectMapper);
+        lenient().when(searchClickRelayService.trackClickBestEffort(any(), any())).thenReturn(Mono.empty());
+        service = new CatalogDetailBffService(
+                downstreamClient,
+                searchClickRelayService,
+                securityProperties,
+                catalogMetricsService,
+                objectMapper
+        );
     }
 
     @Test
@@ -54,7 +64,7 @@ class CatalogDetailBffServiceTest {
                 .thenReturn(Mono.just(response(HttpStatus.OK, "hot-deal")));
 
         ResponseEntity<JsonNode> response = service
-                .getCatalogDetail(11L, "PRODUCT", "HOT_DEAL", 901L, null)
+                .getCatalogDetail(11L, "PRODUCT", "HOT_DEAL", 901L, null, null)
                 .block();
 
         assertThat(response).isNotNull();
@@ -71,7 +81,7 @@ class CatalogDetailBffServiceTest {
                 .thenReturn(Mono.just(response(HttpStatus.OK, "normal")));
 
         ResponseEntity<JsonNode> response = service
-                .getCatalogDetail(11L, "PRODUCT", "HOT_DEAL", 901L, null)
+                .getCatalogDetail(11L, "PRODUCT", "HOT_DEAL", 901L, null, null)
                 .block();
 
         assertThat(response).isNotNull();
@@ -88,7 +98,7 @@ class CatalogDetailBffServiceTest {
                 .thenReturn(Mono.just(response(HttpStatus.OK, "normal")));
 
         ResponseEntity<JsonNode> response = service
-                .getCatalogDetail(22L, "GOODS", "FUNDING", null, null)
+                .getCatalogDetail(22L, "GOODS", "FUNDING", null, null, null)
                 .block();
 
         assertThat(response).isNotNull();
@@ -104,7 +114,7 @@ class CatalogDetailBffServiceTest {
                 .thenReturn(Mono.just(response(HttpStatus.OK, "normal")));
 
         ResponseEntity<JsonNode> response = service
-                .getCatalogDetail(33L, "PERFORMANCE", "NORMAL", null, null)
+                .getCatalogDetail(33L, "PERFORMANCE", "NORMAL", null, null, null)
                 .block();
 
         assertThat(response).isNotNull();
@@ -118,7 +128,7 @@ class CatalogDetailBffServiceTest {
     @Test
     void getCatalogDetail_returns400WhenRequestInvalid() {
         ResponseEntity<JsonNode> response = service
-                .getCatalogDetail(0L, "PRODUCT", "HOT_DEAL", 1L, null)
+                .getCatalogDetail(0L, "PRODUCT", "HOT_DEAL", 1L, null, null)
                 .block();
 
         assertThat(response).isNotNull();
@@ -184,7 +194,7 @@ class CatalogDetailBffServiceTest {
                         """)));
 
         ResponseEntity<JsonNode> response = service
-                .getCatalogDetail(22L, "PRODUCT", "FUNDING", null, 77L)
+                .getCatalogDetail(22L, "PRODUCT", "FUNDING", null, 77L, null)
                 .block();
 
         assertThat(response).isNotNull();
@@ -248,7 +258,7 @@ class CatalogDetailBffServiceTest {
                         """)));
 
         ResponseEntity<JsonNode> response = service
-                .getCatalogDetail(11L, "PRODUCT", "HOT_DEAL", 901L, null)
+                .getCatalogDetail(11L, "PRODUCT", "HOT_DEAL", 901L, null, null)
                 .block();
 
         assertThat(response).isNotNull();
@@ -258,6 +268,20 @@ class CatalogDetailBffServiceTest {
         assertThat(response.getBody().path("data").path("salesChannel").asText()).isEqualTo("HOT_DEAL");
         assertThat(response.getBody().path("data").path("thumbnailUrl").asText())
                 .isEqualTo("https://cdn.example.com/1010.webp");
+    }
+
+    @Test
+    void getCatalogDetail_tracksSearchClickWhenQueryHashProvided() {
+        when(downstreamClient.fetchNormalDetail(eq(BffItemType.PRODUCT), eq(44L), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(response(HttpStatus.OK, "normal")));
+        when(searchClickRelayService.trackClickBestEffort(44L, "hash-123")).thenReturn(Mono.empty());
+
+        ResponseEntity<JsonNode> response = service
+                .getCatalogDetail(44L, "PRODUCT", "NORMAL", null, null, "hash-123")
+                .block();
+
+        assertThat(response).isNotNull();
+        verify(searchClickRelayService).trackClickBestEffort(44L, "hash-123");
     }
 
     @Test

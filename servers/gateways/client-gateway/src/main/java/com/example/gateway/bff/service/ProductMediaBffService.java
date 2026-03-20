@@ -43,12 +43,14 @@ public class ProductMediaBffService {
     private final GatewaySessionPrincipalResolver sessionPrincipalResolver;
     private final GatewaySecurityProperties securityProperties;
     private final ObjectProvider<HmacSigner> hmacSignerProvider;
+    private final SearchClickRelayService searchClickRelayService;
 
     public ProductMediaBffService(WebClient.Builder webClientBuilder,
                                   ObjectMapper objectMapper,
                                   GatewaySessionPrincipalResolver sessionPrincipalResolver,
                                   GatewaySecurityProperties securityProperties,
                                   ObjectProvider<HmacSigner> hmacSignerProvider,
+                                  SearchClickRelayService searchClickRelayService,
                                   @Value("${app.service.product-url:http://localhost:8084}") String productServiceUrl) {
         this.webClient = webClientBuilder
                 .baseUrl(productServiceUrl)
@@ -57,6 +59,7 @@ public class ProductMediaBffService {
         this.sessionPrincipalResolver = sessionPrincipalResolver;
         this.securityProperties = securityProperties;
         this.hmacSignerProvider = hmacSignerProvider;
+        this.searchClickRelayService = searchClickRelayService;
     }
 
     public Mono<ResponseEntity<JsonNode>> createProductWithMedia(BffItemCreateCommandRequest request) {
@@ -86,7 +89,7 @@ public class ProductMediaBffService {
         return updateItemWithMedia(BffItemType.PERFORMANCE, itemId, request);
     }
 
-    public Mono<ResponseEntity<JsonNode>> findItemDetail(String typeValue, Long itemId) {
+    public Mono<ResponseEntity<JsonNode>> findItemDetail(String typeValue, Long itemId, String searchQueryHash) {
         BffItemType itemType = parseItemType(typeValue);
         if (itemType == null) {
             return Mono.just(badRequest("type은 PRODUCT, GOODS, PERFORMANCE 중 하나여야 합니다"));
@@ -96,7 +99,12 @@ public class ProductMediaBffService {
         }
         return withAuthHeaders(false, downstreamHeaders -> {
             String detailPath = resolveDetailPath(itemType, hasSellerContext(downstreamHeaders));
-            return callDownstream(HttpMethod.GET, detailPath + "/" + itemId, downstreamHeaders, null);
+            Mono<ResponseEntity<JsonNode>> detailMono =
+                    callDownstream(HttpMethod.GET, detailPath + "/" + itemId, downstreamHeaders, null);
+            return detailMono.zipWith(
+                    searchClickRelayService.trackClickBestEffort(itemId, searchQueryHash).thenReturn(Boolean.TRUE),
+                    (response, ignored) -> response
+            );
         });
     }
 

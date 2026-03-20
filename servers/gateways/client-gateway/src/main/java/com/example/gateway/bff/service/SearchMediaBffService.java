@@ -44,6 +44,7 @@ public class SearchMediaBffService {
     private final GatewaySessionPrincipalResolver sessionPrincipalResolver;
     private final GatewaySecurityProperties securityProperties;
     private final SearchThumbnailFallbackEnricher fallbackEnricher;
+    private final SearchClickRelayService searchClickRelayService;
     private final ObjectMapper objectMapper;
     private final ObjectProvider<HmacSigner> hmacSignerProvider;
     private final boolean searchEnabled;
@@ -53,6 +54,7 @@ public class SearchMediaBffService {
             GatewaySessionPrincipalResolver sessionPrincipalResolver,
             GatewaySecurityProperties securityProperties,
             SearchThumbnailFallbackEnricher fallbackEnricher,
+            SearchClickRelayService searchClickRelayService,
             ObjectMapper objectMapper,
             ObjectProvider<HmacSigner> hmacSignerProvider,
             @Value("${app.feature.search-enabled:true}") boolean searchEnabled,
@@ -64,6 +66,7 @@ public class SearchMediaBffService {
         this.sessionPrincipalResolver = sessionPrincipalResolver;
         this.securityProperties = securityProperties;
         this.fallbackEnricher = fallbackEnricher;
+        this.searchClickRelayService = searchClickRelayService;
         this.objectMapper = objectMapper;
         this.hmacSignerProvider = hmacSignerProvider;
         this.searchEnabled = searchEnabled;
@@ -81,20 +84,7 @@ public class SearchMediaBffService {
     }
 
     public Mono<ResponseEntity<JsonNode>> trackClick(JsonNode requestBody) {
-        if (!searchEnabled) {
-            return Mono.just(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(searchDisabledBody()));
-        }
-
-        JsonNode safeRequestBody = requestBody == null ? objectMapper.createObjectNode() : requestBody;
-        return withOptionalUserContextHeaders(downstreamHeaders ->
-                searchWebClient.post()
-                        .uri("/api/v1/search/clicks")
-                        .headers(headers -> headers.addAll(downstreamHeaders))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(safeRequestBody)
-                        .exchangeToMono(response -> response.bodyToMono(JsonNode.class)
-                                .defaultIfEmpty(objectMapper.createObjectNode())
-                                .map(payload -> ResponseEntity.status(response.statusCode()).body(payload))));
+        return searchClickRelayService.trackClick(requestBody);
     }
 
     private Mono<ResponseEntity<JsonNode>> callSearch(MultiValueMap<String, String> queryParams,

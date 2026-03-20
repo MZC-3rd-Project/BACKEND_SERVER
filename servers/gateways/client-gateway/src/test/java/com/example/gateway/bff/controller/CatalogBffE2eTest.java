@@ -147,11 +147,11 @@ class CatalogBffE2eTest {
                 .jsonPath("$.data.items[0].itemId").isEqualTo(101)
                 .jsonPath("$.data.items[0].salesChannel").isEqualTo("HOT_DEAL")
                 .jsonPath("$.data.items[0].detailTarget.path")
-                .isEqualTo("/bff/v1/catalog/items/101/detail?itemType=PRODUCT&salesChannel=HOT_DEAL&hotDealId=9001")
+                .isEqualTo("/bff/v1/catalog/items/101/detail?itemType=PRODUCT&salesChannel=HOT_DEAL&hotDealId=9001&searchQueryHash=c071cf5f5ed6f884cc70155b6f05f755fd46a302d05e4261b7e92ce878bbfed8")
                 .jsonPath("$.data.items[1].itemId").isEqualTo(102)
                 .jsonPath("$.data.items[1].salesChannel").isEqualTo("FUNDING")
                 .jsonPath("$.data.items[1].detailTarget.path")
-                .isEqualTo("/bff/v1/catalog/items/102/detail?itemType=PRODUCT&salesChannel=FUNDING&campaignId=7001")
+                .isEqualTo("/bff/v1/catalog/items/102/detail?itemType=PRODUCT&salesChannel=FUNDING&campaignId=7001&searchQueryHash=c071cf5f5ed6f884cc70155b6f05f755fd46a302d05e4261b7e92ce878bbfed8")
                 .jsonPath("$.data.items[2].itemId").isEqualTo(103)
                 .jsonPath("$.data.items[2].salesChannel").isEqualTo("NORMAL");
 
