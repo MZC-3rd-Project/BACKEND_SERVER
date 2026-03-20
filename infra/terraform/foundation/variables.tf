@@ -66,6 +66,12 @@ variable "runtime_ingress_cidr_blocks" {
   default     = []
 }
 
+variable "eks_node_security_group_id" {
+  description = "Optional EKS worker node security group allowed to reach shared dependencies"
+  type        = string
+  default     = null
+}
+
 variable "eks_cluster_name" {
   description = "Optional EKS cluster name for tagging shared subnets"
   type        = string
