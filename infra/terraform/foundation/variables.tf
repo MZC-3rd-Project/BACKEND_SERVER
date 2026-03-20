@@ -4,6 +4,12 @@ variable "aws_region" {
   default     = "ap-northeast-2"
 }
 
+variable "aws_profile" {
+  description = "AWS CLI profile name"
+  type        = string
+  default     = null
+}
+
 variable "environment" {
   description = "Environment name (e.g. dev, stage, prod)"
   type        = string
@@ -52,6 +58,18 @@ variable "private_subnet_cidrs" {
     condition     = length(var.private_subnet_cidrs) == length(var.public_subnet_cidrs)
     error_message = "public_subnet_cidrs and private_subnet_cidrs must have the same length."
   }
+}
+
+variable "runtime_ingress_cidr_blocks" {
+  description = "CIDR blocks allowed to access runtime dependencies from app workloads"
+  type        = list(string)
+  default     = []
+}
+
+variable "eks_cluster_name" {
+  description = "Optional EKS cluster name for tagging shared subnets"
+  type        = string
+  default     = null
 }
 
 variable "enable_nat_gateway" {
