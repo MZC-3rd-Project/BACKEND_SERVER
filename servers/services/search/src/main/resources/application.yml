@@ -51,6 +51,7 @@ app:
 
   service:
     product-url: ${PRODUCT_SERVICE_URL:http://localhost:8084}
+    funding-url: ${FUNDING_SERVICE_URL:http://localhost:8086}
     store-url: ${STORE_SERVICE_URL:http://localhost:8072}
     stock-url: ${STOCK_SERVICE_URL:http://localhost:8085}
 

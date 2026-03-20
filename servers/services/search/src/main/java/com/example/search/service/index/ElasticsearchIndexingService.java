@@ -1,8 +1,10 @@
 package com.example.search.service.index;
 
+import com.example.search.client.FundingCampaignClient;
 import com.example.search.client.ProductSearchSourceClient;
 import com.example.search.client.StockSummaryClient;
 import com.example.search.client.StoreSnapshotClient;
+import com.example.search.client.dto.FundingCampaignSnapshot;
 import com.example.search.client.dto.ProductSearchDocument;
 import com.example.search.client.dto.StockSummary;
 import com.example.search.client.dto.StoreSnapshot;
@@ -19,6 +21,7 @@ import java.util.Optional;
 public class ElasticsearchIndexingService implements SearchIndexingService {
 
     private final ProductSearchSourceClient productSearchSourceClient;
+    private final FundingCampaignClient fundingCampaignClient;
     private final StockSummaryClient stockSummaryClient;
     private final StoreSnapshotClient storeSnapshotClient;
     private final ElasticsearchDocumentClient elasticsearchDocumentClient;
@@ -34,7 +37,13 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
 
         StoreSnapshot storeSnapshot = resolveStore(productDocument.get().storeId());
         Integer availableStock = resolveAvailableStock(itemId);
-        elasticsearchDocumentClient.upsert(ItemDocument.from(productDocument.get(), storeSnapshot, availableStock));
+        FundingCampaignSnapshot fundingCampaignSnapshot = resolveFundingCampaign(productDocument.get());
+        elasticsearchDocumentClient.upsert(ItemDocument.from(
+                productDocument.get(),
+                storeSnapshot,
+                availableStock,
+                fundingCampaignSnapshot
+        ));
         searchAiEnrichmentTaskPublisher.publish(productDocument.get(), "ITEM_UPDATED");
     }
 
@@ -59,7 +68,13 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         List<ProductSearchDocument> documents = productSearchSourceClient.findSearchDocuments(itemIds);
         for (ProductSearchDocument document : documents) {
             Integer availableStock = resolveAvailableStock(document.itemId());
-            elasticsearchDocumentClient.upsert(ItemDocument.from(document, storeSnapshot, availableStock));
+            FundingCampaignSnapshot fundingCampaignSnapshot = resolveFundingCampaign(document);
+            elasticsearchDocumentClient.upsert(ItemDocument.from(
+                    document,
+                    storeSnapshot,
+                    availableStock,
+                    fundingCampaignSnapshot
+            ));
             searchAiEnrichmentTaskPublisher.publish(document, "STORE_REINDEX");
         }
     }
@@ -72,5 +87,22 @@ public class ElasticsearchIndexingService implements SearchIndexingService {
         return stockSummaryClient.findByItemId(itemId)
                 .map(StockSummary::availableQuantity)
                 .orElse(null);
+    }
+
+    private FundingCampaignSnapshot resolveFundingCampaign(ProductSearchDocument productDocument) {
+        if (productDocument == null || !isFundingStatus(productDocument.status())) {
+            return null;
+        }
+        return fundingCampaignClient.findByItemId(productDocument.itemId()).orElse(null);
+    }
+
+    private boolean isFundingStatus(String status) {
+        if (status == null) {
+            return false;
+        }
+        return switch (status.trim().toUpperCase()) {
+            case "FUNDING", "FUNDED", "FUND_FAILED" -> true;
+            default -> false;
+        };
     }
 }

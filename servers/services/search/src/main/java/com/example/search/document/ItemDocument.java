@@ -1,5 +1,6 @@
 package com.example.search.document;
 
+import com.example.search.client.dto.FundingCampaignSnapshot;
 import com.example.search.client.dto.ProductSearchDocument;
 import com.example.search.client.dto.StoreSnapshot;
 import org.springframework.util.StringUtils;
@@ -16,6 +17,7 @@ public record ItemDocument(
         Long categoryId,
         String category,
         List<String> categoryPath,
+        List<String> categoryCodes,
         String domainType,
         String status,
         String salesChannel,
@@ -49,6 +51,7 @@ public record ItemDocument(
 
     public ItemDocument {
         categoryPath = immutableList(categoryPath);
+        categoryCodes = immutableList(categoryCodes);
         tags = immutableList(tags);
         features = immutableList(features);
         detailTitles = immutableList(detailTitles);
@@ -58,17 +61,30 @@ public record ItemDocument(
         aiKeywords = immutableList(aiKeywords);
     }
 
-    public static ItemDocument from(ProductSearchDocument productDocument, StoreSnapshot storeSnapshot, Integer availableStock) {
+    public static ItemDocument from(
+            ProductSearchDocument productDocument,
+            StoreSnapshot storeSnapshot,
+            Integer availableStock,
+            FundingCampaignSnapshot fundingCampaignSnapshot
+    ) {
         String status = trimToNull(productDocument.status());
         Long price = productDocument.price();
+        String category = trimToNull(productDocument.category());
+        List<String> categoryPath = productDocument.categoryPath();
+        List<String> categoryCodes = SearchCategoryCodeResolver.resolve(
+                category,
+                categoryPath,
+                fundingCampaignSnapshot == null ? null : fundingCampaignSnapshot.category()
+        );
 
         return new ItemDocument(
                 productDocument.itemId(),
                 trimToNull(productDocument.title()),
                 trimToNull(productDocument.description()),
                 productDocument.categoryId(),
-                trimToNull(productDocument.category()),
-                productDocument.categoryPath(),
+                category,
+                categoryPath,
+                categoryCodes,
                 trimToNull(productDocument.domainType()),
                 status,
                 resolveSalesChannel(status),
@@ -95,7 +111,7 @@ public record ItemDocument(
                 productDocument.stock(),
                 availableStock,
                 null,
-                null,
+                fundingCampaignSnapshot == null ? null : fundingCampaignSnapshot.campaignId(),
                 productDocument.sourceCreatedAt(),
                 productDocument.sourceUpdatedAt()
         );

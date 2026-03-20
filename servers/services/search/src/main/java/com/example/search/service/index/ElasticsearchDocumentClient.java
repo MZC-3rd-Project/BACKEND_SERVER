@@ -286,6 +286,7 @@ public class ElasticsearchDocumentClient {
         addLongField(propertiesNode, "categoryId");
         addTextWithKeywordField(propertiesNode, "category");
         addTextWithKeywordField(propertiesNode, "categoryPath");
+        addKeywordField(propertiesNode, "categoryCodes");
         addKeywordField(propertiesNode, "domainType");
         addKeywordField(propertiesNode, "status");
         addKeywordField(propertiesNode, "salesChannel");
@@ -356,6 +357,7 @@ public class ElasticsearchDocumentClient {
     private void updateIndexMappings() {
         ObjectNode requestBody = objectMapper.createObjectNode();
         ObjectNode propertiesNode = requestBody.putObject("properties");
+        addKeywordField(propertiesNode, "categoryCodes");
         addTextWithKeywordField(propertiesNode, "aiTags");
         addTextWithKeywordField(propertiesNode, "aiKeywords");
         addTextField(propertiesNode, "aiSummary");

@@ -1,5 +1,6 @@
 package com.example.search.service.ops;
 
+import com.example.search.client.FundingCampaignClient;
 import com.example.search.client.ProductSearchSourceClient;
 import com.example.search.client.StockSummaryClient;
 import com.example.search.client.StoreSnapshotClient;
@@ -29,6 +30,7 @@ import static org.mockito.Mockito.when;
 class SearchOpsServiceTest {
 
     private ProductSearchSourceClient productSearchSourceClient;
+    private FundingCampaignClient fundingCampaignClient;
     private StockSummaryClient stockSummaryClient;
     private StoreSnapshotClient storeSnapshotClient;
     private ElasticsearchDocumentClient elasticsearchDocumentClient;
@@ -38,12 +40,14 @@ class SearchOpsServiceTest {
     @BeforeEach
     void setUp() {
         productSearchSourceClient = mock(ProductSearchSourceClient.class);
+        fundingCampaignClient = mock(FundingCampaignClient.class);
         stockSummaryClient = mock(StockSummaryClient.class);
         storeSnapshotClient = mock(StoreSnapshotClient.class);
         elasticsearchDocumentClient = mock(ElasticsearchDocumentClient.class);
         searchAiEnrichmentTaskPublisher = mock(SearchAiEnrichmentTaskPublisher.class);
         searchOpsService = new SearchOpsService(
                 productSearchSourceClient,
+                fundingCampaignClient,
                 stockSummaryClient,
                 storeSnapshotClient,
                 elasticsearchDocumentClient,

@@ -100,12 +100,23 @@ class SearchQueryServiceTest {
                 .path("bool")
                 .path("must")
                 .path(0)
+                .path("bool")
+                .path("should")
+                .path(0)
                 .path("multi_match")
                 .path("fields");
         assertThat(fields.isArray()).isTrue();
         List<String> fieldNames = new ArrayList<>();
         fields.forEach(node -> fieldNames.add(node.asText()));
         assertThat(fieldNames).contains("aiTags^3", "aiKeywords^2", "aiSummary^1.5");
+        assertThat(requestCaptor.getValue()
+                .path("query")
+                .path("bool")
+                .path("must")
+                .path(0)
+                .path("bool")
+                .path("should")
+                .toString()).contains("categoryCodes");
     }
 
     @Test
@@ -147,5 +158,36 @@ class SearchQueryServiceTest {
         assertThat(response.getItems()).hasSize(1);
         assertThat(response.getNextCursor()).isNull();
         assertThat(response.getTotalCount()).isEqualTo(1L);
+    }
+
+    @Test
+    void search_supportsCategoryCodeInKeywordAndFilter() throws Exception {
+        when(elasticsearchDocumentClient.search(any())).thenReturn(objectMapper.readTree("""
+                {
+                  "hits": {
+                    "total": { "value": 0 },
+                    "hits": []
+                  }
+                }
+                """));
+
+        SearchQuery query = SearchQuery.of(
+                "COLLECTIBLE",
+                "COLLECTIBLE",
+                null,
+                null,
+                null,
+                null,
+                "LATEST",
+                null,
+                12
+        );
+
+        searchQueryService.search(query);
+
+        ArgumentCaptor<ObjectNode> requestCaptor = ArgumentCaptor.forClass(ObjectNode.class);
+        verify(elasticsearchDocumentClient).search(requestCaptor.capture());
+        String requestJson = requestCaptor.getValue().toString();
+        assertThat(requestJson).contains("\"categoryCodes\":\"COLLECTIBLE\"");
     }
 }
