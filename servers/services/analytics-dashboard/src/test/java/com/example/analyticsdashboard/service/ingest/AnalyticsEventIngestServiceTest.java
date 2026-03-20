@@ -26,6 +26,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -163,6 +164,76 @@ class AnalyticsEventIngestServiceTest {
         assertThat(journeyEvent.getDomainType()).isEqualTo("SEARCH");
         assertThat(journeyEvent.getSessionId()).isEqualTo("sess-1");
         assertThat(journeyEvent.getEventSequence()).isEqualTo(0);
+    }
+
+    @Test
+    void ingestSearchEvent_searchExecuted_expandsJourneyByResultOwnership() {
+        when(rawSearchEventRepository.findByEventId("evt-search-results")).thenReturn(Optional.empty());
+        when(dimItemSnapshotRepository.findById(101L)).thenReturn(Optional.of(
+                AnalyticsDimItemSnapshot.builder()
+                        .itemId(101L)
+                        .storeId(201L)
+                        .sellerId(301L)
+                        .itemType("GOODS")
+                        .itemStatus("ON_SALE")
+                        .price(1000L)
+                        .stockQuantity(10L)
+                        .snapshotAt(LocalDateTime.now())
+                        .build()
+        ));
+        when(dimItemSnapshotRepository.findById(102L)).thenReturn(Optional.of(
+                AnalyticsDimItemSnapshot.builder()
+                        .itemId(102L)
+                        .storeId(201L)
+                        .sellerId(301L)
+                        .itemType("GOODS")
+                        .itemStatus("ON_SALE")
+                        .price(2000L)
+                        .stockQuantity(5L)
+                        .snapshotAt(LocalDateTime.now())
+                        .build()
+        ));
+        when(dimItemSnapshotRepository.findById(103L)).thenReturn(Optional.of(
+                AnalyticsDimItemSnapshot.builder()
+                        .itemId(103L)
+                        .storeId(202L)
+                        .sellerId(302L)
+                        .itemType("GOODS")
+                        .itemStatus("ON_SALE")
+                        .price(3000L)
+                        .stockQuantity(3L)
+                        .snapshotAt(LocalDateTime.now())
+                        .build()
+        ));
+
+        AnalyticsSearchEventMessage event = JsonUtils.fromJson("""
+                {
+                  "eventId": "evt-search-results",
+                  "eventType": "SEARCH_EXECUTED",
+                  "queryHash": "hash-result",
+                  "userId": 777,
+                  "resultItemIds": [101, 102, 103]
+                }
+                """, AnalyticsSearchEventMessage.class);
+
+        service.ingestSearchEvent(event);
+
+        ArgumentCaptor<AnalyticsJourneyEvent> journeyCaptor = ArgumentCaptor.forClass(AnalyticsJourneyEvent.class);
+        verify(analyticsJourneyEventRepository, times(2)).save(journeyCaptor.capture());
+
+        List<AnalyticsJourneyEvent> saved = journeyCaptor.getAllValues();
+        assertThat(saved)
+                .extracting(AnalyticsJourneyEvent::getEventSequence)
+                .containsExactly(0, 1);
+        assertThat(saved)
+                .extracting(AnalyticsJourneyEvent::getStoreId)
+                .containsExactly(201L, 202L);
+        assertThat(saved)
+                .extracting(AnalyticsJourneyEvent::getSellerId)
+                .containsExactly(301L, 302L);
+        assertThat(saved)
+                .extracting(AnalyticsJourneyEvent::getQueryHash)
+                .containsOnly("hash-result");
     }
 
     @Test

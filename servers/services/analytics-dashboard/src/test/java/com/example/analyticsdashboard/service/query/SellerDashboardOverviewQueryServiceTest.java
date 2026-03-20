@@ -2,16 +2,16 @@ package com.example.analyticsdashboard.service.query;
 
 import com.example.analyticsdashboard.dto.query.SellerDashboardOverviewQuery;
 import com.example.analyticsdashboard.dto.response.DashboardLagStatus;
+import com.example.analyticsdashboard.dto.response.SellerDashboardFunnelDomainResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardFunnelResponse;
+import com.example.analyticsdashboard.dto.response.SellerDashboardFunnelStepResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardOverviewResponse;
 import com.example.analyticsdashboard.repository.AnalyticsItemStatusCountRow;
 import com.example.analyticsdashboard.repository.AnalyticsRawSalesEventAggregateRow;
-import com.example.analyticsdashboard.repository.AnalyticsRawSearchEventCountRow;
 import com.example.analyticsdashboard.entity.AnalyticsRawSalesEvent;
 import com.example.analyticsdashboard.exception.AnalyticsDashboardErrorCode;
 import com.example.analyticsdashboard.repository.AnalyticsDimItemSnapshotRepository;
 import com.example.analyticsdashboard.repository.AnalyticsRawSalesEventRepository;
-import com.example.analyticsdashboard.repository.AnalyticsRawSearchEventRepository;
 import com.example.core.exception.BusinessException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,9 +36,6 @@ class SellerDashboardOverviewQueryServiceTest {
 
     @Mock
     private AnalyticsRawSalesEventRepository rawSalesEventRepository;
-
-    @Mock
-    private AnalyticsRawSearchEventRepository rawSearchEventRepository;
 
     @Mock
     private AnalyticsDimItemSnapshotRepository dimItemSnapshotRepository;
@@ -95,7 +92,7 @@ class SellerDashboardOverviewQueryServiceTest {
     }
 
     @Test
-    void getOverview_calculatesSalesAndSearchKpiFromRawEvents() {
+    void getOverview_calculatesSalesAndSearchKpiFromSalesAggregatesAndFunnel() {
         LocalDateTime now = LocalDateTime.now();
         AnalyticsRawSalesEvent created = AnalyticsRawSalesEvent.builder()
                 .eventId("sales-1")
@@ -128,16 +125,10 @@ class SellerDashboardOverviewQueryServiceTest {
                 ));
         when(rawSalesEventRepository.findLatestTimestampByStoreIdAndSellerIdAndOccurredAtBetween(anyLong(), anyLong(), any(), any()))
                 .thenReturn(now.minusMinutes(20));
-
-        when(rawSearchEventRepository.aggregateByStoreIdAndSellerIdAndOccurredAtBetween(anyLong(), anyLong(), any(), any()))
-                .thenReturn(List.of(
-                        new AnalyticsRawSearchEventCountRow("SEARCH_EXECUTED", 1L),
-                        new AnalyticsRawSearchEventCountRow("SEARCH_ITEM_CLICKED", 1L)
-                ));
-        when(rawSearchEventRepository.findLatestTimestampByStoreIdAndSellerIdAndOccurredAtBetween(anyLong(), anyLong(), any(), any()))
-                .thenReturn(now.minusMinutes(10));
         when(dimItemSnapshotRepository.countByStatusForStoreIdAndSellerId(anyLong(), anyLong()))
                 .thenReturn(List.of(new AnalyticsItemStatusCountRow("ON_SALE", 2L)));
+        when(sellerDashboardFunnelQueryService.getFunnelByStore(anyLong(), any(), any()))
+                .thenReturn(funnel(1L, 1L, DashboardLagStatus.HEALTHY, false));
 
         SellerDashboardOverviewQuery query = SellerDashboardOverviewQuery.of(
                 "DAILY",
@@ -202,7 +193,6 @@ class SellerDashboardOverviewQueryServiceTest {
         service.getOverview(100L, query);
 
         verify(rawSalesEventRepository).findBySellerIdAndOccurredAtBetween(anyLong(), any(), any());
-        verify(rawSearchEventRepository).aggregateBySellerIdAndOccurredAtBetween(anyLong(), any(), any());
         verify(dimItemSnapshotRepository).countByStatusForSellerId(anyLong());
         verify(rawSalesEventRepository, never()).findByStoreIdAndOccurredAtBetween(anyLong(), any(), any());
     }
@@ -223,7 +213,6 @@ class SellerDashboardOverviewQueryServiceTest {
         service.getOverviewByStore(10L, null, query);
 
         verify(rawSalesEventRepository).findByStoreIdAndOccurredAtBetween(anyLong(), any(), any());
-        verify(rawSearchEventRepository).aggregateByStoreIdAndOccurredAtBetween(anyLong(), any(), any());
         verify(dimItemSnapshotRepository).countByStatusForStoreId(anyLong());
     }
 
@@ -271,17 +260,9 @@ class SellerDashboardOverviewQueryServiceTest {
 
     private void stubEmptyRepos() {
         lenient().when(sellerDashboardFunnelQueryService.getFunnel(anyLong(), any()))
-                .thenReturn(SellerDashboardFunnelResponse.builder()
-                        .apiVersion("v1")
-                        .lagStatus(DashboardLagStatus.HEALTHY)
-                        .partial(false)
-                        .build());
+                .thenReturn(funnel(0L, 0L, DashboardLagStatus.HEALTHY, false));
         lenient().when(sellerDashboardFunnelQueryService.getFunnelByStore(anyLong(), any(), any()))
-                .thenReturn(SellerDashboardFunnelResponse.builder()
-                        .apiVersion("v1")
-                        .lagStatus(DashboardLagStatus.HEALTHY)
-                        .partial(false)
-                        .build());
+                .thenReturn(funnel(0L, 0L, DashboardLagStatus.HEALTHY, false));
         lenient().when(rawSalesEventRepository.findByStoreIdAndOccurredAtBetween(anyLong(), any(), any()))
                 .thenReturn(List.of());
         lenient().when(rawSalesEventRepository.findBySellerIdAndOccurredAtBetween(anyLong(), any(), any()))
@@ -300,20 +281,32 @@ class SellerDashboardOverviewQueryServiceTest {
                 .thenReturn(null);
         lenient().when(rawSalesEventRepository.findLatestTimestampByStoreIdAndSellerIdAndOccurredAtBetween(anyLong(), anyLong(), any(), any()))
                 .thenReturn(null);
-        lenient().when(rawSearchEventRepository.aggregateByStoreIdAndOccurredAtBetween(anyLong(), any(), any()))
-                .thenReturn(List.of());
-        lenient().when(rawSearchEventRepository.aggregateBySellerIdAndOccurredAtBetween(anyLong(), any(), any()))
-                .thenReturn(List.of());
-        lenient().when(rawSearchEventRepository.aggregateByStoreIdAndSellerIdAndOccurredAtBetween(anyLong(), anyLong(), any(), any()))
-                .thenReturn(List.of());
-        lenient().when(rawSearchEventRepository.findLatestTimestampByStoreIdAndOccurredAtBetween(anyLong(), any(), any()))
-                .thenReturn(null);
-        lenient().when(rawSearchEventRepository.findLatestTimestampBySellerIdAndOccurredAtBetween(anyLong(), any(), any()))
-                .thenReturn(null);
-        lenient().when(rawSearchEventRepository.findLatestTimestampByStoreIdAndSellerIdAndOccurredAtBetween(anyLong(), anyLong(), any(), any()))
-                .thenReturn(null);
         lenient().when(dimItemSnapshotRepository.countByStatusForStoreId(anyLong())).thenReturn(List.of());
         lenient().when(dimItemSnapshotRepository.countByStatusForSellerId(anyLong())).thenReturn(List.of());
         lenient().when(dimItemSnapshotRepository.countByStatusForStoreIdAndSellerId(anyLong(), anyLong())).thenReturn(List.of());
+    }
+
+    private SellerDashboardFunnelResponse funnel(long searchCount,
+                                                 long clickCount,
+                                                 DashboardLagStatus lagStatus,
+                                                 boolean partial) {
+        return SellerDashboardFunnelResponse.builder()
+                .apiVersion("v1")
+                .lagStatus(lagStatus)
+                .partial(partial)
+                .sales(SellerDashboardFunnelDomainResponse.builder()
+                        .domainType("NORMAL")
+                        .steps(List.of(
+                                SellerDashboardFunnelStepResponse.builder()
+                                        .step("SEARCH_EXECUTED")
+                                        .count(searchCount)
+                                        .build(),
+                                SellerDashboardFunnelStepResponse.builder()
+                                        .step("SEARCH_ITEM_CLICKED")
+                                        .count(clickCount)
+                                        .build()
+                        ))
+                        .build())
+                .build();
     }
 }
