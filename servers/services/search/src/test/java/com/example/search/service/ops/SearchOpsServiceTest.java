@@ -111,6 +111,7 @@ class SearchOpsServiceTest {
                 List.of("상세 제목"),
                 List.of("상세 설명"),
                 List.of("하이라이트"),
+                17,
                 LocalDateTime.of(2026, 3, 19, 10, 0),
                 LocalDateTime.of(2026, 3, 19, 11, 0)
         );

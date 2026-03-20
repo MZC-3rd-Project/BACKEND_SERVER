@@ -21,6 +21,7 @@ public record ProductSearchDocument(
         List<String> detailTitles,
         List<String> detailDescriptions,
         List<String> detailHighlights,
+        Integer stock,
         LocalDateTime sourceCreatedAt,
         LocalDateTime sourceUpdatedAt
 ) {

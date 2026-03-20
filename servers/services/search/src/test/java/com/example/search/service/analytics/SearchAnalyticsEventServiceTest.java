@@ -113,6 +113,7 @@ class SearchAnalyticsEventServiceTest {
                         List.of(),
                         List.of(),
                         List.of(),
+                        30,
                         LocalDateTime.now(),
                         LocalDateTime.now()
                 )

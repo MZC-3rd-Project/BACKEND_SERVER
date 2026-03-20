@@ -4,12 +4,16 @@ import com.example.core.exception.BusinessException;
 import com.example.core.pagination.CursorResponse;
 import com.example.product.dto.item.response.ItemContentSnapshot;
 import com.example.product.dto.item.response.ItemSearchDocumentResponse;
+import com.example.product.entity.goods.ItemOption;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemStatus;
 import com.example.product.entity.item.ItemType;
 import com.example.product.exception.ProductErrorCode;
 import com.example.product.repository.ItemImageRepository;
+import com.example.product.repository.ItemOptionRepository;
 import com.example.product.repository.ItemRepository;
+import com.example.product.repository.PerformanceRepository;
+import com.example.product.repository.SeatGradeRepository;
 import com.example.product.service.content.ItemContentService;
 import com.example.product.service.query.detail.ItemCategoryDetailResolver;
 import com.example.product.service.query.detail.ItemCategoryDetailView;
@@ -41,6 +45,12 @@ class InternalItemQueryServiceTest {
     private ItemRepository itemRepository;
     @Mock
     private ItemImageRepository itemImageRepository;
+    @Mock
+    private ItemOptionRepository itemOptionRepository;
+    @Mock
+    private PerformanceRepository performanceRepository;
+    @Mock
+    private SeatGradeRepository seatGradeRepository;
     @Mock
     private ItemContentService itemContentService;
     @Mock
@@ -126,12 +136,17 @@ class InternalItemQueryServiceTest {
                 21L, new ItemContentSnapshot(List.of("태그1"), List.of("특징1"), List.of()),
                 18L, ItemContentSnapshot.empty()
         ));
+        when(itemOptionRepository.findByItemIdIn(List.of(21L, 18L))).thenReturn(List.of(
+                ItemOption.create(21L, "기본", 0L, 11)
+        ));
 
         CursorResponse<ItemSearchDocumentResponse> response = internalItemQueryService.findSearchDocuments("MzA", 2);
 
         assertThat(response.getItems()).hasSize(2);
         assertThat(response.getItems()).extracting(ItemSearchDocumentResponse::itemId)
                 .containsExactly(21L, 18L);
+        assertThat(response.getItems().get(0).stock()).isEqualTo(11);
+        assertThat(response.getItems().get(1).stock()).isNull();
         assertThat(response.getNextCursor()).isNull();
         verify(itemRepository).findByStatusInAndIdLessThanOrderByIdDesc(
                 eq(ItemStatus.publiclyVisibleStatuses()),

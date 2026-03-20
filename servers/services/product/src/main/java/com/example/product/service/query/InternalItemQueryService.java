@@ -11,9 +11,15 @@ import com.example.product.dto.item.response.ItemSummaryResponse;
 import com.example.product.entity.image.ItemImage;
 import com.example.product.entity.item.Item;
 import com.example.product.entity.item.ItemStatus;
+import com.example.product.entity.item.ItemType;
+import com.example.product.entity.performance.Performance;
+import com.example.product.entity.performance.SeatGrade;
 import com.example.product.exception.ProductErrorCode;
 import com.example.product.repository.ItemImageRepository;
+import com.example.product.repository.ItemOptionRepository;
 import com.example.product.repository.ItemRepository;
+import com.example.product.repository.PerformanceRepository;
+import com.example.product.repository.SeatGradeRepository;
 import com.example.product.service.content.ItemContentService;
 import com.example.product.service.query.detail.ItemCategoryDetailResolver;
 import com.example.product.service.query.detail.ItemCategoryDetailView;
@@ -37,6 +43,9 @@ public class InternalItemQueryService {
 
     private final ItemRepository itemRepository;
     private final ItemImageRepository itemImageRepository;
+    private final ItemOptionRepository itemOptionRepository;
+    private final PerformanceRepository performanceRepository;
+    private final SeatGradeRepository seatGradeRepository;
     private final ItemAccessPolicy itemAccessPolicy;
     private final ItemContentService itemContentService;
     private final ItemCategoryDetailResolver itemCategoryDetailResolver;
@@ -83,7 +92,8 @@ public class InternalItemQueryService {
 
         ItemCategoryDetailView categoryDetail = itemCategoryDetailResolver.resolve(List.of(item)).get(item.getId());
         ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(itemId);
-        return ItemSearchDocumentResponse.from(item, categoryDetail, contentSnapshot);
+        Integer stock = resolveTotalStock(List.of(item)).get(item.getId());
+        return ItemSearchDocumentResponse.from(item, categoryDetail, contentSnapshot, stock);
     }
 
     public List<ItemSearchDocumentResponse> findSearchDocuments(List<Long> itemIds) {
@@ -106,6 +116,7 @@ public class InternalItemQueryService {
 
         Map<Long, ItemCategoryDetailView> categoryDetailMap = itemCategoryDetailResolver.resolve(List.copyOf(itemMap.values()));
         Map<Long, ItemContentSnapshot> contentSnapshotMap = itemContentService.findByItemIds(distinctItemIds);
+        Map<Long, Integer> stockMap = resolveTotalStock(List.copyOf(itemMap.values()));
 
         return distinctItemIds.stream()
                 .map(itemMap::get)
@@ -113,7 +124,8 @@ public class InternalItemQueryService {
                 .map(item -> ItemSearchDocumentResponse.from(
                         item,
                         categoryDetailMap.get(item.getId()),
-                        contentSnapshotMap.getOrDefault(item.getId(), ItemContentSnapshot.empty())
+                        contentSnapshotMap.getOrDefault(item.getId(), ItemContentSnapshot.empty()),
+                        stockMap.get(item.getId())
                 ))
                 .toList();
     }
@@ -135,12 +147,14 @@ public class InternalItemQueryService {
         Map<Long, ItemContentSnapshot> contentSnapshotMap = itemContentService.findByItemIds(
                 pageItems.stream().map(Item::getId).toList()
         );
+        Map<Long, Integer> stockMap = resolveTotalStock(pageItems);
 
         List<ItemSearchDocumentResponse> content = pageItems.stream()
                 .map(item -> ItemSearchDocumentResponse.from(
                         item,
                         categoryDetailMap.get(item.getId()),
-                        contentSnapshotMap.getOrDefault(item.getId(), ItemContentSnapshot.empty())
+                        contentSnapshotMap.getOrDefault(item.getId(), ItemContentSnapshot.empty()),
+                        stockMap.get(item.getId())
                 ))
                 .toList();
 
@@ -155,5 +169,59 @@ public class InternalItemQueryService {
             return 100;
         }
         return Math.min(size, 500);
+    }
+
+    private Map<Long, Integer> resolveTotalStock(List<Item> items) {
+        if (items == null || items.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, Integer> totalStockByItemId = new LinkedHashMap<>();
+
+        List<Long> optionItemIds = items.stream()
+                .filter(item -> item.getItemType() == ItemType.PRODUCT || item.getItemType() == ItemType.GOODS)
+                .map(Item::getId)
+                .toList();
+
+        if (!optionItemIds.isEmpty()) {
+            itemOptionRepository.findByItemIdIn(optionItemIds).forEach(option ->
+                    totalStockByItemId.merge(option.getItemId(), option.getStockQuantity(), Integer::sum));
+        }
+
+        List<Item> performanceItems = items.stream()
+                .filter(item -> item.getItemType() == ItemType.PERFORMANCE)
+                .toList();
+
+        if (!performanceItems.isEmpty()) {
+            Map<Long, Performance> performanceByItemId = performanceRepository.findByItemIdIn(
+                            performanceItems.stream().map(Item::getId).toList())
+                    .stream()
+                    .collect(Collectors.toMap(Performance::getItemId, performance -> performance));
+
+            Map<Long, Integer> seatGradeTotalsByPerformanceId = seatGradeRepository.findByPerformanceIdIn(
+                            performanceByItemId.values().stream().map(Performance::getId).toList())
+                    .stream()
+                    .collect(Collectors.groupingBy(
+                            SeatGrade::getPerformanceId,
+                            Collectors.summingInt(SeatGrade::getTotalQuantity)
+                    ));
+
+            performanceItems.forEach(item -> {
+                Performance performance = performanceByItemId.get(item.getId());
+                if (performance == null) {
+                    return;
+                }
+
+                Integer totalStock = seatGradeTotalsByPerformanceId.get(performance.getId());
+                if (totalStock == null) {
+                    totalStock = performance.getTotalSeats();
+                }
+                if (totalStock != null) {
+                    totalStockByItemId.put(item.getId(), totalStock);
+                }
+            });
+        }
+
+        return totalStockByItemId;
     }
 }

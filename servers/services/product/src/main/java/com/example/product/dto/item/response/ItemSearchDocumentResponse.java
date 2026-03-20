@@ -26,6 +26,7 @@ public record ItemSearchDocumentResponse(
         List<String> detailTitles,
         List<String> detailDescriptions,
         List<String> detailHighlights,
+        Integer stock,
         LocalDateTime sourceCreatedAt,
         LocalDateTime sourceUpdatedAt
 ) {
@@ -42,7 +43,8 @@ public record ItemSearchDocumentResponse(
     public static ItemSearchDocumentResponse from(
             Item item,
             ItemCategoryDetailView categoryDetail,
-            ItemContentSnapshot contentSnapshot
+            ItemContentSnapshot contentSnapshot,
+            Integer stock
     ) {
         ItemContentSnapshot safeContent = contentSnapshot == null ? ItemContentSnapshot.empty() : contentSnapshot;
         List<ItemDetailSectionResponse> detailSections = safeContent.detailSections();
@@ -77,6 +79,7 @@ public record ItemSearchDocumentResponse(
                         .map(ItemSearchDocumentResponse::trimToNull)
                         .filter(Objects::nonNull)
                         .toList(),
+                stock,
                 item.getCreatedAt(),
                 item.getUpdatedAt()
         );

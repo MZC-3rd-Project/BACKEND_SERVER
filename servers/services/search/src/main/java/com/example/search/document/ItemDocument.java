@@ -74,7 +74,7 @@ public record ItemDocument(
                 productDocument.detailTitles(),
                 productDocument.detailDescriptions(),
                 productDocument.detailHighlights(),
-                null,
+                productDocument.stock(),
                 null,
                 null,
                 productDocument.sourceCreatedAt(),
