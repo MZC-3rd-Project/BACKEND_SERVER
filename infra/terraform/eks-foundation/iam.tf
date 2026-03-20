@@ -204,3 +204,64 @@ resource "aws_iam_role_policy_attachment" "external_secrets" {
   role       = aws_iam_role.external_secrets.name
   policy_arn = aws_iam_policy.external_secrets.arn
 }
+
+data "aws_iam_policy_document" "search_service_assume_role" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.this.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_issuer_hostpath}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_issuer_hostpath}:sub"
+      values   = ["system:serviceaccount:${local.application_namespace}:${var.search_service_account_name}"]
+    }
+  }
+}
+
+resource "aws_iam_role" "search_service" {
+  name               = "${local.cluster_name}-search-service-role"
+  assume_role_policy = data.aws_iam_policy_document.search_service_assume_role.json
+
+  tags = local.common_tags
+}
+
+data "aws_iam_policy_document" "search_service" {
+  count = var.search_ai_enrichment_queue_arn == null ? 0 : 1
+
+  statement {
+    sid = "PublishSearchAiEnrichmentTasks"
+
+    actions = [
+      "sqs:SendMessage"
+    ]
+
+    resources = [var.search_ai_enrichment_queue_arn]
+  }
+}
+
+resource "aws_iam_policy" "search_service" {
+  count = var.search_ai_enrichment_queue_arn == null ? 0 : 1
+
+  name        = "${local.cluster_name}-search-service"
+  description = "IAM permissions for search-service runtime integrations"
+  policy      = data.aws_iam_policy_document.search_service[0].json
+
+  tags = local.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "search_service" {
+  count = var.search_ai_enrichment_queue_arn == null ? 0 : 1
+
+  role       = aws_iam_role.search_service.name
+  policy_arn = aws_iam_policy.search_service[0].arn
+}

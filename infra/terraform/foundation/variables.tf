@@ -535,3 +535,99 @@ variable "opensearch_ebs_volume_size" {
   type        = number
   default     = 20
 }
+
+variable "enable_search_ai_enrichment" {
+  description = "Whether to provision the search AI enrichment SQS/Lambda pipeline"
+  type        = bool
+  default     = false
+}
+
+variable "search_ai_enrichment_bedrock_model_id" {
+  description = "Bedrock model id used by the search AI enrichment Lambda"
+  type        = string
+  default     = "anthropic.claude-3-haiku-20240307-v1:0"
+}
+
+variable "search_ai_enrichment_bedrock_region" {
+  description = "AWS region used by the search AI enrichment Lambda for Bedrock calls"
+  type        = string
+  default     = "ap-northeast-2"
+}
+
+variable "search_ai_enrichment_index_name" {
+  description = "Elasticsearch index name patched by the search AI enrichment Lambda"
+  type        = string
+  default     = "items"
+}
+
+variable "search_ai_enrichment_lambda_runtime" {
+  description = "Runtime for the search AI enrichment Lambda"
+  type        = string
+  default     = "python3.12"
+}
+
+variable "search_ai_enrichment_lambda_timeout" {
+  description = "Timeout in seconds for the search AI enrichment Lambda"
+  type        = number
+  default     = 30
+}
+
+variable "search_ai_enrichment_lambda_memory_size" {
+  description = "Memory size in MB for the search AI enrichment Lambda"
+  type        = number
+  default     = 512
+}
+
+variable "search_ai_enrichment_log_retention_days" {
+  description = "CloudWatch log retention for the search AI enrichment Lambda"
+  type        = number
+  default     = 14
+}
+
+variable "search_ai_enrichment_queue_visibility_timeout" {
+  description = "Visibility timeout in seconds for the search AI enrichment queue"
+  type        = number
+  default     = 120
+}
+
+variable "search_ai_enrichment_queue_message_retention_seconds" {
+  description = "Message retention for the search AI enrichment queue"
+  type        = number
+  default     = 1209600
+}
+
+variable "search_ai_enrichment_queue_max_receive_count" {
+  description = "Maximum receive count before moving messages to the DLQ"
+  type        = number
+  default     = 5
+}
+
+variable "search_ai_enrichment_queue_name" {
+  description = "Optional queue name override for the search AI enrichment queue"
+  type        = string
+  default     = null
+}
+
+variable "search_ai_enrichment_dlq_name" {
+  description = "Optional DLQ name override for the search AI enrichment queue"
+  type        = string
+  default     = null
+}
+
+variable "search_ai_enrichment_lambda_name" {
+  description = "Optional Lambda function name override for the search AI enricher"
+  type        = string
+  default     = null
+}
+
+variable "search_ai_enrichment_secret_name" {
+  description = "Optional Secrets Manager secret name override for the search AI enrichment metadata"
+  type        = string
+  default     = null
+}
+
+variable "search_ai_enrichment_elasticsearch_url" {
+  description = "Optional Elasticsearch endpoint override used by the search AI enrichment Lambda"
+  type        = string
+  default     = null
+}

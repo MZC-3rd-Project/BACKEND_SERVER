@@ -57,6 +57,29 @@ resource "aws_iam_role_policy_attachment" "ec2_bastion_ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+data "aws_iam_policy_document" "ec2_bastion_aurora_secret_read" {
+  count = var.enable_ec2_bastion && var.enable_aurora && var.create_aurora_master_secret ? 1 : 0
+
+  statement {
+    sid = "ReadAuroraMasterSecret"
+
+    actions = [
+      "secretsmanager:DescribeSecret",
+      "secretsmanager:GetSecretValue"
+    ]
+
+    resources = [aws_secretsmanager_secret.aurora_master[0].arn]
+  }
+}
+
+resource "aws_iam_role_policy" "ec2_bastion_aurora_secret_read" {
+  count = var.enable_ec2_bastion && var.enable_aurora && var.create_aurora_master_secret ? 1 : 0
+
+  name   = "${var.name_prefix}-${var.environment}-ec2-bastion-aurora-secret-read"
+  role   = aws_iam_role.ec2_bastion[0].id
+  policy = data.aws_iam_policy_document.ec2_bastion_aurora_secret_read[0].json
+}
+
 resource "aws_iam_instance_profile" "ec2_bastion" {
   count = var.enable_ec2_bastion ? 1 : 0
 

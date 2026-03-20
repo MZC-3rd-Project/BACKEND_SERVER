@@ -91,6 +91,10 @@ ec2_elasticsearch_heap_size       = "512m"
 enable_msk        = false
 enable_opensearch = false
 
+# Optional search AI enrichment pipeline
+enable_search_ai_enrichment = false
+# search_ai_enrichment_bedrock_model_id = "anthropic.claude-3-haiku-20240307-v1:0"
+
 # Example when enabling managed components
 # enable_msk = true
 # msk_broker_node_count = 2

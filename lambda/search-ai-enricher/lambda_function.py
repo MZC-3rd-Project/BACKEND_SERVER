@@ -4,6 +4,7 @@ import os
 import re
 import urllib.error
 import urllib.request
+from datetime import datetime, timezone
 
 import boto3
 
@@ -11,11 +12,14 @@ import boto3
 LOGGER = logging.getLogger()
 LOGGER.setLevel(logging.INFO)
 
+SEARCH_ENRICHMENT_TARGET = os.getenv("SEARCH_ENRICHMENT_TARGET", "search-service").strip().lower()
 BEDROCK_REGION = os.getenv("BEDROCK_REGION", "ap-northeast-2")
 BEDROCK_MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
 SEARCH_INTERNAL_BASE_URL = os.getenv("SEARCH_INTERNAL_BASE_URL", "").rstrip("/")
 SEARCH_INTERNAL_AUTH_HEADER = os.getenv("SEARCH_INTERNAL_AUTH_HEADER", "X-Gateway-Auth")
 SEARCH_INTERNAL_AUTH_TOKEN = os.getenv("SEARCH_INTERNAL_AUTH_TOKEN", "")
+SEARCH_ELASTICSEARCH_URL = os.getenv("SEARCH_ELASTICSEARCH_URL", "").rstrip("/")
+SEARCH_INDEX_NAME = os.getenv("SEARCH_INDEX_NAME", "items")
 BEDROCK_MAX_TOKENS = int(os.getenv("BEDROCK_MAX_TOKENS", "400"))
 BEDROCK_TEMPERATURE = float(os.getenv("BEDROCK_TEMPERATURE", "0.2"))
 AI_TAG_LIMIT = int(os.getenv("AI_TAG_LIMIT", "10"))
@@ -57,7 +61,7 @@ def process_task(task):
         "aiKeywords": normalize_values(parsed.get("aiKeywords"), AI_KEYWORD_LIMIT),
         "aiSummary": trim_summary(parsed.get("aiSummary")),
     }
-    patch_search_document(item_id, payload)
+    patch_target(item_id, payload)
     LOGGER.info("search ai enrichment patched. itemId=%s", item_id)
 
 
@@ -133,6 +137,13 @@ def parse_model_output(raw_text):
     }
 
 
+def patch_target(item_id, payload):
+    if SEARCH_ENRICHMENT_TARGET == "elasticsearch":
+        patch_elasticsearch_document(item_id, payload)
+        return
+    patch_search_document(item_id, payload)
+
+
 def patch_search_document(item_id, payload):
     if not SEARCH_INTERNAL_BASE_URL or not SEARCH_INTERNAL_AUTH_TOKEN:
         raise RuntimeError("search internal endpoint configuration missing")
@@ -153,6 +164,41 @@ def patch_search_document(item_id, payload):
     except urllib.error.HTTPError as exc:
         response_body = exc.read().decode("utf-8", errors="ignore")
         raise RuntimeError(f"search enrichment patch failed. status={exc.code}, body={response_body}") from exc
+
+
+def patch_elasticsearch_document(item_id, payload):
+    if not SEARCH_ELASTICSEARCH_URL:
+        raise RuntimeError("search elasticsearch url missing")
+
+    request_payload = {
+        "doc": {
+            "aiTags": payload.get("aiTags") or [],
+            "aiKeywords": payload.get("aiKeywords") or [],
+            "aiSummary": payload.get("aiSummary"),
+            "aiSourceHash": payload.get("sourceHash"),
+            "aiModel": payload.get("model"),
+            "aiStatus": payload.get("status"),
+            "aiEnrichedAt": current_timestamp_utc(),
+        }
+    }
+    request = urllib.request.Request(
+        url=f"{SEARCH_ELASTICSEARCH_URL}/{SEARCH_INDEX_NAME}/_update/{item_id}",
+        method="POST",
+        data=json.dumps(request_payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:
+            if response.status // 100 != 2:
+                raise RuntimeError(f"elasticsearch enrichment update failed. status={response.status}")
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            LOGGER.info("skip ai enrichment patch. search document missing. itemId=%s", item_id)
+            return
+        response_body = exc.read().decode("utf-8", errors="ignore")
+        raise RuntimeError(f"elasticsearch enrichment update failed. status={exc.code}, body={response_body}") from exc
 
 
 def normalize_values(values, limit):
@@ -187,3 +233,7 @@ def trim_to_none(value):
         return None
     text = str(value).strip()
     return text or None
+
+
+def current_timestamp_utc():
+    return datetime.now(timezone.utc).isoformat()

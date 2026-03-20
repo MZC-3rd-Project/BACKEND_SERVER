@@ -22,14 +22,6 @@ resource "aws_security_group" "ec2_elasticsearch" {
   description = "EC2 Elasticsearch access security group"
   vpc_id      = aws_vpc.this.id
 
-  ingress {
-    description     = "Elasticsearch HTTP from ECS services"
-    from_port       = 9200
-    to_port         = 9200
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ecs_service.id]
-  }
-
   egress {
     from_port   = 0
     to_port     = 0
@@ -40,6 +32,18 @@ resource "aws_security_group" "ec2_elasticsearch" {
   tags = merge(local.common_tags, {
     Name = "${var.name_prefix}-${var.environment}-ec2-elasticsearch-sg"
   })
+}
+
+resource "aws_security_group_rule" "ec2_elasticsearch_from_ecs_services" {
+  count = var.enable_ec2_elasticsearch ? 1 : 0
+
+  type                     = "ingress"
+  from_port                = 9200
+  to_port                  = 9200
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.ec2_elasticsearch[0].id
+  source_security_group_id = aws_security_group.ecs_service.id
+  description              = "Elasticsearch HTTP from ECS services"
 }
 
 resource "aws_security_group_rule" "ec2_elasticsearch_from_eks_nodes" {

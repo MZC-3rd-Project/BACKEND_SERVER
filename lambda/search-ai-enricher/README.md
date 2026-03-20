@@ -1,7 +1,7 @@
 # Search AI Enricher Lambda
 
 SQS 트리거로 상품 검색 원문을 받아 Bedrock으로 `aiTags`, `aiKeywords`, `aiSummary`를 생성한 뒤,
-`search-service` 내부 enrichment API로 patch 하는 Python Lambda입니다.
+검색 인덱스에 AI 필드를 patch 하는 Python Lambda입니다.
 
 ## Input
 
@@ -27,8 +27,17 @@ SQS message body JSON:
 
 ## Required environment variables
 
+- `SEARCH_ENRICHMENT_TARGET`
 - `BEDROCK_REGION`
 - `BEDROCK_MODEL_ID`
+
+If `SEARCH_ENRICHMENT_TARGET=elasticsearch`:
+
+- `SEARCH_ELASTICSEARCH_URL`
+- `SEARCH_INDEX_NAME`
+
+If `SEARCH_ENRICHMENT_TARGET=search-service`:
+
 - `SEARCH_INTERNAL_BASE_URL`
 - `SEARCH_INTERNAL_AUTH_TOKEN`
 

@@ -1,5 +1,11 @@
 fullnameOverride: search-service
 
+serviceAccount:
+  create: true
+  name: search-service
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::682405977339:role/donmoa-dev-eks-search-service-role
+
 image:
   repository: 682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-search-service
   tag: latest
@@ -22,6 +28,8 @@ env:
   STORE_SERVICE_URL: http://store-service:8072
   STOCK_SERVICE_URL: http://stock-service:8085
   ELASTICSEARCH_URIS: http://10.30.140.176:9200
+  SEARCH_AI_ENRICHMENT_ENABLED: "true"
+  SEARCH_AI_ENRICHMENT_AWS_REGION: ap-northeast-2
   APP_GATEWAY_SECURITY_ENABLED: "true"
   APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED: "true"
   APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER: X-Gateway-Auth
@@ -38,3 +46,6 @@ secretEnv:
   APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:
     remoteRef: donmoa/dev/common
     property: APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN
+  SEARCH_AI_ENRICHMENT_QUEUE_URL:
+    remoteRef: donmoa/dev/search-ai-enrichment
+    property: queue_url
