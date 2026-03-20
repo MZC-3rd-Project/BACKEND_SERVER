@@ -74,6 +74,10 @@ public class AnalyticsEventIngestService {
         if (event == null || event.getEventId() == null || event.getEventType() == null) {
             return;
         }
+        if (rawSalesEventRepository.findByEventId(event.getEventId()).isPresent()) {
+            log.debug("[AnalyticsIngest] skip duplicate sales event. eventId={}", event.getEventId());
+            return;
+        }
 
         String eventType = normalize(event.getEventType());
         Ownership ownership = resolveOwnership(event);
@@ -122,8 +126,9 @@ public class AnalyticsEventIngestService {
                 .build();
         rawSalesEventRepository.save(rawEvent);
 
-        journeyEventRepository.save(AnalyticsJourneyEvent.builder()
+        saveJourneyEventIfAbsent(AnalyticsJourneyEvent.builder()
                 .eventId(event.getEventId())
+                .eventSequence(0)
                 .eventType(eventType)
                 .domainType(DOMAIN_NORMAL)
                 .channelType(DOMAIN_NORMAL)
@@ -147,6 +152,10 @@ public class AnalyticsEventIngestService {
     @Transactional
     public void ingestSearchEvent(AnalyticsSearchEventMessage event) {
         if (event == null || event.getEventId() == null || event.getEventType() == null) {
+            return;
+        }
+        if (rawSearchEventRepository.findByEventId(event.getEventId()).isPresent()) {
+            log.debug("[AnalyticsIngest] skip duplicate search event. eventId={}", event.getEventId());
             return;
         }
 
@@ -197,8 +206,9 @@ public class AnalyticsEventIngestService {
                 .build();
         rawSearchEventRepository.save(rawEvent);
 
-        journeyEventRepository.save(AnalyticsJourneyEvent.builder()
+        saveJourneyEventIfAbsent(AnalyticsJourneyEvent.builder()
                 .eventId(event.getEventId())
+                .eventSequence(0)
                 .eventType(normalize(event.getEventType()))
                 .domainType(DOMAIN_SEARCH)
                 .channelType(null)
@@ -244,8 +254,9 @@ public class AnalyticsEventIngestService {
         Map<String, Object> properties = new LinkedHashMap<>();
         properties.put("fundingType", event.getFundingType());
 
-        journeyEventRepository.save(AnalyticsJourneyEvent.builder()
+        saveJourneyEventIfAbsent(AnalyticsJourneyEvent.builder()
                 .eventId(event.getEventId())
+                .eventSequence(0)
                 .eventType(normalize(event.getEventType()))
                 .domainType(DOMAIN_FUNDING)
                 .channelType(DOMAIN_FUNDING)
@@ -290,8 +301,9 @@ public class AnalyticsEventIngestService {
         putIfPresent(properties, "discountRate", event.getDiscountRate());
         putIfPresent(properties, "maxQuantity", event.getMaxQuantity());
 
-        journeyEventRepository.save(AnalyticsJourneyEvent.builder()
+        saveJourneyEventIfAbsent(AnalyticsJourneyEvent.builder()
                 .eventId(event.getEventId())
+                .eventSequence(0)
                 .eventType(normalize(event.getEventType()))
                 .domainType(DOMAIN_HOT_DEAL)
                 .channelType(DOMAIN_HOT_DEAL)
@@ -324,8 +336,9 @@ public class AnalyticsEventIngestService {
         List<AnalyticsOrderEventMessage.OrderItemPayload> items =
                 event.getItems() == null ? List.of() : event.getItems();
         if (items.isEmpty()) {
-            journeyEventRepository.save(buildOrderJourneyEvent(
+            saveJourneyEventIfAbsent(buildOrderJourneyEvent(
                     event,
+                    0,
                     occurredAt,
                     ingestedAt,
                     DOMAIN_ORDER,
@@ -343,6 +356,7 @@ public class AnalyticsEventIngestService {
             return;
         }
 
+        int eventSequence = 0;
         for (AnalyticsOrderEventMessage.OrderItemPayload item : items) {
             Ownership ownership = resolveOwnership(item.getItemId(), item.getStoreId(), null);
             String channelType = normalizeChannelType(item.getChannelType());
@@ -353,8 +367,9 @@ public class AnalyticsEventIngestService {
             putIfPresent(properties, "itemTypeSnap", item.getItemTypeSnap());
             putIfPresent(properties, "unitPrice", item.getUnitPrice());
 
-            journeyEventRepository.save(buildOrderJourneyEvent(
+            saveJourneyEventIfAbsent(buildOrderJourneyEvent(
                     event,
+                    eventSequence,
                     occurredAt,
                     ingestedAt,
                     domainType,
@@ -369,6 +384,7 @@ public class AnalyticsEventIngestService {
                     null,
                     toJson(properties)
             ));
+            eventSequence++;
         }
     }
 
@@ -377,8 +393,9 @@ public class AnalyticsEventIngestService {
         List<AnalyticsJourneyEvent> createdEvents =
                 journeyEventRepository.findByOrderIdAndEventTypeOrderByOccurredAtAsc(event.getOrderId(), ORDER_CREATED_EVENT);
         if (createdEvents.isEmpty()) {
-            journeyEventRepository.save(buildOrderJourneyEvent(
+            saveJourneyEventIfAbsent(buildOrderJourneyEvent(
                     event,
+                    0,
                     occurredAt,
                     ingestedAt,
                     DOMAIN_ORDER,
@@ -396,9 +413,11 @@ public class AnalyticsEventIngestService {
             return;
         }
 
-        for (AnalyticsJourneyEvent createdEvent : createdEvents) {
-            journeyEventRepository.save(AnalyticsJourneyEvent.builder()
+        for (int index = 0; index < createdEvents.size(); index++) {
+            AnalyticsJourneyEvent createdEvent = createdEvents.get(index);
+            saveJourneyEventIfAbsent(AnalyticsJourneyEvent.builder()
                     .eventId(event.getEventId())
+                    .eventSequence(index)
                     .eventType(eventType)
                     .domainType(defaultIfBlank(createdEvent.getDomainType(), DOMAIN_ORDER))
                     .channelType(createdEvent.getChannelType())
@@ -436,6 +455,7 @@ public class AnalyticsEventIngestService {
 
     private AnalyticsJourneyEvent buildOrderJourneyEvent(
             AnalyticsOrderEventMessage event,
+            int eventSequence,
             LocalDateTime occurredAt,
             LocalDateTime ingestedAt,
             String domainType,
@@ -452,6 +472,7 @@ public class AnalyticsEventIngestService {
     ) {
         return AnalyticsJourneyEvent.builder()
                 .eventId(event.getEventId())
+                .eventSequence(eventSequence)
                 .eventType(defaultIfBlank(overrideEventType, normalize(event.getEventType())))
                 .domainType(domainType)
                 .channelType(channelType)
@@ -478,6 +499,24 @@ public class AnalyticsEventIngestService {
                 .occurredAt(occurredAt)
                 .ingestedAt(ingestedAt)
                 .build();
+    }
+
+    private void saveJourneyEventIfAbsent(AnalyticsJourneyEvent journeyEvent) {
+        if (journeyEvent == null || journeyEvent.getEventId() == null || journeyEvent.getEventSequence() == null) {
+            return;
+        }
+        if (journeyEventRepository.existsByEventIdAndEventSequence(
+                journeyEvent.getEventId(),
+                journeyEvent.getEventSequence()
+        )) {
+            log.debug(
+                    "[AnalyticsIngest] skip duplicate journey event. eventId={}, eventSequence={}",
+                    journeyEvent.getEventId(),
+                    journeyEvent.getEventSequence()
+            );
+            return;
+        }
+        journeyEventRepository.save(journeyEvent);
     }
 
     private void handleItemCreated(AnalyticsItemEventMessage event) {

@@ -11,13 +11,14 @@ import com.example.analyticsdashboard.dto.response.SellerDashboardQueryRangeResp
 import com.example.analyticsdashboard.dto.response.SellerDashboardSalesKpiResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardSearchKpiResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardSeriesPointResponse;
-import com.example.analyticsdashboard.entity.AnalyticsDimItemSnapshot;
 import com.example.analyticsdashboard.entity.AnalyticsRawSalesEvent;
-import com.example.analyticsdashboard.entity.AnalyticsRawSearchEvent;
 import com.example.analyticsdashboard.exception.AnalyticsDashboardErrorCode;
 import com.example.analyticsdashboard.repository.AnalyticsDimItemSnapshotRepository;
+import com.example.analyticsdashboard.repository.AnalyticsItemStatusCountRow;
 import com.example.analyticsdashboard.repository.AnalyticsRawSalesEventRepository;
+import com.example.analyticsdashboard.repository.AnalyticsRawSalesEventAggregateRow;
 import com.example.analyticsdashboard.repository.AnalyticsRawSearchEventRepository;
+import com.example.analyticsdashboard.repository.AnalyticsRawSearchEventCountRow;
 import com.example.core.exception.BusinessException;
 import com.example.data.entity.datasource.UseWriteDataSource;
 import lombok.RequiredArgsConstructor;
@@ -27,13 +28,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +43,7 @@ import java.util.stream.Stream;
 public class SellerDashboardOverviewQueryService {
 
     private static final String API_VERSION = "v1";
+    private static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Seoul");
 
     private final AnalyticsRawSalesEventRepository rawSalesEventRepository;
     private final AnalyticsRawSearchEventRepository rawSearchEventRepository;
@@ -57,19 +59,39 @@ public class SellerDashboardOverviewQueryService {
                 queryRangeContext.fromDateTime(),
                 queryRangeContext.toDateTime()
         );
-        List<AnalyticsRawSearchEvent> rawSearchEvents = rawSearchEventRepository.findBySellerIdAndOccurredAtBetween(
+        List<AnalyticsRawSalesEventAggregateRow> salesAggregates =
+                rawSalesEventRepository.aggregateBySellerIdAndOccurredAtBetween(
+                        sellerId,
+                        queryRangeContext.fromDateTime(),
+                        queryRangeContext.toDateTime()
+                );
+        List<AnalyticsRawSearchEventCountRow> searchAggregates =
+                rawSearchEventRepository.aggregateBySellerIdAndOccurredAtBetween(
+                        sellerId,
+                        queryRangeContext.fromDateTime(),
+                        queryRangeContext.toDateTime()
+                );
+        List<AnalyticsItemStatusCountRow> itemStatusCounts = dimItemSnapshotRepository.countByStatusForSellerId(sellerId);
+        LocalDateTime salesAsOf = rawSalesEventRepository.findLatestTimestampBySellerIdAndOccurredAtBetween(
                 sellerId,
                 queryRangeContext.fromDateTime(),
                 queryRangeContext.toDateTime()
         );
-        List<AnalyticsDimItemSnapshot> itemSnapshots = dimItemSnapshotRepository.findBySellerId(sellerId);
+        LocalDateTime searchAsOf = rawSearchEventRepository.findLatestTimestampBySellerIdAndOccurredAtBetween(
+                sellerId,
+                queryRangeContext.fromDateTime(),
+                queryRangeContext.toDateTime()
+        );
 
         return buildOverviewResponse(
                 query,
                 queryRangeContext,
                 rawSalesEvents,
-                rawSearchEvents,
-                itemSnapshots,
+                salesAggregates,
+                searchAggregates,
+                itemStatusCounts,
+                salesAsOf,
+                searchAsOf,
                 sellerDashboardFunnelQueryService.getFunnel(sellerId, query)
         );
     }
@@ -81,8 +103,11 @@ public class SellerDashboardOverviewQueryService {
 
         QueryRangeContext queryRangeContext = resolveRange(query);
         List<AnalyticsRawSalesEvent> rawSalesEvents;
-        List<AnalyticsRawSearchEvent> rawSearchEvents;
-        List<AnalyticsDimItemSnapshot> itemSnapshots;
+        List<AnalyticsRawSalesEventAggregateRow> salesAggregates;
+        List<AnalyticsRawSearchEventCountRow> searchAggregates;
+        List<AnalyticsItemStatusCountRow> itemStatusCounts;
+        LocalDateTime salesAsOf;
+        LocalDateTime searchAsOf;
 
         if (hasPositiveId(sellerId)) {
             rawSalesEvents = rawSalesEventRepository.findByStoreIdAndSellerIdAndOccurredAtBetween(
@@ -91,33 +116,69 @@ public class SellerDashboardOverviewQueryService {
                     queryRangeContext.fromDateTime(),
                     queryRangeContext.toDateTime()
             );
-            rawSearchEvents = rawSearchEventRepository.findByStoreIdAndSellerIdAndOccurredAtBetween(
+            salesAggregates = rawSalesEventRepository.aggregateByStoreIdAndSellerIdAndOccurredAtBetween(
                     storeId,
                     sellerId,
                     queryRangeContext.fromDateTime(),
                     queryRangeContext.toDateTime()
             );
-            itemSnapshots = dimItemSnapshotRepository.findByStoreIdAndSellerId(storeId, sellerId);
+            searchAggregates = rawSearchEventRepository.aggregateByStoreIdAndSellerIdAndOccurredAtBetween(
+                    storeId,
+                    sellerId,
+                    queryRangeContext.fromDateTime(),
+                    queryRangeContext.toDateTime()
+            );
+            itemStatusCounts = dimItemSnapshotRepository.countByStatusForStoreIdAndSellerId(storeId, sellerId);
+            salesAsOf = rawSalesEventRepository.findLatestTimestampByStoreIdAndSellerIdAndOccurredAtBetween(
+                    storeId,
+                    sellerId,
+                    queryRangeContext.fromDateTime(),
+                    queryRangeContext.toDateTime()
+            );
+            searchAsOf = rawSearchEventRepository.findLatestTimestampByStoreIdAndSellerIdAndOccurredAtBetween(
+                    storeId,
+                    sellerId,
+                    queryRangeContext.fromDateTime(),
+                    queryRangeContext.toDateTime()
+            );
         } else {
             rawSalesEvents = rawSalesEventRepository.findByStoreIdAndOccurredAtBetween(
                     storeId,
                     queryRangeContext.fromDateTime(),
                     queryRangeContext.toDateTime()
             );
-            rawSearchEvents = rawSearchEventRepository.findByStoreIdAndOccurredAtBetween(
+            salesAggregates = rawSalesEventRepository.aggregateByStoreIdAndOccurredAtBetween(
                     storeId,
                     queryRangeContext.fromDateTime(),
                     queryRangeContext.toDateTime()
             );
-            itemSnapshots = dimItemSnapshotRepository.findByStoreId(storeId);
+            searchAggregates = rawSearchEventRepository.aggregateByStoreIdAndOccurredAtBetween(
+                    storeId,
+                    queryRangeContext.fromDateTime(),
+                    queryRangeContext.toDateTime()
+            );
+            itemStatusCounts = dimItemSnapshotRepository.countByStatusForStoreId(storeId);
+            salesAsOf = rawSalesEventRepository.findLatestTimestampByStoreIdAndOccurredAtBetween(
+                    storeId,
+                    queryRangeContext.fromDateTime(),
+                    queryRangeContext.toDateTime()
+            );
+            searchAsOf = rawSearchEventRepository.findLatestTimestampByStoreIdAndOccurredAtBetween(
+                    storeId,
+                    queryRangeContext.fromDateTime(),
+                    queryRangeContext.toDateTime()
+            );
         }
 
         return buildOverviewResponse(
                 query,
                 queryRangeContext,
                 rawSalesEvents,
-                rawSearchEvents,
-                itemSnapshots,
+                salesAggregates,
+                searchAggregates,
+                itemStatusCounts,
+                salesAsOf,
+                searchAsOf,
                 sellerDashboardFunnelQueryService.getFunnelByStore(storeId, sellerId, query)
         );
     }
@@ -125,15 +186,18 @@ public class SellerDashboardOverviewQueryService {
     private SellerDashboardOverviewResponse buildOverviewResponse(SellerDashboardOverviewQuery query,
                                                                   QueryRangeContext queryRangeContext,
                                                                   List<AnalyticsRawSalesEvent> rawSalesEvents,
-                                                                  List<AnalyticsRawSearchEvent> rawSearchEvents,
-                                                                  List<AnalyticsDimItemSnapshot> itemSnapshots,
+                                                                  List<AnalyticsRawSalesEventAggregateRow> salesAggregates,
+                                                                  List<AnalyticsRawSearchEventCountRow> searchAggregates,
+                                                                  List<AnalyticsItemStatusCountRow> itemStatusCounts,
+                                                                  LocalDateTime salesAsOf,
+                                                                  LocalDateTime searchAsOf,
                                                                   SellerDashboardFunnelResponse funnel) {
         SellerDashboardQueryRangeResponse queryRange = toQueryRange(queryRangeContext, query.timezone().getId());
-        SellerDashboardSalesKpiResponse sales = toSalesKpi(rawSalesEvents);
-        SellerDashboardSearchKpiResponse search = toSearchKpi(rawSearchEvents);
-        SellerDashboardItemKpiResponse item = toItemKpi(itemSnapshots);
+        SellerDashboardSalesKpiResponse sales = toSalesKpi(salesAggregates);
+        SellerDashboardSearchKpiResponse search = toSearchKpi(searchAggregates);
+        SellerDashboardItemKpiResponse item = toItemKpi(itemStatusCounts);
         List<SellerDashboardSeriesPointResponse> series = toSeries(rawSalesEvents, queryRangeContext);
-        Instant asOf = resolveAsOf(rawSalesEvents, rawSearchEvents);
+        Instant asOf = resolveAsOf(salesAsOf, searchAsOf);
 
         Map<String, Object> extensions = new LinkedHashMap<>();
         extensions.put("funding", null);
@@ -145,9 +209,9 @@ public class SellerDashboardOverviewQueryService {
         return SellerDashboardOverviewResponse.builder()
                 .mode(query.mode())
                 .queryRange(queryRange)
-                .asOf(asOf)
-                .lagStatus(DashboardLagStatus.HEALTHY)
-                .partial(false)
+                .asOf(resolveAsOf(asOf, funnel))
+                .lagStatus(resolveLagStatus(funnel))
+                .partial(resolvePartial(funnel))
                 .sales(sales)
                 .item(item)
                 .search(search)
@@ -155,6 +219,27 @@ public class SellerDashboardOverviewQueryService {
                 .apiVersion(API_VERSION)
                 .extensions(extensions)
                 .build();
+    }
+
+    private Instant resolveAsOf(Instant baseAsOf, SellerDashboardFunnelResponse funnel) {
+        if (funnel == null || funnel.getAsOf() == null) {
+            return baseAsOf;
+        }
+        if (baseAsOf == null || funnel.getAsOf().isAfter(baseAsOf)) {
+            return funnel.getAsOf();
+        }
+        return baseAsOf;
+    }
+
+    private DashboardLagStatus resolveLagStatus(SellerDashboardFunnelResponse funnel) {
+        if (funnel == null || funnel.getLagStatus() == null) {
+            return DashboardLagStatus.HEALTHY;
+        }
+        return funnel.getLagStatus();
+    }
+
+    private boolean resolvePartial(SellerDashboardFunnelResponse funnel) {
+        return funnel != null && funnel.isPartial();
     }
 
     private void validateStoreId(Long storeId) {
@@ -219,26 +304,16 @@ public class SellerDashboardOverviewQueryService {
         );
     }
 
-    private SellerDashboardSalesKpiResponse toSalesKpi(List<AnalyticsRawSalesEvent> rawSalesEvents) {
-        long grossSales = 0L;
-        long netSales = 0L;
-        long orderCount = 0L;
-        long cancelCount = 0L;
-        long refundCount = 0L;
-
-        for (AnalyticsRawSalesEvent event : rawSalesEvents) {
-            grossSales += nullSafeLong(event.getGrossAmount());
-            netSales += nullSafeLong(event.getNetAmount());
-
-            String eventType = normalize(event.getEventType());
-            if ("PURCHASE_CREATED".equals(eventType)) {
-                orderCount++;
-            } else if ("PURCHASE_CANCELLED".equals(eventType)) {
-                cancelCount++;
-            } else if (eventType.contains("REFUND")) {
-                refundCount++;
-            }
-        }
+    private SellerDashboardSalesKpiResponse toSalesKpi(List<AnalyticsRawSalesEventAggregateRow> aggregateRows) {
+        Map<String, AnalyticsRawSalesEventAggregateRow> aggregateMap = indexSalesAggregates(aggregateRows);
+        long grossSales = sumSalesField(aggregateRows, AnalyticsRawSalesEventAggregateRow::grossAmountSum);
+        long netSales = sumSalesField(aggregateRows, AnalyticsRawSalesEventAggregateRow::netAmountSum);
+        long orderCount = countSalesEvents(aggregateMap, "PURCHASE_CREATED");
+        long cancelCount = countSalesEvents(aggregateMap, "PURCHASE_CANCELLED");
+        long refundCount = aggregateRows.stream()
+                .filter(row -> row.eventType() != null && row.eventType().contains("REFUND"))
+                .mapToLong(row -> nullSafeLong(row.eventCount()))
+                .sum();
 
         return SellerDashboardSalesKpiResponse.builder()
                 .grossSales(grossSales)
@@ -249,18 +324,10 @@ public class SellerDashboardOverviewQueryService {
                 .build();
     }
 
-    private SellerDashboardSearchKpiResponse toSearchKpi(List<AnalyticsRawSearchEvent> rawSearchEvents) {
-        long searchCount = 0L;
-        long clickCount = 0L;
-
-        for (AnalyticsRawSearchEvent event : rawSearchEvents) {
-            String eventType = normalize(event.getEventType());
-            if ("SEARCH_EXECUTED".equals(eventType)) {
-                searchCount++;
-            } else if ("SEARCH_ITEM_CLICKED".equals(eventType)) {
-                clickCount++;
-            }
-        }
+    private SellerDashboardSearchKpiResponse toSearchKpi(List<AnalyticsRawSearchEventCountRow> aggregateRows) {
+        Map<String, Long> aggregateMap = indexSearchAggregates(aggregateRows);
+        long searchCount = aggregateMap.getOrDefault("SEARCH_EXECUTED", 0L);
+        long clickCount = aggregateMap.getOrDefault("SEARCH_ITEM_CLICKED", 0L);
 
         double ctr = searchCount == 0 ? 0.0d : (double) clickCount / (double) searchCount;
         return SellerDashboardSearchKpiResponse.builder()
@@ -270,21 +337,11 @@ public class SellerDashboardOverviewQueryService {
                 .build();
     }
 
-    private SellerDashboardItemKpiResponse toItemKpi(List<AnalyticsDimItemSnapshot> itemSnapshots) {
-        long onSaleCount = 0L;
-        long soldOutCount = 0L;
-        long hiddenCount = 0L;
-
-        for (AnalyticsDimItemSnapshot snapshot : itemSnapshots) {
-            String status = normalize(snapshot.getItemStatus());
-            if ("ON_SALE".equals(status)) {
-                onSaleCount++;
-            } else if ("SOLD_OUT".equals(status)) {
-                soldOutCount++;
-            } else if ("HIDDEN".equals(status)) {
-                hiddenCount++;
-            }
-        }
+    private SellerDashboardItemKpiResponse toItemKpi(List<AnalyticsItemStatusCountRow> statusCounts) {
+        Map<String, Long> statusCountMap = indexItemStatusCounts(statusCounts);
+        long onSaleCount = statusCountMap.getOrDefault("ON_SALE", 0L);
+        long soldOutCount = statusCountMap.getOrDefault("SOLD_OUT", 0L);
+        long hiddenCount = statusCountMap.getOrDefault("HIDDEN", 0L);
 
         return SellerDashboardItemKpiResponse.builder()
                 .onSaleCount(onSaleCount)
@@ -350,16 +407,56 @@ public class SellerDashboardOverviewQueryService {
         return List.copyOf(buckets);
     }
 
-    private Instant resolveAsOf(List<AnalyticsRawSalesEvent> salesEvents,
-                                List<AnalyticsRawSearchEvent> searchEvents) {
-        LocalDateTime latest = Stream.concat(
-                        salesEvents.stream().map(AnalyticsRawSalesEvent::getIngestedAt),
-                        searchEvents.stream().map(AnalyticsRawSearchEvent::getIngestedAt)
-                )
-                .filter(value -> value != null)
-                .max(LocalDateTime::compareTo)
-                .orElse(LocalDateTime.now());
-        return latest.atZone(java.time.ZoneId.of("Asia/Seoul")).toInstant();
+    private Map<String, AnalyticsRawSalesEventAggregateRow> indexSalesAggregates(
+            List<AnalyticsRawSalesEventAggregateRow> aggregateRows
+    ) {
+        Map<String, AnalyticsRawSalesEventAggregateRow> aggregateMap = new HashMap<>();
+        for (AnalyticsRawSalesEventAggregateRow aggregateRow : aggregateRows) {
+            aggregateMap.put(normalize(aggregateRow.eventType()), aggregateRow);
+        }
+        return aggregateMap;
+    }
+
+    private Map<String, Long> indexSearchAggregates(List<AnalyticsRawSearchEventCountRow> aggregateRows) {
+        Map<String, Long> aggregateMap = new HashMap<>();
+        for (AnalyticsRawSearchEventCountRow aggregateRow : aggregateRows) {
+            aggregateMap.put(normalize(aggregateRow.eventType()), nullSafeLong(aggregateRow.eventCount()));
+        }
+        return aggregateMap;
+    }
+
+    private Map<String, Long> indexItemStatusCounts(List<AnalyticsItemStatusCountRow> statusCounts) {
+        Map<String, Long> statusMap = new HashMap<>();
+        for (AnalyticsItemStatusCountRow statusCount : statusCounts) {
+            statusMap.put(normalize(statusCount.itemStatus()), nullSafeLong(statusCount.itemCount()));
+        }
+        return statusMap;
+    }
+
+    private long sumSalesField(
+            List<AnalyticsRawSalesEventAggregateRow> aggregateRows,
+            java.util.function.Function<AnalyticsRawSalesEventAggregateRow, Long> extractor
+    ) {
+        return aggregateRows.stream()
+                .map(extractor)
+                .mapToLong(this::nullSafeLong)
+                .sum();
+    }
+
+    private long countSalesEvents(Map<String, AnalyticsRawSalesEventAggregateRow> aggregateMap, String eventType) {
+        AnalyticsRawSalesEventAggregateRow aggregate = aggregateMap.get(eventType);
+        return aggregate == null ? 0L : nullSafeLong(aggregate.eventCount());
+    }
+
+    private Instant resolveAsOf(LocalDateTime salesAsOf, LocalDateTime searchAsOf) {
+        LocalDateTime latest = salesAsOf;
+        if (latest == null || (searchAsOf != null && searchAsOf.isAfter(latest))) {
+            latest = searchAsOf;
+        }
+        if (latest == null) {
+            latest = LocalDateTime.now();
+        }
+        return latest.atZone(DEFAULT_ZONE).toInstant();
     }
 
     private long nullSafeLong(Long value) {

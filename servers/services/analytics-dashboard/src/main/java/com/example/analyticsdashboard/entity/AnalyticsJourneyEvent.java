@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
         name = "analytics_journey_event",
         indexes = {
                 @Index(name = "idx_analytics_journey_event_event_id", columnList = "event_id"),
+                @Index(name = "uk_analytics_journey_event_event_id_sequence", columnList = "event_id,event_sequence", unique = true),
                 @Index(name = "idx_analytics_journey_event_store_occurred", columnList = "store_id,occurred_at"),
                 @Index(name = "idx_analytics_journey_event_seller_occurred", columnList = "seller_id,occurred_at"),
                 @Index(name = "idx_analytics_journey_event_order_event", columnList = "order_id,event_type"),
@@ -36,6 +37,9 @@ public class AnalyticsJourneyEvent extends BaseEntity {
 
     @Column(name = "event_id", nullable = false, length = 120)
     private String eventId;
+
+    @Column(name = "event_sequence", nullable = false)
+    private Integer eventSequence;
 
     @Column(name = "event_type", nullable = false, length = 80)
     private String eventType;
@@ -106,6 +110,7 @@ public class AnalyticsJourneyEvent extends BaseEntity {
     @Builder
     private AnalyticsJourneyEvent(
             String eventId,
+            Integer eventSequence,
             String eventType,
             String domainType,
             String channelType,
@@ -130,6 +135,7 @@ public class AnalyticsJourneyEvent extends BaseEntity {
             LocalDateTime ingestedAt
     ) {
         this.eventId = eventId;
+        this.eventSequence = eventSequence;
         this.eventType = eventType;
         this.domainType = domainType;
         this.channelType = channelType;

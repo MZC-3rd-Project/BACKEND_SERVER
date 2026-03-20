@@ -79,6 +79,7 @@ class AnalyticsEventIngestServiceTest {
 
     @Test
     void ingestSalesEvent_cancel_resolvesOwnershipFromPreviousRaw() {
+        when(rawSalesEventRepository.findByEventId("evt-cancel")).thenReturn(Optional.empty());
         AnalyticsRawSalesEvent previous = AnalyticsRawSalesEvent.builder()
                 .eventId("prev-created")
                 .eventType("PURCHASE_CREATED")
@@ -116,10 +117,12 @@ class AnalyticsEventIngestServiceTest {
         ArgumentCaptor<AnalyticsJourneyEvent> journeyCaptor = ArgumentCaptor.forClass(AnalyticsJourneyEvent.class);
         verify(analyticsJourneyEventRepository).save(journeyCaptor.capture());
         assertThat(journeyCaptor.getValue().getPurchaseId()).isEqualTo(99L);
+        assertThat(journeyCaptor.getValue().getEventSequence()).isEqualTo(0);
     }
 
     @Test
     void ingestSearchEvent_resolvesOwnershipByItemSnapshot() {
+        when(rawSearchEventRepository.findByEventId("evt-search")).thenReturn(Optional.empty());
         AnalyticsDimItemSnapshot snapshot = AnalyticsDimItemSnapshot.builder()
                 .itemId(333L)
                 .storeId(444L)
@@ -159,12 +162,14 @@ class AnalyticsEventIngestServiceTest {
         AnalyticsJourneyEvent journeyEvent = journeyCaptor.getValue();
         assertThat(journeyEvent.getDomainType()).isEqualTo("SEARCH");
         assertThat(journeyEvent.getSessionId()).isEqualTo("sess-1");
+        assertThat(journeyEvent.getEventSequence()).isEqualTo(0);
     }
 
     @Test
     void ingestOrderEvent_paid_clonesCreatedJourneyContext() {
         AnalyticsJourneyEvent created = AnalyticsJourneyEvent.builder()
                 .eventId("evt-order-created")
+                .eventSequence(0)
                 .eventType("ORDER_CREATED_EVENT")
                 .domainType("NORMAL")
                 .channelType("NORMAL")
@@ -201,5 +206,36 @@ class AnalyticsEventIngestServiceTest {
         assertThat(saved.getSellerId()).isEqualTo(200L);
         assertThat(saved.getItemId()).isEqualTo(300L);
         assertThat(saved.getJourneyId()).isEqualTo("order-9001");
+        assertThat(saved.getEventSequence()).isEqualTo(0);
+    }
+
+    @Test
+    void ingestSalesEvent_duplicateRawEvent_skipsSave() {
+        when(rawSalesEventRepository.findByEventId("evt-duplicate")).thenReturn(Optional.of(
+                AnalyticsRawSalesEvent.builder()
+                        .eventId("evt-duplicate")
+                        .eventType("PURCHASE_CREATED")
+                        .storeId(11L)
+                        .sellerId(22L)
+                        .itemId(33L)
+                        .occurredAt(LocalDateTime.now())
+                        .ingestedAt(LocalDateTime.now())
+                        .build()
+        ));
+
+        AnalyticsSalesEventMessage event = JsonUtils.fromJson("""
+                {
+                  "eventId": "evt-duplicate",
+                  "eventType": "PURCHASE_CREATED",
+                  "storeId": 11,
+                  "sellerId": 22,
+                  "itemId": 33
+                }
+                """, AnalyticsSalesEventMessage.class);
+
+        service.ingestSalesEvent(event);
+
+        verify(rawSalesEventRepository, org.mockito.Mockito.never()).save(any(AnalyticsRawSalesEvent.class));
+        verify(analyticsJourneyEventRepository, org.mockito.Mockito.never()).save(any(AnalyticsJourneyEvent.class));
     }
 }

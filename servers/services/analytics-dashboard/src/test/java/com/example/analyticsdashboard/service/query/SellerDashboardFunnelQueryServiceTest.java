@@ -1,9 +1,10 @@
 package com.example.analyticsdashboard.service.query;
 
 import com.example.analyticsdashboard.dto.query.SellerDashboardOverviewQuery;
+import com.example.analyticsdashboard.dto.response.DashboardLagStatus;
 import com.example.analyticsdashboard.dto.response.SellerDashboardFunnelResponse;
-import com.example.analyticsdashboard.entity.AnalyticsJourneyEvent;
 import com.example.analyticsdashboard.exception.AnalyticsDashboardErrorCode;
+import com.example.analyticsdashboard.repository.AnalyticsJourneyEventCountRow;
 import com.example.analyticsdashboard.repository.AnalyticsJourneyEventRepository;
 import com.example.core.exception.BusinessException;
 import org.junit.jupiter.api.Test;
@@ -19,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -34,17 +36,20 @@ class SellerDashboardFunnelQueryServiceTest {
     @Test
     void getFunnelByStore_aggregatesSalesFundingAndHotDealSteps() {
         LocalDateTime now = LocalDateTime.now();
-        when(analyticsJourneyEventRepository.findByStoreIdAndSellerIdAndOccurredAtBetween(anyLong(), anyLong(), any(), any()))
+        when(analyticsJourneyEventRepository.aggregateCountsByStoreIdAndSellerIdAndOccurredAtBetween(anyLong(), anyLong(), any(), any()))
                 .thenReturn(List.of(
-                        journey("evt-1", "SEARCH_EXECUTED", "SEARCH", now.minusHours(5)),
-                        journey("evt-2", "SEARCH_ITEM_CLICKED", "SEARCH", now.minusHours(4)),
-                        journey("evt-3", "ORDER_CREATED_EVENT", "NORMAL", now.minusHours(3)),
-                        journey("evt-4", "ORDER_PAID_EVENT", "NORMAL", now.minusHours(2)),
-                        journey("evt-5", "FUNDING_CREATED", "FUNDING", now.minusHours(3)),
-                        journey("evt-6", "FUNDING_SUCCEEDED", "FUNDING", now.minusHours(1)),
-                        journey("evt-7", "HOT_DEAL_STARTED", "HOT_DEAL", now.minusHours(2)),
-                        journey("evt-8", "HOT_DEAL_PURCHASED", "HOT_DEAL", now.minusMinutes(30))
+                        countRow("SEARCH_EXECUTED", "SEARCH", 1L),
+                        countRow("SEARCH_ITEM_CLICKED", "SEARCH", 1L),
+                        countRow("ORDER_CREATED_EVENT", "NORMAL", 1L),
+                        countRow("ORDER_PAID_EVENT", "NORMAL", 1L),
+                        countRow("FUNDING_CREATED", "FUNDING", 1L),
+                        countRow("FUNDING_SUCCEEDED", "FUNDING", 1L),
+                        countRow("HOT_DEAL_STARTED", "HOT_DEAL", 1L),
+                        countRow("HOT_DEAL_PURCHASED", "HOT_DEAL", 1L)
                 ));
+        when(analyticsJourneyEventRepository.findLatestTimestampByStoreIdAndSellerIdAndOccurredAtBetween(anyLong(), anyLong(), any(), any()))
+                .thenReturn(now.minusMinutes(5));
+        when(analyticsJourneyEventRepository.findLatestTimestamp()).thenReturn(now.minusMinutes(2));
 
         SellerDashboardOverviewQuery query = SellerDashboardOverviewQuery.of(
                 "DAILY",
@@ -65,12 +70,17 @@ class SellerDashboardFunnelQueryServiceTest {
         assertThat(response.getFunding().getConversionCount()).isEqualTo(1L);
         assertThat(response.getHotDeal().getEntryCount()).isEqualTo(1L);
         assertThat(response.getHotDeal().getConversionCount()).isEqualTo(1L);
+        assertThat(response.getLagStatus()).isEqualTo(DashboardLagStatus.HEALTHY);
+        assertThat(response.isPartial()).isFalse();
     }
 
     @Test
     void getFunnel_bySeller_usesSellerScopedRepository() {
-        when(analyticsJourneyEventRepository.findBySellerIdAndOccurredAtBetween(anyLong(), any(), any()))
+        when(analyticsJourneyEventRepository.aggregateCountsBySellerIdAndOccurredAtBetween(anyLong(), any(), any()))
                 .thenReturn(List.of());
+        lenient().when(analyticsJourneyEventRepository.findLatestTimestampBySellerIdAndOccurredAtBetween(anyLong(), any(), any()))
+                .thenReturn(null);
+        lenient().when(analyticsJourneyEventRepository.findLatestTimestamp()).thenReturn(null);
 
         SellerDashboardOverviewQuery query = SellerDashboardOverviewQuery.of(
                 "DAILY",
@@ -84,7 +94,33 @@ class SellerDashboardFunnelQueryServiceTest {
 
         service.getFunnel(100L, query);
 
-        verify(analyticsJourneyEventRepository).findBySellerIdAndOccurredAtBetween(anyLong(), any(), any());
+        verify(analyticsJourneyEventRepository).aggregateCountsBySellerIdAndOccurredAtBetween(anyLong(), any(), any());
+    }
+
+    @Test
+    void getFunnel_marksResponseDegradedWhenGlobalFreshnessIsStale() {
+        LocalDateTime now = LocalDateTime.now();
+        when(analyticsJourneyEventRepository.aggregateCountsBySellerIdAndOccurredAtBetween(anyLong(), any(), any()))
+                .thenReturn(List.of(countRow("SEARCH_EXECUTED", "SEARCH", 1L)));
+        when(analyticsJourneyEventRepository.findLatestTimestampBySellerIdAndOccurredAtBetween(anyLong(), any(), any()))
+                .thenReturn(now.minusHours(1));
+        when(analyticsJourneyEventRepository.findLatestTimestamp())
+                .thenReturn(now.minusHours(1));
+
+        SellerDashboardOverviewQuery query = SellerDashboardOverviewQuery.of(
+                "DAILY",
+                "2026-03-19",
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+
+        SellerDashboardFunnelResponse response = service.getFunnel(100L, query);
+
+        assertThat(response.getLagStatus()).isEqualTo(DashboardLagStatus.DEGRADED);
+        assertThat(response.isPartial()).isTrue();
     }
 
     @Test
@@ -108,13 +144,7 @@ class SellerDashboardFunnelQueryServiceTest {
                 });
     }
 
-    private AnalyticsJourneyEvent journey(String eventId, String eventType, String domainType, LocalDateTime occurredAt) {
-        return AnalyticsJourneyEvent.builder()
-                .eventId(eventId)
-                .eventType(eventType)
-                .domainType(domainType)
-                .occurredAt(occurredAt)
-                .ingestedAt(occurredAt)
-                .build();
+    private AnalyticsJourneyEventCountRow countRow(String eventType, String domainType, Long count) {
+        return new AnalyticsJourneyEventCountRow(eventType, domainType, count);
     }
 }
