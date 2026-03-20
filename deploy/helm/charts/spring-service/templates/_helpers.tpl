@@ -81,6 +81,25 @@ Deployment
 {{- end -}}
 {{- end -}}
 
+{{- define "spring-service.podTemplateAnnotations" -}}
+{{- $annotations := dict -}}
+{{- range $key, $value := .Values.podAnnotations }}
+{{- $_ := set $annotations $key $value -}}
+{{- end }}
+{{- if .Values.env }}
+{{- $_ := set $annotations "checksum/config-env" (toYaml .Values.env | sha256sum) -}}
+{{- end }}
+{{- if and .Values.externalSecret.enabled .Values.secretEnv }}
+{{- $_ := set $annotations "checksum/secret-env" (toYaml .Values.secretEnv | sha256sum) -}}
+{{- end }}
+{{- if .Values.fileConfigMaps }}
+{{- $_ := set $annotations "checksum/file-configmaps" (toYaml .Values.fileConfigMaps | sha256sum) -}}
+{{- end }}
+{{- if gt (len $annotations) 0 }}
+{{- toYaml $annotations -}}
+{{- end }}
+{{- end -}}
+
 {{- define "spring-service.podTemplate" -}}
 template:
   metadata:
@@ -89,9 +108,9 @@ template:
       {{- with .Values.podLabels }}
       {{- toYaml . | nindent 6 }}
       {{- end }}
-    {{- with .Values.podAnnotations }}
+    {{- with (include "spring-service.podTemplateAnnotations" .) }}
     annotations:
-      {{- toYaml . | nindent 6 }}
+      {{- . | nindent 6 }}
     {{- end }}
   spec:
     serviceAccountName: {{ include "spring-service.serviceAccountName" . }}
