@@ -1,0 +1,86 @@
+server:
+  port: ${SERVER_PORT:18081}
+
+spring:
+  application:
+    name: business-gateway
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:${REDIS_HOST:localhost}}
+      port: ${SPRING_DATA_REDIS_PORT:${REDIS_PORT:6379}}
+  cloud:
+    gateway:
+      server:
+        webflux:
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                allowedOriginPatterns: ${GATEWAY_CORS_ALLOWED_ORIGIN_PATTERNS:*}
+                allowedMethods:
+                  - "*"
+                allowedHeaders: "*"
+                allowCredentials: true
+          routes:
+            - id: product-service
+              uri: ${app.service.product-url:http://localhost:8084}
+              predicates:
+                - Path=/api/products/**,/api/goods/**,/api/performances/**,/api/categories/**,/api/items/**
+            - id: store-service
+              uri: ${app.service.store-url:http://localhost:8072}
+              predicates:
+                - Path=/api/store/**
+            - id: funding-service
+              uri: ${app.service.funding-url:http://localhost:8086}
+              predicates:
+                - Path=/api/campaigns/**
+            - id: hot-deal-service
+              uri: ${app.service.hot-deal-url:http://localhost:8089}
+              predicates:
+                - Path=/api/v1/hot-deals/**
+
+gateway:
+  auth:
+    enabled: ${GATEWAY_AUTH_ENABLED:false}
+    auth-service-url: ${app.service.auth-url:http://localhost:8081}
+    user-service-url: ${app.service.user-url:http://localhost:8082}
+  dev-login:
+    enabled: ${GATEWAY_DEV_LOGIN_ENABLED:false}
+    username: ${GATEWAY_DEV_LOGIN_USERNAME:seller}
+    password: ${GATEWAY_DEV_LOGIN_PASSWORD:seller123}
+    user-id: ${GATEWAY_DEV_LOGIN_USER_ID:9000002}
+    roles: ${GATEWAY_DEV_LOGIN_ROLES:USER,SELLER}
+    session-id-prefix: ${GATEWAY_DEV_LOGIN_SESSION_ID_PREFIX:dev-login-biz}
+  security:
+    internal-auth-header: ${GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}
+    internal-auth-token: ${GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
+    allow-client-identity-headers: ${GATEWAY_SECURITY_ALLOW_CLIENT_IDENTITY_HEADERS:false}
+    allow-client-signed-context-header: ${GATEWAY_SECURITY_ALLOW_CLIENT_SIGNED_CONTEXT_HEADER:false}
+    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/store,/api/campaigns,/api/v1/hot-deals}
+    require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:}
+    require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/store,/api/campaigns,/api/v1/hot-deals}
+  session:
+    enabled: ${GATEWAY_SESSION_ENABLED:false}
+    relay-header-enabled: ${GATEWAY_SESSION_RELAY_HEADER_ENABLED:true}
+    redis-key-prefix: ${GATEWAY_SESSION_REDIS_KEY_PREFIX:gateway:sess:}
+    status-field: ${GATEWAY_SESSION_STATUS_FIELD:status}
+    active-status: ${GATEWAY_SESSION_ACTIVE_STATUS:ACTIVE}
+    revoked-status: ${GATEWAY_SESSION_REVOKED_STATUS:REVOKED}
+    session-cookie-name: ${GATEWAY_SESSION_COOKIE_NAME:SESSION}
+    session-cookie-path: ${GATEWAY_SESSION_COOKIE_PATH:/}
+  deployment:
+    fail-fast-enabled: ${GATEWAY_DEPLOYMENT_FAIL_FAST_ENABLED:true}
+    enforced-profiles: ${GATEWAY_DEPLOYMENT_ENFORCED_PROFILES:prod,production,stg,stage}
+    require-explicit-auth-session-env: ${GATEWAY_DEPLOYMENT_REQUIRE_EXPLICIT_AUTH_SESSION_ENV:true}
+    require-auth-or-session-enabled: ${GATEWAY_DEPLOYMENT_REQUIRE_AUTH_OR_SESSION_ENABLED:true}
+
+app:
+  webclient:
+    connect-timeout: ${GATEWAY_DOWNSTREAM_CONNECT_TIMEOUT_MS:5000}
+    read-timeout: ${GATEWAY_DOWNSTREAM_READ_TIMEOUT_MS:10000}
+    write-timeout: ${GATEWAY_DOWNSTREAM_WRITE_TIMEOUT_MS:10000}
+  security:
+    context:
+      signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}
+      max-age-millis: ${APP_SECURITY_CONTEXT_MAX_AGE_MILLIS:300000}
