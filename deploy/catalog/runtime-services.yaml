@@ -34,6 +34,29 @@ spec:
         - redis
         - keycloak
 
+    - key: edge-nginx
+      runtime:
+        type: nginx
+        applicationName: edge-nginx
+      build:
+        type: external-image
+        sourceImage: nginxinc/nginx-unprivileged:1.27-alpine
+      image:
+        ecrRepository: donmoa-dev-edge-nginx
+        foundationRepositorySuffix: edge-nginx
+      deployment:
+        namespace: donmoa-dev
+        releaseName: edge-nginx
+        serviceName: edge-nginx
+        containerPort: 8080
+        public: true
+        ingressHost: edge.dev.<domain>
+        rolloutWave: 4
+      datastore:
+        type: none
+        readWriteSplit: false
+      externalDependencies: []
+
     - key: keycloak
       runtime:
         type: keycloak
