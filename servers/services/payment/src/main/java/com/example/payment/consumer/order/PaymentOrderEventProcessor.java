@@ -2,12 +2,15 @@ package com.example.payment.consumer.order;
 
 import com.example.config.kafka.IdempotentConsumerService;
 import com.example.core.id.Snowflake;
+import com.example.event.EventMetadata;
+import com.example.event.EventPublisher;
 import com.example.event.consumer.AbstractIdempotentEventSpecProcessor;
 import com.example.event.consumer.EventEnvelope;
 import com.example.event.consumer.EventSpec;
 import com.example.event.inbox.InboxConsumerBinding;
 import com.example.payment.domain.Payment;
 import com.example.payment.domain.PaymentRepository;
+import com.example.payment.service.command.PaymentEventService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -22,19 +25,23 @@ public class PaymentOrderEventProcessor extends AbstractIdempotentEventSpecProce
     private static final String IDEMPOTENT_EVENT_TYPE = "ORDER_EVENT";
 
     private final PaymentRepository paymentRepository;
+    private final PaymentEventService paymentEventService;
     private final Snowflake snowflake;
     private final Map<String, EventSpec<OrderEventMessage>> eventSpecs;
 
     public PaymentOrderEventProcessor(
             PaymentRepository paymentRepository,
+            PaymentEventService paymentEventService,
             Snowflake snowflake,
             IdempotentConsumerService idempotentConsumerService
     ) {
         super(idempotentConsumerService);
         this.paymentRepository = paymentRepository;
+        this.paymentEventService = paymentEventService;
         this.snowflake = snowflake;
         this.eventSpecs = Map.of(
-                "ORDER_CREATED_EVENT", EventSpec.of(OrderEventMessage.class, this::hasOrderId, this::handleOrderCreated)
+                "ORDER_CREATED_EVENT", EventSpec.of(OrderEventMessage.class, this::hasOrderId, this::handleOrderCreated),
+                "ORDER_REFUND_REQUESTED_EVENT", EventSpec.of(OrderEventMessage.class, this::hasOrderId, this::handleOrderRefundRequested)
         );
     }
 
@@ -86,5 +93,9 @@ public class PaymentOrderEventProcessor extends AbstractIdempotentEventSpecProce
 
         paymentRepository.save(payment);
         log.info("결제 READY 생성: paymentId={}, orderId={}", payment.getId(), event.getOrderId());
+    }
+
+    private void handleOrderRefundRequested(OrderEventMessage event) {
+        paymentEventService.processRefund(event.getOrderId());
     }
 }
