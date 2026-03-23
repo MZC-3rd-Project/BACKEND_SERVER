@@ -27,4 +27,6 @@ public interface CatalogDetailDownstreamClient {
     Mono<ResponseEntity<JsonNode>> fetchStoreDetail(Long storeId, HttpHeaders headers);
 
     Mono<ResponseEntity<JsonNode>> fetchMediaUrls(List<Long> mediaIds, HttpHeaders headers);
+
+    Mono<ResponseEntity<JsonNode>> fetchReviews(Long itemId, HttpHeaders headers);
 }

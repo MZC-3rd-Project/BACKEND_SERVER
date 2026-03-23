@@ -55,4 +55,25 @@ class ReviewQueryServiceTest {
         assertThat(response.getImages().get(1).getMediaId()).isEqualTo(12L);
         assertThat(response.getImages().get(1).getMediaUrl()).isEqualTo("https://cdn/review-12.jpg");
     }
+
+    @Test
+    void getReviewsByItem_returnsReviewsEvenWhenMediaLookupFails() {
+        Review review = Review.create(1L, 2L, 3L, 5, "좋아요", "만족합니다.");
+        ReflectionTestUtils.setField(review, "id", 101L);
+        review.addImage(ReviewImage.create(21L, 0));
+
+        when(reviewRepository.findByItemIdAndDeletedAtIsNullOrderByCreatedAtDesc(2L, PageRequest.of(0, 20)))
+                .thenReturn(new PageImpl<>(List.of(review)));
+        when(reviewMediaService.resolveMediaUrls(List.of(21L)))
+                .thenThrow(new IllegalStateException("media lookup failed"));
+
+        ReviewResponse response = reviewQueryService.getReviewsByItem(2L, PageRequest.of(0, 20))
+                .getContent()
+                .getFirst();
+
+        assertThat(response.getId()).isEqualTo(101L);
+        assertThat(response.getImages()).hasSize(1);
+        assertThat(response.getImages().get(0).getMediaId()).isEqualTo(21L);
+        assertThat(response.getImages().get(0).getMediaUrl()).isNull();
+    }
 }

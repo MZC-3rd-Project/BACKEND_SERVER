@@ -12,7 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -29,8 +31,22 @@ public class ReviewQueryService {
                 .map(image -> image.getMediaId())
                 .distinct()
                 .toList();
-        Map<Long, String> mediaUrlMap = reviewMediaService.resolveMediaUrls(mediaIds);
+        Map<Long, String> mediaUrlMap = resolveMediaUrlMap(mediaIds);
 
         return page.map(review -> ReviewResponse.from(review, mediaUrlMap));
+    }
+
+    private Map<Long, String> resolveMediaUrlMap(List<Long> mediaIds) {
+        if (mediaIds == null || mediaIds.isEmpty()) {
+            return Map.of();
+        }
+
+        try {
+            return reviewMediaService.resolveMediaUrls(mediaIds);
+        } catch (RuntimeException exception) {
+            log.warn("Review media url resolution failed. Falling back to review payload without urls. mediaCount={}",
+                    mediaIds.size(), exception);
+            return Map.of();
+        }
     }
 }

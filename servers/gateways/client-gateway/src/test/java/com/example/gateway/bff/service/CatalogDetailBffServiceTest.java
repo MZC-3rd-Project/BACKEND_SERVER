@@ -21,6 +21,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -49,6 +50,12 @@ class CatalogDetailBffServiceTest {
         objectMapper = new ObjectMapper();
         CatalogMetricsService catalogMetricsService = new CatalogMetricsService(new SimpleMeterRegistry());
         lenient().when(searchClickRelayService.trackClickBestEffort(any(), any())).thenReturn(Mono.empty());
+        lenient().when(downstreamClient.fetchReviews(anyLong(), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successResponse("""
+                        {
+                          "content": []
+                        }
+                        """)));
         service = new CatalogDetailBffService(
                 downstreamClient,
                 searchClickRelayService,
@@ -204,11 +211,80 @@ class CatalogDetailBffServiceTest {
         assertThat(response.getBody().path("data").path("title").asText()).isEqualTo("일반 상품");
         assertThat(response.getBody().path("data").path("campaignId").asLong()).isEqualTo(77L);
         assertThat(response.getBody().path("data").path("salesChannel").asText()).isEqualTo("FUNDING");
+        assertThat(response.getBody().path("data").path("reviews")).hasSize(0);
         assertThat(response.getBody().path("data").path("stock").path("availableQuantity").asInt()).isEqualTo(12);
         assertThat(response.getBody().path("data").path("stock").path("optionStocks").get(0).path("itemOptionId").asLong())
                 .isEqualTo(501L);
         assertThat(response.getBody().path("data").path("thumbnailUrl").asText())
                 .isEqualTo("https://cdn.example.com/3001.webp");
+    }
+
+    @Test
+    void getCatalogDetail_enrichesNormalResponseWithReviews() {
+        when(downstreamClient.fetchNormalDetail(eq(BffItemType.PRODUCT), eq(44L), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successResponse("""
+                        {
+                          "itemId": 44,
+                          "title": "reviewed-item",
+                          "itemType": "PRODUCT",
+                          "storeId": 31,
+                          "originFunding": {
+                            "campaignId": 7001
+                          },
+                          "store": {
+                            "id": 31,
+                            "name": "도모아랩"
+                          },
+                          "images": {
+                            "thumbnail": {
+                              "mediaId": 3001
+                            }
+                          }
+                        }
+                        """)));
+        when(downstreamClient.fetchStockSummary(eq(44L), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successResponse("""
+                        {
+                          "itemId": 44,
+                          "stocks": []
+                        }
+                        """)));
+        when(downstreamClient.fetchMediaUrls(eq(List.of(3001L)), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successArrayResponse("""
+                        [
+                          {
+                            "mediaId": 3001,
+                            "mediaUrl": "https://cdn.example.com/3001.webp"
+                          }
+                        ]
+                        """)));
+        when(downstreamClient.fetchReviews(eq(44L), any(HttpHeaders.class)))
+                .thenReturn(Mono.just(successResponse("""
+                        {
+                          "content": [
+                            {
+                              "id": 9001,
+                              "rating": 5,
+                              "title": "좋아요"
+                            },
+                            {
+                              "id": 9002,
+                              "rating": 4,
+                              "title": "만족"
+                            }
+                          ]
+                        }
+                        """)));
+
+        ResponseEntity<JsonNode> response = service
+                .getCatalogDetail(44L, "PRODUCT", "NORMAL", null, null, null)
+                .block();
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().path("data").path("reviews")).hasSize(2);
+        assertThat(response.getBody().path("data").path("reviews").get(0).path("id").asLong()).isEqualTo(9001L);
+        assertThat(response.getBody().path("data").path("reviews").get(1).path("rating").asInt()).isEqualTo(4);
     }
 
     @Test

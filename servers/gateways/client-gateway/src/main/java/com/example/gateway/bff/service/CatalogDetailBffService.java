@@ -221,6 +221,7 @@ public class CatalogDetailBffService {
         Mono<ResponseEntity<JsonNode>> chain = Mono.just(response)
                 .flatMap(r -> enrichWithItemSummary(itemId, headers, r, dataNode))
                 .flatMap(r -> ensureItemPayload(request, itemId, headers, r, dataNode))
+                .flatMap(r -> enrichReviews(itemId, headers, r, dataNode))
                 .flatMap(r -> enrichStore(headers, r, dataNode))
                 .flatMap(r -> enrichStock(itemId, headers, r, dataNode));
 
@@ -657,6 +658,30 @@ public class CatalogDetailBffService {
         if (request.salesChannel() == CatalogSalesChannel.NORMAL) {
             putNullIfMissing(dataNode, "originFunding");
         }
+    }
+
+    private Mono<ResponseEntity<JsonNode>> enrichReviews(Long itemId,
+                                                         HttpHeaders headers,
+                                                         ResponseEntity<JsonNode> response,
+                                                         ObjectNode dataNode) {
+        return downstreamClient.fetchReviews(itemId, headers)
+                .map(reviewResponse -> {
+                    if (!reviewResponse.getStatusCode().is2xxSuccessful()) {
+                        return response;
+                    }
+
+                    JsonNode content = reviewResponse.getBody()
+                            .path("data")
+                            .path("content");
+                    if (content.isArray()) {
+                        dataNode.set("reviews", content.deepCopy());
+                    }
+                    return response;
+                })
+                .onErrorResume(e -> {
+                    log.debug("[CatalogDetail] review enrichment skipped. itemId={}", itemId, e);
+                    return Mono.just(response);
+                });
     }
 
     private void ensureStorePlaceholder(ObjectNode dataNode) {
