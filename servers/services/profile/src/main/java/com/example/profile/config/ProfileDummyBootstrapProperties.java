@@ -15,4 +15,5 @@ public class ProfileDummyBootstrapProperties {
     private Long userId = 9000001L;
     private String email;
     private String nickname;
+    private String phone;
 }

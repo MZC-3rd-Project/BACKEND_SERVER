@@ -54,6 +54,17 @@ public class ProfileAddress extends BaseEntity {
     @Column(name = "sort_order", columnDefinition = "INT DEFAULT 0")
     private int sortOrder = 0;
 
+    @Builder.Default
+    @Column(name = "is_default", nullable = false)
+    private boolean isDefault = false;
+
+    public void setAsDefault() {
+        this.isDefault = true;
+    }
+
+    public void unsetDefault() {
+        this.isDefault = false;
+    }
 
     // 배송지 수정
     public void update(

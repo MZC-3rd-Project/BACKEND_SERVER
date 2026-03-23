@@ -23,4 +23,10 @@ public class ProfileCommandController implements ProfileCommandApi {
         profileService.updateProfile(req, userId);
         return ApiResponse.success();
     }
+
+    @Override
+    public ApiResponse<Void> setDefaultAddress(Long addressId, Long userId) {
+        profileService.setDefaultAddress(userId, addressId);
+        return ApiResponse.success();
+    }
 }

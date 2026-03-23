@@ -26,10 +26,13 @@ public class ProfileQueryService {
 
     @Transactional(readOnly = true)
     public ProfileResponse getProfile(Long userId){
-        Profiles profile = profileProjectionRepairService.ensureProfile(userId)
+        Profiles profile = profileProjectionRepairService.ensureProfileWithImage(userId)
             .orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_NOT_FOUND));
 
-        return ProfileResponse.from(profile);
+        return ProfileResponse.from(
+            profile,
+            profileAddressRepository.findByProfileIdAndIsDefaultTrue(userId)
+        );
     }
 
     @Transactional(readOnly = true)
