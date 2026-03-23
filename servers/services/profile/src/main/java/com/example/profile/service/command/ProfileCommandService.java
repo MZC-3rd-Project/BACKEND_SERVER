@@ -81,6 +81,24 @@ public class ProfileCommandService {
         );
     }
 
+    @Transactional
+    public void setDefaultAddress(Long userId, Long addressId) {
+        Profiles profile = profileProjectionRepairService.ensureProfile(userId)
+            .orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_NOT_FOUND));
+
+        ProfileAddress target = profileAddressRepository.findById(addressId)
+            .orElseThrow(() -> new BusinessException(ProfileErrorCode.ADDRESS_NOT_FOUND));
+
+        if (!target.getProfileId().equals(userId)) {
+            throw new BusinessException(ProfileErrorCode.ADDRESS_UNAUTHORIZED);
+        }
+
+        profileAddressRepository.findByProfileIdAndIsDefaultTrue(userId)
+            .ifPresent(ProfileAddress::unsetDefault);
+
+        target.setAsDefault();
+    }
+
     private void validateNicknameAvailability(ProfileRequest req, Profiles profile) {
         if (!StringUtils.hasText(req.getNickname())) {
             return;

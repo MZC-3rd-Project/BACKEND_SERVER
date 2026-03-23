@@ -26,6 +26,10 @@ public enum ProfileErrorCode implements DomainErrorCode {
     MEDIA_SERVICE_COMMUNICATION_ERROR("PROFILE-151", "Media 서비스와 통신 중 오류가 발생했습니다", HttpStatus.INTERNAL_SERVER_ERROR),
     MEDIA_VALIDATION_FAILED("PROFILE-152", "Media 검증에 실패했습니다", HttpStatus.BAD_REQUEST),
 
+    // Address
+    ADDRESS_NOT_FOUND("PROFILE-201", "배송지 주소를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
+    ADDRESS_UNAUTHORIZED("PROFILE-202", "해당 배송지에 대한 권한이 없습니다", HttpStatus.FORBIDDEN),
+
     // Authorization
     UNAUTHORIZED_PROFILE_ACCESS("PROFILE-901", "해당 프로필에 대한 권한이 없습니다", HttpStatus.FORBIDDEN);
 
