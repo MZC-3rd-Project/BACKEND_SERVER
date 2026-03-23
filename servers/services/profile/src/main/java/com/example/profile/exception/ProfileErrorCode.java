@@ -29,6 +29,7 @@ public enum ProfileErrorCode implements DomainErrorCode {
     // Address
     ADDRESS_NOT_FOUND("PROFILE-201", "배송지 주소를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
     ADDRESS_UNAUTHORIZED("PROFILE-202", "해당 배송지에 대한 권한이 없습니다", HttpStatus.FORBIDDEN),
+    ADDRESS_LIMIT_EXCEEDED("PROFILE-203", "배송지는 최대 3개까지 등록 가능합니다", HttpStatus.BAD_REQUEST),
 
     // Authorization
     UNAUTHORIZED_PROFILE_ACCESS("PROFILE-901", "해당 프로필에 대한 권한이 없습니다", HttpStatus.FORBIDDEN);
