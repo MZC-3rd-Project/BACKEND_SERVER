@@ -20,6 +20,8 @@ public class GoodsDetailAssembler {
                 .status(detailView.item().getStatus().name())
                 .itemType(detailView.item().getItemType().name())
                 .images(ItemImagesResponse.from(detailView.images(), detailView.item().getThumbnailMediaId()))
+                .averageRating(detailView.item().getAverageRating())
+                .reviewCount(detailView.item().getReviewCount())
                 .categoryId(detailView.item().getCategoryId())
                 .categoryName(detailView.categoryDetail() != null ? detailView.categoryDetail().categoryName() : null)
                 .categoryPath(detailView.categoryDetail() != null ? detailView.categoryDetail().categoryPath() : java.util.List.of())

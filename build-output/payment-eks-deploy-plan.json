@@ -1,0 +1,25 @@
+{
+  "environment": "dev",
+  "namespace": "donmoa-dev",
+  "fullDeploy": false,
+  "selectedTargets": [
+    "payment"
+  ],
+  "generatedAt": "2026-03-23T01:58:56Z",
+  "services": [
+    {
+      "key": "payment",
+      "buildType": "gradle",
+      "gradleModule": "servers:services:payment",
+      "namespace": "donmoa-dev",
+      "releaseName": "payment",
+      "rolloutName": "payment-service",
+      "workloadKind": "Deployment",
+      "rolloutWave": 5,
+      "serviceName": "payment-service",
+      "valuesFile": "deploy/helm/environments/dev/payment.yaml",
+      "imageRepository": "682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-payment-service",
+      "imageTag": "latest"
+    }
+  ]
+}

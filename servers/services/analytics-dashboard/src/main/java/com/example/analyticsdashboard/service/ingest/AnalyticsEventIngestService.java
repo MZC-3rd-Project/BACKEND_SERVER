@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -581,6 +582,8 @@ public class AnalyticsEventIngestService {
                     resolveItemStatus(event),
                     event.getPrice(),
                     existing.getStockQuantity(),
+                    normalizeReviewCount(event.getReviewCount(), existing.getReviewCount()),
+                    normalizeAverageRating(event.getAverageRating(), existing.getAverageRating()),
                     LocalDateTime.now()
             );
             dimItemSnapshotRepository.save(existing);
@@ -596,6 +599,8 @@ public class AnalyticsEventIngestService {
                         .itemStatus(resolveItemStatus(event))
                         .price(event.getPrice())
                         .stockQuantity(null)
+                        .reviewCount(normalizeReviewCount(event.getReviewCount(), 0L))
+                        .averageRating(normalizeAverageRating(event.getAverageRating(), BigDecimal.ZERO.setScale(2)))
                         .snapshotAt(LocalDateTime.now())
                         .build()
         );
@@ -610,6 +615,8 @@ public class AnalyticsEventIngestService {
                     defaultIfBlank(snapshot.getItemStatus(), "DRAFT"),
                     event.getPrice() != null ? event.getPrice() : snapshot.getPrice(),
                     snapshot.getStockQuantity(),
+                    normalizeReviewCount(event.getReviewCount(), snapshot.getReviewCount()),
+                    normalizeAverageRating(event.getAverageRating(), snapshot.getAverageRating()),
                     LocalDateTime.now()
             );
             dimItemSnapshotRepository.save(snapshot);
@@ -625,6 +632,8 @@ public class AnalyticsEventIngestService {
                     defaultIfBlank(event.getNewStatus(), defaultIfBlank(event.getStatus(), snapshot.getItemStatus())),
                     snapshot.getPrice(),
                     snapshot.getStockQuantity(),
+                    snapshot.getReviewCount(),
+                    snapshot.getAverageRating(),
                     LocalDateTime.now()
             );
             dimItemSnapshotRepository.save(snapshot);
@@ -640,10 +649,29 @@ public class AnalyticsEventIngestService {
                     ITEM_STATUS_DELETED,
                     snapshot.getPrice(),
                     snapshot.getStockQuantity(),
+                    snapshot.getReviewCount(),
+                    snapshot.getAverageRating(),
                     LocalDateTime.now()
             );
             dimItemSnapshotRepository.save(snapshot);
         });
+    }
+
+    private Long normalizeReviewCount(Long reviewCount, Long fallback) {
+        if (reviewCount != null && reviewCount >= 0) {
+            return reviewCount;
+        }
+        return fallback == null ? 0L : fallback;
+    }
+
+    private BigDecimal normalizeAverageRating(BigDecimal averageRating, BigDecimal fallback) {
+        if (averageRating != null) {
+            return averageRating;
+        }
+        if (fallback != null) {
+            return fallback;
+        }
+        return BigDecimal.ZERO.setScale(2);
     }
 
     private Ownership resolveOwnership(AnalyticsSalesEventMessage event) {

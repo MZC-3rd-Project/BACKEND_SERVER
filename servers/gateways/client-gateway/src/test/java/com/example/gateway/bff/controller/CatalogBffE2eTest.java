@@ -198,6 +198,123 @@ class CatalogBffE2eTest {
     }
 
     @Test
+    void salesProductDetail_returnsCatalogReadyPayloadForCart() {
+        DISPATCHER.set(request -> {
+            if ("GET".equals(request.method()) && "/api/products/2001".equals(request.path())) {
+                return StubResponse.json(200, """
+                        {
+                          "success": true,
+                          "data": {
+                            "itemId": 2001,
+                            "title": "무선 포터블 스피커",
+                            "description": "집에서도 쓰는 포터블 스피커",
+                            "price": 49000,
+                            "status": "ON_SALE",
+                            "itemType": "PRODUCT",
+                            "storeId": 31,
+                            "options": [
+                              {
+                                "id": 501,
+                                "optionName": "기본형",
+                                "additionalPrice": 0
+                              }
+                            ],
+                            "images": {
+                              "thumbnail": {
+                                "mediaId": 3001
+                              }
+                            }
+                          }
+                        }
+                        """);
+            }
+            if ("GET".equals(request.method()) && "/internal/v1/stock/items/2001".equals(request.path())) {
+                return StubResponse.json(200, """
+                        {
+                          "success": true,
+                          "data": {
+                            "itemId": 2001,
+                            "stocks": [
+                              {
+                                "stockItemType": "ITEM_OPTION",
+                                "referenceId": 501,
+                                "totalQuantity": 30,
+                                "availableQuantity": 12
+                              }
+                            ]
+                          }
+                        }
+                        """);
+            }
+            if ("GET".equals(request.method()) && "/api/v1/store-query/stores/31".equals(request.path())) {
+                return StubResponse.json(200, """
+                        {
+                          "success": true,
+                          "data": {
+                            "storeId": 31,
+                            "storeName": "도모아랩",
+                            "description": "프로젝트를 운영하는 파트너 스토어"
+                          }
+                        }
+                        """);
+            }
+            if ("GET".equals(request.method()) && "/api/campaigns/item/2001".equals(request.path())) {
+                return StubResponse.json(200, """
+                        {
+                          "success": true,
+                          "data": {
+                            "id": 1001,
+                            "title": "지난 펀딩 스피커"
+                          }
+                        }
+                        """);
+            }
+            if ("POST".equals(request.method()) && "/internal/v1/media/urls/batch".equals(request.path())) {
+                return StubResponse.json(200, """
+                        {
+                          "success": true,
+                          "data": [
+                            {
+                              "mediaId": 3001,
+                              "mediaUrl": "https://cdn.example.com/items/2001-thumb.jpg"
+                            }
+                          ]
+                        }
+                        """);
+            }
+            return StubResponse.json(404, "{\"success\":false}");
+        });
+
+        webTestClient.get()
+                .uri("/bff/v1/sales/products/2001")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.success").isEqualTo(true)
+                .jsonPath("$.data.itemId").isEqualTo(2001)
+                .jsonPath("$.data.salesChannel").isEqualTo("NORMAL")
+                .jsonPath("$.data.checkout.entryType").isEqualTo("SALES_CHECKOUT")
+                .jsonPath("$.data.checkout.itemId").isEqualTo(2001)
+                .jsonPath("$.data.store.id").isEqualTo(31)
+                .jsonPath("$.data.store.name").isEqualTo("도모아랩")
+                .jsonPath("$.data.stock.availableQuantity").isEqualTo(12)
+                .jsonPath("$.data.stock.optionStocks[0].itemOptionId").isEqualTo(501)
+                .jsonPath("$.data.originFunding.campaignId").isEqualTo(1001)
+                .jsonPath("$.data.thumbnailUrl").isEqualTo("https://cdn.example.com/items/2001-thumb.jpg");
+
+        List<String> paths = REQUESTS.stream()
+                .map(RequestRecord::path)
+                .toList();
+        assertThat(paths).contains(
+                "/api/products/2001",
+                "/internal/v1/stock/items/2001",
+                "/api/v1/store-query/stores/31",
+                "/api/campaigns/item/2001",
+                "/internal/v1/media/urls/batch"
+        );
+    }
+
+    @Test
     void fundingBff_allowsCorsForConfiguredOrigin() {
         DISPATCHER.set(request -> {
             if ("GET".equals(request.method()) && "/api/campaigns".equals(request.path())) {

@@ -198,3 +198,15 @@ variable "search_ai_enrichment_queue_arn" {
   type        = string
   default     = null
 }
+
+variable "cart_service_account_name" {
+  description = "Service account name used by cart-service"
+  type        = string
+  default     = "cart-service"
+}
+
+variable "cart_dynamodb_table_arn" {
+  description = "Optional DynamoDB table ARN that cart-service may read and write through IRSA"
+  type        = string
+  default     = null
+}

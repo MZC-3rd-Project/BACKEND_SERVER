@@ -185,7 +185,9 @@ public class GoodsCommandService {
                         item.getItemType().name(),
                         item.getStatus().name(),
                         item.getSellerId(),
-                        item.getStoreId()
+                        item.getStoreId(),
+                        item.getAverageRating(),
+                        item.getReviewCount()
                 ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 

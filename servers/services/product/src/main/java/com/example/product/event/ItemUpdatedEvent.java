@@ -3,6 +3,7 @@ package com.example.product.event;
 import com.example.event.DomainEvent;
 import lombok.Getter;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -18,6 +19,8 @@ public class ItemUpdatedEvent extends DomainEvent {
     private final String status;
     private final Long sellerId;
     private final Long storeId;
+    private final BigDecimal averageRating;
+    private final Long reviewCount;
 
     public ItemUpdatedEvent(
             Long itemId,
@@ -28,7 +31,9 @@ public class ItemUpdatedEvent extends DomainEvent {
             String itemType,
             String status,
             Long sellerId,
-            Long storeId
+            Long storeId,
+            BigDecimal averageRating,
+            Long reviewCount
     ) {
         super("item-events");
         this.itemId = itemId;
@@ -40,6 +45,8 @@ public class ItemUpdatedEvent extends DomainEvent {
         this.status = status;
         this.sellerId = sellerId;
         this.storeId = storeId;
+        this.averageRating = averageRating;
+        this.reviewCount = reviewCount;
     }
 
     @Override
@@ -59,6 +66,8 @@ public class ItemUpdatedEvent extends DomainEvent {
         payload.put("status", status);
         payload.put("sellerId", sellerId);
         payload.put("storeId", storeId);
+        payload.put("averageRating", averageRating);
+        payload.put("reviewCount", reviewCount);
         return payload;
     }
 }

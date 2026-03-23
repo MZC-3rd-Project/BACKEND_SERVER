@@ -1,0 +1,25 @@
+{
+  "environment": "dev",
+  "namespace": "donmoa-dev",
+  "fullDeploy": false,
+  "selectedTargets": [
+    "review"
+  ],
+  "generatedAt": "2026-03-23T03:40:15Z",
+  "services": [
+    {
+      "key": "review",
+      "buildType": "gradle",
+      "gradleModule": "servers:services:review",
+      "namespace": "donmoa-dev",
+      "releaseName": "review",
+      "rolloutName": "review-service",
+      "workloadKind": "Deployment",
+      "rolloutWave": 6,
+      "serviceName": "review-service",
+      "valuesFile": "deploy/helm/environments/dev/review.yaml",
+      "imageRepository": "682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-review-service",
+      "imageTag": "latest"
+    }
+  ]
+}

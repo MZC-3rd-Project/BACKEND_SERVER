@@ -16,6 +16,7 @@ This stack does not create the shared stateful layer. Reuse outputs from `infra/
 - `private_subnet_ids`
 - `Aurora`, `Redis`, `Kafka`, `Secrets Manager`, `ECR`
 - `search_ai_enrichment_queue_arn` when enabling search AI enrichment publishing from search-service
+- `cart_dynamodb_table_arn` when enabling cart-service DynamoDB IRSA access
 
 ## Files
 
@@ -24,7 +25,7 @@ This stack does not create the shared stateful layer. Reuse outputs from `infra/
 - `variables.tf`: input variables
 - `locals.tf`: naming, tags, addon metadata
 - `network.tf`: EKS security groups
-- `iam.tf`: cluster, node, and IRSA bootstrap roles (including search-service SQS publish role)
+- `iam.tf`: cluster, node, and IRSA bootstrap roles (including search-service and cart-service runtime roles)
 - `cluster.tf`: EKS cluster, launch template, managed node group
 - `addons.tf`: managed EKS addons
 - `outputs.tf`: cluster and addon outputs

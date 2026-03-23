@@ -20,6 +20,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -76,6 +77,41 @@ class AnalyticsEventIngestServiceTest {
         assertThat(saved.getItemType()).isEqualTo("GOODS");
         assertThat(saved.getItemStatus()).isEqualTo("ON_SALE");
         assertThat(saved.getPrice()).isEqualTo(15000L);
+    }
+
+    @Test
+    void ingestItemEvent_itemUpdated_updatesReviewMetricsOnSnapshot() {
+        AnalyticsDimItemSnapshot snapshot = AnalyticsDimItemSnapshot.builder()
+                .itemId(101L)
+                .storeId(201L)
+                .sellerId(301L)
+                .itemType("GOODS")
+                .itemStatus("ON_SALE")
+                .price(15000L)
+                .stockQuantity(10L)
+                .reviewCount(0L)
+                .averageRating(BigDecimal.ZERO.setScale(2))
+                .snapshotAt(LocalDateTime.now())
+                .build();
+        when(dimItemSnapshotRepository.findById(101L)).thenReturn(Optional.of(snapshot));
+
+        AnalyticsItemEventMessage event = JsonUtils.fromJson("""
+                {
+                  "eventId": "evt-item-updated",
+                  "eventType": "ITEM_UPDATED",
+                  "itemId": 101,
+                  "price": 15000,
+                  "reviewCount": 8,
+                  "averageRating": 4.25
+                }
+                """, AnalyticsItemEventMessage.class);
+
+        service.ingestItemEvent(event);
+
+        ArgumentCaptor<AnalyticsDimItemSnapshot> captor = ArgumentCaptor.forClass(AnalyticsDimItemSnapshot.class);
+        verify(dimItemSnapshotRepository).save(captor.capture());
+        assertThat(captor.getValue().getReviewCount()).isEqualTo(8L);
+        assertThat(captor.getValue().getAverageRating()).isEqualByComparingTo("4.25");
     }
 
     @Test

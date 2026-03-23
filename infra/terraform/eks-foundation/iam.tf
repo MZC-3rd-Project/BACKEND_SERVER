@@ -265,3 +265,68 @@ resource "aws_iam_role_policy_attachment" "search_service" {
   role       = aws_iam_role.search_service.name
   policy_arn = aws_iam_policy.search_service[0].arn
 }
+
+data "aws_iam_policy_document" "cart_service_assume_role" {
+  count = var.cart_dynamodb_table_arn == null ? 0 : 1
+
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.this.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_issuer_hostpath}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_issuer_hostpath}:sub"
+      values   = ["system:serviceaccount:${local.application_namespace}:${var.cart_service_account_name}"]
+    }
+  }
+}
+
+resource "aws_iam_role" "cart_service" {
+  count = var.cart_dynamodb_table_arn == null ? 0 : 1
+
+  name               = "${var.name_prefix}-${var.environment}-cart-dynamodb-role"
+  assume_role_policy = data.aws_iam_policy_document.cart_service_assume_role[0].json
+
+  tags = local.common_tags
+}
+
+data "aws_iam_policy_document" "cart_service" {
+  count = var.cart_dynamodb_table_arn == null ? 0 : 1
+
+  statement {
+    sid = "CartTableAccess"
+
+    actions = [
+      "dynamodb:BatchGetItem",
+      "dynamodb:BatchWriteItem",
+      "dynamodb:ConditionCheckItem",
+      "dynamodb:DeleteItem",
+      "dynamodb:DescribeTable",
+      "dynamodb:GetItem",
+      "dynamodb:PutItem",
+      "dynamodb:Query",
+      "dynamodb:Scan",
+      "dynamodb:UpdateItem"
+    ]
+
+    resources = [var.cart_dynamodb_table_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "cart_service" {
+  count = var.cart_dynamodb_table_arn == null ? 0 : 1
+
+  name   = "${var.name_prefix}-${var.environment}-cart-dynamodb-role-policy"
+  role   = aws_iam_role.cart_service[0].id
+  policy = data.aws_iam_policy_document.cart_service[0].json
+}

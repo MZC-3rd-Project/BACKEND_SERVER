@@ -1,4 +1,4 @@
-package com.example.analyticsdashboard.consumer.item;
+package com.example.product.consumer.review;
 
 import com.example.event.consumer.EventEnvelope;
 import lombok.Getter;
@@ -8,19 +8,15 @@ import java.math.BigDecimal;
 
 @Getter
 @NoArgsConstructor
-public class AnalyticsItemEventMessage implements EventEnvelope {
+public class ReviewEventMessage implements EventEnvelope {
 
     private String eventId;
     private String eventType;
-
+    private Long reviewId;
+    private Long orderId;
     private Long itemId;
-    private String itemType;
-    private Long price;
-    private String status;
-    private String newStatus;
-
-    private Long sellerId;
-    private Long storeId;
+    private Long userId;
+    private Integer rating;
     private BigDecimal averageRating;
     private Long reviewCount;
 }

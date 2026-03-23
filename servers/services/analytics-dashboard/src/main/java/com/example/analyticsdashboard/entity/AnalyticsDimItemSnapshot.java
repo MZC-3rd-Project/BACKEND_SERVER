@@ -11,6 +11,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
@@ -48,6 +49,12 @@ public class AnalyticsDimItemSnapshot extends BaseEntity {
     @Column(name = "stock_quantity")
     private Long stockQuantity;
 
+    @Column(name = "review_count", nullable = false)
+    private Long reviewCount;
+
+    @Column(name = "average_rating", precision = 4, scale = 2, nullable = false)
+    private BigDecimal averageRating;
+
     @Column(name = "snapshot_at", nullable = false)
     private LocalDateTime snapshotAt;
 
@@ -60,6 +67,8 @@ public class AnalyticsDimItemSnapshot extends BaseEntity {
             String itemStatus,
             Long price,
             Long stockQuantity,
+            Long reviewCount,
+            BigDecimal averageRating,
             LocalDateTime snapshotAt
     ) {
         this.itemId = itemId;
@@ -69,6 +78,8 @@ public class AnalyticsDimItemSnapshot extends BaseEntity {
         this.itemStatus = itemStatus;
         this.price = price;
         this.stockQuantity = stockQuantity;
+        this.reviewCount = reviewCount;
+        this.averageRating = averageRating;
         this.snapshotAt = snapshotAt;
     }
 
@@ -78,6 +89,8 @@ public class AnalyticsDimItemSnapshot extends BaseEntity {
                                String itemStatus,
                                Long price,
                                Long stockQuantity,
+                               Long reviewCount,
+                               BigDecimal averageRating,
                                LocalDateTime snapshotAt) {
         this.storeId = storeId;
         this.sellerId = sellerId;
@@ -85,6 +98,8 @@ public class AnalyticsDimItemSnapshot extends BaseEntity {
         this.itemStatus = itemStatus;
         this.price = price;
         this.stockQuantity = stockQuantity;
+        this.reviewCount = reviewCount;
+        this.averageRating = averageRating;
         this.snapshotAt = snapshotAt;
     }
 }

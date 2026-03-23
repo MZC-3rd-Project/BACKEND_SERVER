@@ -6,6 +6,8 @@ import com.example.analyticsdashboard.dto.response.SellerDashboardFunnelDomainRe
 import com.example.analyticsdashboard.dto.response.SellerDashboardFunnelResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardFunnelStepResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardOverviewResponse;
+import com.example.analyticsdashboard.dto.response.SellerDashboardReviewKpiResponse;
+import com.example.analyticsdashboard.entity.AnalyticsDimItemSnapshot;
 import com.example.analyticsdashboard.repository.AnalyticsItemStatusCountRow;
 import com.example.analyticsdashboard.repository.AnalyticsRawSalesEventAggregateRow;
 import com.example.analyticsdashboard.entity.AnalyticsRawSalesEvent;
@@ -19,6 +21,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -149,6 +152,57 @@ class SellerDashboardOverviewQueryServiceTest {
         assertThat(response.getSearch().getSearchCount()).isEqualTo(1L);
         assertThat(response.getSearch().getClickCount()).isEqualTo(1L);
         assertThat(response.getSearch().getCtr()).isEqualTo(1.0d);
+    }
+
+    @Test
+    void getOverview_includesReviewMetricsInExtensions() {
+        stubEmptyRepos();
+        when(dimItemSnapshotRepository.findBySellerId(20L)).thenReturn(List.of(
+                AnalyticsDimItemSnapshot.builder()
+                        .itemId(1L)
+                        .storeId(10L)
+                        .sellerId(20L)
+                        .itemType("GOODS")
+                        .itemStatus("ON_SALE")
+                        .price(1000L)
+                        .stockQuantity(10L)
+                        .reviewCount(2L)
+                        .averageRating(new BigDecimal("4.50"))
+                        .snapshotAt(LocalDateTime.now())
+                        .build(),
+                AnalyticsDimItemSnapshot.builder()
+                        .itemId(2L)
+                        .storeId(10L)
+                        .sellerId(20L)
+                        .itemType("GOODS")
+                        .itemStatus("ON_SALE")
+                        .price(2000L)
+                        .stockQuantity(5L)
+                        .reviewCount(1L)
+                        .averageRating(new BigDecimal("3.00"))
+                        .snapshotAt(LocalDateTime.now())
+                        .build()
+        ));
+
+        SellerDashboardOverviewQuery query = SellerDashboardOverviewQuery.of(
+                "DAILY",
+                "2026-02-26",
+                null,
+                null,
+                null,
+                null,
+                "Asia/Seoul"
+        );
+
+        SellerDashboardOverviewResponse response = service.getOverview(20L, query);
+
+        assertThat(response.getExtensions()).containsKey("review");
+        SellerDashboardReviewKpiResponse review =
+                (SellerDashboardReviewKpiResponse) response.getExtensions().get("review");
+        assertThat(review).isNotNull();
+        assertThat(review.getReviewCount()).isEqualTo(3L);
+        assertThat(review.getReviewedItemCount()).isEqualTo(2L);
+        assertThat(review.getAverageRating()).isEqualByComparingTo("4.00");
     }
 
     @Test
@@ -284,6 +338,9 @@ class SellerDashboardOverviewQueryServiceTest {
         lenient().when(dimItemSnapshotRepository.countByStatusForStoreId(anyLong())).thenReturn(List.of());
         lenient().when(dimItemSnapshotRepository.countByStatusForSellerId(anyLong())).thenReturn(List.of());
         lenient().when(dimItemSnapshotRepository.countByStatusForStoreIdAndSellerId(anyLong(), anyLong())).thenReturn(List.of());
+        lenient().when(dimItemSnapshotRepository.findByStoreId(anyLong())).thenReturn(List.of());
+        lenient().when(dimItemSnapshotRepository.findBySellerId(anyLong())).thenReturn(List.of());
+        lenient().when(dimItemSnapshotRepository.findByStoreIdAndSellerId(anyLong(), anyLong())).thenReturn(List.of());
     }
 
     private SellerDashboardFunnelResponse funnel(long searchCount,

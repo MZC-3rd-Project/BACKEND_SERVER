@@ -18,6 +18,8 @@ CREATE DATABASE notification_db;
 CREATE DATABASE chat_db;
 CREATE DATABASE store_db;
 CREATE DATABASE order_query_db;
+CREATE DATABASE analytics_db;
+CREATE DATABASE review_db;
 
 -- auth_db 초기 설정
 \c auth_db;
@@ -71,4 +73,10 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 \c order_query_db;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+\c analytics_db;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+\c review_db;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

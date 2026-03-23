@@ -19,6 +19,8 @@ public class PerformanceListAssembler {
                 .price(item.getPrice())
                 .status(item.getStatus().name())
                 .images(ItemImagesResponse.from(images, item.getThumbnailMediaId()))
+                .averageRating(item.getAverageRating())
+                .reviewCount(item.getReviewCount())
                 .venue(performance.getVenue())
                 .performanceDate(performance.getPerformanceDate())
                 .performanceTime(performance.getPerformanceTime())

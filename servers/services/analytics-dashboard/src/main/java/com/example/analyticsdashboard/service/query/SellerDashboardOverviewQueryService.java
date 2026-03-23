@@ -8,9 +8,11 @@ import com.example.analyticsdashboard.dto.response.SellerDashboardFunnelResponse
 import com.example.analyticsdashboard.dto.response.SellerDashboardItemKpiResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardOverviewResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardQueryRangeResponse;
+import com.example.analyticsdashboard.dto.response.SellerDashboardReviewKpiResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardSalesKpiResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardSearchKpiResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardSeriesPointResponse;
+import com.example.analyticsdashboard.entity.AnalyticsDimItemSnapshot;
 import com.example.analyticsdashboard.entity.AnalyticsRawSalesEvent;
 import com.example.analyticsdashboard.exception.AnalyticsDashboardErrorCode;
 import com.example.analyticsdashboard.repository.AnalyticsDimItemSnapshotRepository;
@@ -23,6 +25,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -65,6 +69,7 @@ public class SellerDashboardOverviewQueryService {
                         queryRangeContext.toDateTime()
                 );
         List<AnalyticsItemStatusCountRow> itemStatusCounts = dimItemSnapshotRepository.countByStatusForSellerId(sellerId);
+        List<AnalyticsDimItemSnapshot> itemSnapshots = dimItemSnapshotRepository.findBySellerId(sellerId);
         LocalDateTime salesAsOf = rawSalesEventRepository.findLatestTimestampBySellerIdAndOccurredAtBetween(
                 sellerId,
                 queryRangeContext.fromDateTime(),
@@ -78,6 +83,7 @@ public class SellerDashboardOverviewQueryService {
                 rawSalesEvents,
                 salesAggregates,
                 itemStatusCounts,
+                itemSnapshots,
                 salesAsOf,
                 funnel
         );
@@ -92,6 +98,7 @@ public class SellerDashboardOverviewQueryService {
         List<AnalyticsRawSalesEvent> rawSalesEvents;
         List<AnalyticsRawSalesEventAggregateRow> salesAggregates;
         List<AnalyticsItemStatusCountRow> itemStatusCounts;
+        List<AnalyticsDimItemSnapshot> itemSnapshots;
         LocalDateTime salesAsOf;
 
         if (hasPositiveId(sellerId)) {
@@ -108,6 +115,7 @@ public class SellerDashboardOverviewQueryService {
                     queryRangeContext.toDateTime()
             );
             itemStatusCounts = dimItemSnapshotRepository.countByStatusForStoreIdAndSellerId(storeId, sellerId);
+            itemSnapshots = dimItemSnapshotRepository.findByStoreIdAndSellerId(storeId, sellerId);
             salesAsOf = rawSalesEventRepository.findLatestTimestampByStoreIdAndSellerIdAndOccurredAtBetween(
                     storeId,
                     sellerId,
@@ -126,6 +134,7 @@ public class SellerDashboardOverviewQueryService {
                     queryRangeContext.toDateTime()
             );
             itemStatusCounts = dimItemSnapshotRepository.countByStatusForStoreId(storeId);
+            itemSnapshots = dimItemSnapshotRepository.findByStoreId(storeId);
             salesAsOf = rawSalesEventRepository.findLatestTimestampByStoreIdAndOccurredAtBetween(
                     storeId,
                     queryRangeContext.fromDateTime(),
@@ -140,6 +149,7 @@ public class SellerDashboardOverviewQueryService {
                 rawSalesEvents,
                 salesAggregates,
                 itemStatusCounts,
+                itemSnapshots,
                 salesAsOf,
                 funnel
         );
@@ -150,12 +160,14 @@ public class SellerDashboardOverviewQueryService {
                                                                   List<AnalyticsRawSalesEvent> rawSalesEvents,
                                                                   List<AnalyticsRawSalesEventAggregateRow> salesAggregates,
                                                                   List<AnalyticsItemStatusCountRow> itemStatusCounts,
+                                                                  List<AnalyticsDimItemSnapshot> itemSnapshots,
                                                                   LocalDateTime salesAsOf,
                                                                   SellerDashboardFunnelResponse funnel) {
         SellerDashboardQueryRangeResponse queryRange = toQueryRange(queryRangeContext, query.timezone().getId());
         SellerDashboardSalesKpiResponse sales = toSalesKpi(salesAggregates);
         SellerDashboardSearchKpiResponse search = toSearchKpi(funnel);
         SellerDashboardItemKpiResponse item = toItemKpi(itemStatusCounts);
+        SellerDashboardReviewKpiResponse review = toReviewKpi(itemSnapshots);
         List<SellerDashboardSeriesPointResponse> series = toSeries(rawSalesEvents, queryRangeContext);
         Instant asOf = resolveAsOf(salesAsOf, null);
 
@@ -163,7 +175,7 @@ public class SellerDashboardOverviewQueryService {
         extensions.put("funding", null);
         extensions.put("hotDeal", null);
         extensions.put("store", null);
-        extensions.put("review", null);
+        extensions.put("review", review);
         extensions.put("funnel", funnel);
 
         return SellerDashboardOverviewResponse.builder()
@@ -305,6 +317,35 @@ public class SellerDashboardOverviewQueryService {
                 .onSaleCount(onSaleCount)
                 .soldOutCount(soldOutCount)
                 .hiddenCount(hiddenCount)
+                .build();
+    }
+
+    private SellerDashboardReviewKpiResponse toReviewKpi(List<AnalyticsDimItemSnapshot> itemSnapshots) {
+        List<AnalyticsDimItemSnapshot> snapshots = itemSnapshots == null ? List.of() : itemSnapshots;
+
+        long totalReviewCount = snapshots.stream()
+                .map(AnalyticsDimItemSnapshot::getReviewCount)
+                .filter(java.util.Objects::nonNull)
+                .mapToLong(Long::longValue)
+                .sum();
+
+        long reviewedItemCount = snapshots.stream()
+                .filter(snapshot -> snapshot.getReviewCount() != null && snapshot.getReviewCount() > 0)
+                .count();
+
+        BigDecimal totalWeightedRating = snapshots.stream()
+                .filter(snapshot -> snapshot.getReviewCount() != null && snapshot.getReviewCount() > 0)
+                .map(snapshot -> snapshot.getAverageRating().multiply(BigDecimal.valueOf(snapshot.getReviewCount())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal averageRating = totalReviewCount == 0
+                ? BigDecimal.ZERO.setScale(2)
+                : totalWeightedRating.divide(BigDecimal.valueOf(totalReviewCount), 2, RoundingMode.HALF_UP);
+
+        return SellerDashboardReviewKpiResponse.builder()
+                .reviewCount(totalReviewCount)
+                .reviewedItemCount(reviewedItemCount)
+                .averageRating(averageRating)
                 .build();
     }
 
