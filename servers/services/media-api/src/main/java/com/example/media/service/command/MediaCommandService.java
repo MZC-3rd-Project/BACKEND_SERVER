@@ -535,6 +535,16 @@ public class MediaCommandService {
             URL url = presignedPutObjectRequest.url();
             return url.toString();
         } catch (Exception e) {
+            log.error(
+                    "[MediaPresign] failed to create presigned PUT URL. bucket={}, region={}, objectKey={}, contentType={}, contentLength={}, reason={}",
+                    mediaS3Properties.getBucket(),
+                    mediaS3Properties.getRegion(),
+                    objectKey,
+                    contentType,
+                    contentLength,
+                    e.getMessage(),
+                    e
+            );
             throw new BusinessException(MediaErrorCode.MEDIA_S3_PRESIGN_FAILED, e);
         }
     }
