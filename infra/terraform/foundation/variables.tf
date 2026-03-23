@@ -156,6 +156,8 @@ variable "ecr_repositories" {
     "sales-service",
     "funding-service",
     "hot-deal-service",
+    "payment-service",
+    "review-service",
     "analytics-dashboard-service"
   ]
 }

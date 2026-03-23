@@ -1,0 +1,43 @@
+fullnameOverride: payment-service
+
+image:
+  repository: 682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-payment-service
+  tag: latest
+  pullPolicy: Always
+
+service:
+  port: 8095
+
+container:
+  port: 8095
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+env:
+  SERVER_PORT: "8095"
+  SPRING_PROFILES_ACTIVE: develop
+  DB_URL: jdbc:postgresql://donmoa-dev-aurora.cluster-cfw84sg260sa.ap-northeast-2.rds.amazonaws.com:5432/payment_db
+  DB_USERNAME: postgres
+  REDIS_HOST: donmoa-dev-redis.awmnbx.ng.0001.apn2.cache.amazonaws.com
+  REDIS_PORT: "6379"
+  KAFKA_BOOTSTRAP_SERVERS: 10.30.130.193:9092
+  APP_GATEWAY_SECURITY_ENABLED: "true"
+  TOSSPAYMENTS_BASE_URL: https://api.tosspayments.com
+  TOSSPAYMENTS_CONFIRM_TIMEOUT: "30"
+
+secretEnv:
+  DB_PASSWORD:
+    remoteRef: donmoa/dev/payment-db
+    property: password
+  APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:
+    remoteRef: donmoa/dev/common
+    property: APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN
+  TOSSPAYMENTS_SECRET_KEY:
+    remoteRef: donmoa/dev/payment-gateway
+    property: TOSSPAYMENTS_SECRET_KEY

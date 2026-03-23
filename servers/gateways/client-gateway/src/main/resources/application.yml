@@ -67,6 +67,14 @@ spring:
               uri: ${app.service.order-url:http://localhost:8090}
               predicates:
                 - Path=/api/v1/orders/**
+            - id: payment-service
+              uri: ${app.service.payment-url:http://localhost:8095}
+              predicates:
+                - Path=/api/v1/payments/**
+            - id: review-service
+              uri: ${app.service.review-url:http://localhost:8097}
+              predicates:
+                - Path=/api/v1/reviews/**
             - id: chat-service-ws
               uri: ${app.service.chat-ws-url:ws://localhost:8093}
               predicates:
@@ -94,6 +102,8 @@ springdoc:
         url: /v3/api-docs-proxy/hot-deal
       - name: order
         url: /v3/api-docs-proxy/order
+      - name: payment
+        url: /v3/api-docs-proxy/payment
       - name: store
         url: /v3/api-docs-proxy/store
       - name: store-query
@@ -108,6 +118,8 @@ springdoc:
         url: /v3/api-docs-proxy/analytics-dashboard
       - name: cart
         url: /v3/api-docs-proxy/cart
+      - name: review
+        url: /v3/api-docs-proxy/review
 
 gateway:
   auth:
@@ -126,9 +138,9 @@ gateway:
     internal-auth-token: ${GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
     allow-client-identity-headers: ${GATEWAY_SECURITY_ALLOW_CLIENT_IDENTITY_HEADERS:false}
     allow-client-signed-context-header: ${GATEWAY_SECURITY_ALLOW_CLIENT_SIGNED_CONTEXT_HEADER:false}
-    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/store,/api/v1/store-query,/api/v1/cart,/api/v1/media,/api/v1/chat,/ws/chat,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders}
+    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/store,/api/v1/store-query,/api/v1/cart,/api/v1/media,/api/v1/chat,/ws/chat,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders,/api/v1/payments,/api/v1/reviews}
     require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:/api/v1/chat,/ws/chat,/api/v1/cart}
-    require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/bff/v1,/api/store,/api/v1/cart,/api/v1/media,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders}
+    require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/bff/v1,/api/store,/api/v1/cart,/api/v1/media,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders,/api/v1/payments,/api/v1/reviews}
   session:
     enabled: ${GATEWAY_SESSION_ENABLED:false}
     relay-header-enabled: ${GATEWAY_SESSION_RELAY_HEADER_ENABLED:true}

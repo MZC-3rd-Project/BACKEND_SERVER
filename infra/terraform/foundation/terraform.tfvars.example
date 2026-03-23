@@ -39,6 +39,8 @@ ecr_repositories = [
   "funding-service",
   "hot-deal-service",
   "order-service",
+  "payment-service",
+  "review-service",
   "store-service",
   "store-query-service",
   "notification-service",

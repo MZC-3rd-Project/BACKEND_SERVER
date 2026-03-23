@@ -48,7 +48,9 @@ public class GatewayOpenApiDocsProxyService {
             @Value("${app.service.chat-url:http://localhost:8093}") String chatServiceUrl,
             @Value("${app.service.media-url:http://localhost:8094}") String mediaServiceUrl,
             @Value("${app.service.analytics-dashboard-url:http://localhost:8095}") String analyticsDashboardServiceUrl,
-            @Value("${app.service.cart-url:http://localhost:8096}") String cartServiceUrl
+            @Value("${app.service.cart-url:http://localhost:8096}") String cartServiceUrl,
+            @Value("${app.service.review-url:http://localhost:8097}") String reviewServiceUrl,
+            @Value("${app.service.payment-url:http://localhost:8095}") String paymentServiceUrl
     ) {
         this.webClientBuilder = webClientBuilder;
         this.securityProperties = securityProperties;
@@ -68,7 +70,9 @@ public class GatewayOpenApiDocsProxyService {
                 chatServiceUrl,
                 mediaServiceUrl,
                 analyticsDashboardServiceUrl,
-                cartServiceUrl
+                cartServiceUrl,
+                reviewServiceUrl,
+                paymentServiceUrl
         ));
     }
 
@@ -112,7 +116,9 @@ public class GatewayOpenApiDocsProxyService {
             String chatServiceUrl,
             String mediaServiceUrl,
             String analyticsDashboardServiceUrl,
-            String cartServiceUrl
+            String cartServiceUrl,
+            String reviewServiceUrl,
+            String paymentServiceUrl
     ) {
         Map<String, String> urls = new LinkedHashMap<>();
         urls.put("auth", authServiceUrl);
@@ -130,6 +136,8 @@ public class GatewayOpenApiDocsProxyService {
         urls.put("media-api", mediaServiceUrl);
         urls.put("analytics-dashboard", analyticsDashboardServiceUrl);
         urls.put("cart", cartServiceUrl);
+        urls.put("review", reviewServiceUrl);
+        urls.put("payment", paymentServiceUrl);
         return urls;
     }
 

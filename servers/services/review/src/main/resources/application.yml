@@ -1,0 +1,90 @@
+server:
+  port: ${SERVER_PORT:8097}
+
+spring:
+  application:
+    name: review-service
+
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/review_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_batch_fetch_size: 100
+    show-sql: ${JPA_SHOW_SQL:false}
+    open-in-view: false
+
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:29092}
+
+app:
+  outbox:
+    enabled: ${APP_OUTBOX_ENABLED:true}
+
+  security:
+    context:
+      signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}
+      max-age-millis: ${APP_SECURITY_CONTEXT_MAX_AGE_MILLIS:300000}
+
+  gateway-security:
+    enabled: ${APP_GATEWAY_SECURITY_ENABLED:true}
+    gateway-auth-enabled: ${APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED:true}
+    internal-auth-header: ${APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}
+    internal-auth-token: ${APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
+    user-id-header: ${APP_GATEWAY_SECURITY_USER_ID_HEADER:X-User-Id}
+    optional-user-context-paths:
+      - /api/v1/reviews/**
+    excluded-paths:
+      - /actuator/**
+      - /v3/api-docs/**
+      - /swagger-ui/**
+
+  snowflake:
+    datacenter-id: ${SNOWFLAKE_DATACENTER_ID:1}
+    worker-id: ${SNOWFLAKE_WORKER_ID:13}
+
+  media-link-sync-retry:
+    fixed-delay-ms: ${APP_MEDIA_LINK_SYNC_RETRY_FIXED_DELAY_MS:30000}
+    processing-stale-threshold-seconds: ${APP_MEDIA_LINK_SYNC_RETRY_STALE_SECONDS:120}
+    max-retry-count: ${APP_MEDIA_LINK_SYNC_RETRY_MAX_RETRY_COUNT:7}
+    base-delay-seconds: ${APP_MEDIA_LINK_SYNC_RETRY_BASE_DELAY_SECONDS:30}
+    max-delay-seconds: ${APP_MEDIA_LINK_SYNC_RETRY_MAX_DELAY_SECONDS:600}
+
+  service:
+    order-url: ${ORDER_SERVICE_URL:http://localhost:8090}
+    media-url: ${MEDIA_SERVICE_URL:http://localhost:8094}
+
+  openapi:
+    enabled: ${OPENAPI_ENABLED:true}
+    title: "Review Service API"
+    version: "1.0.0"
+    description: |
+      구매 기반 리뷰 생성 및 조회 서비스
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${ACTUATOR_ENDPOINTS:health,info,metrics,prometheus}
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.example: ${LOG_LEVEL:INFO}
+    org.springframework.kafka: INFO

@@ -52,7 +52,9 @@ class GatewayOpenApiDocsProxyServiceTest {
                 "http://chat",
                 "http://media-api",
                 "http://analytics-dashboard",
-                "http://cart"
+                "http://cart",
+                "http://review",
+                "http://payment"
         );
     }
 
@@ -112,6 +114,50 @@ class GatewayOpenApiDocsProxyServiceTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().path("error").path("code").asText()).isEqualTo("GW-OPENAPI-404");
+    }
+
+    @Test
+    void fetch_routesReviewDocsToReviewService() {
+        exchangeFunction.enqueue(HttpStatus.OK, """
+                {
+                  "openapi": "3.1.0",
+                  "info": {
+                    "title": "Review API",
+                    "version": "1.0.0"
+                  }
+                }
+                """);
+
+        ResponseEntity<JsonNode> response = gatewayOpenApiDocsProxyService.fetch(
+                "review",
+                MockServerHttpRequest.get("http://gateway.dev.example.com/v3/api-docs-proxy/review").build()
+        ).block();
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(exchangeFunction.lastRequestUri).isEqualTo(URI.create("http://review/v3/api-docs"));
+    }
+
+    @Test
+    void fetch_routesPaymentDocsToPaymentService() {
+        exchangeFunction.enqueue(HttpStatus.OK, """
+                {
+                  "openapi": "3.1.0",
+                  "info": {
+                    "title": "Payment API",
+                    "version": "1.0.0"
+                  }
+                }
+                """);
+
+        ResponseEntity<JsonNode> response = gatewayOpenApiDocsProxyService.fetch(
+                "payment",
+                MockServerHttpRequest.get("http://gateway.dev.example.com/v3/api-docs-proxy/payment").build()
+        ).block();
+
+        assertThat(response).isNotNull();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(exchangeFunction.lastRequestUri).isEqualTo(URI.create("http://payment/v3/api-docs"));
     }
 
     private static final class StubExchangeFunction implements ExchangeFunction {

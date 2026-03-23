@@ -95,6 +95,8 @@ CREATE DATABASE sales_db;
 CREATE DATABASE funding_db;
 CREATE DATABASE hotdeal_db;
 CREATE DATABASE search_db;
+CREATE DATABASE payment_db;
+CREATE DATABASE review_db;
 CREATE DATABASE analytics_db;
 CREATE DATABASE auth_db;
 CREATE DATABASE user_db;

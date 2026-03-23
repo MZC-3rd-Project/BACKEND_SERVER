@@ -10,6 +10,8 @@
   "sales": "donmoa-dev-eks-deploy",
   "hot-deal": "donmoa-dev-eks-deploy",
   "order": "donmoa-dev-eks-deploy",
+  "payment": "donmoa-dev-eks-deploy",
+  "review": "donmoa-dev-eks-deploy",
   "store": "donmoa-dev-eks-deploy",
   "store-query": "donmoa-dev-eks-deploy",
   "notification": "donmoa-dev-eks-deploy",
