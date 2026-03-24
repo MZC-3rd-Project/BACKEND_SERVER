@@ -6,7 +6,7 @@ dependencies {
     // ─── Core ─────────────────────────────────────
     implementation(project(":libs:core:exception"))
     implementation(project(":libs:core:util"))
-    implementation(project(":libs:core:id"))
+    implementahttps://github.com/MZC-3rd-Project/BACKEND_SERVER/pull/926tion(project(":libs:core:id"))
     implementation(project(":libs:core:pagination"))
 
     // ─── API ──────────────────────────────────────
@@ -20,6 +20,9 @@ dependencies {
     implementation(project(":libs:config:kafka"))
     implementation(project(":libs:config:redis"))
     implementation(project(":libs:config:webclient"))
+    implementation(project(":libs:config:lock"))
+    implementation(project(":libs:config:lock-redisson"))
+    implementation(project(":libs:config:resilience"))
 
     // ─── Event ────────────────────────────────────
     implementation(project(":libs:event:consumer"))

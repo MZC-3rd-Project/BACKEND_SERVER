@@ -65,6 +65,41 @@ app:
     description: |
       결제 서비스 API - TossPayments PG 연동 결제 승인, 조회
 
+# ─── Resilience4j ─────────────────────────────
+resilience4j:
+  retry:
+    instances:
+      toss-payments-confirm:
+        max-attempts: 3
+        wait-duration: 1s
+        retry-exceptions:
+          - java.net.ConnectException
+          - java.net.SocketTimeoutException
+          - org.springframework.web.reactive.function.client.WebClientRequestException
+        ignore-exceptions:
+          - com.example.payment.exception.TossPaymentsApiException
+      toss-payments-cancel:
+        max-attempts: 3
+        wait-duration: 1s
+        retry-exceptions:
+          - java.net.ConnectException
+          - java.net.SocketTimeoutException
+          - org.springframework.web.reactive.function.client.WebClientRequestException
+        ignore-exceptions:
+          - com.example.payment.exception.TossPaymentsApiException
+  circuitbreaker:
+    instances:
+      toss-payments-confirm:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+      toss-payments-cancel:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+
 # ─── Actuator ─────────────────────────────────
 management:
   endpoints:
