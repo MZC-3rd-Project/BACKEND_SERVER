@@ -1,5 +1,5 @@
 {
-  "id": "0e389976-f06c-44f7-a7ad-a6e94d6e9d0d",
+  "id": "61cd6a51-22dd-4640-9a60-8e41149f8e58",
   "realm": "don-moa",
   "notBefore": 0,
   "defaultSignatureAlgorithm": "RS256",
@@ -26,8 +26,8 @@
   "oauth2DeviceCodeLifespan": 600,
   "oauth2DevicePollingInterval": 5,
   "enabled": true,
-  "sslRequired": "external",
-  "registrationAllowed": false,
+  "sslRequired": "none",
+  "registrationAllowed": true,
   "registrationEmailAsUsername": false,
   "rememberMe": false,
   "verifyEmail": false,
@@ -51,7 +51,7 @@
         "description": "관리자",
         "composite": false,
         "clientRole": false,
-        "containerId": "0e389976-f06c-44f7-a7ad-a6e94d6e9d0d",
+        "containerId": "61cd6a51-22dd-4640-9a60-8e41149f8e58",
         "attributes": {}
       },
       {
@@ -60,7 +60,7 @@
         "description": "${role_offline-access}",
         "composite": false,
         "clientRole": false,
-        "containerId": "0e389976-f06c-44f7-a7ad-a6e94d6e9d0d",
+        "containerId": "61cd6a51-22dd-4640-9a60-8e41149f8e58",
         "attributes": {}
       },
       {
@@ -69,7 +69,7 @@
         "description": "일반 사용자 ",
         "composite": false,
         "clientRole": false,
-        "containerId": "0e389976-f06c-44f7-a7ad-a6e94d6e9d0d",
+        "containerId": "61cd6a51-22dd-4640-9a60-8e41149f8e58",
         "attributes": {}
       },
       {
@@ -78,7 +78,7 @@
         "description": "${role_uma_authorization}",
         "composite": false,
         "clientRole": false,
-        "containerId": "0e389976-f06c-44f7-a7ad-a6e94d6e9d0d",
+        "containerId": "61cd6a51-22dd-4640-9a60-8e41149f8e58",
         "attributes": {}
       },
       {
@@ -100,7 +100,7 @@
           }
         },
         "clientRole": false,
-        "containerId": "0e389976-f06c-44f7-a7ad-a6e94d6e9d0d",
+        "containerId": "61cd6a51-22dd-4640-9a60-8e41149f8e58",
         "attributes": {}
       },
       {
@@ -109,7 +109,7 @@
         "description": "판매자",
         "composite": false,
         "clientRole": false,
-        "containerId": "0e389976-f06c-44f7-a7ad-a6e94d6e9d0d",
+        "containerId": "61cd6a51-22dd-4640-9a60-8e41149f8e58",
         "attributes": {}
       }
     ],
@@ -439,7 +439,7 @@
     "description": "${role_default-roles}",
     "composite": true,
     "clientRole": false,
-    "containerId": "0e389976-f06c-44f7-a7ad-a6e94d6e9d0d"
+    "containerId": "61cd6a51-22dd-4640-9a60-8e41149f8e58"
   },
   "requiredCredentials": [
     "password"
@@ -692,12 +692,8 @@
       "alwaysDisplayInConsole": false,
       "clientAuthenticatorType": "client-secret",
       "secret": "local-admin-secret",
-      "redirectUris": [
-        "/*"
-      ],
-      "webOrigins": [
-        "/*"
-      ],
+      "redirectUris": [],
+      "webOrigins": [],
       "notBefore": 0,
       "bearerOnly": false,
       "consentRequired": false,
@@ -706,7 +702,7 @@
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": true,
       "publicClient": false,
-      "frontchannelLogout": true,
+      "frontchannelLogout": false,
       "protocol": "openid-connect",
       "attributes": {
         "oidc.ciba.grant.enabled": "false",
@@ -770,7 +766,8 @@
         "acr",
         "roles",
         "profile",
-        "email"
+        "email",
+        "snowflake-id"
       ],
       "optionalClientScopes": [
         "address",
@@ -793,10 +790,13 @@
       "clientAuthenticatorType": "client-secret",
       "secret": "local-gateway-secret",
       "redirectUris": [
-        "http://localhost:18080/login/oauth2/code/keycloak"
+        "http://localhost:18080/login/oauth2/code/keycloak",
+        "http://donmoa-dev-alb-214468272.ap-northeast-2.elb.amazonaws.com/*",
+        "http://donmoa-dev-alb-214468272.ap-northeast-2.elb.amazonaws.com/login/oauth2/code/keycloak"
       ],
       "webOrigins": [
-        "http://localhost:3000"
+        "http://localhost:3000",
+        "http://donmoa-dev-alb-214468272.ap-northeast-2.elb.amazonaws.com"
       ],
       "notBefore": 0,
       "bearerOnly": false,
@@ -806,13 +806,13 @@
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": false,
       "publicClient": false,
-      "frontchannelLogout": true,
+      "frontchannelLogout": false,
       "protocol": "openid-connect",
       "attributes": {
         "oidc.ciba.grant.enabled": "false",
         "client.secret.creation.time": "1771914632",
         "backchannel.logout.session.required": "true",
-        "post.logout.redirect.uris": "http://localhost:18080/*",
+        "post.logout.redirect.uris": "http://localhost:18080/*##http://donmoa-dev-alb-214468272.ap-northeast-2.elb.amazonaws.com/*",
         "oauth2.device.authorization.grant.enabled": "false",
         "backchannel.logout.revoke.offline.tokens": "false"
       },
@@ -824,7 +824,8 @@
         "acr",
         "roles",
         "profile",
-        "email"
+        "email",
+        "snowflake-id"
       ],
       "optionalClientScopes": [
         "address",
@@ -1473,6 +1474,39 @@
           }
         }
       ]
+    },
+    {
+      "id": "33a6d9e5-f8c3-4e75-9a2e-063e2a0c50d9",
+      "name": "snowflake-id",
+      "description": "사용자 토큰값 속성으로 snowflakeId값 추가",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false",
+        "gui.order": "",
+        "consent.screen.text": ""
+      },
+      "protocolMappers": [
+        {
+          "id": "8523bfbc-7a25-4e48-aef2-cc06fa316896",
+          "name": "snowflakeId",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "aggregate.attrs": "false",
+            "introspection.token.claim": "true",
+            "multivalued": "false",
+            "userinfo.token.claim": "true",
+            "user.attribute": "snowflakeId",
+            "id.token.claim": "true",
+            "lightweight.claim": "false",
+            "access.token.claim": "true",
+            "claim.name": "snowflakeId",
+            "jsonType.label": "String"
+          }
+        }
+      ]
     }
   ],
   "defaultDefaultClientScopes": [
@@ -1481,7 +1515,8 @@
     "email",
     "roles",
     "web-origins",
-    "acr"
+    "acr",
+    "snowflake-id"
   ],
   "defaultOptionalClientScopes": [
     "offline_access",
@@ -1499,7 +1534,15 @@
     "xXSSProtection": "1; mode=block",
     "strictTransportSecurity": "max-age=31536000; includeSubDomains"
   },
-  "smtpServer": {},
+  "smtpServer": {
+    "host": "mailhog",
+    "port": "1025",
+    "from": "keycloak@don-moa.local",
+    "fromDisplayName": "Don-Moa (Local)",
+    "ssl": "false",
+    "starttls": "false",
+    "auth": "false"
+  },
   "eventsEnabled": false,
   "eventsListeners": [
     "jboss-logging"
@@ -2298,14 +2341,16 @@
     "oauth2DevicePollingInterval": "5",
     "parRequestUriLifespan": "60",
     "cibaInterval": "5",
-    "realmReusableOtpCode": "false"
+    "realmReusableOtpCode": "false",
+    "unmanagedAttributePolicy": "ADMIN_EDIT"
   },
-  "keycloakVersion": "23.0.0",
+  "keycloakVersion": "24.0.5",
   "userManagedAccessAllowed": false,
   "clientProfiles": {
     "profiles": []
   },
   "clientPolicies": {
     "policies": []
-  }
+  },
+  "maxTemporaryLockouts": 0
 }
