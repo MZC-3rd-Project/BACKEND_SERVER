@@ -126,6 +126,8 @@ public class ProfileCommandService {
             .buildingNumber(req.buildingNumber())
             .buildingName(req.buildingName())
             .detailAddress(req.detailAddress())
+            .recipientName(req.recipientName())
+            .recipientPhone(req.recipientPhone())
             .build();
 
         if (existing.isEmpty()) {

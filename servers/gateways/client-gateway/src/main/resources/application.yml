@@ -75,6 +75,10 @@ spring:
               uri: ${app.service.review-url:http://localhost:8097}
               predicates:
                 - Path=/api/v1/reviews/**
+            - id: profile-service
+              uri: ${app.service.profile-url:http://localhost:8071}
+              predicates:
+                - Path=/api/profile/**
             - id: chat-service-ws
               uri: ${app.service.chat-ws-url:ws://localhost:8093}
               predicates:

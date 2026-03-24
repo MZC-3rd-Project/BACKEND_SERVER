@@ -13,7 +13,9 @@ public record ProfileAddressResponse(
     String buildingNumber,
     String buildingName,
     String detailAddress,
-    int sortOrder
+    int sortOrder,
+    String recipientName,
+    String recipientPhone
 ) {
     public static ProfileAddressResponse from(ProfileAddress address) {
         return new ProfileAddressResponse(
@@ -26,7 +28,9 @@ public record ProfileAddressResponse(
             address.getBuildingNumber(),
             address.getBuildingName(),
             address.getDetailAddress(),
-            address.getSortOrder()
+            address.getSortOrder(),
+            address.getRecipientName(),
+            address.getRecipientPhone()
         );
     }
 
