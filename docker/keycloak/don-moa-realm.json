@@ -483,7 +483,18 @@
   "webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister": false,
   "webAuthnPolicyPasswordlessAcceptableAaguids": [],
   "webAuthnPolicyPasswordlessExtraOrigins": [],
-  "users": [],
+  "users": [
+    {
+      "username": "service-account-don-moa-admin",
+      "enabled": true,
+      "serviceAccountClientId": "don-moa-admin",
+      "clientRoles": {
+        "realm-management": [
+          "realm-admin"
+        ]
+      }
+    }
+  ],
   "scopeMappings": [
     {
       "clientScope": "offline_access",
