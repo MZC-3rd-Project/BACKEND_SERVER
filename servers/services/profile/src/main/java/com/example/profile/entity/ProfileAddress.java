@@ -78,7 +78,7 @@ public class ProfileAddress extends BaseEntity {
         this.buildingNumber = req.buildingNumber();
         this.buildingName   = req.buildingName();
         this.detailAddress  = req.detailAddress();
-        this.sortOrder      = req.sortOrder();
+        // sortOrder는 클라이언트에서 관리하지 않음
     }
 
     public static ProfileAddress create(Long profileId, ProfileDeliveryAddressQuery req){
@@ -92,7 +92,6 @@ public class ProfileAddress extends BaseEntity {
             .buildingNumber(req.buildingNumber())
             .buildingName(req.buildingName())
             .detailAddress(req.detailAddress())
-            .sortOrder(req.sortOrder())
             .build();
     }
 

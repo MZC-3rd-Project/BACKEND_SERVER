@@ -20,6 +20,9 @@ dependencies {
     implementation(project(":libs:config:kafka"))
     implementation(project(":libs:config:redis"))
     implementation(project(":libs:config:webclient"))
+    implementation(project(":libs:config:lock"))
+    implementation(project(":libs:config:lock-redisson"))
+    implementation(project(":libs:config:resilience"))
 
     // ─── Event ────────────────────────────────────
     implementation(project(":libs:event:consumer"))

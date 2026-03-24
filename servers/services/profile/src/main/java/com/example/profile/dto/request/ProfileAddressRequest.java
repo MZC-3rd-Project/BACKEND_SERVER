@@ -11,6 +11,5 @@ public record ProfileAddressRequest(
     String roadName,
     String buildingNumber,
     String buildingName,
-    String detailAddress,
-    int sortOrder) {
+    String detailAddress) {
 }

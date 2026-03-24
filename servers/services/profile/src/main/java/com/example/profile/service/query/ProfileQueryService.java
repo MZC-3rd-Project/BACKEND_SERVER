@@ -2,6 +2,7 @@ package com.example.profile.service.query;
 
 import com.example.clients.media.facade.MediaClientFacade;
 import com.example.core.exception.BusinessException;
+import com.example.profile.dto.response.AddressResponse;
 import com.example.profile.dto.response.ProfileAddressResponse;
 import com.example.profile.dto.response.ProfileResponse;
 import com.example.profile.dto.response.internal.ProfileSnapshotResponse;
@@ -54,6 +55,15 @@ public class ProfileQueryService {
     @Transactional(readOnly = true)
     public List<Profiles> getProfileList(List<Long> userIds){
         return profileRepository.findAllByUserIdIn(userIds);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AddressResponse> getAddresses(Long userId) {
+        profileProjectionRepairService.ensureProfile(userId);
+        return profileAddressRepository.findProfileAddressByProfileId(userId)
+            .stream()
+            .map(AddressResponse::from)
+            .toList();
     }
 
     @Transactional(readOnly = true)

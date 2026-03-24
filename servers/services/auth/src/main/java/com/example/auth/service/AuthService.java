@@ -6,15 +6,20 @@ import com.example.auth.dto.request.ChangePasswordRequest;
 import com.example.auth.dto.request.SignupRequest;
 import com.example.auth.dto.request.WithdrawRequest;
 import com.example.auth.dto.response.SignupResponse;
+import com.example.auth.dto.response.VerifyEmailResponse;
+import com.example.auth.entity.EmailVerification;
 import com.example.auth.entity.User;
 import com.example.auth.entity.UserStatus;
 import com.example.auth.entity.UserStatusHistory;
+import com.example.auth.event.EmailConfirmEvent;
 import com.example.auth.event.UserCreatedEvent;
 import com.example.auth.event.UserEmailChangedEvent;
 import com.example.auth.event.UserWithdrawnEvent;
 import com.example.auth.exception.AuthErrorCode;
+import com.example.auth.repository.EmailVerificationRepository;
 import com.example.auth.repository.UserRepository;
 import com.example.auth.repository.UserStatusHistoryRepository;
+import com.example.auth.util.VerificationCodeGenerator;
 import com.example.core.exception.BusinessException;
 import com.example.core.exception.TechnicalException;
 import com.example.event.EventMetadata;
@@ -30,6 +35,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -37,8 +44,11 @@ import java.util.Map;
 @Service
 public class AuthService {
 
+    private static final int VERIFICATION_CODE_EXPIRY_MINUTES = 10;
+
     private final UserRepository userRepository;
     private final UserStatusHistoryRepository statusHistoryRepository;
+    private final EmailVerificationRepository emailVerificationRepository;
     private final Keycloak keycloakAdminClient;
     private final ProfileServicePort profileServiceClient;
     private final EventPublisher eventPublisher;
@@ -49,6 +59,7 @@ public class AuthService {
 
     public AuthService(UserRepository userRepository,
                        UserStatusHistoryRepository statusHistoryRepository,
+                       EmailVerificationRepository emailVerificationRepository,
                        Keycloak keycloakAdminClient,
                        ProfileServicePort profileServiceClient,
                        EventPublisher eventPublisher,
@@ -58,6 +69,7 @@ public class AuthService {
                        @Value("${feature.sync-profile-create-on-signup:true}") boolean syncProfileCreateOnSignup) {
         this.userRepository = userRepository;
         this.statusHistoryRepository = statusHistoryRepository;
+        this.emailVerificationRepository = emailVerificationRepository;
         this.keycloakAdminClient = keycloakAdminClient;
         this.profileServiceClient = profileServiceClient;
         this.eventPublisher = eventPublisher;
@@ -96,7 +108,7 @@ public class AuthService {
             if (syncProfileCreateOnSignup) {
                 profileServiceClient.createProfile(user.getId(), user.getEmail(), request.nickname());
             } else {
-                log.info("Profile sync skipped by feature flag. userId={}", user.getId());
+                log.info("Sync profile create disabled by feature flag. userId={}", user.getId());
             }
 
             // 7. Outbox 이벤트 발행
@@ -105,7 +117,19 @@ public class AuthService {
                     EventMetadata.of("USER", String.valueOf(user.getId()))
             );
 
-            log.info("Signup completed. userId={}", user.getId());
+            // 8. 이메일 인증 코드 생성 및 발행
+            String verificationCode = VerificationCodeGenerator.generate();
+            EmailVerification emailVerification = EmailVerification.create(
+                    request.email(), verificationCode,
+                    LocalDateTime.now().plusMinutes(VERIFICATION_CODE_EXPIRY_MINUTES));
+            emailVerificationRepository.save(emailVerification);
+
+            eventPublisher.publish(
+                    new EmailConfirmEvent(request.email(), verificationCode),
+                    EventMetadata.of("USER", String.valueOf(user.getId()))
+            );
+
+            log.info("Signup completed: userId={}, email={}", user.getId(), user.getEmail());
             return SignupResponse.of(user.getId(), user.getEmail());
 
         } catch (Exception e) {
@@ -127,7 +151,7 @@ public class AuthService {
         // Keycloak 비밀번호 변경
         updateKeycloakPassword(user.getKeycloakId(), request.newPassword());
 
-        log.info("Password changed. userId={}", userId);
+        log.info("Password changed: userId={}", userId);
     }
 
     // ─── 이메일 변경 ──────────────────────────────────────────
@@ -155,7 +179,7 @@ public class AuthService {
                 EventMetadata.of("USER", String.valueOf(userId))
         );
 
-        log.info("Email changed. userId={}", userId);
+        log.info("Email changed: userId={}, {} -> {}", userId, oldEmail, request.newEmail());
     }
 
     // ─── 계정 탈퇴 ────────────────────────────────────────────
@@ -184,24 +208,61 @@ public class AuthService {
                 EventMetadata.of("USER", String.valueOf(userId))
         );
 
-        log.info("User withdrawn. userId={}", userId);
+        log.info("User withdrawn: userId={}", userId);
+    }
+
+    // ─── 이메일 인증 검증 ────────────────────────────────────
+
+    @Transactional
+    public VerifyEmailResponse verifyEmail(String email, String code) {
+        EmailVerification verification = emailVerificationRepository
+                .findTopByEmailAndVerifiedFalseOrderByCreatedAtDesc(email)
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.VERIFICATION_NOT_FOUND));
+
+        if (verification.isExpired()) {
+            throw new BusinessException(AuthErrorCode.VERIFICATION_CODE_EXPIRED);
+        }
+
+        if (!verification.getCode().equals(code)) {
+            throw new BusinessException(AuthErrorCode.VERIFICATION_CODE_INVALID);
+        }
+
+        verification.verify();
+
+        // Keycloak emailVerified=true 업데이트
+        updateKeycloakEmailVerified(email);
+
+        log.info("Email verified: email={}", email);
+        return VerifyEmailResponse.of(true, email);
     }
 
     // ─── 이메일 인증 재발송 ────────────────────────────────────
 
+    @Transactional
     public void resendVerificationEmail(String email) {
-        try {
-            List<org.keycloak.representations.idm.UserRepresentation> users =
-                    keycloakAdminClient.realm(realm).users().searchByEmail(email, true);
-            if (users.isEmpty()) {
-                throw new BusinessException(AuthErrorCode.USER_NOT_FOUND);
-            }
-            sendKeycloakVerificationEmailSafely(users.get(0).getId());
-        } catch (BusinessException e) {
-            throw e;
-        } catch (Exception e) {
-            log.warn("Verification email resend failed. reason={}", e.getMessage());
+        // 사용자 존재 확인
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
+
+        // 이미 인증 완료 여부 확인
+        if (emailVerificationRepository.existsByEmailAndVerifiedTrue(email)) {
+            throw new BusinessException(AuthErrorCode.EMAIL_ALREADY_VERIFIED);
         }
+
+        // 새 인증 코드 생성 및 저장
+        String verificationCode = VerificationCodeGenerator.generate();
+        EmailVerification emailVerification = EmailVerification.create(
+                email, verificationCode,
+                LocalDateTime.now().plusMinutes(VERIFICATION_CODE_EXPIRY_MINUTES));
+        emailVerificationRepository.save(emailVerification);
+
+        // EmailConfirmEvent 발행
+        eventPublisher.publish(
+                new EmailConfirmEvent(email, verificationCode),
+                EventMetadata.of("USER", String.valueOf(user.getId()))
+        );
+
+        log.info("Verification email resent: email={}", email);
     }
 
     // ─── 중복 확인 ────────────────────────────────────────────
@@ -222,7 +283,7 @@ public class AuthService {
     public void updateLastLogin(Long userId) {
         User user = findActiveUser(userId);
         user.updateLastLoginAt();
-        log.debug("Last login updated. userId={}", userId);
+        log.debug("Last login updated: userId={}", userId);
     }
 
     // ─── Keycloak 헬퍼 메서드 ─────────────────────────────────
@@ -234,7 +295,7 @@ public class AuthService {
             kcUser.setEmail(email);
             kcUser.setEnabled(true);
             kcUser.setEmailVerified(false);
-            kcUser.setRequiredActions(List.of("VERIFY_EMAIL"));
+            kcUser.setRequiredActions(Collections.emptyList());
 
             CredentialRepresentation credential = new CredentialRepresentation();
             credential.setType(CredentialRepresentation.PASSWORD);
@@ -248,7 +309,7 @@ public class AuthService {
                     String locationHeader = response.getHeaderString("Location");
                     String keycloakUserId = locationHeader.substring(
                             locationHeader.lastIndexOf("/") + 1);
-                    log.info("Keycloak user created. keycloakId={}", keycloakUserId);
+                    log.info("Keycloak user created: keycloakId={}", keycloakUserId);
                     return keycloakUserId;
                 } else if (response.getStatus() == 409) {
                     throw new BusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS,
@@ -296,7 +357,7 @@ public class AuthService {
             credential.setTemporary(false);
 
             keycloakAdminClient.realm(realm).users().get(keycloakId).resetPassword(credential);
-            log.info("Keycloak password updated. keycloakId={}", keycloakId);
+            log.info("Keycloak password updated: keycloakId={}", keycloakId);
         } catch (Exception e) {
             throw new TechnicalException(AuthErrorCode.PASSWORD_CHANGE_FAILED,
                     "Keycloak 비밀번호 변경 실패", e);
@@ -310,7 +371,7 @@ public class AuthService {
             kcUser.setEmail(newEmail);
             kcUser.setUsername(newEmail);
             keycloakAdminClient.realm(realm).users().get(keycloakId).update(kcUser);
-            log.info("Keycloak email updated. keycloakId={}", keycloakId);
+            log.info("Keycloak email updated: keycloakId={}", keycloakId);
         } catch (Exception e) {
             throw new TechnicalException(AuthErrorCode.EMAIL_CHANGE_FAILED,
                     "Keycloak 이메일 변경 실패", e);
@@ -323,9 +384,9 @@ public class AuthService {
                     .users().get(keycloakId).toRepresentation();
             kcUser.setAttributes(Map.of("snowflakeId", List.of(String.valueOf(snowflakeId))));
             keycloakAdminClient.realm(realm).users().get(keycloakId).update(kcUser);
-            log.info("Keycloak snowflakeId updated. keycloakId={}, snowflakeId={}", keycloakId, snowflakeId);
+            log.info("Keycloak user snowflakeId set: keycloakId={}, snowflakeId={}", keycloakId, snowflakeId);
         } catch (Exception e) {
-            log.error("Keycloak snowflakeId update failed. keycloakId={}, snowflakeId={}",
+            log.error("Failed to set snowflakeId on Keycloak user: keycloakId={}, snowflakeId={}",
                     keycloakId, snowflakeId, e);
             throw new TechnicalException(AuthErrorCode.KEYCLOAK_COMMUNICATION_ERROR,
                     "Keycloak 사용자 snowflakeId 설정 실패", e);
@@ -338,7 +399,7 @@ public class AuthService {
                     .users().get(keycloakId).toRepresentation();
             kcUser.setEnabled(false);
             keycloakAdminClient.realm(realm).users().get(keycloakId).update(kcUser);
-            log.info("Keycloak user disabled. keycloakId={}", keycloakId);
+            log.info("Keycloak user disabled: keycloakId={}", keycloakId);
         } catch (Exception e) {
             throw new TechnicalException(AuthErrorCode.WITHDRAW_KEYCLOAK_FAILED,
                     "Keycloak 사용자 비활성화 실패", e);
@@ -348,22 +409,27 @@ public class AuthService {
     private void deleteKeycloakUserSafely(String keycloakUserId) {
         try {
             keycloakAdminClient.realm(realm).users().delete(keycloakUserId);
-            log.info("Keycloak user rollback completed. keycloakId={}", keycloakUserId);
+            log.info("Keycloak user rolled back (deleted): keycloakId={}", keycloakUserId);
         } catch (Exception e) {
-            log.error("Keycloak user rollback failed. keycloakId={}", keycloakUserId, e);
+            log.error("Failed to rollback Keycloak user: keycloakId={}", keycloakUserId, e);
         }
     }
 
     // ─── Keycloak 이메일 인증 ─────────────────────────────────
 
-    private void sendKeycloakVerificationEmailSafely(String keycloakUserId) {
+    private void updateKeycloakEmailVerified(String email) {
         try {
-            keycloakAdminClient.realm(realm).users().get(keycloakUserId)
-                    .executeActionsEmail(List.of("VERIFY_EMAIL"));
-            log.info("Keycloak verification email sent. keycloakId={}", keycloakUserId);
+            List<UserRepresentation> users =
+                    keycloakAdminClient.realm(realm).users().searchByEmail(email, true);
+            if (!users.isEmpty()) {
+                UserRepresentation kcUser = users.get(0);
+                kcUser.setEmailVerified(true);
+                kcUser.setRequiredActions(Collections.emptyList());
+                keycloakAdminClient.realm(realm).users().get(kcUser.getId()).update(kcUser);
+                log.info("Keycloak emailVerified updated: email={}", email);
+            }
         } catch (Exception e) {
-            log.warn("Keycloak verification email delivery failed. keycloakId={}, reason={}",
-                    keycloakUserId, e.getMessage());
+            log.warn("Keycloak emailVerified 업데이트 실패: email={}, error={}", email, e.getMessage());
         }
     }
 
