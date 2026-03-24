@@ -47,14 +47,18 @@ ingress:
   enabled: true
   className: alb
   annotations:
-    alb.ingress.kubernetes.io/group.name: donmoa-dev-public
+    alb.ingress.kubernetes.io/group.name: donmoa-dev-gateway
+    alb.ingress.kubernetes.io/group.order: "10"
+    alb.ingress.kubernetes.io/healthcheck-path: /health/ready
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/success-codes: 200-399
     alb.ingress.kubernetes.io/target-type: ip
   hosts:
     - paths:
-        - path: /
+        - path: /realms
+          pathType: Prefix
+        - path: /resources
           pathType: Prefix
 
 env:
@@ -67,10 +71,11 @@ env:
   KC_HEALTH_ENABLED: "true"
   KC_METRICS_ENABLED: "true"
   KC_PROXY_HEADERS: xforwarded
+  KC_HOSTNAME: k8s-donmoadevgateway-3983261778-1519590243.ap-northeast-2.elb.amazonaws.com
   KC_HOSTNAME_STRICT: "false"
-  KEYCLOAK_GATEWAY_REDIRECT_URI: http://api.dev.example.com/login/oauth2/code/keycloak
-  KEYCLOAK_GATEWAY_WEB_ORIGIN: http://frontend.dev.example.com
-  KEYCLOAK_GATEWAY_POST_LOGOUT_REDIRECT_URI: http://api.dev.example.com
+  KEYCLOAK_GATEWAY_REDIRECT_URI: http://k8s-donmoadevgateway-3983261778-1519590243.ap-northeast-2.elb.amazonaws.com/login/oauth2/code/keycloak
+  KEYCLOAK_GATEWAY_WEB_ORIGIN: http://k8s-donmoadevgateway-3983261778-1519590243.ap-northeast-2.elb.amazonaws.com
+  KEYCLOAK_GATEWAY_POST_LOGOUT_REDIRECT_URI: http://k8s-donmoadevgateway-3983261778-1519590243.ap-northeast-2.elb.amazonaws.com
   KEYCLOAK_ADMIN: admin
 
 secretEnv:
@@ -89,6 +94,18 @@ secretEnv:
 
 probes:
   liveness:
-    enabled: false
+    enabled: true
+    path: /health/live
+    port: http
+    initialDelaySeconds: 60
+    periodSeconds: 15
+    timeoutSeconds: 5
+    failureThreshold: 6
   readiness:
-    enabled: false
+    enabled: true
+    path: /health/ready
+    port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6

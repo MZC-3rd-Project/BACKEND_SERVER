@@ -54,7 +54,8 @@ public class GatewayBffSecurityConfig {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges
-                        .pathMatchers("/api/v1/users/**", "/api/users/**").authenticated()
+                        .pathMatchers("/api/profile", "/api/profile/**", "/api/v1/users/**", "/api/users/**")
+                        .authenticated()
                         .anyExchange().permitAll())
                 .oauth2Login(Customizer.withDefaults())
                 .oauth2Client(Customizer.withDefaults())

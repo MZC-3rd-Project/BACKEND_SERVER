@@ -1,5 +1,6 @@
 package com.example.gateway.config;
 
+import com.example.contracts.http.HttpHeaderNames;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -33,6 +34,6 @@ public class GatewaySessionProperties {
     private String sessionCookieName = "SESSION";
     private String sessionCookiePath = "/";
     private String keycloakLogoutUrl = "";
-    private String keycloakLogoutAuthHeader = "Authorization";
+    private String keycloakLogoutAuthHeader = HttpHeaderNames.GATEWAY_AUTH;
     private String keycloakLogoutAuthToken = "";
 }

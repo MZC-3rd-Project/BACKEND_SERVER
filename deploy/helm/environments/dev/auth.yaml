@@ -31,9 +31,15 @@ secretEnv:
   APP_SECURITY_CONTEXT_SIGNING_KEY:
     remoteRef: donmoa/dev/common
     property: APP_SECURITY_CONTEXT_SIGNING_KEY
+  APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:
+    remoteRef: donmoa/dev/common
+    property: APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN
   KC_ADMIN_CLIENT_SECRET:
     remoteRef: donmoa/dev/common
     property: KC_ADMIN_CLIENT_SECRET
+  KC_DIRECT_GRANT_CLIENT_SECRET:
+    remoteRef: donmoa/dev/common
+    property: GATEWAY_OAUTH2_CLIENT_SECRET
 
 serviceMonitor:
   enabled: true

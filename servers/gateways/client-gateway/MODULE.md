@@ -52,7 +52,8 @@
 - 예시: `SPRING_PROFILES_ACTIVE=bff-auth`
 - 활성화 시 라우팅:
   - `/api/v1/auth/**` -> Auth Service
-  - `/api/v1/users/**`, `/api/users/**` -> User Service
+  - `/api/profile`, `/api/profile/**` -> Profile Service
+  - `/api/v1/users/**`, `/api/users/**` -> legacy compatibility path, internally rewritten to `/api/profile/**`
 - 필수 설정:
   - `GATEWAY_OAUTH2_ISSUER_URI`
   - `GATEWAY_OAUTH2_CLIENT_ID`

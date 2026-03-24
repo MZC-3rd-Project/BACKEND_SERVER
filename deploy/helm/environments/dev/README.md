@@ -36,6 +36,11 @@ public-safe examples or sanitized values files.
 `edge-nginx.yaml` is reserved for the EKS connection-management demo edge that fronts
 `client-gateway` behind a dedicated ALB host.
 
+When gateway and Keycloak share one public hostname through CloudFront or another edge,
+route `/realms/*` to Keycloak and `/login/oauth2/*` plus application/API paths to
+`client-gateway`. OAuth issuer, redirect URI, and Keycloak `KC_HOSTNAME` must all point to
+the same externally visible host in that topology.
+
 To generate a focused deploy plan for the demo, run:
 
 ```bash

@@ -41,6 +41,7 @@ keycloak:
     client-secret: ${KC_ADMIN_CLIENT_SECRET}
     # 비밀번호 검증용 (directAccessGrantsEnabled=true인 클라이언트)
     direct-grant-client-id: ${KC_DIRECT_GRANT_CLIENT_ID:don-moa-gateway}
+    direct-grant-client-secret: ${KC_DIRECT_GRANT_CLIENT_SECRET:${GATEWAY_OAUTH2_CLIENT_SECRET:}}
 
 # ─── Profile Service ──────────────────────────
 profile:

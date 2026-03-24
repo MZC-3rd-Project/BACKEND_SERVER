@@ -38,6 +38,9 @@ public enum AuthErrorCode implements DomainErrorCode {
     // Keycloak 통신
     KEYCLOAK_COMMUNICATION_ERROR("AUTH-090", "Keycloak 서버와 통신에 실패했습니다", HttpStatus.BAD_GATEWAY),
 
+    // 내부 인증
+    INTERNAL_AUTH_FAILED("AUTH-092", "내부 인증에 실패했습니다", HttpStatus.UNAUTHORIZED),
+
     // 프로필 서비스 통신
     PROFILE_SERVICE_ERROR("AUTH-091", "프로필 서비스와 통신에 실패했습니다", HttpStatus.BAD_GATEWAY);
 

@@ -57,6 +57,7 @@ public class AuthService {
     private final String realm;
     private final String keycloakServerUrl;
     private final String directGrantClientId;
+    private final String directGrantClientSecret;
     private final boolean syncProfileCreateOnSignup;
 
     public AuthService(UserRepository userRepository,
@@ -69,6 +70,7 @@ public class AuthService {
                        @Value("${keycloak.admin.realm}") String realm,
                        @Value("${keycloak.admin.server-url}") String keycloakServerUrl,
                        @Value("${keycloak.admin.direct-grant-client-id}") String directGrantClientId,
+                       @Value("${keycloak.admin.direct-grant-client-secret:}") String directGrantClientSecret,
                        @Value("${feature.sync-profile-create-on-signup:true}") boolean syncProfileCreateOnSignup) {
         this.userRepository = userRepository;
         this.statusHistoryRepository = statusHistoryRepository;
@@ -80,6 +82,7 @@ public class AuthService {
         this.realm = realm;
         this.keycloakServerUrl = keycloakServerUrl;
         this.directGrantClientId = directGrantClientId;
+        this.directGrantClientSecret = directGrantClientSecret;
         this.syncProfileCreateOnSignup = syncProfileCreateOnSignup;
     }
 
@@ -289,6 +292,18 @@ public class AuthService {
         log.debug("Last login updated: userId={}", userId);
     }
 
+    @Transactional(readOnly = true)
+    public void logoutKeycloakUserSessions(Long userId) {
+        User user = findUser(userId);
+        try {
+            keycloakAdminClient.realm(realm).users().get(user.getKeycloakId()).logout();
+            log.info("Keycloak user sessions logged out: userId={}, keycloakId={}", userId, user.getKeycloakId());
+        } catch (Exception e) {
+            throw new TechnicalException(AuthErrorCode.KEYCLOAK_COMMUNICATION_ERROR,
+                    "Keycloak 사용자 세션 종료 실패", e);
+        }
+    }
+
     // ─── Keycloak 헬퍼 메서드 ─────────────────────────────────
 
     private String createKeycloakUser(String email, String password) {
@@ -332,6 +347,10 @@ public class AuthService {
 
     private void verifyCurrentPassword(String keycloakId, String password) {
         try {
+            if (directGrantClientSecret == null || directGrantClientSecret.isBlank()) {
+                throw new TechnicalException(AuthErrorCode.KEYCLOAK_COMMUNICATION_ERROR,
+                        "Keycloak direct grant client secret이 설정되지 않았습니다");
+            }
             UserRepresentation kcUser = keycloakAdminClient.realm(realm)
                     .users().get(keycloakId).toRepresentation();
 
@@ -340,6 +359,7 @@ public class AuthService {
                     .realm(realm)
                     .grantType("password")
                     .clientId(directGrantClientId)
+                    .clientSecret(directGrantClientSecret)
                     .username(kcUser.getUsername())
                     .password(password)
                     .build()) {
@@ -439,11 +459,15 @@ public class AuthService {
     // ─── 공통 헬퍼 ────────────────────────────────────────────
 
     private User findActiveUser(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
+        User user = findUser(userId);
         if (!user.isActive()) {
             throw new BusinessException(AuthErrorCode.ACCOUNT_NOT_ACTIVE);
         }
         return user;
+    }
+
+    private User findUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
     }
 }

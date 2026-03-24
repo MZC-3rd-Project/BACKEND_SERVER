@@ -138,9 +138,9 @@ gateway:
     internal-auth-token: ${GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
     allow-client-identity-headers: ${GATEWAY_SECURITY_ALLOW_CLIENT_IDENTITY_HEADERS:false}
     allow-client-signed-context-header: ${GATEWAY_SECURITY_ALLOW_CLIENT_SIGNED_CONTEXT_HEADER:false}
-    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/v1/auth,/api/store,/api/v1/store-query,/api/v1/cart,/api/v1/media,/api/v1/chat,/ws/chat,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders,/api/v1/payments,/api/v1/reviews}
-    require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:/api/v1/chat,/ws/chat,/api/v1/cart}
-    require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/bff/v1,/api/store,/api/v1/cart,/api/v1/media,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders,/api/v1/payments,/api/v1/reviews}
+    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/v1/auth,/api/profile,/api/v1/users,/api/users,/api/store,/api/v1/store-query,/api/v1/cart,/api/v1/media,/api/v1/chat,/ws/chat,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders,/api/v1/payments,/api/v1/reviews}
+    require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:/api/profile,/api/v1/users,/api/users,/api/v1/chat,/ws/chat,/api/v1/cart}
+    require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/bff/v1,/api/profile,/api/v1/users,/api/users,/api/store,/api/v1/cart,/api/v1/media,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders,/api/v1/payments,/api/v1/reviews}
   session:
     enabled: ${GATEWAY_SESSION_ENABLED:false}
     relay-header-enabled: ${GATEWAY_SESSION_RELAY_HEADER_ENABLED:true}
@@ -164,8 +164,8 @@ gateway:
     session-cookie-name: ${GATEWAY_SESSION_COOKIE_NAME:SESSION}
     session-cookie-path: ${GATEWAY_SESSION_COOKIE_PATH:/}
     keycloak-logout-url: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_URL:}
-    keycloak-logout-auth-header: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_HEADER:Authorization}
-    keycloak-logout-auth-token: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_TOKEN:}
+    keycloak-logout-auth-header: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_HEADER:${GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}}
+    keycloak-logout-auth-token: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_TOKEN:${GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}}
   deployment:
     fail-fast-enabled: ${GATEWAY_DEPLOYMENT_FAIL_FAST_ENABLED:true}
     enforced-profiles: ${GATEWAY_DEPLOYMENT_ENFORCED_PROFILES:prod,production,stg,stage}
