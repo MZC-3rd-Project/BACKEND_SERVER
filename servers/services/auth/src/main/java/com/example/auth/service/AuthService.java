@@ -101,7 +101,7 @@ public class AuthService {
 
             // 5. 상태 이력 기록
             UserStatusHistory history = UserStatusHistory.create(
-                    user.getId(), null, UserStatus.ACTIVE, "회원가입", user.getId());
+                    user.getId(), UserStatus.NONE, UserStatus.ACTIVE, "회원가입", user.getId());
             statusHistoryRepository.save(history);
 
             // 6. Profile Service 동기 호출 (feature flag)
