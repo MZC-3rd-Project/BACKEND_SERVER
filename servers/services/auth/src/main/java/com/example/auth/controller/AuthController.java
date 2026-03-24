@@ -5,9 +5,11 @@ import com.example.auth.dto.request.ChangeEmailRequest;
 import com.example.auth.dto.request.ChangePasswordRequest;
 import com.example.auth.dto.request.SendVerificationRequest;
 import com.example.auth.dto.request.SignupRequest;
+import com.example.auth.dto.request.VerifyEmailRequest;
 import com.example.auth.dto.request.WithdrawRequest;
 import com.example.auth.dto.response.CheckAvailableResponse;
 import com.example.auth.dto.response.SignupResponse;
+import com.example.auth.dto.response.VerifyEmailResponse;
 import com.example.auth.service.AuthService;
 import com.example.security.gateway.CurrentUserId;
 import jakarta.validation.Valid;
@@ -53,7 +55,12 @@ public class AuthController {
         return ApiResponse.success();
     }
 
-    // Keycloak 인증 메일 재발송
+    @PostMapping("/emails/verify")
+    public ApiResponse<VerifyEmailResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        VerifyEmailResponse response = authService.verifyEmail(request.email(), request.code());
+        return ApiResponse.success(response);
+    }
+
     @PostMapping("/emails/verification")
     public ApiResponse<Void> resendVerification(@Valid @RequestBody SendVerificationRequest request) {
         authService.resendVerificationEmail(request.email());
