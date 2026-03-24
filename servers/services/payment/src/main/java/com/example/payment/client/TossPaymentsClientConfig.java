@@ -1,5 +1,6 @@
 package com.example.payment.client;
 
+import com.example.config.resilience.CircuitBreakerHelper;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,8 +13,9 @@ public class TossPaymentsClientConfig {
     @Bean
     public TossPaymentsClient tossPaymentsClient(
             TossPaymentsProperties properties,
-            WebClient.Builder webClientBuilder
+            WebClient.Builder webClientBuilder,
+            CircuitBreakerHelper circuitBreakerHelper
     ) {
-        return new TossPaymentsWebClient(properties, webClientBuilder);
+        return new TossPaymentsWebClient(properties, webClientBuilder, circuitBreakerHelper);
     }
 }

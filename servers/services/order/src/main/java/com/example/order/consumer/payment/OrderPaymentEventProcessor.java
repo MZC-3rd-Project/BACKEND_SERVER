@@ -37,11 +37,12 @@ public class OrderPaymentEventProcessor extends AbstractIdempotentEventSpecProce
         super(idempotentConsumerService);
         this.orderRepository = orderRepository;
         this.eventPublisher = eventPublisher;
-        this.eventSpecs = Map.of(
-                "PAYMENT_COMPLETED", EventSpec.of(PaymentEventMessage.class, this::hasOrderId, this::handlePaymentCompleted),
-                "PAYMENT_FAILED", EventSpec.of(PaymentEventMessage.class, this::hasOrderId, this::handlePaymentFailed),
-                "PAYMENT_TIMED_OUT", EventSpec.of(PaymentEventMessage.class, this::hasOrderId, this::handlePaymentTimedOut),
-                "PAYMENT_REFUNDED", EventSpec.of(PaymentEventMessage.class, this::hasOrderId, this::handlePaymentRefunded)
+        this.eventSpecs = Map.ofEntries(
+                Map.entry("PAYMENT_COMPLETED", EventSpec.of(PaymentEventMessage.class, this::hasOrderId, this::handlePaymentCompleted)),
+                Map.entry("PAYMENT_FAILED", EventSpec.of(PaymentEventMessage.class, this::hasOrderId, this::handlePaymentFailed)),
+                Map.entry("PAYMENT_TIMED_OUT", EventSpec.of(PaymentEventMessage.class, this::hasOrderId, this::handlePaymentTimedOut)),
+                Map.entry("PAYMENT_REFUNDED", EventSpec.of(PaymentEventMessage.class, this::hasOrderId, this::handlePaymentRefunded)),
+                Map.entry("PAYMENT_CANCELLED", EventSpec.of(PaymentEventMessage.class, this::hasOrderId, this::handlePaymentCancelled))
         );
     }
 
@@ -127,6 +128,18 @@ public class OrderPaymentEventProcessor extends AbstractIdempotentEventSpecProce
                     new OrderRefundedEvent(event.getOrderId(), order.getUserId()),
                     EventMetadata.of("Order", String.valueOf(event.getOrderId()))
             );
+        } catch (BusinessException e) {
+            log.warn("주문 상태 전이 불가 (이미 처리됨): orderId={}, currentStatus={}", event.getOrderId(), order.getStatus());
+        }
+    }
+
+    private void handlePaymentCancelled(PaymentEventMessage event) {
+        Order order = findOrder(event.getOrderId());
+        if (order == null) return;
+
+        try {
+            order.transitTo(OrderStatus.CANCELLED);
+            log.info("결제 취소 → 주문 CANCELLED 전이: orderId={}", event.getOrderId());
         } catch (BusinessException e) {
             log.warn("주문 상태 전이 불가 (이미 처리됨): orderId={}, currentStatus={}", event.getOrderId(), order.getStatus());
         }

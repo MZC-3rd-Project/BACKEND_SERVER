@@ -8,6 +8,7 @@ import com.example.payment.client.dto.TossCancelRequest;
 import com.example.payment.domain.Payment;
 import com.example.payment.domain.PaymentRepository;
 import com.example.payment.domain.PaymentStatus;
+import com.example.payment.event.PaymentCancelledEvent;
 import com.example.payment.event.PaymentRefundedEvent;
 import com.example.payment.event.PaymentTimedOutEvent;
 import com.example.payment.exception.PaymentErrorCode;
@@ -61,6 +62,30 @@ public class PaymentEventService {
                     payment.getId(), orderId, e.getResponseBody());
             throw new BusinessException(PaymentErrorCode.TOSS_CANCEL_FAILED);
         }
+    }
+
+    public void processCancellation(Long orderId) {
+        Payment payment = paymentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_NOT_FOUND));
+
+        if (payment.getStatus() != PaymentStatus.READY) {
+            log.warn("취소 불가 상태: paymentId={}, status={}", payment.getId(), payment.getStatus());
+            return;
+        }
+
+        payment.markCancelled("주문 취소");
+
+        eventPublisher.publish(
+                new PaymentCancelledEvent(
+                        payment.getId(),
+                        payment.getOrderId(),
+                        payment.getUserId(),
+                        payment.getAmount()
+                ),
+                EventMetadata.of("Payment", String.valueOf(payment.getId()))
+        );
+
+        log.info("결제 취소 처리 완료: paymentId={}, orderId={}", payment.getId(), orderId);
     }
 
     public void processTimeout(Payment payment) {

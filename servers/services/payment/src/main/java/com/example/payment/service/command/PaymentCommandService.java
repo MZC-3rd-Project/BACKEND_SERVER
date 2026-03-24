@@ -1,5 +1,6 @@
 package com.example.payment.service.command;
 
+import com.example.config.lock.DistributedLock;
 import com.example.core.exception.BusinessException;
 import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;
@@ -35,6 +36,7 @@ public class PaymentCommandService {
     private final EventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
 
+    @DistributedLock(key = "'payment:confirm:' + #request.orderId()", waitTime = 5, leaseTime = 15)
     public PaymentConfirmResponse confirmPayment(PaymentConfirmRequest request, Long userId) {
         Payment payment = paymentRepository.findByOrderId(request.orderId())
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.PAYMENT_NOT_FOUND));

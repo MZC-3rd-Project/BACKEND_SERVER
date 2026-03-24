@@ -15,7 +15,7 @@ public enum PaymentStatus {
     CANCELLED;
 
     private static final Map<PaymentStatus, Set<PaymentStatus>> TRANSITIONS = Map.of(
-            READY, Set.of(DONE, FAILED, EXPIRED),
+            READY, Set.of(DONE, FAILED, EXPIRED, CANCELLED),
             DONE, Set.of(CANCELLED),
             FAILED, Set.of(),
             EXPIRED, Set.of(),

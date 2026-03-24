@@ -41,7 +41,8 @@ public class PaymentOrderEventProcessor extends AbstractIdempotentEventSpecProce
         this.snowflake = snowflake;
         this.eventSpecs = Map.of(
                 "ORDER_CREATED_EVENT", EventSpec.of(OrderEventMessage.class, this::hasOrderId, this::handleOrderCreated),
-                "ORDER_REFUND_REQUESTED_EVENT", EventSpec.of(OrderEventMessage.class, this::hasOrderId, this::handleOrderRefundRequested)
+                "ORDER_REFUND_REQUESTED_EVENT", EventSpec.of(OrderEventMessage.class, this::hasOrderId, this::handleOrderRefundRequested),
+                "ORDER_CANCELLED_EVENT", EventSpec.of(OrderEventMessage.class, this::hasOrderId, this::handleOrderCancelled)
         );
     }
 
@@ -97,5 +98,9 @@ public class PaymentOrderEventProcessor extends AbstractIdempotentEventSpecProce
 
     private void handleOrderRefundRequested(OrderEventMessage event) {
         paymentEventService.processRefund(event.getOrderId());
+    }
+
+    private void handleOrderCancelled(OrderEventMessage event) {
+        paymentEventService.processCancellation(event.getOrderId());
     }
 }
