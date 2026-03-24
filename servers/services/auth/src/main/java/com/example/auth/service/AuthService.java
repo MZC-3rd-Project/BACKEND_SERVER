@@ -240,9 +240,6 @@ public class AuthService {
 
     @Transactional
     public void resendVerificationEmail(String email) {
-        // 사용자 존재 확인
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
 
         // 이미 인증 완료 여부 확인
         if (emailVerificationRepository.existsByEmailAndVerifiedTrue(email)) {
@@ -259,7 +256,7 @@ public class AuthService {
         // EmailConfirmEvent 발행
         eventPublisher.publish(
                 new EmailConfirmEvent(email, verificationCode),
-                EventMetadata.of("USER", String.valueOf(user.getId()))
+                EventMetadata.of("USER", String.valueOf(email))
         );
 
         log.info("Verification email resent: email={}", email);
