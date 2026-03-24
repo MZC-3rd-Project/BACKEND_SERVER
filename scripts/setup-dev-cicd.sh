@@ -122,12 +122,39 @@ retry 6 aws_cmd iam put-role-policy --role-name "${CODEBUILD_ROLE_NAME}" --polic
 CODEBUILD_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${CODEBUILD_ROLE_NAME}"
 CODEPIPELINE_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${CODEPIPELINE_ROLE_NAME}"
 GITHUB_ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/${GITHUB_ROLE_NAME}"
+CODEBUILD_ACCESS_POLICY_ARN="${CODEBUILD_ACCESS_POLICY_ARN:-arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy}"
 
-echo "[INFO] ensuring EKS CodeBuild access in aws-auth"
-if ! kubectl get configmap aws-auth -n kube-system >/dev/null 2>&1; then
-  aws_cmd eks update-kubeconfig --name "${EKS_CLUSTER_NAME}" --region "${AWS_REGION}" >/dev/null
+echo "[INFO] ensuring EKS CodeBuild access"
+aws_cmd eks update-kubeconfig --name "${EKS_CLUSTER_NAME}" --region "${AWS_REGION}" >/dev/null
+
+if retry 6 aws_cmd eks list-access-entries --cluster-name "${EKS_CLUSTER_NAME}" >/dev/null 2>&1; then
+  echo "[INFO] ensuring EKS access entry for CodeBuild role"
+  access_entries="$(retry_out 6 aws_cmd eks list-access-entries --cluster-name "${EKS_CLUSTER_NAME}" --query 'accessEntries' --output text)"
+  if ! grep -Fq "${CODEBUILD_ROLE_ARN}" <<< "${access_entries}"; then
+    retry 6 aws_cmd eks create-access-entry \
+      --cluster-name "${EKS_CLUSTER_NAME}" \
+      --principal-arn "${CODEBUILD_ROLE_ARN}" \
+      --type STANDARD >/dev/null
+  fi
+
+  associated_policies="$(retry_out 6 aws_cmd eks list-associated-access-policies \
+    --cluster-name "${EKS_CLUSTER_NAME}" \
+    --principal-arn "${CODEBUILD_ROLE_ARN}" \
+    --query 'associatedAccessPolicies[].policyArn' \
+    --output text || true)"
+  if ! grep -Fq "${CODEBUILD_ACCESS_POLICY_ARN}" <<< "${associated_policies}"; then
+    retry 6 aws_cmd eks associate-access-policy \
+      --cluster-name "${EKS_CLUSTER_NAME}" \
+      --principal-arn "${CODEBUILD_ROLE_ARN}" \
+      --policy-arn "${CODEBUILD_ACCESS_POLICY_ARN}" \
+      --access-scope type=cluster >/dev/null
+  fi
+else
+  echo "[WARN] EKS access entries unavailable; falling back to aws-auth ConfigMap"
 fi
-CODEBUILD_ROLE_ARN="${CODEBUILD_ROLE_ARN}" ruby - <<'RUBY' > "${TMP_DIR}/aws-auth-patch.yaml"
+
+if kubectl get configmap aws-auth -n kube-system >/dev/null 2>&1; then
+  CODEBUILD_ROLE_ARN="${CODEBUILD_ROLE_ARN}" ruby - <<'RUBY' > "${TMP_DIR}/aws-auth-patch.yaml"
 require "yaml"
 
 role_arn = ENV.fetch("CODEBUILD_ROLE_ARN")
@@ -150,7 +177,10 @@ data["data"] ||= {}
 data["data"]["mapRoles"] = map_roles.to_yaml(line_width: -1).sub(/\A---\s*\n/, "").rstrip
 puts YAML.dump(data)
 RUBY
-kubectl apply -f "${TMP_DIR}/aws-auth-patch.yaml" >/dev/null
+  kubectl apply -f "${TMP_DIR}/aws-auth-patch.yaml" >/dev/null
+else
+  echo "[WARN] aws-auth ConfigMap not found; relying on EKS access entries"
+fi
 
 echo "[INFO] ensuring EKS CodeBuild projects"
 cat > "${TMP_DIR}/codebuild-build-project.json" <<EOF
