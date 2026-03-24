@@ -2,11 +2,9 @@ package com.example.profile.controller.query;
 
 
 import com.example.api.response.ApiResponse;
-import com.example.profile.controller.api.query.ProfileInternalAPI;
 import com.example.profile.controller.api.query.ProfileQueryAPI;
+import com.example.profile.dto.response.AddressResponse;
 import com.example.profile.dto.response.ProfileResponse;
-import com.example.profile.entity.ProfileAddress;
-import com.example.profile.entity.Profiles;
 import com.example.profile.service.query.ProfileQueryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +17,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/profile")
-public class ProfileQueryController implements ProfileQueryAPI{
+public class ProfileQueryController implements ProfileQueryAPI {
     private final ProfileQueryService profileQueryService;
 
     @Override
@@ -27,4 +25,8 @@ public class ProfileQueryController implements ProfileQueryAPI{
         return ApiResponse.success(profileQueryService.getProfile(userId));
     }
 
+    @Override
+    public ApiResponse<List<AddressResponse>> getAddresses(Long userId) {
+        return ApiResponse.success(profileQueryService.getAddresses(userId));
+    }
 }
