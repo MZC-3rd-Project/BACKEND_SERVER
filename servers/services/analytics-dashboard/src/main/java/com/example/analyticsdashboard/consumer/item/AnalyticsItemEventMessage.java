@@ -4,6 +4,8 @@ import com.example.event.consumer.EventEnvelope;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Getter
 @NoArgsConstructor
 public class AnalyticsItemEventMessage implements EventEnvelope {
@@ -19,4 +21,6 @@ public class AnalyticsItemEventMessage implements EventEnvelope {
 
     private Long sellerId;
     private Long storeId;
+    private BigDecimal averageRating;
+    private Long reviewCount;
 }

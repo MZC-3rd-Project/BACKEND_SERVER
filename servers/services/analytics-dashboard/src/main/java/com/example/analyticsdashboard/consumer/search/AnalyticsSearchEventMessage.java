@@ -4,6 +4,8 @@ import com.example.event.consumer.EventEnvelope;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Getter
 @NoArgsConstructor
 public class AnalyticsSearchEventMessage implements EventEnvelope {
@@ -22,4 +24,5 @@ public class AnalyticsSearchEventMessage implements EventEnvelope {
     private String journeyId;
     private String correlationId;
     private String causationId;
+    private List<Long> resultItemIds;
 }

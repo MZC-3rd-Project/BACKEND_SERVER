@@ -126,6 +126,30 @@ output "ec2_elasticsearch_endpoint" {
   value = var.enable_ec2_elasticsearch ? "http://${aws_instance.ec2_elasticsearch[0].private_ip}:9200" : null
 }
 
+output "search_ai_enrichment_queue_url" {
+  value = var.enable_search_ai_enrichment ? aws_sqs_queue.search_ai_enrichment[0].url : null
+}
+
+output "search_ai_enrichment_queue_arn" {
+  value = var.enable_search_ai_enrichment ? aws_sqs_queue.search_ai_enrichment[0].arn : null
+}
+
+output "search_ai_enrichment_dlq_arn" {
+  value = var.enable_search_ai_enrichment ? aws_sqs_queue.search_ai_enrichment_dlq[0].arn : null
+}
+
+output "search_ai_enrichment_secret_arn" {
+  value = var.enable_search_ai_enrichment ? aws_secretsmanager_secret.search_ai_enrichment[0].arn : null
+}
+
+output "search_ai_enrichment_lambda_name" {
+  value = var.enable_search_ai_enrichment ? aws_lambda_function.search_ai_enricher[0].function_name : null
+}
+
+output "search_ai_enrichment_lambda_role_arn" {
+  value = var.enable_search_ai_enrichment ? aws_iam_role.search_ai_enricher_lambda[0].arn : null
+}
+
 output "service_discovery_namespace_id" {
   value = var.enable_service_discovery ? aws_service_discovery_private_dns_namespace.this[0].id : null
 }

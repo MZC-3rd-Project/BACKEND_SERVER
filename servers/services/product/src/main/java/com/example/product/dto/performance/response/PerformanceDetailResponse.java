@@ -13,6 +13,7 @@ import com.example.product.entity.performance.SeatGrade;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -31,6 +32,8 @@ public class PerformanceDetailResponse {
     private String status;
     private String itemType;
     private ItemImagesResponse images;
+    private BigDecimal averageRating;
+    private Long reviewCount;
 
     @SnowflakeId
     private Long categoryId;
@@ -89,6 +92,8 @@ public class PerformanceDetailResponse {
                 .status(item.getStatus().name())
                 .itemType(item.getItemType().name())
                 .images(ItemImagesResponse.from(images, item.getThumbnailMediaId()))
+                .averageRating(item.getAverageRating())
+                .reviewCount(item.getReviewCount())
                 .categoryId(item.getCategoryId())
                 .categoryName(categoryName)
                 .categoryPath(safeCategoryPath)

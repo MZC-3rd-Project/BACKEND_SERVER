@@ -1,6 +1,7 @@
 locals {
-  cluster_name    = coalesce(var.cluster_name, "${var.name_prefix}-${var.environment}-eks")
-  node_group_name = coalesce(var.node_group_name, "${var.environment}-apps-x86")
+  cluster_name          = coalesce(var.cluster_name, "${var.name_prefix}-${var.environment}-eks")
+  node_group_name       = coalesce(var.node_group_name, "${var.environment}-apps-x86")
+  application_namespace = coalesce(var.application_namespace, "${var.name_prefix}-${var.environment}")
 
   common_tags = merge(
     {

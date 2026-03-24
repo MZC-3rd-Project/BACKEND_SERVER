@@ -1,6 +1,7 @@
 package com.example.profile.service.query;
 
 import com.example.core.exception.BusinessException;
+import com.example.profile.dto.response.AddressResponse;
 import com.example.profile.dto.response.ProfileAddressResponse;
 import com.example.profile.dto.response.ProfileResponse;
 import com.example.profile.dto.response.internal.ProfileSnapshotResponse;
@@ -26,10 +27,13 @@ public class ProfileQueryService {
 
     @Transactional(readOnly = true)
     public ProfileResponse getProfile(Long userId){
-        Profiles profile = profileProjectionRepairService.ensureProfile(userId)
+        Profiles profile = profileProjectionRepairService.ensureProfileWithImage(userId)
             .orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_NOT_FOUND));
 
-        return ProfileResponse.from(profile);
+        return ProfileResponse.from(
+            profile,
+            profileAddressRepository.findByProfileIdAndIsDefaultTrue(userId)
+        );
     }
 
     @Transactional(readOnly = true)
@@ -47,6 +51,15 @@ public class ProfileQueryService {
     @Transactional(readOnly = true)
     public List<Profiles> getProfileList(List<Long> userIds){
         return profileRepository.findAllByUserIdIn(userIds);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AddressResponse> getAddresses(Long userId) {
+        profileProjectionRepairService.ensureProfile(userId);
+        return profileAddressRepository.findProfileAddressByProfileId(userId)
+            .stream()
+            .map(AddressResponse::from)
+            .toList();
     }
 
     @Transactional(readOnly = true)

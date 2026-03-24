@@ -32,15 +32,18 @@ public class CatalogDetailBffService {
     private static final String CHECKOUT_ENTRY_TYPE = "SALES_CHECKOUT";
 
     private final CatalogDetailDownstreamClient downstreamClient;
+    private final SearchClickRelayService searchClickRelayService;
     private final GatewaySecurityProperties securityProperties;
     private final CatalogMetricsService catalogMetricsService;
     private final ObjectMapper objectMapper;
 
     public CatalogDetailBffService(CatalogDetailDownstreamClient downstreamClient,
+                                   SearchClickRelayService searchClickRelayService,
                                    GatewaySecurityProperties securityProperties,
                                    CatalogMetricsService catalogMetricsService,
                                    ObjectMapper objectMapper) {
         this.downstreamClient = downstreamClient;
+        this.searchClickRelayService = searchClickRelayService;
         this.securityProperties = securityProperties;
         this.catalogMetricsService = catalogMetricsService;
         this.objectMapper = objectMapper;
@@ -50,7 +53,8 @@ public class CatalogDetailBffService {
                                                            String itemTypeValue,
                                                            String salesChannelValue,
                                                            Long hotDealId,
-                                                           Long campaignId) {
+                                                           Long campaignId,
+                                                           String searchQueryHash) {
         CatalogDetailRequest request;
         try {
             request = normalize(itemId, itemTypeValue, salesChannelValue, hotDealId, campaignId);
@@ -59,12 +63,16 @@ public class CatalogDetailBffService {
         }
 
         HttpHeaders downstreamHeaders = buildDownstreamHeaders();
-        return routePrimary(request, downstreamHeaders)
+        Mono<ResponseEntity<JsonNode>> detailMono = routePrimary(request, downstreamHeaders)
                 .onErrorResume(e -> {
                     log.warn("[CatalogDetail] route failed. itemId={}, channel={}", request.itemId(), request.salesChannel(), e);
                     return Mono.just(badGateway("상세 조회에 실패했습니다"));
                 })
                 .map(this::normalizeSnowflakeIds);
+        return detailMono.zipWith(
+                searchClickRelayService.trackClickBestEffort(request.itemId(), searchQueryHash).thenReturn(Boolean.TRUE),
+                (response, ignored) -> response
+        );
     }
 
     public Mono<ResponseEntity<JsonNode>> getFundingCampaignDetail(Long campaignId) {
@@ -213,6 +221,7 @@ public class CatalogDetailBffService {
         Mono<ResponseEntity<JsonNode>> chain = Mono.just(response)
                 .flatMap(r -> enrichWithItemSummary(itemId, headers, r, dataNode))
                 .flatMap(r -> ensureItemPayload(request, itemId, headers, r, dataNode))
+                .flatMap(r -> enrichReviews(itemId, headers, r, dataNode))
                 .flatMap(r -> enrichStore(headers, r, dataNode))
                 .flatMap(r -> enrichStock(itemId, headers, r, dataNode));
 
@@ -649,6 +658,30 @@ public class CatalogDetailBffService {
         if (request.salesChannel() == CatalogSalesChannel.NORMAL) {
             putNullIfMissing(dataNode, "originFunding");
         }
+    }
+
+    private Mono<ResponseEntity<JsonNode>> enrichReviews(Long itemId,
+                                                         HttpHeaders headers,
+                                                         ResponseEntity<JsonNode> response,
+                                                         ObjectNode dataNode) {
+        return downstreamClient.fetchReviews(itemId, headers)
+                .map(reviewResponse -> {
+                    if (!reviewResponse.getStatusCode().is2xxSuccessful()) {
+                        return response;
+                    }
+
+                    JsonNode content = reviewResponse.getBody()
+                            .path("data")
+                            .path("content");
+                    if (content.isArray()) {
+                        dataNode.set("reviews", content.deepCopy());
+                    }
+                    return response;
+                })
+                .onErrorResume(e -> {
+                    log.debug("[CatalogDetail] review enrichment skipped. itemId={}", itemId, e);
+                    return Mono.just(response);
+                });
     }
 
     private void ensureStorePlaceholder(ObjectNode dataNode) {

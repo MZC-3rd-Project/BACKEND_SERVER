@@ -13,6 +13,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -43,12 +46,13 @@ public class CatalogResponseMapper {
             return List.of();
         }
 
+        String searchQueryHash = hashQuery(params.query());
         List<CatalogItemCardResponse> results = new ArrayList<>();
         for (JsonNode itemNode : itemsNode) {
             if (!itemNode.isObject()) {
                 continue;
             }
-            CatalogItemCardResponse mapped = mapItemCard(itemNode, params.itemType());
+            CatalogItemCardResponse mapped = mapItemCard(itemNode, params.itemType(), searchQueryHash);
             if (mapped == null) {
                 continue;
             }
@@ -61,7 +65,7 @@ public class CatalogResponseMapper {
         return List.copyOf(results);
     }
 
-    private CatalogItemCardResponse mapItemCard(JsonNode itemNode, BffItemType requestItemType) {
+    private CatalogItemCardResponse mapItemCard(JsonNode itemNode, BffItemType requestItemType, String searchQueryHash) {
         Long itemId = asNullableLong(itemNode.path("itemId"));
         if (itemId == null || itemId <= 0) {
             return null;
@@ -75,7 +79,7 @@ public class CatalogResponseMapper {
 
         CatalogPriceResponse price = resolvePrice(itemNode);
         CatalogDetailTargetResponse detailTarget = resolveDetailTarget(
-                itemId, itemType, salesChannel, activeHotDealId, activeCampaignId
+                itemId, itemType, salesChannel, activeHotDealId, activeCampaignId, searchQueryHash
         );
 
         return new CatalogItemCardResponse(
@@ -86,6 +90,7 @@ public class CatalogResponseMapper {
                 status,
                 price,
                 asNullableInteger(itemNode.path("stock")),
+                asNullableInteger(itemNode.path("availableStock")),
                 asNullableLong(itemNode.path("thumbnailMediaId")),
                 textOrNull(itemNode.path("thumbnailUrl")),
                 activeHotDealId,
@@ -98,29 +103,30 @@ public class CatalogResponseMapper {
                                                             BffItemType itemType,
                                                             CatalogSalesChannel salesChannel,
                                                             Long activeHotDealId,
-                                                            Long activeCampaignId) {
+                                                            Long activeCampaignId,
+                                                            String searchQueryHash) {
         return switch (salesChannel) {
             case HOT_DEAL -> {
                 if (activeHotDealId != null && activeHotDealId > 0) {
                     if (itemType != null) {
                         yield new CatalogDetailTargetResponse("HOT_DEAL",
-                                buildCatalogDetailRoutePath(itemId, itemType, CatalogSalesChannel.HOT_DEAL, activeHotDealId, null));
+                                buildCatalogDetailRoutePath(itemId, itemType, CatalogSalesChannel.HOT_DEAL, activeHotDealId, null, searchQueryHash));
                     }
                     yield new CatalogDetailTargetResponse("HOT_DEAL", "/api/v1/hot-deals/" + activeHotDealId);
                 }
-                yield new CatalogDetailTargetResponse("NORMAL", buildNormalDetailPath(itemId, itemType));
+                yield new CatalogDetailTargetResponse("NORMAL", buildNormalDetailPath(itemId, itemType, searchQueryHash));
             }
             case FUNDING -> {
                 if (itemType != null) {
                     yield new CatalogDetailTargetResponse("FUNDING",
-                            buildCatalogDetailRoutePath(itemId, itemType, CatalogSalesChannel.FUNDING, null, activeCampaignId));
+                            buildCatalogDetailRoutePath(itemId, itemType, CatalogSalesChannel.FUNDING, null, activeCampaignId, searchQueryHash));
                 }
                 if (activeCampaignId != null && activeCampaignId > 0) {
                     yield new CatalogDetailTargetResponse("FUNDING", "/api/campaigns/" + activeCampaignId);
                 }
                 yield new CatalogDetailTargetResponse("FUNDING", "/api/campaigns/item/" + itemId);
             }
-            case NORMAL, ALL -> new CatalogDetailTargetResponse("NORMAL", buildNormalDetailPath(itemId, itemType));
+            case NORMAL, ALL -> new CatalogDetailTargetResponse("NORMAL", buildNormalDetailPath(itemId, itemType, searchQueryHash));
         };
     }
 
@@ -128,7 +134,8 @@ public class CatalogResponseMapper {
                                                BffItemType itemType,
                                                CatalogSalesChannel salesChannel,
                                                Long hotDealId,
-                                               Long campaignId) {
+                                               Long campaignId,
+                                               String searchQueryHash) {
         UriComponentsBuilder builder = UriComponentsBuilder
                 .fromPath("/bff/v1/catalog/items/{itemId}/detail")
                 .queryParam("itemType", itemType.name())
@@ -140,14 +147,35 @@ public class CatalogResponseMapper {
         if (campaignId != null && campaignId > 0) {
             builder.queryParam("campaignId", campaignId);
         }
+        if (StringUtils.hasText(searchQueryHash)) {
+            builder.queryParam("searchQueryHash", searchQueryHash);
+        }
         return builder.buildAndExpand(itemId).toUriString();
     }
 
-    private String buildNormalDetailPath(Long itemId, BffItemType itemType) {
-        if (itemType == null) {
-            return "/bff/v1/items/" + itemId;
+    private String buildNormalDetailPath(Long itemId, BffItemType itemType, String searchQueryHash) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/bff/v1/items/{itemId}");
+        if (itemType != null) {
+            builder.queryParam("type", itemType.name());
         }
-        return "/bff/v1/items/" + itemId + "?type=" + itemType.name();
+        if (StringUtils.hasText(searchQueryHash)) {
+            builder.queryParam("searchQueryHash", searchQueryHash);
+        }
+        return builder.buildAndExpand(itemId).toUriString();
+    }
+
+    private String hashQuery(String rawQuery) {
+        if (!StringUtils.hasText(rawQuery)) {
+            return null;
+        }
+
+        try {
+            MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
+            byte[] digest = messageDigest.digest(rawQuery.trim().getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (Exception exception) {
+            throw new IllegalStateException("search query hash generation failed", exception);
+        }
     }
 
     private CatalogPriceResponse resolvePrice(JsonNode itemNode) {

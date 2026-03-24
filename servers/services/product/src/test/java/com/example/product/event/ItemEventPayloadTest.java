@@ -2,6 +2,7 @@ package com.example.product.event;
 
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -19,7 +20,9 @@ class ItemEventPayloadTest {
                 "PRODUCT",
                 "ON_SALE",
                 33L,
-                44L
+                44L,
+                BigDecimal.valueOf(4.50),
+                12L
         );
 
         Map<String, Object> payload = event.getPayload();
@@ -33,7 +36,9 @@ class ItemEventPayloadTest {
                 .containsEntry("itemType", "PRODUCT")
                 .containsEntry("status", "ON_SALE")
                 .containsEntry("sellerId", 33L)
-                .containsEntry("storeId", 44L);
+                .containsEntry("storeId", 44L)
+                .containsEntry("averageRating", BigDecimal.valueOf(4.50))
+                .containsEntry("reviewCount", 12L);
     }
 
     @Test

@@ -14,6 +14,7 @@ import com.example.product.entity.goods.ShippingInfo;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -30,6 +31,8 @@ public class GoodsDetailResponse {
     private String status;
     private String itemType;
     private ItemImagesResponse images;
+    private BigDecimal averageRating;
+    private Long reviewCount;
 
     @SnowflakeId
     private Long categoryId;
@@ -96,6 +99,8 @@ public class GoodsDetailResponse {
                 .status(item.getStatus().name())
                 .itemType(item.getItemType().name())
                 .images(imageResponse)
+                .averageRating(item.getAverageRating())
+                .reviewCount(item.getReviewCount())
                 .categoryId(item.getCategoryId())
                 .categoryName(categoryName)
                 .categoryPath(safeCategoryPath)

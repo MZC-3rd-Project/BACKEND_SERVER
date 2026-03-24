@@ -5,6 +5,7 @@ Place one values file per runtime service in this directory.
 Suggested naming:
 
 - `client-gateway.yaml`
+- `edge-nginx.yaml`
 - `keycloak.yaml`
 - `auth.yaml`
 - `profile.yaml`
@@ -15,6 +16,8 @@ Suggested naming:
 - `sales.yaml`
 - `hot-deal.yaml`
 - `order.yaml`
+- `payment.yaml`
+- `review.yaml`
 - `store.yaml`
 - `store-query.yaml`
 - `notification.yaml`
@@ -29,3 +32,15 @@ Each values file should map to one entry in `deploy/catalog/runtime-services.yam
 These files are intended for local/private environment management. If GitHub-based deploy
 automation is enabled later, keep runtime secrets in AWS Secrets Manager and only commit
 public-safe examples or sanitized values files.
+
+`edge-nginx.yaml` is reserved for the EKS connection-management demo edge that fronts
+`client-gateway` behind a dedicated ALB host.
+
+To generate a focused deploy plan for the demo, run:
+
+```bash
+DEPLOY_TARGETS=client-gateway,edge-nginx \
+AWS_DEFAULT_REGION=ap-northeast-2 \
+ACCOUNT_ID=<aws-account-id> \
+ruby scripts/ci/export-eks-deploy-plan.rb
+```

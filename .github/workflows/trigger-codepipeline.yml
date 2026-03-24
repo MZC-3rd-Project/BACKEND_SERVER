@@ -137,7 +137,7 @@ jobs:
                   libs/*|gradle/*|build.gradle.kts|settings.gradle.kts|gradlew|init/*)
                     full_build_deploy="true"
                     ;;
-                  servers/services/search/*|servers/test/test-server/*)
+                  servers/test/test-server/*)
                     ;;
                   servers/services/*)
                     service_name="$(echo "${file}" | cut -d/ -f3)"

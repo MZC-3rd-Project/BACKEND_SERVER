@@ -58,8 +58,9 @@ public class ProductMediaBffController {
 
     @GetMapping("/items/{itemId}")
     public Mono<ResponseEntity<JsonNode>> findItemDetail(@RequestParam String type,
+                                                         @RequestParam(required = false) String searchQueryHash,
                                                          @PathVariable Long itemId) {
-        return productMediaBffService.findItemDetail(type, itemId);
+        return productMediaBffService.findItemDetail(type, itemId, searchQueryHash);
     }
 
     @GetMapping("/items")

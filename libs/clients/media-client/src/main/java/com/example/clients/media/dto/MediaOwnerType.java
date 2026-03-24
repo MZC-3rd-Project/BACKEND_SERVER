@@ -8,5 +8,6 @@ public enum MediaOwnerType {
     CHAT_MESSAGE,
     FUNDING,
     HOT_DEAL,
-    COMMENT
+    COMMENT,
+    REVIEW
 }

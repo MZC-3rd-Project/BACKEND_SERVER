@@ -47,6 +47,9 @@ class SellerDashboardFunnelQueryServiceTest {
                         countRow("HOT_DEAL_STARTED", "HOT_DEAL", 1L),
                         countRow("HOT_DEAL_PURCHASED", "HOT_DEAL", 1L)
                 ));
+        when(analyticsJourneyEventRepository.countDistinctEventIdsByStoreIdAndSellerIdAndEventTypeAndOccurredAtBetween(
+                anyLong(), anyLong(), any(), any(), any()
+        )).thenReturn(1L);
         when(analyticsJourneyEventRepository.findLatestTimestampByStoreIdAndSellerIdAndOccurredAtBetween(anyLong(), anyLong(), any(), any()))
                 .thenReturn(now.minusMinutes(5));
         when(analyticsJourneyEventRepository.findLatestTimestamp()).thenReturn(now.minusMinutes(2));
@@ -78,6 +81,9 @@ class SellerDashboardFunnelQueryServiceTest {
     void getFunnel_bySeller_usesSellerScopedRepository() {
         when(analyticsJourneyEventRepository.aggregateCountsBySellerIdAndOccurredAtBetween(anyLong(), any(), any()))
                 .thenReturn(List.of());
+        when(analyticsJourneyEventRepository.countDistinctEventIdsBySellerIdAndEventTypeAndOccurredAtBetween(
+                anyLong(), any(), any(), any()
+        )).thenReturn(0L);
         lenient().when(analyticsJourneyEventRepository.findLatestTimestampBySellerIdAndOccurredAtBetween(anyLong(), any(), any()))
                 .thenReturn(null);
         lenient().when(analyticsJourneyEventRepository.findLatestTimestamp()).thenReturn(null);
@@ -95,6 +101,8 @@ class SellerDashboardFunnelQueryServiceTest {
         service.getFunnel(100L, query);
 
         verify(analyticsJourneyEventRepository).aggregateCountsBySellerIdAndOccurredAtBetween(anyLong(), any(), any());
+        verify(analyticsJourneyEventRepository)
+                .countDistinctEventIdsBySellerIdAndEventTypeAndOccurredAtBetween(anyLong(), any(), any(), any());
     }
 
     @Test
@@ -102,6 +110,9 @@ class SellerDashboardFunnelQueryServiceTest {
         LocalDateTime now = LocalDateTime.now();
         when(analyticsJourneyEventRepository.aggregateCountsBySellerIdAndOccurredAtBetween(anyLong(), any(), any()))
                 .thenReturn(List.of(countRow("SEARCH_EXECUTED", "SEARCH", 1L)));
+        when(analyticsJourneyEventRepository.countDistinctEventIdsBySellerIdAndEventTypeAndOccurredAtBetween(
+                anyLong(), any(), any(), any()
+        )).thenReturn(1L);
         when(analyticsJourneyEventRepository.findLatestTimestampBySellerIdAndOccurredAtBetween(anyLong(), any(), any()))
                 .thenReturn(now.minusHours(1));
         when(analyticsJourneyEventRepository.findLatestTimestamp())

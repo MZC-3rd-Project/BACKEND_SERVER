@@ -9,6 +9,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -57,6 +60,7 @@ class CatalogResponseMapperTest {
                 """);
 
         CatalogItemsResponse response = mapper.toCatalogResponse(searchBody, defaultParams());
+        String searchQueryHash = hashQuery("run");
 
         assertThat(response.success()).isTrue();
         assertThat(response.data()).isNotNull();
@@ -66,18 +70,18 @@ class CatalogResponseMapperTest {
         assertThat(hotDeal.salesChannel()).isEqualTo(CatalogSalesChannel.HOT_DEAL);
         assertThat(hotDeal.detailTarget().type()).isEqualTo("HOT_DEAL");
         assertThat(hotDeal.detailTarget().path())
-                .isEqualTo("/bff/v1/catalog/items/11/detail?itemType=PRODUCT&salesChannel=HOT_DEAL&hotDealId=901");
+                .isEqualTo("/bff/v1/catalog/items/11/detail?itemType=PRODUCT&salesChannel=HOT_DEAL&hotDealId=901&searchQueryHash=" + searchQueryHash);
 
         CatalogItemCardResponse funding = response.data().items().get(1);
         assertThat(funding.salesChannel()).isEqualTo(CatalogSalesChannel.FUNDING);
         assertThat(funding.detailTarget().type()).isEqualTo("FUNDING");
         assertThat(funding.detailTarget().path())
-                .isEqualTo("/bff/v1/catalog/items/22/detail?itemType=GOODS&salesChannel=FUNDING&campaignId=301");
+                .isEqualTo("/bff/v1/catalog/items/22/detail?itemType=GOODS&salesChannel=FUNDING&campaignId=301&searchQueryHash=" + searchQueryHash);
 
         CatalogItemCardResponse normal = response.data().items().get(2);
         assertThat(normal.salesChannel()).isEqualTo(CatalogSalesChannel.NORMAL);
         assertThat(normal.detailTarget().type()).isEqualTo("NORMAL");
-        assertThat(normal.detailTarget().path()).isEqualTo("/bff/v1/items/33?type=PERFORMANCE");
+        assertThat(normal.detailTarget().path()).isEqualTo("/bff/v1/items/33?type=PERFORMANCE&searchQueryHash=" + searchQueryHash);
     }
 
     @Test
@@ -104,7 +108,7 @@ class CatalogResponseMapperTest {
         CatalogItemCardResponse item = response.data().items().get(0);
 
         assertThat(item.itemType()).isEqualTo(BffItemType.PRODUCT);
-        assertThat(item.detailTarget().path()).isEqualTo("/bff/v1/items/101?type=PRODUCT");
+        assertThat(item.detailTarget().path()).isEqualTo("/bff/v1/items/101?type=PRODUCT&searchQueryHash=" + hashQuery("run"));
     }
 
     @Test
@@ -150,12 +154,13 @@ class CatalogResponseMapperTest {
                 """);
 
         CatalogItemsResponse response = mapper.toCatalogResponse(searchBody, defaultParams());
+        String searchQueryHash = hashQuery("run");
 
         assertThat(response.data().items()).hasSize(1);
         CatalogItemCardResponse funding = response.data().items().get(0);
         assertThat(funding.detailTarget().type()).isEqualTo("FUNDING");
         assertThat(funding.detailTarget().path())
-                .isEqualTo("/bff/v1/catalog/items/2/detail?itemType=PRODUCT&salesChannel=FUNDING");
+                .isEqualTo("/bff/v1/catalog/items/2/detail?itemType=PRODUCT&salesChannel=FUNDING&searchQueryHash=" + searchQueryHash);
     }
 
     @Test
@@ -185,5 +190,11 @@ class CatalogResponseMapperTest {
                 null,
                 20
         );
+    }
+
+    private String hashQuery(String rawQuery) throws Exception {
+        MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
+        byte[] digest = messageDigest.digest(rawQuery.getBytes(StandardCharsets.UTF_8));
+        return HexFormat.of().formatHex(digest);
     }
 }

@@ -54,6 +54,17 @@ public class ProfileAddress extends BaseEntity {
     @Column(name = "sort_order", columnDefinition = "INT DEFAULT 0")
     private int sortOrder = 0;
 
+    @Builder.Default
+    @Column(name = "is_default", nullable = false)
+    private boolean isDefault = false;
+
+    public void setAsDefault() {
+        this.isDefault = true;
+    }
+
+    public void unsetDefault() {
+        this.isDefault = false;
+    }
 
     // 배송지 수정
     public void update(
@@ -67,7 +78,7 @@ public class ProfileAddress extends BaseEntity {
         this.buildingNumber = req.buildingNumber();
         this.buildingName   = req.buildingName();
         this.detailAddress  = req.detailAddress();
-        this.sortOrder      = req.sortOrder();
+        // sortOrder는 클라이언트에서 관리하지 않음
     }
 
     public static ProfileAddress create(Long profileId, ProfileDeliveryAddressQuery req){
@@ -81,7 +92,6 @@ public class ProfileAddress extends BaseEntity {
             .buildingNumber(req.buildingNumber())
             .buildingName(req.buildingName())
             .detailAddress(req.detailAddress())
-            .sortOrder(req.sortOrder())
             .build();
     }
 

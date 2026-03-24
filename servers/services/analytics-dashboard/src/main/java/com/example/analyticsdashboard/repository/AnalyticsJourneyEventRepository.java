@@ -129,4 +129,48 @@ public interface AnalyticsJourneyEventRepository extends JpaRepository<Analytics
             from AnalyticsJourneyEvent e
             """)
     LocalDateTime findLatestTimestamp();
+
+    @Query("""
+            select count(distinct e.eventId)
+            from AnalyticsJourneyEvent e
+            where e.sellerId = :sellerId
+              and upper(e.eventType) = upper(:eventType)
+              and e.occurredAt between :from and :to
+            """)
+    long countDistinctEventIdsBySellerIdAndEventTypeAndOccurredAtBetween(
+            @Param("sellerId") Long sellerId,
+            @Param("eventType") String eventType,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to
+    );
+
+    @Query("""
+            select count(distinct e.eventId)
+            from AnalyticsJourneyEvent e
+            where e.storeId = :storeId
+              and upper(e.eventType) = upper(:eventType)
+              and e.occurredAt between :from and :to
+            """)
+    long countDistinctEventIdsByStoreIdAndEventTypeAndOccurredAtBetween(
+            @Param("storeId") Long storeId,
+            @Param("eventType") String eventType,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to
+    );
+
+    @Query("""
+            select count(distinct e.eventId)
+            from AnalyticsJourneyEvent e
+            where e.storeId = :storeId
+              and e.sellerId = :sellerId
+              and upper(e.eventType) = upper(:eventType)
+              and e.occurredAt between :from and :to
+            """)
+    long countDistinctEventIdsByStoreIdAndSellerIdAndEventTypeAndOccurredAtBetween(
+            @Param("storeId") Long storeId,
+            @Param("sellerId") Long sellerId,
+            @Param("eventType") String eventType,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to
+    );
 }

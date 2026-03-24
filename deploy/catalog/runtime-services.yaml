@@ -34,6 +34,29 @@ spec:
         - redis
         - keycloak
 
+    - key: edge-nginx
+      runtime:
+        type: nginx
+        applicationName: edge-nginx
+      build:
+        type: external-image
+        sourceImage: nginxinc/nginx-unprivileged:1.27-alpine
+      image:
+        ecrRepository: donmoa-dev-edge-nginx
+        foundationRepositorySuffix: edge-nginx
+      deployment:
+        namespace: donmoa-dev
+        releaseName: edge-nginx
+        serviceName: edge-nginx
+        containerPort: 8080
+        public: true
+        ingressHost: edge.dev.example.com
+        rolloutWave: 4
+      datastore:
+        type: none
+        readWriteSplit: false
+      externalDependencies: []
+
     - key: keycloak
       runtime:
         type: keycloak
@@ -292,6 +315,59 @@ spec:
         - aurora-postgresql
         - redis
         - kafka
+
+    - key: payment
+      runtime:
+        type: spring-boot
+        applicationName: payment-service
+      build:
+        type: gradle
+        gradleModule: "servers:services:payment"
+      image:
+        ecrRepository: donmoa-dev-payment-service
+        foundationRepositorySuffix: payment-service
+      deployment:
+        namespace: donmoa-dev
+        releaseName: payment
+        serviceName: payment-service
+        containerPort: 8095
+        public: false
+        rolloutWave: 5
+      datastore:
+        type: aurora-postgresql
+        databaseName: payment_db
+        readWriteSplit: false
+      externalDependencies:
+        - aurora-postgresql
+        - redis
+        - kafka
+
+    - key: review
+      runtime:
+        type: spring-boot
+        applicationName: review-service
+      build:
+        type: gradle
+        gradleModule: "servers:services:review"
+      image:
+        ecrRepository: donmoa-dev-review-service
+        foundationRepositorySuffix: review-service
+      deployment:
+        namespace: donmoa-dev
+        releaseName: review
+        serviceName: review-service
+        containerPort: 8097
+        public: false
+        rolloutWave: 6
+      datastore:
+        type: aurora-postgresql
+        databaseName: review_db
+        readWriteSplit: false
+      externalDependencies:
+        - aurora-postgresql
+        - kafka
+        - media-api
+        - order-service
 
     - key: store
       runtime:

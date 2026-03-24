@@ -8,23 +8,25 @@ import com.example.analyticsdashboard.dto.response.SellerDashboardFunnelResponse
 import com.example.analyticsdashboard.dto.response.SellerDashboardItemKpiResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardOverviewResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardQueryRangeResponse;
+import com.example.analyticsdashboard.dto.response.SellerDashboardReviewKpiResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardSalesKpiResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardSearchKpiResponse;
 import com.example.analyticsdashboard.dto.response.SellerDashboardSeriesPointResponse;
+import com.example.analyticsdashboard.entity.AnalyticsDimItemSnapshot;
 import com.example.analyticsdashboard.entity.AnalyticsRawSalesEvent;
 import com.example.analyticsdashboard.exception.AnalyticsDashboardErrorCode;
 import com.example.analyticsdashboard.repository.AnalyticsDimItemSnapshotRepository;
 import com.example.analyticsdashboard.repository.AnalyticsItemStatusCountRow;
 import com.example.analyticsdashboard.repository.AnalyticsRawSalesEventRepository;
 import com.example.analyticsdashboard.repository.AnalyticsRawSalesEventAggregateRow;
-import com.example.analyticsdashboard.repository.AnalyticsRawSearchEventRepository;
-import com.example.analyticsdashboard.repository.AnalyticsRawSearchEventCountRow;
 import com.example.core.exception.BusinessException;
 import com.example.data.entity.datasource.UseWriteDataSource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -44,9 +46,10 @@ public class SellerDashboardOverviewQueryService {
 
     private static final String API_VERSION = "v1";
     private static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Seoul");
+    private static final String EVENT_SEARCH_EXECUTED = "SEARCH_EXECUTED";
+    private static final String EVENT_SEARCH_ITEM_CLICKED = "SEARCH_ITEM_CLICKED";
 
     private final AnalyticsRawSalesEventRepository rawSalesEventRepository;
-    private final AnalyticsRawSearchEventRepository rawSearchEventRepository;
     private final AnalyticsDimItemSnapshotRepository dimItemSnapshotRepository;
     private final SellerDashboardFunnelQueryService sellerDashboardFunnelQueryService;
 
@@ -65,34 +68,24 @@ public class SellerDashboardOverviewQueryService {
                         queryRangeContext.fromDateTime(),
                         queryRangeContext.toDateTime()
                 );
-        List<AnalyticsRawSearchEventCountRow> searchAggregates =
-                rawSearchEventRepository.aggregateBySellerIdAndOccurredAtBetween(
-                        sellerId,
-                        queryRangeContext.fromDateTime(),
-                        queryRangeContext.toDateTime()
-                );
         List<AnalyticsItemStatusCountRow> itemStatusCounts = dimItemSnapshotRepository.countByStatusForSellerId(sellerId);
+        List<AnalyticsDimItemSnapshot> itemSnapshots = dimItemSnapshotRepository.findBySellerId(sellerId);
         LocalDateTime salesAsOf = rawSalesEventRepository.findLatestTimestampBySellerIdAndOccurredAtBetween(
                 sellerId,
                 queryRangeContext.fromDateTime(),
                 queryRangeContext.toDateTime()
         );
-        LocalDateTime searchAsOf = rawSearchEventRepository.findLatestTimestampBySellerIdAndOccurredAtBetween(
-                sellerId,
-                queryRangeContext.fromDateTime(),
-                queryRangeContext.toDateTime()
-        );
+        SellerDashboardFunnelResponse funnel = sellerDashboardFunnelQueryService.getFunnel(sellerId, query);
 
         return buildOverviewResponse(
                 query,
                 queryRangeContext,
                 rawSalesEvents,
                 salesAggregates,
-                searchAggregates,
                 itemStatusCounts,
+                itemSnapshots,
                 salesAsOf,
-                searchAsOf,
-                sellerDashboardFunnelQueryService.getFunnel(sellerId, query)
+                funnel
         );
     }
 
@@ -104,10 +97,9 @@ public class SellerDashboardOverviewQueryService {
         QueryRangeContext queryRangeContext = resolveRange(query);
         List<AnalyticsRawSalesEvent> rawSalesEvents;
         List<AnalyticsRawSalesEventAggregateRow> salesAggregates;
-        List<AnalyticsRawSearchEventCountRow> searchAggregates;
         List<AnalyticsItemStatusCountRow> itemStatusCounts;
+        List<AnalyticsDimItemSnapshot> itemSnapshots;
         LocalDateTime salesAsOf;
-        LocalDateTime searchAsOf;
 
         if (hasPositiveId(sellerId)) {
             rawSalesEvents = rawSalesEventRepository.findByStoreIdAndSellerIdAndOccurredAtBetween(
@@ -122,20 +114,9 @@ public class SellerDashboardOverviewQueryService {
                     queryRangeContext.fromDateTime(),
                     queryRangeContext.toDateTime()
             );
-            searchAggregates = rawSearchEventRepository.aggregateByStoreIdAndSellerIdAndOccurredAtBetween(
-                    storeId,
-                    sellerId,
-                    queryRangeContext.fromDateTime(),
-                    queryRangeContext.toDateTime()
-            );
             itemStatusCounts = dimItemSnapshotRepository.countByStatusForStoreIdAndSellerId(storeId, sellerId);
+            itemSnapshots = dimItemSnapshotRepository.findByStoreIdAndSellerId(storeId, sellerId);
             salesAsOf = rawSalesEventRepository.findLatestTimestampByStoreIdAndSellerIdAndOccurredAtBetween(
-                    storeId,
-                    sellerId,
-                    queryRangeContext.fromDateTime(),
-                    queryRangeContext.toDateTime()
-            );
-            searchAsOf = rawSearchEventRepository.findLatestTimestampByStoreIdAndSellerIdAndOccurredAtBetween(
                     storeId,
                     sellerId,
                     queryRangeContext.fromDateTime(),
@@ -152,34 +133,25 @@ public class SellerDashboardOverviewQueryService {
                     queryRangeContext.fromDateTime(),
                     queryRangeContext.toDateTime()
             );
-            searchAggregates = rawSearchEventRepository.aggregateByStoreIdAndOccurredAtBetween(
-                    storeId,
-                    queryRangeContext.fromDateTime(),
-                    queryRangeContext.toDateTime()
-            );
             itemStatusCounts = dimItemSnapshotRepository.countByStatusForStoreId(storeId);
+            itemSnapshots = dimItemSnapshotRepository.findByStoreId(storeId);
             salesAsOf = rawSalesEventRepository.findLatestTimestampByStoreIdAndOccurredAtBetween(
                     storeId,
                     queryRangeContext.fromDateTime(),
                     queryRangeContext.toDateTime()
             );
-            searchAsOf = rawSearchEventRepository.findLatestTimestampByStoreIdAndOccurredAtBetween(
-                    storeId,
-                    queryRangeContext.fromDateTime(),
-                    queryRangeContext.toDateTime()
-            );
         }
+        SellerDashboardFunnelResponse funnel = sellerDashboardFunnelQueryService.getFunnelByStore(storeId, sellerId, query);
 
         return buildOverviewResponse(
                 query,
                 queryRangeContext,
                 rawSalesEvents,
                 salesAggregates,
-                searchAggregates,
                 itemStatusCounts,
+                itemSnapshots,
                 salesAsOf,
-                searchAsOf,
-                sellerDashboardFunnelQueryService.getFunnelByStore(storeId, sellerId, query)
+                funnel
         );
     }
 
@@ -187,23 +159,23 @@ public class SellerDashboardOverviewQueryService {
                                                                   QueryRangeContext queryRangeContext,
                                                                   List<AnalyticsRawSalesEvent> rawSalesEvents,
                                                                   List<AnalyticsRawSalesEventAggregateRow> salesAggregates,
-                                                                  List<AnalyticsRawSearchEventCountRow> searchAggregates,
                                                                   List<AnalyticsItemStatusCountRow> itemStatusCounts,
+                                                                  List<AnalyticsDimItemSnapshot> itemSnapshots,
                                                                   LocalDateTime salesAsOf,
-                                                                  LocalDateTime searchAsOf,
                                                                   SellerDashboardFunnelResponse funnel) {
         SellerDashboardQueryRangeResponse queryRange = toQueryRange(queryRangeContext, query.timezone().getId());
         SellerDashboardSalesKpiResponse sales = toSalesKpi(salesAggregates);
-        SellerDashboardSearchKpiResponse search = toSearchKpi(searchAggregates);
+        SellerDashboardSearchKpiResponse search = toSearchKpi(funnel);
         SellerDashboardItemKpiResponse item = toItemKpi(itemStatusCounts);
+        SellerDashboardReviewKpiResponse review = toReviewKpi(itemSnapshots);
         List<SellerDashboardSeriesPointResponse> series = toSeries(rawSalesEvents, queryRangeContext);
-        Instant asOf = resolveAsOf(salesAsOf, searchAsOf);
+        Instant asOf = resolveAsOf(salesAsOf, null);
 
         Map<String, Object> extensions = new LinkedHashMap<>();
         extensions.put("funding", null);
         extensions.put("hotDeal", null);
         extensions.put("store", null);
-        extensions.put("review", null);
+        extensions.put("review", review);
         extensions.put("funnel", funnel);
 
         return SellerDashboardOverviewResponse.builder()
@@ -324,11 +296,9 @@ public class SellerDashboardOverviewQueryService {
                 .build();
     }
 
-    private SellerDashboardSearchKpiResponse toSearchKpi(List<AnalyticsRawSearchEventCountRow> aggregateRows) {
-        Map<String, Long> aggregateMap = indexSearchAggregates(aggregateRows);
-        long searchCount = aggregateMap.getOrDefault("SEARCH_EXECUTED", 0L);
-        long clickCount = aggregateMap.getOrDefault("SEARCH_ITEM_CLICKED", 0L);
-
+    private SellerDashboardSearchKpiResponse toSearchKpi(SellerDashboardFunnelResponse funnel) {
+        long searchCount = extractFunnelStepCount(funnel, EVENT_SEARCH_EXECUTED);
+        long clickCount = extractFunnelStepCount(funnel, EVENT_SEARCH_ITEM_CLICKED);
         double ctr = searchCount == 0 ? 0.0d : (double) clickCount / (double) searchCount;
         return SellerDashboardSearchKpiResponse.builder()
                 .searchCount(searchCount)
@@ -347,6 +317,35 @@ public class SellerDashboardOverviewQueryService {
                 .onSaleCount(onSaleCount)
                 .soldOutCount(soldOutCount)
                 .hiddenCount(hiddenCount)
+                .build();
+    }
+
+    private SellerDashboardReviewKpiResponse toReviewKpi(List<AnalyticsDimItemSnapshot> itemSnapshots) {
+        List<AnalyticsDimItemSnapshot> snapshots = itemSnapshots == null ? List.of() : itemSnapshots;
+
+        long totalReviewCount = snapshots.stream()
+                .map(AnalyticsDimItemSnapshot::getReviewCount)
+                .filter(java.util.Objects::nonNull)
+                .mapToLong(Long::longValue)
+                .sum();
+
+        long reviewedItemCount = snapshots.stream()
+                .filter(snapshot -> snapshot.getReviewCount() != null && snapshot.getReviewCount() > 0)
+                .count();
+
+        BigDecimal totalWeightedRating = snapshots.stream()
+                .filter(snapshot -> snapshot.getReviewCount() != null && snapshot.getReviewCount() > 0)
+                .map(snapshot -> snapshot.getAverageRating().multiply(BigDecimal.valueOf(snapshot.getReviewCount())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal averageRating = totalReviewCount == 0
+                ? BigDecimal.ZERO.setScale(2)
+                : totalWeightedRating.divide(BigDecimal.valueOf(totalReviewCount), 2, RoundingMode.HALF_UP);
+
+        return SellerDashboardReviewKpiResponse.builder()
+                .reviewCount(totalReviewCount)
+                .reviewedItemCount(reviewedItemCount)
+                .averageRating(averageRating)
                 .build();
     }
 
@@ -417,12 +416,14 @@ public class SellerDashboardOverviewQueryService {
         return aggregateMap;
     }
 
-    private Map<String, Long> indexSearchAggregates(List<AnalyticsRawSearchEventCountRow> aggregateRows) {
-        Map<String, Long> aggregateMap = new HashMap<>();
-        for (AnalyticsRawSearchEventCountRow aggregateRow : aggregateRows) {
-            aggregateMap.put(normalize(aggregateRow.eventType()), nullSafeLong(aggregateRow.eventCount()));
+    private long extractFunnelStepCount(SellerDashboardFunnelResponse funnel, String stepName) {
+        if (funnel == null || funnel.getSales() == null || funnel.getSales().getSteps() == null) {
+            return 0L;
         }
-        return aggregateMap;
+        return funnel.getSales().getSteps().stream()
+                .filter(step -> step != null && stepName.equals(step.getStep()))
+                .mapToLong(step -> step.getCount())
+                .sum();
     }
 
     private Map<String, Long> indexItemStatusCounts(List<AnalyticsItemStatusCountRow> statusCounts) {

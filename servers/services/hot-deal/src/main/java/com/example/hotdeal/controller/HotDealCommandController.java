@@ -9,10 +9,12 @@ import com.example.hotdeal.service.QueueSseEventPublisher;
 import com.example.hotdeal.service.QueueSseService;
 import com.example.hotdeal.service.QueueService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1/hot-deals")
 @RequiredArgsConstructor
@@ -26,6 +28,7 @@ public class HotDealCommandController implements HotDealCommandApi {
 
     @Override
     public ApiResponse<HotDealDetailResponse> createHotDeal(CreateHotDealRequest request, Long userId) {
+        log.info("request : {}, userId : {}",request, userId);
         return ApiResponse.success(hotDealCommandService.createManual(request, userId));
     }
 

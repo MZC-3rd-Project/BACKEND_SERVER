@@ -21,6 +21,7 @@ spring:
   flyway:
     enabled: false
     baseline-on-migrate: true
+    baseline-version: 3
     locations: classpath:db/migration
     repair-on-migrate: true
 
@@ -82,6 +83,29 @@ app:
       routing:
         profile-user-events-consumer:
           mode: ${PROFILE_USER_EVENTS_ROUTING_MODE:INBOX}
+  profile:
+    dummy-bootstrap:
+      enabled: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: develop
+  profiles:
+    active: develop
+  flyway:
+    enabled: true
+
+app:
+  profile:
+    dummy-bootstrap:
+      enabled: true
+      user-id: 9000001
+      email: "dummy@dev.local"
+      nickname: "개발더미유저"
+      phone: "010-1234-5678"
+
 # ─── Actuator ─────────────────────────────────
 management:
   endpoints:

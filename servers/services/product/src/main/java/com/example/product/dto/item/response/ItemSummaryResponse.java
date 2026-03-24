@@ -7,6 +7,7 @@ import com.example.product.entity.image.ItemImage;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Getter
@@ -21,6 +22,8 @@ public class ItemSummaryResponse {
     private String itemType;
     private String status;
     private ItemImagesResponse images;
+    private BigDecimal averageRating;
+    private Long reviewCount;
 
     @SnowflakeId
     private Long sellerId;
@@ -36,6 +39,8 @@ public class ItemSummaryResponse {
                 .itemType(entity.getItemType().name())
                 .status(entity.getStatus().name())
                 .images(ItemImagesResponse.from(images, entity.getThumbnailMediaId()))
+                .averageRating(entity.getAverageRating())
+                .reviewCount(entity.getReviewCount())
                 .sellerId(entity.getSellerId())
                 .storeId(entity.getStoreId())
                 .build();

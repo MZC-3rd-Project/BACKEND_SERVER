@@ -24,15 +24,6 @@ if rg -n "\\.internal\\b" "${VALUES_DIR}"; then
   exit 1
 fi
 
-echo "[INFO] checking search exclusion leftovers"
-if rg -n "search-service|SEARCH_SERVICE_URL|/api/v1/search" \
-  "${VALUES_DIR}" \
-  "${ROOT_DIR}/servers/gateways/client-gateway/src/main/resources/application.yml" \
-  "${ROOT_DIR}/servers/services/analytics-dashboard/src/main/resources/application.yml"; then
-  echo "[ERROR] search deployment leftovers detected in runtime config" >&2
-  exit 1
-fi
-
 if command -v helm >/dev/null 2>&1; then
   echo "[INFO] rendering helm templates for all selected services"
   while IFS=$'\t' read -r release_name values_file image_repository image_tag; do

@@ -24,6 +24,7 @@ public class WebClientCatalogDetailDownstreamClient implements CatalogDetailDown
     private final WebClient stockWebClient;
     private final WebClient storeQueryWebClient;
     private final WebClient mediaWebClient;
+    private final WebClient reviewWebClient;
     private final ObjectMapper objectMapper;
 
     public WebClientCatalogDetailDownstreamClient(
@@ -34,7 +35,8 @@ public class WebClientCatalogDetailDownstreamClient implements CatalogDetailDown
             @Value("${app.service.product-url:http://localhost:8084}") String productServiceUrl,
             @Value("${app.service.stock-url:http://localhost:8085}") String stockServiceUrl,
             @Value("${app.service.store-query-url:http://localhost:8091}") String storeQueryServiceUrl,
-            @Value("${app.service.media-url:http://localhost:8094}") String mediaServiceUrl
+            @Value("${app.service.media-url:http://localhost:8094}") String mediaServiceUrl,
+            @Value("${app.service.review-url:http://localhost:8097}") String reviewServiceUrl
     ) {
         this.hotDealWebClient = webClientBuilder.baseUrl(hotDealServiceUrl).build();
         this.fundingWebClient = webClientBuilder.baseUrl(fundingServiceUrl).build();
@@ -42,6 +44,7 @@ public class WebClientCatalogDetailDownstreamClient implements CatalogDetailDown
         this.stockWebClient = webClientBuilder.baseUrl(stockServiceUrl).build();
         this.storeQueryWebClient = webClientBuilder.baseUrl(storeQueryServiceUrl).build();
         this.mediaWebClient = webClientBuilder.baseUrl(mediaServiceUrl).build();
+        this.reviewWebClient = webClientBuilder.baseUrl(reviewServiceUrl).build();
         this.objectMapper = objectMapper;
     }
 
@@ -92,6 +95,20 @@ public class WebClientCatalogDetailDownstreamClient implements CatalogDetailDown
                 .headers(requestHeaders -> requestHeaders.addAll(headers))
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue(Map.of("mediaIds", mediaIds))
+                .exchangeToMono(response -> response.bodyToMono(JsonNode.class)
+                        .defaultIfEmpty(objectMapper.createObjectNode())
+                        .map(payload -> ResponseEntity.status(response.statusCode()).body(payload)));
+    }
+
+    @Override
+    public Mono<ResponseEntity<JsonNode>> fetchReviews(Long itemId, HttpHeaders headers) {
+        return reviewWebClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/v1/reviews/items/{itemId}")
+                        .queryParam("page", 0)
+                        .queryParam("size", 10)
+                        .build(itemId))
+                .headers(requestHeaders -> requestHeaders.addAll(headers))
                 .exchangeToMono(response -> response.bodyToMono(JsonNode.class)
                         .defaultIfEmpty(objectMapper.createObjectNode())
                         .map(payload -> ResponseEntity.status(response.statusCode()).body(payload)));

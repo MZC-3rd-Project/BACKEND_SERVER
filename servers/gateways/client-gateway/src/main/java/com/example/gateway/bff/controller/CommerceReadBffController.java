@@ -52,6 +52,6 @@ public class CommerceReadBffController {
 
     @GetMapping("/sales/products/{saleId}")
     public Mono<ResponseEntity<JsonNode>> findSalesProductDetail(@PathVariable Long saleId) {
-        return commerceReadBffService.findSalesProductDetail(saleId);
+        return catalogDetailBffService.getCatalogDetail(saleId, "PRODUCT", "NORMAL", null, null, null);
     }
 }

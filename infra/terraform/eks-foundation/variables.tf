@@ -180,3 +180,33 @@ variable "external_secrets_secret_arns" {
   type        = list(string)
   default     = []
 }
+
+variable "application_namespace" {
+  description = "Namespace where application services run"
+  type        = string
+  default     = null
+}
+
+variable "search_service_account_name" {
+  description = "Service account name used by search-service"
+  type        = string
+  default     = "search-service"
+}
+
+variable "search_ai_enrichment_queue_arn" {
+  description = "Optional queue ARN that search-service may publish AI enrichment tasks to"
+  type        = string
+  default     = null
+}
+
+variable "cart_service_account_name" {
+  description = "Service account name used by cart-service"
+  type        = string
+  default     = "cart-service"
+}
+
+variable "cart_dynamodb_table_arn" {
+  description = "Optional DynamoDB table ARN that cart-service may read and write through IRSA"
+  type        = string
+  default     = null
+}

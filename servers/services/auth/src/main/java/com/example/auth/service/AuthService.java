@@ -6,15 +6,20 @@ import com.example.auth.dto.request.ChangePasswordRequest;
 import com.example.auth.dto.request.SignupRequest;
 import com.example.auth.dto.request.WithdrawRequest;
 import com.example.auth.dto.response.SignupResponse;
+import com.example.auth.dto.response.VerifyEmailResponse;
+import com.example.auth.entity.EmailVerification;
 import com.example.auth.entity.User;
 import com.example.auth.entity.UserStatus;
 import com.example.auth.entity.UserStatusHistory;
+import com.example.auth.event.EmailConfirmEvent;
 import com.example.auth.event.UserCreatedEvent;
 import com.example.auth.event.UserEmailChangedEvent;
 import com.example.auth.event.UserWithdrawnEvent;
 import com.example.auth.exception.AuthErrorCode;
+import com.example.auth.repository.EmailVerificationRepository;
 import com.example.auth.repository.UserRepository;
 import com.example.auth.repository.UserStatusHistoryRepository;
+import com.example.auth.util.VerificationCodeGenerator;
 import com.example.core.exception.BusinessException;
 import com.example.core.exception.TechnicalException;
 import com.example.event.EventMetadata;
@@ -30,6 +35,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -37,8 +44,11 @@ import java.util.Map;
 @Service
 public class AuthService {
 
+    private static final int VERIFICATION_CODE_EXPIRY_MINUTES = 10;
+
     private final UserRepository userRepository;
     private final UserStatusHistoryRepository statusHistoryRepository;
+    private final EmailVerificationRepository emailVerificationRepository;
     private final Keycloak keycloakAdminClient;
     private final ProfileServicePort profileServiceClient;
     private final EventPublisher eventPublisher;
@@ -49,6 +59,7 @@ public class AuthService {
 
     public AuthService(UserRepository userRepository,
                        UserStatusHistoryRepository statusHistoryRepository,
+                       EmailVerificationRepository emailVerificationRepository,
                        Keycloak keycloakAdminClient,
                        ProfileServicePort profileServiceClient,
                        EventPublisher eventPublisher,
@@ -58,6 +69,7 @@ public class AuthService {
                        @Value("${feature.sync-profile-create-on-signup:true}") boolean syncProfileCreateOnSignup) {
         this.userRepository = userRepository;
         this.statusHistoryRepository = statusHistoryRepository;
+        this.emailVerificationRepository = emailVerificationRepository;
         this.keycloakAdminClient = keycloakAdminClient;
         this.profileServiceClient = profileServiceClient;
         this.eventPublisher = eventPublisher;
@@ -102,6 +114,18 @@ public class AuthService {
             // 7. Outbox 이벤트 발행
             eventPublisher.publish(
                     new UserCreatedEvent(user.getId(), user.getEmail(), user.getNickname()),
+                    EventMetadata.of("USER", String.valueOf(user.getId()))
+            );
+
+            // 8. 이메일 인증 코드 생성 및 발행
+            String verificationCode = VerificationCodeGenerator.generate();
+            EmailVerification emailVerification = EmailVerification.create(
+                    request.email(), verificationCode,
+                    LocalDateTime.now().plusMinutes(VERIFICATION_CODE_EXPIRY_MINUTES));
+            emailVerificationRepository.save(emailVerification);
+
+            eventPublisher.publish(
+                    new EmailConfirmEvent(request.email(), verificationCode),
                     EventMetadata.of("USER", String.valueOf(user.getId()))
             );
 
@@ -187,21 +211,58 @@ public class AuthService {
         log.info("User withdrawn: userId={}", userId);
     }
 
+    // ─── 이메일 인증 검증 ────────────────────────────────────
+
+    @Transactional
+    public VerifyEmailResponse verifyEmail(String email, String code) {
+        EmailVerification verification = emailVerificationRepository
+                .findTopByEmailAndVerifiedFalseOrderByCreatedAtDesc(email)
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.VERIFICATION_NOT_FOUND));
+
+        if (verification.isExpired()) {
+            throw new BusinessException(AuthErrorCode.VERIFICATION_CODE_EXPIRED);
+        }
+
+        if (!verification.getCode().equals(code)) {
+            throw new BusinessException(AuthErrorCode.VERIFICATION_CODE_INVALID);
+        }
+
+        verification.verify();
+
+        // Keycloak emailVerified=true 업데이트
+        updateKeycloakEmailVerified(email);
+
+        log.info("Email verified: email={}", email);
+        return VerifyEmailResponse.of(true, email);
+    }
+
     // ─── 이메일 인증 재발송 ────────────────────────────────────
 
+    @Transactional
     public void resendVerificationEmail(String email) {
-        try {
-            List<org.keycloak.representations.idm.UserRepresentation> users =
-                    keycloakAdminClient.realm(realm).users().searchByEmail(email, true);
-            if (users.isEmpty()) {
-                throw new BusinessException(AuthErrorCode.USER_NOT_FOUND);
-            }
-            sendKeycloakVerificationEmailSafely(users.get(0).getId());
-        } catch (BusinessException e) {
-            throw e;
-        } catch (Exception e) {
-            log.warn("Keycloak 인증 메일 재발송 실패 (Admin 설정 확인): email={}, error={}", email, e.getMessage());
+        // 사용자 존재 확인
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.USER_NOT_FOUND));
+
+        // 이미 인증 완료 여부 확인
+        if (emailVerificationRepository.existsByEmailAndVerifiedTrue(email)) {
+            throw new BusinessException(AuthErrorCode.EMAIL_ALREADY_VERIFIED);
         }
+
+        // 새 인증 코드 생성 및 저장
+        String verificationCode = VerificationCodeGenerator.generate();
+        EmailVerification emailVerification = EmailVerification.create(
+                email, verificationCode,
+                LocalDateTime.now().plusMinutes(VERIFICATION_CODE_EXPIRY_MINUTES));
+        emailVerificationRepository.save(emailVerification);
+
+        // EmailConfirmEvent 발행
+        eventPublisher.publish(
+                new EmailConfirmEvent(email, verificationCode),
+                EventMetadata.of("USER", String.valueOf(user.getId()))
+        );
+
+        log.info("Verification email resent: email={}", email);
     }
 
     // ─── 중복 확인 ────────────────────────────────────────────
@@ -234,7 +295,7 @@ public class AuthService {
             kcUser.setEmail(email);
             kcUser.setEnabled(true);
             kcUser.setEmailVerified(false);
-            kcUser.setRequiredActions(List.of("VERIFY_EMAIL"));
+            kcUser.setRequiredActions(Collections.emptyList());
 
             CredentialRepresentation credential = new CredentialRepresentation();
             credential.setType(CredentialRepresentation.PASSWORD);
@@ -356,14 +417,19 @@ public class AuthService {
 
     // ─── Keycloak 이메일 인증 ─────────────────────────────────
 
-    private void sendKeycloakVerificationEmailSafely(String keycloakUserId) {
+    private void updateKeycloakEmailVerified(String email) {
         try {
-            keycloakAdminClient.realm(realm).users().get(keycloakUserId)
-                    .executeActionsEmail(List.of("VERIFY_EMAIL"));
-            log.info("Keycloak verification email sent: keycloakId={}", keycloakUserId);
+            List<UserRepresentation> users =
+                    keycloakAdminClient.realm(realm).users().searchByEmail(email, true);
+            if (!users.isEmpty()) {
+                UserRepresentation kcUser = users.get(0);
+                kcUser.setEmailVerified(true);
+                kcUser.setRequiredActions(Collections.emptyList());
+                keycloakAdminClient.realm(realm).users().get(kcUser.getId()).update(kcUser);
+                log.info("Keycloak emailVerified updated: email={}", email);
+            }
         } catch (Exception e) {
-            log.warn("Keycloak verification email failed (SMTP 설정 확인 필요): keycloakId={}, error={}",
-                    keycloakUserId, e.getMessage());
+            log.warn("Keycloak emailVerified 업데이트 실패: email={}, error={}", email, e.getMessage());
         }
     }
 

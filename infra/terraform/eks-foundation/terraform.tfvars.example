@@ -35,3 +35,8 @@ node_group_max_size      = 4
 external_secrets_secret_arns = [
   "arn:aws:secretsmanager:ap-northeast-2:123456789012:secret:donmoa/dev/*"
 ]
+
+# Optional app runtime namespace / IRSA wiring
+# application_namespace = "donmoa-dev"
+# search_ai_enrichment_queue_arn = "arn:aws:sqs:ap-northeast-2:123456789012:donmoa-dev-search-ai-enrichment"
+# cart_dynamodb_table_arn = "arn:aws:dynamodb:ap-northeast-2:123456789012:table/cart_items"

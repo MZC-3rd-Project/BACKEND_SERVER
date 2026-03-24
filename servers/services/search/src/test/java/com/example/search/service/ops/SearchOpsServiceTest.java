@@ -1,12 +1,16 @@
 package com.example.search.service.ops;
 
+import com.example.search.client.FundingCampaignClient;
 import com.example.search.client.ProductSearchSourceClient;
+import com.example.search.client.StockSummaryClient;
 import com.example.search.client.StoreSnapshotClient;
 import com.example.search.client.dto.ProductSearchDocument;
 import com.example.search.client.dto.SearchDocumentPage;
+import com.example.search.client.dto.StockSummary;
 import com.example.search.client.dto.StoreSnapshot;
 import com.example.search.dto.request.SearchReindexRequest;
 import com.example.search.dto.response.SearchReindexResponse;
+import com.example.search.service.enrichment.SearchAiEnrichmentTaskPublisher;
 import com.example.search.service.index.ElasticsearchDocumentClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,19 +30,28 @@ import static org.mockito.Mockito.when;
 class SearchOpsServiceTest {
 
     private ProductSearchSourceClient productSearchSourceClient;
+    private FundingCampaignClient fundingCampaignClient;
+    private StockSummaryClient stockSummaryClient;
     private StoreSnapshotClient storeSnapshotClient;
     private ElasticsearchDocumentClient elasticsearchDocumentClient;
+    private SearchAiEnrichmentTaskPublisher searchAiEnrichmentTaskPublisher;
     private SearchOpsService searchOpsService;
 
     @BeforeEach
     void setUp() {
         productSearchSourceClient = mock(ProductSearchSourceClient.class);
+        fundingCampaignClient = mock(FundingCampaignClient.class);
+        stockSummaryClient = mock(StockSummaryClient.class);
         storeSnapshotClient = mock(StoreSnapshotClient.class);
         elasticsearchDocumentClient = mock(ElasticsearchDocumentClient.class);
+        searchAiEnrichmentTaskPublisher = mock(SearchAiEnrichmentTaskPublisher.class);
         searchOpsService = new SearchOpsService(
                 productSearchSourceClient,
+                fundingCampaignClient,
+                stockSummaryClient,
                 storeSnapshotClient,
-                elasticsearchDocumentClient
+                elasticsearchDocumentClient,
+                searchAiEnrichmentTaskPublisher
         );
     }
 
@@ -52,6 +65,9 @@ class SearchOpsServiceTest {
                 .thenReturn(new SearchDocumentPage(List.of(first, second), "cursor-2"));
         when(productSearchSourceClient.findSearchDocuments("cursor-2", 2))
                 .thenReturn(new SearchDocumentPage(List.of(third), null));
+        when(stockSummaryClient.findByItemId(100L)).thenReturn(Optional.of(new StockSummary(100L, 17, 11, 0, 6, false)));
+        when(stockSummaryClient.findByItemId(90L)).thenReturn(Optional.of(new StockSummary(90L, 17, 10, 0, 7, false)));
+        when(stockSummaryClient.findByItemId(80L)).thenReturn(Optional.of(new StockSummary(80L, 17, 9, 0, 8, false)));
         when(storeSnapshotClient.findStore(10L))
                 .thenReturn(Optional.of(new StoreSnapshot(10L, "스토어A", "ACTIVE")));
         when(storeSnapshotClient.findStore(11L))
@@ -67,6 +83,7 @@ class SearchOpsServiceTest {
         assertThat(response.recreatedIndex()).isTrue();
         verify(elasticsearchDocumentClient).recreateIndex();
         verify(elasticsearchDocumentClient, times(3)).upsert(any());
+        verify(searchAiEnrichmentTaskPublisher, times(3)).publish(any(), eq("REINDEX"));
         verify(storeSnapshotClient, times(1)).findStore(10L);
         verify(storeSnapshotClient, times(1)).findStore(11L);
     }
@@ -77,6 +94,7 @@ class SearchOpsServiceTest {
 
         when(productSearchSourceClient.findSearchDocuments(null, 1))
                 .thenReturn(new SearchDocumentPage(List.of(first), "cursor-2"));
+        when(stockSummaryClient.findByItemId(100L)).thenReturn(Optional.of(new StockSummary(100L, 17, 11, 0, 6, false)));
         when(storeSnapshotClient.findStore(10L))
                 .thenReturn(Optional.of(new StoreSnapshot(10L, "스토어A", "ACTIVE")));
 
@@ -89,6 +107,7 @@ class SearchOpsServiceTest {
         assertThat(response.finished()).isFalse();
         assertThat(response.nextCursor()).isEqualTo("cursor-2");
         verify(elasticsearchDocumentClient, times(1)).upsert(any());
+        verify(searchAiEnrichmentTaskPublisher, times(1)).publish(any(), eq("REINDEX"));
         verify(elasticsearchDocumentClient, times(0)).recreateIndex();
     }
 

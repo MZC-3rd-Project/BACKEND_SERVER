@@ -51,7 +51,9 @@ app:
 
   service:
     product-url: ${PRODUCT_SERVICE_URL:http://localhost:8084}
+    funding-url: ${FUNDING_SERVICE_URL:http://localhost:8086}
     store-url: ${STORE_SERVICE_URL:http://localhost:8072}
+    stock-url: ${STOCK_SERVICE_URL:http://localhost:8085}
 
   openapi:
     enabled: ${OPENAPI_ENABLED:true}
@@ -64,6 +66,10 @@ search:
   elasticsearch:
     uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
     index-name: ${SEARCH_INDEX_NAME:items}
+  ai-enrichment:
+    enabled: ${SEARCH_AI_ENRICHMENT_ENABLED:false}
+    queue-url: ${SEARCH_AI_ENRICHMENT_QUEUE_URL:}
+    aws-region: ${SEARCH_AI_ENRICHMENT_AWS_REGION:ap-northeast-2}
 
 management:
   endpoints:

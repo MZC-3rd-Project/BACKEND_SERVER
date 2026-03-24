@@ -3,10 +3,12 @@ package com.example.search.controller.query;
 import com.example.api.response.ApiResponse;
 import com.example.core.pagination.CursorResponse;
 import com.example.search.dto.response.SearchItemResponse;
+import com.example.search.dto.response.SearchSuggestionResponse;
 import com.example.search.service.analytics.SearchAnalyticsEventService;
 import com.example.search.service.analytics.SearchRequestContext;
 import com.example.search.service.query.SearchQuery;
 import com.example.search.service.query.SearchQueryService;
+import com.example.search.service.query.SearchSuggestionService;
 import com.example.security.gateway.CurrentUserId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,6 +33,7 @@ public class SearchQueryController {
     private static final String CAUSATION_ID_HEADER = "X-Causation-Id";
 
     private final SearchQueryService searchQueryService;
+    private final SearchSuggestionService searchSuggestionService;
     private final SearchAnalyticsEventService searchAnalyticsEventService;
 
     @Operation(summary = "통합 상품 검색")
@@ -69,5 +72,14 @@ public class SearchQueryController {
                 SearchRequestContext.of(userId, sessionId, journeyId, correlationId, causationId)
         );
         return ApiResponse.success(response);
+    }
+
+    @Operation(summary = "검색 자동완성 제안")
+    @GetMapping("/suggestions")
+    public ApiResponse<List<SearchSuggestionResponse>> suggestions(
+            @RequestParam(name = "q") String query,
+            @RequestParam(name = "size", required = false) Integer size
+    ) {
+        return ApiResponse.success(searchSuggestionService.suggest(query, size));
     }
 }

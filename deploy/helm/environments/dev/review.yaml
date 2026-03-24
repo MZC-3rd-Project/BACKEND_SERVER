@@ -1,0 +1,45 @@
+fullnameOverride: review-service
+
+image:
+  repository: 682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-review-service
+  tag: latest
+  pullPolicy: Always
+
+service:
+  port: 8097
+
+container:
+  port: 8097
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+env:
+  SERVER_PORT: "8097"
+  SPRING_PROFILES_ACTIVE: develop
+  DB_URL: jdbc:postgresql://donmoa-dev-aurora.cluster-cfw84sg260sa.ap-northeast-2.rds.amazonaws.com:5432/review_db
+  DB_USERNAME: postgres
+  KAFKA_BOOTSTRAP_SERVERS: 10.30.130.193:9092
+  ORDER_SERVICE_URL: http://order-service:8090
+  MEDIA_SERVICE_URL: http://media-api:8094
+  APP_GATEWAY_SECURITY_ENABLED: "true"
+  APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED: "true"
+  APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER: X-Gateway-Auth
+  APP_GATEWAY_SECURITY_USER_ID_HEADER: X-User-Id
+  APP_SECURITY_CONTEXT_MAX_AGE_MILLIS: "300000"
+
+secretEnv:
+  DB_PASSWORD:
+    remoteRef: donmoa/dev/review-db
+    property: password
+  APP_SECURITY_CONTEXT_SIGNING_KEY:
+    remoteRef: donmoa/dev/common
+    property: APP_SECURITY_CONTEXT_SIGNING_KEY
+  APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:
+    remoteRef: donmoa/dev/common
+    property: APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN

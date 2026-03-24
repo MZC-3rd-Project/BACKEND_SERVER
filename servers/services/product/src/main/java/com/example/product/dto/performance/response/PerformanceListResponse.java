@@ -8,6 +8,7 @@ import com.example.product.entity.performance.Performance;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -24,6 +25,8 @@ public class PerformanceListResponse {
     private Long price;
     private String status;
     private ItemImagesResponse images;
+    private BigDecimal averageRating;
+    private Long reviewCount;
     private String venue;
     private LocalDate performanceDate;
     private LocalTime performanceTime;
@@ -37,6 +40,8 @@ public class PerformanceListResponse {
                 .price(item.getPrice())
                 .status(item.getStatus().name())
                 .images(ItemImagesResponse.from(images, item.getThumbnailMediaId()))
+                .averageRating(item.getAverageRating())
+                .reviewCount(item.getReviewCount())
                 .venue(perf.getVenue())
                 .performanceDate(perf.getPerformanceDate())
                 .performanceTime(perf.getPerformanceTime())

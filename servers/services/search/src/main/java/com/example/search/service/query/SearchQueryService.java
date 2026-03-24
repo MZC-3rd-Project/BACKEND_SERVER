@@ -14,6 +14,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -112,12 +113,16 @@ public class SearchQueryService {
 
         ObjectNode boolNode = filterArray.addObject().putObject("bool");
         ArrayNode shouldArray = boolNode.putArray("should");
+        shouldArray.add(term("categoryCodes", normalizeCategoryCode(category)));
         shouldArray.add(matchPhrase("category", category));
         shouldArray.add(matchPhrase("categoryPath", category));
         boolNode.put("minimum_should_match", 1);
     }
 
     private ObjectNode buildKeywordQuery(String keyword) {
+        ObjectNode boolNode = objectMapper.createObjectNode();
+        ArrayNode shouldArray = boolNode.putArray("should");
+
         ArrayNode fields = objectMapper.createArrayNode();
         fields.add("title^6");
         fields.add("tags^5");
@@ -126,7 +131,10 @@ public class SearchQueryService {
         fields.add("category^2");
         fields.add("categoryPath^2");
         fields.add("storeName^2");
+        fields.add("aiTags^3");
+        fields.add("aiKeywords^2");
         fields.add("description^1.5");
+        fields.add("aiSummary^1.5");
         fields.add("detailTitles^1.5");
         fields.add("detailDescriptions");
 
@@ -134,9 +142,12 @@ public class SearchQueryService {
         multiMatch.put("query", keyword);
         multiMatch.put("type", "best_fields");
         multiMatch.set("fields", fields);
+        shouldArray.addObject().set("multi_match", multiMatch);
+        shouldArray.add(term("categoryCodes", normalizeCategoryCode(keyword)));
+        boolNode.put("minimum_should_match", 1);
 
         ObjectNode query = objectMapper.createObjectNode();
-        query.set("multi_match", multiMatch);
+        query.set("bool", boolNode);
         return query;
     }
 
@@ -172,6 +183,14 @@ public class SearchQueryService {
         phrase.put(field, value);
         ObjectNode root = objectMapper.createObjectNode();
         root.set("match_phrase", phrase);
+        return root;
+    }
+
+    private ObjectNode term(String field, String value) {
+        ObjectNode body = objectMapper.createObjectNode();
+        body.put(field, value);
+        ObjectNode root = objectMapper.createObjectNode();
+        root.set("term", body);
         return root;
     }
 
@@ -212,5 +231,15 @@ public class SearchQueryService {
             }
         }
         return true;
+    }
+
+    private String normalizeCategoryCode(String rawValue) {
+        if (!StringUtils.hasText(rawValue)) {
+            return null;
+        }
+        return rawValue.trim()
+                .replace('-', '_')
+                .replace(' ', '_')
+                .toUpperCase(Locale.ROOT);
     }
 }

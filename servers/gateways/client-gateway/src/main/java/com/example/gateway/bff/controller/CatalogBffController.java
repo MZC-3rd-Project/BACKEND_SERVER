@@ -32,7 +32,8 @@ public class CatalogBffController {
                                                            @RequestParam String itemType,
                                                            @RequestParam String salesChannel,
                                                            @RequestParam(required = false) Long hotDealId,
-                                                           @RequestParam(required = false) Long campaignId) {
-        return catalogDetailBffService.getCatalogDetail(itemId, itemType, salesChannel, hotDealId, campaignId);
+                                                           @RequestParam(required = false) Long campaignId,
+                                                           @RequestParam(required = false) String searchQueryHash) {
+        return catalogDetailBffService.getCatalogDetail(itemId, itemType, salesChannel, hotDealId, campaignId, searchQueryHash);
     }
 }

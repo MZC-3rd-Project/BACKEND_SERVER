@@ -1,6 +1,7 @@
 package com.example.profile.dto.response;
 
 import com.example.profile.entity.ProfileAddress;
+import org.springframework.util.StringUtils;
 
 public record ProfileAddressResponse(
     Long profileId,
@@ -27,5 +28,20 @@ public record ProfileAddressResponse(
             address.getDetailAddress(),
             address.getSortOrder()
         );
+    }
+
+    public static String buildFullAddress(ProfileAddress address) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(address.getSido()).append(" ")
+          .append(address.getSigungu()).append(" ")
+          .append(address.getRoadName()).append(" ")
+          .append(address.getBuildingNumber());
+        if (StringUtils.hasText(address.getBuildingName())) {
+            sb.append(" ").append(address.getBuildingName());
+        }
+        if (StringUtils.hasText(address.getDetailAddress())) {
+            sb.append(" ").append(address.getDetailAddress());
+        }
+        return sb.toString();
     }
 }

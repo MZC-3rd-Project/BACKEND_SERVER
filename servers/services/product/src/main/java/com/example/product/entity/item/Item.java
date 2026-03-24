@@ -10,6 +10,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "items", indexes = {
         @Index(name = "idx_items_seller_id", columnList = "seller_id"),
@@ -56,6 +58,12 @@ public class Item extends BaseEntity {
     @Column(name = "thumbnail_media_id")
     private Long thumbnailMediaId;
 
+    @Column(name = "review_count", nullable = false)
+    private Long reviewCount;
+
+    @Column(name = "average_rating", precision = 4, scale = 2, nullable = false)
+    private BigDecimal averageRating;
+
     public static Item create(String title, String description, Long price,
                               ItemType itemType, Long categoryId, Long sellerId, Long storeId,
                               Long thumbnailMediaId) {
@@ -69,6 +77,8 @@ public class Item extends BaseEntity {
         item.sellerId = sellerId;
         item.storeId = storeId;
         item.thumbnailMediaId = thumbnailMediaId;
+        item.reviewCount = 0L;
+        item.averageRating = BigDecimal.ZERO.setScale(2);
         return item;
     }
 
@@ -87,6 +97,11 @@ public class Item extends BaseEntity {
 
     public void clearThumbnail() {
         this.thumbnailMediaId = null;
+    }
+
+    public void updateReviewMetrics(BigDecimal averageRating, Long reviewCount) {
+        this.averageRating = averageRating == null ? BigDecimal.ZERO.setScale(2) : averageRating;
+        this.reviewCount = reviewCount == null ? 0L : Math.max(reviewCount, 0L);
     }
 
     public void changeStatus(ItemStatus newStatus) {

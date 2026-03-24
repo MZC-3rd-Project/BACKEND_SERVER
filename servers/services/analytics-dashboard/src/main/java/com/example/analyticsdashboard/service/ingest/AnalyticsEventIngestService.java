@@ -20,16 +20,20 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -47,6 +51,7 @@ public class AnalyticsEventIngestService {
     private static final String DOMAIN_ORDER = "ORDER";
 
     private static final String ORDER_CREATED_EVENT = "ORDER_CREATED_EVENT";
+    private static final String SEARCH_EXECUTED_EVENT = "SEARCH_EXECUTED";
 
     private final AnalyticsDimItemSnapshotRepository dimItemSnapshotRepository;
     private final AnalyticsRawSalesEventRepository rawSalesEventRepository;
@@ -159,22 +164,8 @@ public class AnalyticsEventIngestService {
             return;
         }
 
-        Long resolvedItemId = event.getItemId();
-        Long resolvedStoreId = event.getStoreId();
-        Long resolvedSellerId = event.getSellerId();
-
-        if ((resolvedStoreId == null || resolvedSellerId == null) && resolvedItemId != null) {
-            Optional<AnalyticsDimItemSnapshot> snapshot = dimItemSnapshotRepository.findById(resolvedItemId);
-            if (snapshot.isPresent()) {
-                AnalyticsDimItemSnapshot itemSnapshot = snapshot.get();
-                if (resolvedStoreId == null) {
-                    resolvedStoreId = itemSnapshot.getStoreId();
-                }
-                if (resolvedSellerId == null) {
-                    resolvedSellerId = itemSnapshot.getSellerId();
-                }
-            }
-        }
+        String eventType = normalize(event.getEventType());
+        Ownership rawOwnership = resolveOwnership(event.getItemId(), event.getStoreId(), event.getSellerId());
 
         LocalDateTime occurredAt = parseOccurredAt(event.getOccurredAt());
         LocalDateTime ingestedAt = LocalDateTime.now();
@@ -188,13 +179,14 @@ public class AnalyticsEventIngestService {
                 null,
                 null
         );
+        String propertiesJson = buildSearchPropertiesJson(event);
 
         AnalyticsRawSearchEvent rawEvent = AnalyticsRawSearchEvent.builder()
                 .eventId(event.getEventId())
-                .eventType(normalize(event.getEventType()))
-                .storeId(resolvedStoreId)
-                .sellerId(resolvedSellerId)
-                .itemId(resolvedItemId)
+                .eventType(eventType)
+                .storeId(rawOwnership.storeId())
+                .sellerId(rawOwnership.sellerId())
+                .itemId(rawOwnership.itemId())
                 .queryHash(event.getQueryHash())
                 .userId(event.getUserId())
                 .sessionId(event.getSessionId())
@@ -206,24 +198,41 @@ public class AnalyticsEventIngestService {
                 .build();
         rawSearchEventRepository.save(rawEvent);
 
-        saveJourneyEventIfAbsent(AnalyticsJourneyEvent.builder()
-                .eventId(event.getEventId())
-                .eventSequence(0)
-                .eventType(normalize(event.getEventType()))
-                .domainType(DOMAIN_SEARCH)
-                .channelType(null)
-                .userId(event.getUserId())
-                .sessionId(event.getSessionId())
-                .journeyId(resolvedJourneyId)
-                .correlationId(event.getCorrelationId())
-                .causationId(event.getCausationId())
-                .sellerId(resolvedSellerId)
-                .storeId(resolvedStoreId)
-                .itemId(resolvedItemId)
-                .queryHash(event.getQueryHash())
-                .occurredAt(occurredAt)
-                .ingestedAt(ingestedAt)
-                .build());
+        List<SearchJourneyOwnership> journeyOwnerships = SEARCH_EXECUTED_EVENT.equals(eventType)
+                ? resolveSearchJourneyOwnerships(event, rawOwnership)
+                : List.of(SearchJourneyOwnership.of(rawOwnership.itemId(), rawOwnership.storeId(), rawOwnership.sellerId()));
+
+        if (journeyOwnerships.isEmpty()) {
+            saveJourneyEventIfAbsent(buildSearchJourneyEvent(
+                    event,
+                    eventType,
+                    occurredAt,
+                    ingestedAt,
+                    resolvedJourneyId,
+                    0,
+                    null,
+                    null,
+                    null,
+                    propertiesJson
+            ));
+            return;
+        }
+
+        for (int index = 0; index < journeyOwnerships.size(); index++) {
+            SearchJourneyOwnership ownership = journeyOwnerships.get(index);
+            saveJourneyEventIfAbsent(buildSearchJourneyEvent(
+                    event,
+                    eventType,
+                    occurredAt,
+                    ingestedAt,
+                    resolvedJourneyId,
+                    index,
+                    ownership.itemId(),
+                    ownership.storeId(),
+                    ownership.sellerId(),
+                    propertiesJson
+            ));
+        }
     }
 
     @Transactional
@@ -519,6 +528,39 @@ public class AnalyticsEventIngestService {
         journeyEventRepository.save(journeyEvent);
     }
 
+    private AnalyticsJourneyEvent buildSearchJourneyEvent(
+            AnalyticsSearchEventMessage event,
+            String eventType,
+            LocalDateTime occurredAt,
+            LocalDateTime ingestedAt,
+            String journeyId,
+            int eventSequence,
+            Long itemId,
+            Long storeId,
+            Long sellerId,
+            String propertiesJson
+    ) {
+        return AnalyticsJourneyEvent.builder()
+                .eventId(event.getEventId())
+                .eventSequence(eventSequence)
+                .eventType(eventType)
+                .domainType(DOMAIN_SEARCH)
+                .channelType(null)
+                .userId(event.getUserId())
+                .sessionId(event.getSessionId())
+                .journeyId(journeyId)
+                .correlationId(event.getCorrelationId())
+                .causationId(event.getCausationId())
+                .sellerId(sellerId)
+                .storeId(storeId)
+                .itemId(itemId)
+                .queryHash(event.getQueryHash())
+                .propertiesJson(propertiesJson)
+                .occurredAt(occurredAt)
+                .ingestedAt(ingestedAt)
+                .build();
+    }
+
     private void handleItemCreated(AnalyticsItemEventMessage event) {
         Long storeId = event.getStoreId();
         Long sellerId = event.getSellerId();
@@ -540,6 +582,8 @@ public class AnalyticsEventIngestService {
                     resolveItemStatus(event),
                     event.getPrice(),
                     existing.getStockQuantity(),
+                    normalizeReviewCount(event.getReviewCount(), existing.getReviewCount()),
+                    normalizeAverageRating(event.getAverageRating(), existing.getAverageRating()),
                     LocalDateTime.now()
             );
             dimItemSnapshotRepository.save(existing);
@@ -555,6 +599,8 @@ public class AnalyticsEventIngestService {
                         .itemStatus(resolveItemStatus(event))
                         .price(event.getPrice())
                         .stockQuantity(null)
+                        .reviewCount(normalizeReviewCount(event.getReviewCount(), 0L))
+                        .averageRating(normalizeAverageRating(event.getAverageRating(), BigDecimal.ZERO.setScale(2)))
                         .snapshotAt(LocalDateTime.now())
                         .build()
         );
@@ -569,6 +615,8 @@ public class AnalyticsEventIngestService {
                     defaultIfBlank(snapshot.getItemStatus(), "DRAFT"),
                     event.getPrice() != null ? event.getPrice() : snapshot.getPrice(),
                     snapshot.getStockQuantity(),
+                    normalizeReviewCount(event.getReviewCount(), snapshot.getReviewCount()),
+                    normalizeAverageRating(event.getAverageRating(), snapshot.getAverageRating()),
                     LocalDateTime.now()
             );
             dimItemSnapshotRepository.save(snapshot);
@@ -584,6 +632,8 @@ public class AnalyticsEventIngestService {
                     defaultIfBlank(event.getNewStatus(), defaultIfBlank(event.getStatus(), snapshot.getItemStatus())),
                     snapshot.getPrice(),
                     snapshot.getStockQuantity(),
+                    snapshot.getReviewCount(),
+                    snapshot.getAverageRating(),
                     LocalDateTime.now()
             );
             dimItemSnapshotRepository.save(snapshot);
@@ -599,10 +649,29 @@ public class AnalyticsEventIngestService {
                     ITEM_STATUS_DELETED,
                     snapshot.getPrice(),
                     snapshot.getStockQuantity(),
+                    snapshot.getReviewCount(),
+                    snapshot.getAverageRating(),
                     LocalDateTime.now()
             );
             dimItemSnapshotRepository.save(snapshot);
         });
+    }
+
+    private Long normalizeReviewCount(Long reviewCount, Long fallback) {
+        if (reviewCount != null && reviewCount >= 0) {
+            return reviewCount;
+        }
+        return fallback == null ? 0L : fallback;
+    }
+
+    private BigDecimal normalizeAverageRating(BigDecimal averageRating, BigDecimal fallback) {
+        if (averageRating != null) {
+            return averageRating;
+        }
+        if (fallback != null) {
+            return fallback;
+        }
+        return BigDecimal.ZERO.setScale(2);
     }
 
     private Ownership resolveOwnership(AnalyticsSalesEventMessage event) {
@@ -648,6 +717,47 @@ public class AnalyticsEventIngestService {
                         null
                 ))
                 .orElse(new Ownership(itemId, storeId, sellerId, null));
+    }
+
+    private List<SearchJourneyOwnership> resolveSearchJourneyOwnerships(AnalyticsSearchEventMessage event,
+                                                                        Ownership rawOwnership) {
+        List<SearchJourneyOwnership> ownerships = new ArrayList<>();
+        Set<String> seenKeys = new HashSet<>();
+
+        if (rawOwnership.resolved()) {
+            appendSearchJourneyOwnership(
+                    ownerships,
+                    seenKeys,
+                    SearchJourneyOwnership.of(rawOwnership.itemId(), rawOwnership.storeId(), rawOwnership.sellerId())
+            );
+        }
+
+        List<Long> resultItemIds = event.getResultItemIds() == null ? List.of() : event.getResultItemIds();
+        for (Long resultItemId : resultItemIds) {
+            Ownership ownership = resolveOwnership(resultItemId, null, null);
+            if (!ownership.resolved()) {
+                continue;
+            }
+            appendSearchJourneyOwnership(
+                    ownerships,
+                    seenKeys,
+                    SearchJourneyOwnership.of(ownership.itemId(), ownership.storeId(), ownership.sellerId())
+            );
+        }
+
+        return List.copyOf(ownerships);
+    }
+
+    private void appendSearchJourneyOwnership(List<SearchJourneyOwnership> ownerships,
+                                              Set<String> seenKeys,
+                                              SearchJourneyOwnership ownership) {
+        if (ownership == null || ownership.storeId() == null || ownership.sellerId() == null) {
+            return;
+        }
+        String key = ownership.storeId() + ":" + ownership.sellerId();
+        if (seenKeys.add(key)) {
+            ownerships.add(ownership);
+        }
     }
 
     private Long resolveSignedNetAmount(AnalyticsSalesEventMessage event, String eventType, Long fallbackAmount) {
@@ -780,6 +890,14 @@ public class AnalyticsEventIngestService {
         return JsonUtils.toJson(properties);
     }
 
+    private String buildSearchPropertiesJson(AnalyticsSearchEventMessage event) {
+        Map<String, Object> properties = new LinkedHashMap<>();
+        if (event != null && event.getResultItemIds() != null && !event.getResultItemIds().isEmpty()) {
+            properties.put("resultItemIds", event.getResultItemIds());
+        }
+        return toJson(properties);
+    }
+
     private void putIfPresent(Map<String, Object> properties, String key, Object value) {
         if (value != null) {
             properties.put(key, value);
@@ -789,6 +907,12 @@ public class AnalyticsEventIngestService {
     private record Ownership(Long itemId, Long storeId, Long sellerId, Long referenceTotalAmount) {
         private boolean resolved() {
             return itemId != null && storeId != null && sellerId != null;
+        }
+    }
+
+    private record SearchJourneyOwnership(Long itemId, Long storeId, Long sellerId) {
+        private static SearchJourneyOwnership of(Long itemId, Long storeId, Long sellerId) {
+            return new SearchJourneyOwnership(itemId, storeId, sellerId);
         }
     }
 }

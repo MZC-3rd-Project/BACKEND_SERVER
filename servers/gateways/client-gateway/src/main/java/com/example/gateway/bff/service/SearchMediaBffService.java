@@ -44,6 +44,7 @@ public class SearchMediaBffService {
     private final GatewaySessionPrincipalResolver sessionPrincipalResolver;
     private final GatewaySecurityProperties securityProperties;
     private final SearchThumbnailFallbackEnricher fallbackEnricher;
+    private final SearchClickRelayService searchClickRelayService;
     private final ObjectMapper objectMapper;
     private final ObjectProvider<HmacSigner> hmacSignerProvider;
     private final boolean searchEnabled;
@@ -53,6 +54,7 @@ public class SearchMediaBffService {
             GatewaySessionPrincipalResolver sessionPrincipalResolver,
             GatewaySecurityProperties securityProperties,
             SearchThumbnailFallbackEnricher fallbackEnricher,
+            SearchClickRelayService searchClickRelayService,
             ObjectMapper objectMapper,
             ObjectProvider<HmacSigner> hmacSignerProvider,
             @Value("${app.feature.search-enabled:true}") boolean searchEnabled,
@@ -64,6 +66,7 @@ public class SearchMediaBffService {
         this.sessionPrincipalResolver = sessionPrincipalResolver;
         this.securityProperties = securityProperties;
         this.fallbackEnricher = fallbackEnricher;
+        this.searchClickRelayService = searchClickRelayService;
         this.objectMapper = objectMapper;
         this.hmacSignerProvider = hmacSignerProvider;
         this.searchEnabled = searchEnabled;
@@ -80,27 +83,34 @@ public class SearchMediaBffService {
                         .flatMap(response -> enrichWithMediaFallback(response, downstreamHeaders)));
     }
 
-    public Mono<ResponseEntity<JsonNode>> trackClick(JsonNode requestBody) {
+    public Mono<ResponseEntity<JsonNode>> suggestions(ServerHttpRequest request) {
         if (!searchEnabled) {
             return Mono.just(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(searchDisabledBody()));
         }
 
-        JsonNode safeRequestBody = requestBody == null ? objectMapper.createObjectNode() : requestBody;
+        MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>(request.getQueryParams());
         return withOptionalUserContextHeaders(downstreamHeaders ->
-                searchWebClient.post()
-                        .uri("/api/v1/search/clicks")
-                        .headers(headers -> headers.addAll(downstreamHeaders))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .bodyValue(safeRequestBody)
-                        .exchangeToMono(response -> response.bodyToMono(JsonNode.class)
-                                .defaultIfEmpty(objectMapper.createObjectNode())
-                                .map(payload -> ResponseEntity.status(response.statusCode()).body(payload))));
+                callSuggestions(queryParams, downstreamHeaders));
+    }
+
+    public Mono<ResponseEntity<JsonNode>> trackClick(JsonNode requestBody) {
+        return searchClickRelayService.trackClick(requestBody);
     }
 
     private Mono<ResponseEntity<JsonNode>> callSearch(MultiValueMap<String, String> queryParams,
                                                       HttpHeaders downstreamHeaders) {
         return searchWebClient.method(HttpMethod.GET)
                 .uri(uriBuilder -> buildSearchUri(uriBuilder, queryParams))
+                .headers(headers -> headers.addAll(downstreamHeaders))
+                .exchangeToMono(response -> response.bodyToMono(JsonNode.class)
+                        .defaultIfEmpty(objectMapper.createObjectNode())
+                        .map(payload -> ResponseEntity.status(response.statusCode()).body(payload)));
+    }
+
+    private Mono<ResponseEntity<JsonNode>> callSuggestions(MultiValueMap<String, String> queryParams,
+                                                           HttpHeaders downstreamHeaders) {
+        return searchWebClient.method(HttpMethod.GET)
+                .uri(uriBuilder -> buildSuggestionsUri(uriBuilder, queryParams))
                 .headers(headers -> headers.addAll(downstreamHeaders))
                 .exchangeToMono(response -> response.bodyToMono(JsonNode.class)
                         .defaultIfEmpty(objectMapper.createObjectNode())
@@ -161,7 +171,14 @@ public class SearchMediaBffService {
     }
 
     private java.net.URI buildSearchUri(UriBuilder uriBuilder, MultiValueMap<String, String> queryParams) {
-        UriBuilder builder = uriBuilder.path("/api/v1/search");
+        return buildQueryUri(uriBuilder.path("/api/v1/search"), queryParams);
+    }
+
+    private java.net.URI buildSuggestionsUri(UriBuilder uriBuilder, MultiValueMap<String, String> queryParams) {
+        return buildQueryUri(uriBuilder.path("/api/v1/search/suggestions"), queryParams);
+    }
+
+    private java.net.URI buildQueryUri(UriBuilder builder, MultiValueMap<String, String> queryParams) {
         if (queryParams == null || queryParams.isEmpty()) {
             return builder.build();
         }

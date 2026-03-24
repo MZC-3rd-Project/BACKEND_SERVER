@@ -24,6 +24,11 @@ public class SearchMediaBffController {
         return searchMediaBffService.search(serverHttpRequest);
     }
 
+    @GetMapping("/search/suggestions")
+    public Mono<ResponseEntity<JsonNode>> suggestions(ServerHttpRequest serverHttpRequest) {
+        return searchMediaBffService.suggestions(serverHttpRequest);
+    }
+
     @PostMapping("/search/clicks")
     public Mono<ResponseEntity<JsonNode>> trackClick(@RequestBody(required = false) JsonNode requestBody) {
         return searchMediaBffService.trackClick(requestBody);

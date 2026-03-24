@@ -41,6 +41,7 @@ include(":libs:openapi:config")
 
 // 게이트웨이
 include("servers:gateways:client-gateway")
+include("servers:gateways:business-gateway")
 
 // 서비스
 include("servers:services:auth")
@@ -61,4 +62,5 @@ include("servers:services:store")
 include("servers:services:store-query")
 include("servers:services:cart")
 include("servers:services:order-query")
+include("servers:services:review")
 include("servers:services:payment")

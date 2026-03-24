@@ -3,6 +3,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
+    implementation(platform("software.amazon.awssdk:bom:2.31.77"))
+    implementation("software.amazon.awssdk:sqs")
+    implementation("software.amazon.awssdk:sts")
 
     implementation(project(":libs:core:exception"))
     implementation(project(":libs:core:pagination"))

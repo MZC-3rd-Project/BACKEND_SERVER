@@ -1,13 +1,18 @@
 package com.example.search.service.ops;
 
+import com.example.search.client.FundingCampaignClient;
 import com.example.search.client.ProductSearchSourceClient;
+import com.example.search.client.StockSummaryClient;
 import com.example.search.client.StoreSnapshotClient;
+import com.example.search.client.dto.FundingCampaignSnapshot;
 import com.example.search.client.dto.ProductSearchDocument;
 import com.example.search.client.dto.SearchDocumentPage;
+import com.example.search.client.dto.StockSummary;
 import com.example.search.client.dto.StoreSnapshot;
 import com.example.search.document.ItemDocument;
 import com.example.search.dto.request.SearchReindexRequest;
 import com.example.search.dto.response.SearchReindexResponse;
+import com.example.search.service.enrichment.SearchAiEnrichmentTaskPublisher;
 import com.example.search.service.index.ElasticsearchDocumentClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,8 +35,11 @@ public class SearchOpsService {
     private static final int MAX_MAX_PAGES = 1_000;
 
     private final ProductSearchSourceClient productSearchSourceClient;
+    private final FundingCampaignClient fundingCampaignClient;
+    private final StockSummaryClient stockSummaryClient;
     private final StoreSnapshotClient storeSnapshotClient;
     private final ElasticsearchDocumentClient elasticsearchDocumentClient;
+    private final SearchAiEnrichmentTaskPublisher searchAiEnrichmentTaskPublisher;
 
     @Transactional(readOnly = true)
     public SearchReindexResponse reindexItems(SearchReindexRequest request) {
@@ -61,7 +69,15 @@ public class SearchOpsService {
 
             for (ProductSearchDocument document : page.items()) {
                 StoreSnapshot storeSnapshot = resolveStore(storeSnapshotCache, document.storeId());
-                elasticsearchDocumentClient.upsert(ItemDocument.from(document, storeSnapshot));
+                Integer availableStock = resolveAvailableStock(document.itemId());
+                FundingCampaignSnapshot fundingCampaignSnapshot = resolveFundingCampaign(document);
+                elasticsearchDocumentClient.upsert(ItemDocument.from(
+                        document,
+                        storeSnapshot,
+                        availableStock,
+                        fundingCampaignSnapshot
+                ));
+                searchAiEnrichmentTaskPublisher.publish(document, "REINDEX");
                 indexedCount++;
             }
 
@@ -104,6 +120,19 @@ public class SearchOpsService {
         return storeSnapshotCache.computeIfAbsent(storeId, storeSnapshotClient::findStore).orElse(null);
     }
 
+    private Integer resolveAvailableStock(Long itemId) {
+        return stockSummaryClient.findByItemId(itemId)
+                .map(StockSummary::availableQuantity)
+                .orElse(null);
+    }
+
+    private FundingCampaignSnapshot resolveFundingCampaign(ProductSearchDocument productDocument) {
+        if (productDocument == null || !isFundingStatus(productDocument.status())) {
+            return null;
+        }
+        return fundingCampaignClient.findByItemId(productDocument.itemId()).orElse(null);
+    }
+
     private int normalizeSize(Integer size) {
         if (size == null || size <= 0) {
             return DEFAULT_BATCH_SIZE;
@@ -123,5 +152,15 @@ public class SearchOpsService {
             return null;
         }
         return raw.trim();
+    }
+
+    private boolean isFundingStatus(String status) {
+        if (status == null) {
+            return false;
+        }
+        return switch (status.trim().toUpperCase()) {
+            case "FUNDING", "FUNDED", "FUND_FAILED" -> true;
+            default -> false;
+        };
     }
 }

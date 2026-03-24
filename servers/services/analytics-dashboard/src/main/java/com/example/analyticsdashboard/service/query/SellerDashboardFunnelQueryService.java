@@ -61,13 +61,20 @@ public class SellerDashboardFunnelQueryService {
                 queryRangeContext.fromDateTime(),
                 queryRangeContext.toDateTime()
         );
+        long searchExecutedCount = analyticsJourneyEventRepository
+                .countDistinctEventIdsBySellerIdAndEventTypeAndOccurredAtBetween(
+                        sellerId,
+                        EVENT_SEARCH_EXECUTED,
+                        queryRangeContext.fromDateTime(),
+                        queryRangeContext.toDateTime()
+                );
         LocalDateTime latestInRange = analyticsJourneyEventRepository.findLatestTimestampBySellerIdAndOccurredAtBetween(
                 sellerId,
                 queryRangeContext.fromDateTime(),
                 queryRangeContext.toDateTime()
         );
         LocalDateTime latestGlobal = analyticsJourneyEventRepository.findLatestTimestamp();
-        return buildResponse(query, queryRangeContext, countRows, latestInRange, latestGlobal);
+        return buildResponse(query, queryRangeContext, countRows, searchExecutedCount, latestInRange, latestGlobal);
     }
 
     public SellerDashboardFunnelResponse getFunnelByStore(Long storeId,
@@ -88,6 +95,20 @@ public class SellerDashboardFunnelQueryService {
                         queryRangeContext.fromDateTime(),
                         queryRangeContext.toDateTime()
                 );
+        long searchExecutedCount = hasPositiveId(sellerId)
+                ? analyticsJourneyEventRepository.countDistinctEventIdsByStoreIdAndSellerIdAndEventTypeAndOccurredAtBetween(
+                        storeId,
+                        sellerId,
+                        EVENT_SEARCH_EXECUTED,
+                        queryRangeContext.fromDateTime(),
+                        queryRangeContext.toDateTime()
+                )
+                : analyticsJourneyEventRepository.countDistinctEventIdsByStoreIdAndEventTypeAndOccurredAtBetween(
+                        storeId,
+                        EVENT_SEARCH_EXECUTED,
+                        queryRangeContext.fromDateTime(),
+                        queryRangeContext.toDateTime()
+                );
         LocalDateTime latestInRange = hasPositiveId(sellerId)
                 ? analyticsJourneyEventRepository.findLatestTimestampByStoreIdAndSellerIdAndOccurredAtBetween(
                         storeId,
@@ -101,12 +122,13 @@ public class SellerDashboardFunnelQueryService {
                         queryRangeContext.toDateTime()
                 );
         LocalDateTime latestGlobal = analyticsJourneyEventRepository.findLatestTimestamp();
-        return buildResponse(query, queryRangeContext, countRows, latestInRange, latestGlobal);
+        return buildResponse(query, queryRangeContext, countRows, searchExecutedCount, latestInRange, latestGlobal);
     }
 
     private SellerDashboardFunnelResponse buildResponse(SellerDashboardOverviewQuery query,
                                                         QueryRangeContext queryRangeContext,
                                                         List<AnalyticsJourneyEventCountRow> countRows,
+                                                        long searchExecutedCount,
                                                         LocalDateTime latestInRange,
                                                         LocalDateTime latestGlobal) {
         DashboardLagStatus lagStatus = resolveLagStatus(latestGlobal);
@@ -116,15 +138,15 @@ public class SellerDashboardFunnelQueryService {
                 .asOf(resolveAsOf(latestInRange, latestGlobal))
                 .lagStatus(lagStatus)
                 .partial(lagStatus == DashboardLagStatus.DEGRADED)
-                .sales(toSalesFunnel(countRows))
+                .sales(toSalesFunnel(countRows, searchExecutedCount))
                 .funding(toFundingFunnel(countRows))
                 .hotDeal(toHotDealFunnel(countRows))
                 .apiVersion(API_VERSION)
                 .build();
     }
 
-    private SellerDashboardFunnelDomainResponse toSalesFunnel(List<AnalyticsJourneyEventCountRow> countRows) {
-        long searchExecuted = count(countRows, EVENT_SEARCH_EXECUTED, null);
+    private SellerDashboardFunnelDomainResponse toSalesFunnel(List<AnalyticsJourneyEventCountRow> countRows,
+                                                              long searchExecutedCount) {
         long itemClicked = count(countRows, EVENT_SEARCH_ITEM_CLICKED, null);
         long orderCreated = count(countRows, EVENT_ORDER_CREATED, DOMAIN_NORMAL);
         long orderPaid = count(countRows, EVENT_ORDER_PAID, DOMAIN_NORMAL);
@@ -133,11 +155,11 @@ public class SellerDashboardFunnelQueryService {
 
         return SellerDashboardFunnelDomainResponse.builder()
                 .domainType(DOMAIN_NORMAL)
-                .entryCount(searchExecuted)
+                .entryCount(searchExecutedCount)
                 .conversionCount(orderPaid)
-                .conversionRate(rate(searchExecuted, orderPaid))
+                .conversionRate(rate(searchExecutedCount, orderPaid))
                 .steps(List.of(
-                        step(EVENT_SEARCH_EXECUTED, searchExecuted),
+                        step(EVENT_SEARCH_EXECUTED, searchExecutedCount),
                         step(EVENT_SEARCH_ITEM_CLICKED, itemClicked),
                         step(EVENT_ORDER_CREATED, orderCreated),
                         step(EVENT_ORDER_PAID, orderPaid),

@@ -27,6 +27,7 @@ This package provisions the AWS foundation required before deploying application
   - EC2 single-node Elasticsearch (`enable_ec2_elasticsearch=true`)
   - Amazon MSK (`enable_msk=true`)
   - Amazon OpenSearch (`enable_opensearch=true`)
+  - Search AI enrichment SQS + Lambda (`enable_search_ai_enrichment=true`)
 
 All resource names are prefixed with `donmoa-` by validation.
 
@@ -43,6 +44,7 @@ All resource names are prefixed with `donmoa-` by validation.
 - `bastion_ec2.tf`: optional EC2 Bastion host for SSH tunneling
 - `elasticsearch_ec2.tf`: optional EC2 single-node Elasticsearch
 - `platform_optional.tf`: optional MSK/OpenSearch
+- `search_ai_enrichment.tf`: optional SQS + Bedrock Lambda for search AI enrichment
 - `outputs.tf`: values consumed by `infra/terraform/ecs-app`
 
 ## Quick Start
@@ -93,6 +95,8 @@ CREATE DATABASE sales_db;
 CREATE DATABASE funding_db;
 CREATE DATABASE hotdeal_db;
 CREATE DATABASE search_db;
+CREATE DATABASE payment_db;
+CREATE DATABASE review_db;
 CREATE DATABASE analytics_db;
 CREATE DATABASE auth_db;
 CREATE DATABASE user_db;
@@ -152,6 +156,8 @@ Use these outputs to fill `infra/terraform/ecs-app/terraform.tfvars`:
 - `ec2_kafka_bootstrap_server` -> `KAFKA_BOOTSTRAP_SERVERS` (when `enable_ec2_kafka=true`)
 - `ec2_bastion_public_ip` -> SSH host for DB tool tunnel (when `enable_ec2_bastion=true`)
 - `ec2_elasticsearch_endpoint` -> `ELASTICSEARCH_URIS` (when `enable_ec2_elasticsearch=true`)
+- `search_ai_enrichment_queue_url` -> `SEARCH_AI_ENRICHMENT_QUEUE_URL` (when `enable_search_ai_enrichment=true`)
+- `search_ai_enrichment_queue_arn` -> `search_ai_enrichment_queue_arn` input in `infra/terraform/eks-foundation`
 - `msk_bootstrap_brokers(_tls)` -> `KAFKA_BOOTSTRAP_SERVERS` (when `enable_msk=true`)
 - `opensearch_endpoint` -> `ELASTICSEARCH_URIS` (when `enable_opensearch=true`)
 - `service_discovery_namespace_id` -> `service_discovery_namespace_id` (for ECS Cloud Map registration)

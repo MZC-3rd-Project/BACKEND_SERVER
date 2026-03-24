@@ -10,7 +10,8 @@ public enum MediaOwnerType {
     CHAT_MESSAGE,
     FUNDING,
     HOT_DEAL,
-    COMMENT;
+    COMMENT,
+    REVIEW;
 
     public static MediaOwnerType fromNullable(String value) {
         if (value == null || value.isBlank()) {
