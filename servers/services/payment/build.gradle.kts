@@ -6,7 +6,7 @@ dependencies {
     // ─── Core ─────────────────────────────────────
     implementation(project(":libs:core:exception"))
     implementation(project(":libs:core:util"))
-    implementahttps://github.com/MZC-3rd-Project/BACKEND_SERVER/pull/926tion(project(":libs:core:id"))
+    implementation(project(":libs:core:id"))
     implementation(project(":libs:core:pagination"))
 
     // ─── API ──────────────────────────────────────
