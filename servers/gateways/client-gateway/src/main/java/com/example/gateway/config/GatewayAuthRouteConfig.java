@@ -11,13 +11,18 @@ import org.springframework.context.annotation.Configuration;
 public class GatewayAuthRouteConfig {
 
     @Bean
-    @ConditionalOnProperty(prefix = "gateway.auth", name = "enabled", havingValue = "true")
     public RouteLocator authRouteLocator(RouteLocatorBuilder builder, GatewayAuthProperties properties) {
         return builder.routes()
                 .route("auth-service-api", route -> route
                         .path("/api/v1/auth/**")
-                        .filters(GatewayFilterSpec::tokenRelay)
                         .uri(properties.getAuthServiceUrl()))
+                .build();
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "gateway.auth", name = "enabled", havingValue = "true")
+    public RouteLocator userRouteLocator(RouteLocatorBuilder builder, GatewayAuthProperties properties) {
+        return builder.routes()
                 .route("user-service-api-v1", route -> route
                         .path("/api/v1/users/**")
                         .filters(GatewayFilterSpec::tokenRelay)

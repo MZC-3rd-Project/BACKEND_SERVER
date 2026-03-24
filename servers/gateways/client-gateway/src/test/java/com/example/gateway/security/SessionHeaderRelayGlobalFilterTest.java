@@ -50,6 +50,7 @@ class SessionHeaderRelayGlobalFilterTest {
             );
     private static final List<String> RELAY_PATHS = List.of(
             "/bff/v1",
+            "/api/v1/auth",
             "/api/store",
             "/api/v1/cart",
             "/api/v1/media",
@@ -63,7 +64,10 @@ class SessionHeaderRelayGlobalFilterTest {
             "/api/campaigns",
             "/api/v1/sales",
             "/api/v1/hot-deals",
-            "/api/v1/notifications"
+            "/api/v1/notifications",
+            "/api/v1/orders",
+            "/api/v1/payments",
+            "/api/v1/reviews"
     );
 
     @Test
@@ -244,6 +248,27 @@ class SessionHeaderRelayGlobalFilterTest {
 
         assertThat(chain.called).isFalse();
         assertThat(exchange.getResponse().getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void filter_allowsAnonymousSignupAndAddsInternalAuthHeader() {
+        SessionHeaderRelayGlobalFilter filter = createFilter("gw-internal-token", null);
+        MockServerHttpRequest request = MockServerHttpRequest.post("/api/v1/auth/signup")
+                .header(HttpHeaderNames.USER_ID, "777")
+                .header(HttpHeaderNames.USER_ROLES, "ADMIN")
+                .header(HttpHeaderNames.GATEWAY_CONTEXT, "spoofed")
+                .build();
+        MockServerWebExchange exchange = MockServerWebExchange.from(request);
+        CapturingChain chain = new CapturingChain();
+
+        filter.filter(exchange, chain).block();
+
+        assertThat(chain.called).isTrue();
+        ServerHttpRequest forwardedRequest = chain.exchange.getRequest();
+        assertThat(forwardedRequest.getHeaders().containsKey(HttpHeaderNames.USER_ID)).isFalse();
+        assertThat(forwardedRequest.getHeaders().containsKey(HttpHeaderNames.USER_ROLES)).isFalse();
+        assertThat(forwardedRequest.getHeaders().containsKey(HttpHeaderNames.GATEWAY_CONTEXT)).isFalse();
+        assertThat(forwardedRequest.getHeaders().getFirst(HttpHeaderNames.GATEWAY_AUTH)).isEqualTo("gw-internal-token");
     }
 
     @Test

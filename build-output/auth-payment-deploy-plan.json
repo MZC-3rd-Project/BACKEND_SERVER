@@ -1,0 +1,40 @@
+{
+  "environment": "dev",
+  "namespace": "donmoa-dev",
+  "fullDeploy": false,
+  "selectedTargets": [
+    "client-gateway",
+    "payment"
+  ],
+  "generatedAt": "2026-03-24T05:09:41Z",
+  "services": [
+    {
+      "key": "client-gateway",
+      "buildType": "gradle",
+      "gradleModule": "servers:gateways:client-gateway",
+      "namespace": "donmoa-dev",
+      "releaseName": "client-gateway",
+      "rolloutName": "client-gateway",
+      "workloadKind": "Rollout",
+      "rolloutWave": 3,
+      "serviceName": "client-gateway",
+      "valuesFile": "deploy/helm/environments/dev/client-gateway.yaml",
+      "imageRepository": "682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-client-gateway",
+      "imageTag": "manual-5f7a8ce-240324"
+    },
+    {
+      "key": "payment",
+      "buildType": "gradle",
+      "gradleModule": "servers:services:payment",
+      "namespace": "donmoa-dev",
+      "releaseName": "payment",
+      "rolloutName": "payment-service",
+      "workloadKind": "Deployment",
+      "rolloutWave": 5,
+      "serviceName": "payment-service",
+      "valuesFile": "deploy/helm/environments/dev/payment.yaml",
+      "imageRepository": "682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-payment-service",
+      "imageTag": "manual-5f7a8ce-240324"
+    }
+  ]
+}

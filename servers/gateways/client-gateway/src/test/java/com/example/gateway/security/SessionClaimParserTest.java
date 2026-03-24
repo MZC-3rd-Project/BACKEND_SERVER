@@ -39,6 +39,17 @@ class SessionClaimParserTest {
     }
 
     @Test
+    void parseClaims_supportsSnowflakeIdClaimFromKeycloakMapper() {
+        GatewaySessionPrincipal principal = parser.parseClaims(Map.of(
+                "snowflakeId", "404",
+                "realm_access", Map.of("roles", List.of("buyer"))
+        ));
+
+        assertThat(principal.userId()).isEqualTo(404L);
+        assertThat(principal.roles()).containsExactly("BUYER");
+    }
+
+    @Test
     void parseClaims_supportsSessionStateFallbackClaim() {
         GatewaySessionPrincipal principal = parser.parseClaims(Map.of(
                 "sub", "303",

@@ -14,7 +14,7 @@ import java.util.Set;
 public class SessionClaimParser {
 
     private static final List<String> USER_ID_CLAIM_CANDIDATES =
-            List.of("userId", "user_id", "uid", "memberId", "sub");
+            List.of("userId", "user_id", "uid", "memberId", "snowflakeId", "snowflake_id", "sub");
     private static final List<String> SESSION_ID_CLAIM_CANDIDATES =
             List.of("sid", "session_state");
 
