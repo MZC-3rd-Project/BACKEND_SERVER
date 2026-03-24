@@ -1,0 +1,32 @@
+{{- if .Values.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "spring-service.fullname" . }}
+  namespace: {{ default .Release.Namespace .Values.serviceMonitor.namespace }}
+  labels:
+    {{- include "spring-service.labels" . | nindent 4 }}
+    {{- with .Values.serviceMonitor.additionalLabels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  jobLabel: app.kubernetes.io/instance
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      {{- include "spring-service.selectorLabels" . | nindent 6 }}
+      observability.donmoa.io/metrics-target: active
+  endpoints:
+    - port: http
+      path: {{ .Values.serviceMonitor.path }}
+      interval: {{ .Values.serviceMonitor.interval }}
+      scrapeTimeout: {{ .Values.serviceMonitor.scrapeTimeout }}
+      scheme: {{ .Values.serviceMonitor.scheme }}
+      honorLabels: {{ .Values.serviceMonitor.honorLabels }}
+      {{- with .Values.serviceMonitor.relabelings }}
+      relabelings:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

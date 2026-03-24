@@ -87,7 +87,9 @@ public class SearchClickRelayService {
         return trackClick(payload)
                 .timeout(CLICK_TRACK_TIMEOUT)
                 .doOnNext(response -> {
-                    if (!response.getStatusCode().is2xxSuccessful()) {
+                    if (response.getStatusCode().is2xxSuccessful()) {
+                        log.debug("Search click relay completed. itemId={}", itemId);
+                    } else {
                         log.debug("[SearchClickRelay] click tracking skipped. itemId={}, status={}",
                                 itemId, response.getStatusCode());
                     }

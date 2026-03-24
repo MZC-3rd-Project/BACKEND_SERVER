@@ -28,6 +28,7 @@ import com.example.product.service.command.image.ItemThumbnailSyncService;
 import com.example.product.service.command.image.MediaReferenceService;
 import com.example.product.service.query.detail.ItemCategoryDetailResolver;
 import com.example.product.service.query.detail.ItemCategoryDetailView;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -111,6 +113,9 @@ public class PerformanceCommandService {
                         stockItems
                 ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
+
+        log.info("Performance item created. itemId={}, sellerId={}, storeId={}, seatGradeCount={}, castCount={}",
+                item.getId(), sellerId, request.getStoreId(), seatGrades.size(), castMembers.size());
 
         ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(item.getId());
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(item.getId());
@@ -207,6 +212,9 @@ public class PerformanceCommandService {
                 ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
+        log.info("Performance item updated. itemId={}, sellerId={}, seatGradesReplaced={}, castMembersReplaced={}",
+                itemId, sellerId, request.getSeatGrades() != null, request.getCastMembers() != null);
+
         List<SeatGrade> seatGrades = seatGradeRepository.findByPerformanceIdOrderByPriceDesc(performance.getId());
         List<CastMember> castMembers = castMemberRepository.findByPerformanceId(performance.getId());
         ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(itemId);
@@ -247,6 +255,8 @@ public class PerformanceCommandService {
                         item.getStoreId()
                 ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
+
+        log.info("Performance item deleted. itemId={}, sellerId={}", itemId, sellerId);
     }
 
     private Item getItem(Long itemId) {

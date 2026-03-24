@@ -173,6 +173,10 @@ gateway:
     require-auth-or-session-enabled: ${GATEWAY_DEPLOYMENT_REQUIRE_AUTH_OR_SESSION_ENABLED:true}
 
 app:
+  tracing:
+    sampling-rate: ${APP_TRACING_SAMPLING_RATE:0.1}
+  metrics:
+    cluster: ${APP_METRICS_CLUSTER:donmoa-dev-eks}
   feature:
     search-enabled: ${APP_FEATURE_SEARCH_ENABLED:true}
   webclient:
@@ -187,3 +191,12 @@ app:
       signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}
       max-age-millis: ${APP_SECURITY_CONTEXT_MAX_AGE_MILLIS:300000}
       parser-enabled: ${APP_SECURITY_CONTEXT_PARSER_ENABLED:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${ACTUATOR_ENDPOINTS:health,info,metrics,prometheus}
+  endpoint:
+    health:
+      show-details: always

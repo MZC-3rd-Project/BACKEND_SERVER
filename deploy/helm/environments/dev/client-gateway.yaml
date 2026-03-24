@@ -106,3 +106,13 @@ secretEnv:
   GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_TOKEN:
     remoteRef: donmoa/dev/common
     property: GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_TOKEN
+
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    prometheus: donmoa
+  relabelings:
+    - sourceLabels:
+        - __meta_kubernetes_endpoints_name
+      action: keep
+      regex: client-gateway

@@ -72,6 +72,9 @@ public class StockCommandService {
         publishStockEvents(stockItem, request.getQuantity());
         publishItemStockSnapshotEvent(stockItem.getItemId());
 
+        log.info("Stock decreased. stockItemId={}, itemId={}, quantity={}, availableQuantity={}",
+                stockItem.getId(), stockItem.getItemId(), request.getQuantity(), stockItem.getAvailableQuantity());
+
         return StockResponse.from(stockItem);
     }
 
@@ -90,6 +93,9 @@ public class StockCommandService {
                 new StockIncreasedEvent(stockItem.getId(), stockItem.getItemId(), request.getQuantity(), stockItem.getAvailableQuantity()),
                 EventMetadata.of("StockItem", String.valueOf(stockItem.getId())));
         publishItemStockSnapshotEvent(stockItem.getItemId());
+
+        log.info("Stock increased. stockItemId={}, itemId={}, quantity={}, availableQuantity={}",
+                stockItem.getId(), stockItem.getItemId(), request.getQuantity(), stockItem.getAvailableQuantity());
 
         return StockResponse.from(stockItem);
     }
@@ -116,6 +122,9 @@ public class StockCommandService {
         stockCacheService.cacheStock(stockItem.getId(), stockItem.getAvailableQuantity());
         publishItemStockSnapshotEvent(stockItem.getItemId());
 
+        log.info("Stock reservation created. reservationId={}, stockItemId={}, userId={}, orderId={}, quantity={}",
+                reservation.getId(), stockItem.getId(), request.getUserId(), request.getOrderId(), request.getQuantity());
+
         return ReservationResponse.from(reservation);
     }
 
@@ -137,6 +146,8 @@ public class StockCommandService {
             if (existingIdempotency.isExpired() || !isReplayable(existingIdempotency.getOrderId())) {
                 throw new BusinessException(StockErrorCode.ORDER_RESERVE_IDEMPOTENCY_CONFLICT);
             }
+            log.info("Order stock reservation replayed from idempotency record. userId={}, orderId={}, idempotencyKey={}",
+                    request.getUserId(), existingIdempotency.getOrderId(), request.getIdempotencyKey());
             return toIdempotentReserveResponse(existingIdempotency, sortedItems);
         }
 
@@ -185,6 +196,9 @@ public class StockCommandService {
 
         saveOrderReserveIdempotency(request, requestSignature, orderId, expiresAt);
 
+        log.info("Order stock reservation created. userId={}, orderId={}, lineItemCount={}",
+                request.getUserId(), orderId, reservedItems.size());
+
         return ReserveOrderStockResponse.builder()
                 .orderId(orderId)
                 .expiresAt(expiresAt)
@@ -209,6 +223,9 @@ public class StockCommandService {
                 stockItem.getId(), ChangeType.CONFIRM, reservation.getQuantity(),
                 "예약 확정", reservation.getId()));
 
+        log.info("Stock reservation confirmed. reservationId={}, stockItemId={}, quantity={}",
+                reservation.getId(), stockItem.getId(), reservation.getQuantity());
+
         return ReservationResponse.from(reservation);
     }
 
@@ -228,6 +245,9 @@ public class StockCommandService {
         stockHistoryRepository.save(StockHistory.create(
                 stockItem.getId(), ChangeType.CONFIRM, reservation.getQuantity(),
                 "예약 확정 (결제 완료)", reservation.getId()));
+
+        log.info("Stock reservation confirmed by event. reservationId={}, stockItemId={}, quantity={}",
+                reservation.getId(), stockItem.getId(), reservation.getQuantity());
 
         return ReservationResponse.from(reservation);
     }
@@ -263,6 +283,9 @@ public class StockCommandService {
             confirmedReservations.add(ReservationResponse.from(reservation));
         }
 
+        log.info("Stock reservations confirmed by orderId. orderId={}, reservationCount={}",
+                orderId, confirmedReservations.size());
+
         return confirmedReservations;
     }
 
@@ -281,6 +304,9 @@ public class StockCommandService {
 
         stockCacheService.cacheStock(stockItem.getId(), stockItem.getAvailableQuantity());
         publishItemStockSnapshotEvent(stockItem.getItemId());
+
+        log.info("Stock reservation cancelled. reservationId={}, stockItemId={}, quantity={}",
+                reservation.getId(), stockItem.getId(), reservation.getQuantity());
 
         return ReservationResponse.from(reservation);
     }
@@ -313,6 +339,9 @@ public class StockCommandService {
             cancelledReservations.add(ReservationResponse.from(reservation));
         }
 
+        log.info("Stock reservations cancelled by orderId. orderId={}, reservationCount={}",
+                orderId, cancelledReservations.size());
+
         return cancelledReservations;
     }
 
@@ -341,6 +370,10 @@ public class StockCommandService {
         stockCacheService.cacheStock(stockItem.getId(), stockItem.getAvailableQuantity());
         publishItemStockSnapshotEvent(stockItem.getItemId());
 
+        log.info("Stock initialized. stockItemId={}, itemId={}, stockItemType={}, referenceId={}, totalQuantity={}",
+                stockItem.getId(), stockItem.getItemId(), stockItem.getStockItemType(), stockItem.getReferenceId(),
+                stockItem.getTotalQuantity());
+
         return StockResponse.from(stockItem);
     }
 
@@ -367,6 +400,8 @@ public class StockCommandService {
                     stockItem.getId(), ChangeType.EXPIRE, reservation.getQuantity(),
                     "예약 만료 자동 복원", reservation.getId()));
             publishItemStockSnapshotEvent(stockItem.getItemId());
+            log.info("Stock reservation expired and restored. reservationId={}, stockItemId={}, quantity={}",
+                    reservation.getId(), stockItem.getId(), reservation.getQuantity());
         }
     }
 

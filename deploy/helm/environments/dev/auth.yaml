@@ -34,3 +34,8 @@ secretEnv:
   KC_ADMIN_CLIENT_SECRET:
     remoteRef: donmoa/dev/common
     property: KC_ADMIN_CLIENT_SECRET
+
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    prometheus: donmoa

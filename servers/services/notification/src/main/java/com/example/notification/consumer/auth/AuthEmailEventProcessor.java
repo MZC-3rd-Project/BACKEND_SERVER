@@ -32,11 +32,14 @@ public class AuthEmailEventProcessor extends AbstractIdempotentEventSpecProcesso
                 EventSpec.of(
                         AuthEmailConfirmEventMessage.class,
                         this::hasRequiredPayloadFields,
-                        event -> authEmailEventService.sendEmailConfirm(
-                                event.getEventId(),
-                                event.getEmail(),
-                                event.getVerificationCode()
-                        )
+                        event -> {
+                            authEmailEventService.sendEmailConfirm(
+                                    event.getEventId(),
+                                    event.getEmail(),
+                                    event.getVerificationCode()
+                            );
+                            log.info("Auth email confirmation processed. eventId={}", event.getEventId());
+                        }
                 )
         );
     }

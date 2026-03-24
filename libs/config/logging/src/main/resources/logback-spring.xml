@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="application"/>
+    <springProperty scope="context" name="activeProfiles" source="spring.profiles.active" defaultValue="default"/>
+
+    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"service.name":"${appName}","deployment.environment":"${activeProfiles}","log.type":"application"}</customFields>
+            <includeMdc>true</includeMdc>
+            <includeContext>false</includeContext>
+            <includeStructuredArguments>false</includeStructuredArguments>
+            <fieldNames>
+                <timestamp>timestamp</timestamp>
+                <version>[ignore]</version>
+                <levelValue>[ignore]</levelValue>
+                <stackTrace>exception</stackTrace>
+            </fieldNames>
+            <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+                <rootCauseFirst>true</rootCauseFirst>
+                <maxDepthPerThrowable>50</maxDepthPerThrowable>
+                <maxLength>8192</maxLength>
+            </throwableConverter>
+        </encoder>
+    </appender>
+
+    <logger name="org.hibernate.SQL" level="WARN"/>
+    <logger name="org.hibernate.orm.jdbc.bind" level="WARN"/>
+    <logger name="org.hibernate.type.descriptor.sql.BasicBinder" level="WARN"/>
+    <logger name="org.springframework.jdbc.core.JdbcTemplate" level="WARN"/>
+    <logger name="org.springframework.jdbc.core.StatementCreatorUtils" level="WARN"/>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE_JSON"/>
+    </root>
+</configuration>

@@ -1,7 +1,6 @@
 package com.example.profile.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonSetter;
-import com.example.core.id.jackson.SnowflakeId;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -13,7 +12,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ProfileRequest {
 
-    @SnowflakeId
     private Long mediaId;
     private String email;
     private String phone;
@@ -25,11 +23,13 @@ public class ProfileRequest {
     public void setMediaIdRaw(Object mediaIdRaw) {
         if (mediaIdRaw == null) {
             this.mediaId = null;
+            this.mediaRef = null;
             return;
         }
 
         if (mediaIdRaw instanceof Number number) {
             this.mediaId = number.longValue();
+            this.mediaRef = null;
             return;
         }
 
@@ -42,10 +42,14 @@ public class ProfileRequest {
 
             try {
                 this.mediaId = Long.parseLong(normalized);
+                this.mediaRef = null;
             } catch (NumberFormatException ignored) {
                 this.mediaId = null;
                 this.mediaRef = normalized;
             }
+            return;
         }
+
+        throw new IllegalArgumentException("mediaId must be a number or string");
     }
 }

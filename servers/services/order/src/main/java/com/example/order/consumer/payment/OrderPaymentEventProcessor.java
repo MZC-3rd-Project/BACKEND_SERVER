@@ -52,19 +52,19 @@ public class OrderPaymentEventProcessor extends AbstractIdempotentEventSpecProce
 
     @Override
     protected <T extends EventEnvelope> void onInvalidPayload(T event, String message, String eventId, String eventType) {
-        log.error("[OrderPaymentConsumer] orderId가 null입니다. message={}", message);
+        log.error("Invalid payment event skipped. reason=missingOrderId, eventId={}, eventType={}", eventId, eventType);
     }
 
     @Override
     protected void onInvalidEnvelope(String eventId, String eventType, String message) {
-        log.error("[OrderPaymentConsumer] eventId 또는 eventType이 null입니다. message={}", message);
+        log.error("Invalid payment event envelope skipped. eventId={}, eventType={}", eventId, eventType);
     }
 
     @Override
     protected <T extends EventEnvelope> void onProcessingException(
             T event, String message, String eventId, String eventType, Exception exception
     ) {
-        log.error("[OrderPaymentConsumer] 이벤트 처리 실패: {}", message, exception);
+        log.error("Payment event processing failed. eventId={}, eventType={}", eventId, eventType, exception);
         throw propagate(exception);
     }
 
@@ -83,11 +83,12 @@ public class OrderPaymentEventProcessor extends AbstractIdempotentEventSpecProce
 
         try {
             order.transitTo(OrderStatus.PAID);
-            log.info("결제 완료 → 주문 PAID 전이: orderId={}", event.getOrderId());
+            log.info("Order status transitioned to PAID. orderId={}", event.getOrderId());
             // TODO: Delivery 서비스 구현 시 ORDER_PAID_EVENT Outbox 발행 추가
             // payload에 배송지 포함 여부도 Delivery 구현 시 결정
         } catch (BusinessException e) {
-            log.warn("주문 상태 전이 불가 (이미 처리됨): orderId={}, currentStatus={}", event.getOrderId(), order.getStatus());
+            log.warn("Order status transition skipped. targetStatus=PAID, orderId={}, currentStatus={}",
+                    event.getOrderId(), order.getStatus());
         }
     }
 
@@ -97,9 +98,11 @@ public class OrderPaymentEventProcessor extends AbstractIdempotentEventSpecProce
 
         try {
             order.transitTo(OrderStatus.CANCELLED);
-            log.info("결제 실패 → 주문 CANCELLED 전이: orderId={}, reason={}", event.getOrderId(), event.getFailReason());
+            log.info("Order status transitioned to CANCELLED after payment failure. orderId={}, reason={}",
+                    event.getOrderId(), event.getFailReason());
         } catch (BusinessException e) {
-            log.warn("주문 상태 전이 불가 (이미 처리됨): orderId={}, currentStatus={}", event.getOrderId(), order.getStatus());
+            log.warn("Order status transition skipped. targetStatus=CANCELLED, orderId={}, currentStatus={}",
+                    event.getOrderId(), order.getStatus());
         }
     }
 
@@ -109,9 +112,10 @@ public class OrderPaymentEventProcessor extends AbstractIdempotentEventSpecProce
 
         try {
             order.transitTo(OrderStatus.CANCELLED);
-            log.info("결제 타임아웃 → 주문 CANCELLED 전이: orderId={}", event.getOrderId());
+            log.info("Order status transitioned to CANCELLED after payment timeout. orderId={}", event.getOrderId());
         } catch (BusinessException e) {
-            log.warn("주문 상태 전이 불가 (이미 처리됨): orderId={}, currentStatus={}", event.getOrderId(), order.getStatus());
+            log.warn("Order status transition skipped. targetStatus=CANCELLED, orderId={}, currentStatus={}",
+                    event.getOrderId(), order.getStatus());
         }
     }
 
@@ -121,20 +125,21 @@ public class OrderPaymentEventProcessor extends AbstractIdempotentEventSpecProce
 
         try {
             order.transitTo(OrderStatus.REFUNDED);
-            log.info("환불 완료 → 주문 REFUNDED 전이: orderId={}", event.getOrderId());
+            log.info("Order status transitioned to REFUNDED. orderId={}", event.getOrderId());
 
             eventPublisher.publish(
                     new OrderRefundedEvent(event.getOrderId(), order.getUserId()),
                     EventMetadata.of("Order", String.valueOf(event.getOrderId()))
             );
         } catch (BusinessException e) {
-            log.warn("주문 상태 전이 불가 (이미 처리됨): orderId={}, currentStatus={}", event.getOrderId(), order.getStatus());
+            log.warn("Order status transition skipped. targetStatus=REFUNDED, orderId={}, currentStatus={}",
+                    event.getOrderId(), order.getStatus());
         }
     }
 
     private Order findOrder(Long orderId) {
         return orderRepository.findById(orderId).orElseGet(() -> {
-            log.warn("주문을 찾을 수 없습니다. 스킵합니다: orderId={}", orderId);
+            log.warn("Payment event skipped because order was not found. orderId={}", orderId);
             return null;
         });
     }

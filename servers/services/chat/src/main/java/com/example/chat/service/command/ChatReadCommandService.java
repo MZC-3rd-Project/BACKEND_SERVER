@@ -9,9 +9,11 @@ import com.example.chat.repository.ChatRoomParticipantRepository;
 import com.example.chat.service.policy.ChatRoomAccessPolicy;
 import com.example.core.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatReadCommandService {
@@ -37,6 +39,11 @@ public class ChatReadCommandService {
         if (participant.getLastReadMessageId() == null || targetMessageId > participant.getLastReadMessageId()) {
             participant.updateLastReadMessageId(targetMessageId);
             chatRoomParticipantRepository.save(participant);
+            log.info("Chat read pointer updated. roomId={}, userId={}, lastReadMessageId={}",
+                    roomId, userId, targetMessageId);
+        } else {
+            log.debug("Chat read pointer update skipped because target is not newer. roomId={}, userId={}, lastReadMessageId={}",
+                    roomId, userId, participant.getLastReadMessageId());
         }
 
         return ChatReadUpdateResponse.builder()

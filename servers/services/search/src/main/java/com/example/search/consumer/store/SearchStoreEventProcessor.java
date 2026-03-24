@@ -63,5 +63,6 @@ public class SearchStoreEventProcessor extends AbstractIdempotentEventSpecProces
 
     private void handleStoreUpdated(StoreEventMessage event) {
         searchIndexingService.reindexStore(event.getStoreId());
+        log.debug("Search store reindex completed. storeId={}", event.getStoreId());
     }
 }

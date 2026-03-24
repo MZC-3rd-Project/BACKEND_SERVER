@@ -16,6 +16,7 @@ import com.example.notification.service.content.NotificationContentSanitizer;
 import com.example.notification.service.template.NotificationTemplateResolver;
 import com.example.notification.service.template.TemplateRenderService;
 import com.example.notification.service.unread.NotificationUnreadCountService;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NotificationCommandService {
@@ -58,6 +60,8 @@ public class NotificationCommandService {
         Optional<Notification> existing = notificationRepository.findByDedupeKey(dedupeKey);
         if (existing.isPresent()) {
             publishDeliveryRequests(existing.get(), channels, request.getEmailTo());
+            log.info("Notification deduplicated. notificationId={}, recipientId={}, channelCount={}",
+                    existing.get().getId(), request.getRecipientId(), channels.size());
             return NotificationDispatchResponse.deduplicated(existing.get().getId(), existing.get().getStatus().name());
         }
 
@@ -94,10 +98,14 @@ public class NotificationCommandService {
             Notification conflict = notificationRepository.findByDedupeKey(dedupeKey)
                     .orElseThrow(() -> e);
             publishDeliveryRequests(conflict, channels, request.getEmailTo());
+            log.info("Notification deduplicated after race. notificationId={}, recipientId={}, channelCount={}",
+                    conflict.getId(), request.getRecipientId(), channels.size());
             return NotificationDispatchResponse.deduplicated(conflict.getId(), conflict.getStatus().name());
         }
 
         publishDeliveryRequests(notification, channels, request.getEmailTo());
+        log.info("Notification created and dispatch requested. notificationId={}, recipientId={}, channelCount={}",
+                notification.getId(), request.getRecipientId(), channels.size());
 
         return NotificationDispatchResponse.created(
                 notification.getId(),
@@ -115,6 +123,8 @@ public class NotificationCommandService {
                     new NotificationDeliveryRequestedEvent(notification.getId(), channel, emailTo),
                     EventMetadata.of("Notification", String.valueOf(notification.getId()))
             );
+            log.debug("Notification delivery event published. notificationId={}, channel={}",
+                    notification.getId(), channel);
         }
     }
 

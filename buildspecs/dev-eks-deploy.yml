@@ -108,6 +108,7 @@ phases:
             --values "${values_file}" \
             --set "image.repository=${image_repository}" \
             --set "image.tag=${image_tag}" \
+            --server-side=false \
             --wait \
             --timeout "${HELM_TIMEOUT}"
 

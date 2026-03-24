@@ -19,9 +19,11 @@ import com.example.cart.service.CartSnapshotEnricher;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CartCommandService {
@@ -55,6 +57,8 @@ public class CartCommandService {
 
         CartLine updated = cart.addOrMerge(line, now, expiresAtEpoch);
         cartRepository.save(updated, userId);
+        log.info("Cart item added or merged. userId={}, itemId={}, quantity={}",
+                userId, request.getItemId(), updated.getQuantity());
         return toResponse(cart);
     }
 
@@ -69,6 +73,8 @@ public class CartCommandService {
                 expiresAtEpoch
         );
         cartRepository.save(updated, userId);
+        log.info("Cart item quantity updated. userId={}, itemId={}, quantity={}",
+                userId, request.getItemId(), updated.getQuantity());
         return toResponse(cart);
     }
 
@@ -84,6 +90,7 @@ public class CartCommandService {
             );
         }
         cartRepository.saveAll(cart.changeSelections(changes, now, expiresAtEpoch), userId);
+        log.info("Cart selection updated. userId={}, changedItems={}", userId, changes.size());
         return toResponse(cart);
     }
 
@@ -97,12 +104,16 @@ public class CartCommandService {
         );
         cart.remove(identity);
         cartRepository.delete(userId, identity);
+        log.info("Cart item removed. userId={}, itemId={}", userId, request.getItemId());
         return toResponse(cart);
     }
 
     public CartCheckoutReservationResponse startCheckout(Long userId, StartCartCheckoutRequest request) {
         Cart cart = loadCart(userId);
-        return cartSalesClient.reserve(userId, request.getIdempotencyKey(), cart.selectedLines());
+        CartCheckoutReservationResponse response = cartSalesClient.reserve(userId, request.getIdempotencyKey(), cart.selectedLines());
+        log.info("Cart checkout started. userId={}, orderId={}, selectedItems={}",
+                userId, response.getOrderId(), cart.selectedLines().size());
+        return response;
     }
 
     private Cart loadCart(Long userId) {

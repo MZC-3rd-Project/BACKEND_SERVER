@@ -20,7 +20,7 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         default_batch_fetch_size: 100
-    show-sql: true
+    show-sql: false
     open-in-view: false
 
   # ─── Flyway ─────────────────────────────────
@@ -43,6 +43,10 @@ spring:
 
 # ─── App ─────────────────────────────────────
 app:
+  tracing:
+    sampling-rate: ${APP_TRACING_SAMPLING_RATE:0.1}
+  metrics:
+    cluster: ${APP_METRICS_CLUSTER:donmoa-dev-eks}
   snowflake:
     datacenter-id: ${SNOWFLAKE_DATACENTER_ID:1}
     worker-id: ${SNOWFLAKE_WORKER_ID:10}
@@ -70,7 +74,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: ${ACTUATOR_ENDPOINTS:health,info,metrics,prometheus}
   endpoint:
     health:
       show-details: always

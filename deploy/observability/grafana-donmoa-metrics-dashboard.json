@@ -1,0 +1,255 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "description": "DonMoa metrics overview dashboard backed by Prometheus.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "gridPos": { "h": 4, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "options": {
+        "content": "## DonMoa Metrics\nUse `$job` to focus on one application. This dashboard is centered on Spring Boot Actuator + Prometheus scrape targets.",
+        "mode": "markdown"
+      },
+      "title": "Overview",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "__PROM_UID__" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "background" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 6, "x": 0, "y": 4 },
+      "id": 2,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "__PROM_UID__" },
+          "expr": "sum(up{job=~\"$job\"})",
+          "refId": "A"
+        }
+      ],
+      "title": "Healthy Targets",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "__PROM_UID__" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "background" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 6, "x": 6, "y": 4 },
+      "id": 3,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "__PROM_UID__" },
+          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\"}[5m]))",
+          "refId": "A"
+        }
+      ],
+      "title": "HTTP RPS",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "__PROM_UID__" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "background" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 0.1 },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 6, "x": 12, "y": 4 },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "__PROM_UID__" },
+          "expr": "sum(rate(http_server_requests_seconds_count{job=~\"$job\",status=~\"5..\"}[5m]))",
+          "refId": "A"
+        }
+      ],
+      "title": "HTTP 5xx RPS",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "__PROM_UID__" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "background" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 70 },
+              { "color": "red", "value": 90 }
+            ]
+          },
+          "unit": "percent"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 5, "w": 6, "x": 18, "y": 4 },
+      "id": 5,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "__PROM_UID__" },
+          "expr": "avg(system_cpu_usage{job=~\"$job\"})",
+          "refId": "A"
+        }
+      ],
+      "title": "App CPU Usage",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "__PROM_UID__" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 9 },
+      "id": 6,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "__PROM_UID__" },
+          "expr": "sum by (job) (rate(http_server_requests_seconds_count{job=~\"$job\"}[5m]))",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ],
+      "title": "HTTP Request Rate by Job",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "__PROM_UID__" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
+      "id": 7,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "__PROM_UID__" },
+          "expr": "sum by (job) (jvm_memory_used_bytes{job=~\"$job\",area=\"heap\"})",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ],
+      "title": "JVM Heap Used",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "__PROM_UID__" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
+      "id": 8,
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "single" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "__PROM_UID__" },
+          "expr": "sum by (job) (rate(http_server_requests_seconds_count{job=~\"$job\",status=~\"5..\"}[5m]))",
+          "legendFormat": "{{job}}",
+          "refId": "A"
+        }
+      ],
+      "title": "HTTP 5xx Rate by Job",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 41,
+  "style": "dark",
+  "tags": ["donmoa", "metrics", "prometheus"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": true, "text": "All", "value": ".*" },
+        "datasource": { "type": "prometheus", "uid": "__PROM_UID__" },
+        "hide": 0,
+        "includeAll": true,
+        "label": "Job",
+        "multi": true,
+        "name": "job",
+        "options": [],
+        "query": {
+          "query": "label_values(up, job)",
+          "refId": "PromVar-1"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "DonMoa Metrics",
+  "uid": "donmoa-metrics",
+  "version": 1,
+  "weekStart": ""
+}

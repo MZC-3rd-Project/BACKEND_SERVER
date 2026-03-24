@@ -5,6 +5,9 @@ import com.example.funding.dto.campaign.response.CampaignResponse;
 import com.example.funding.service.query.InternalCampaignQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,7 +35,9 @@ public class InternalCampaignQueryController {
 
     @Operation(summary = "캠페인 다건 조회 (내부)")
     @PostMapping("/batch")
-    public ApiResponse<List<CampaignResponse>> findByIds(@RequestBody List<Long> campaignIds) {
+    public ApiResponse<List<CampaignResponse>> findByIds(
+            @Valid @RequestBody List<@NotNull @Positive Long> campaignIds
+    ) {
         return ApiResponse.success(internalCampaignQueryService.findByIds(campaignIds));
     }
 }

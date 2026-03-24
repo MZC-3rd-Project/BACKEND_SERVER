@@ -3,11 +3,13 @@ package com.example.product.service.command.image;
 import com.example.product.entity.image.ItemImage;
 import com.example.product.repository.ItemImageRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Objects;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ItemThumbnailSyncService {
@@ -45,10 +47,13 @@ public class ItemThumbnailSyncService {
         if (thumbnailMediaId == null && safeGalleryMediaIds.isEmpty()) {
             if (forceClearWhenEmpty) {
                 itemMediaLinkSyncService.clearAfterCommit(itemId);
+                log.debug("Item thumbnail sync cleared after commit. itemId={}", itemId);
             }
             return;
         }
 
         itemMediaLinkSyncService.syncAfterCommit(itemId, thumbnailMediaId, safeGalleryMediaIds);
+        log.debug("Item thumbnail sync scheduled after commit. itemId={}, thumbnailMediaId={}, galleryCount={}",
+                itemId, thumbnailMediaId, safeGalleryMediaIds.size());
     }
 }

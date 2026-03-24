@@ -92,7 +92,7 @@ public class CommerceReadBffService {
         return callGet(fundingWebClient, "/api/campaigns", queryParams, headers)
                 .flatMap(response -> enrichFundingCampaignList(response, headers))
                 .onErrorResume(e -> {
-                    log.warn("[CommerceReadBff] funding list failed", e);
+                    log.warn("Funding campaign list lookup failed.", e);
                     return Mono.just(badGateway("펀딩 목록 조회에 실패했습니다"));
                 })
                 .map(this::normalizeSnowflakeIds);
@@ -108,7 +108,7 @@ public class CommerceReadBffService {
         return callGet(fundingWebClient, "/api/campaigns/closing-soon", queryParams, headers)
                 .flatMap(response -> enrichFundingCampaignList(response, headers))
                 .onErrorResume(e -> {
-                    log.warn("[CommerceReadBff] funding closing soon failed", e);
+                    log.warn("Closing-soon funding campaign lookup failed.", e);
                     return Mono.just(badGateway("마감 임박 펀딩 조회에 실패했습니다"));
                 })
                 .map(this::normalizeSnowflakeIds);
@@ -123,7 +123,7 @@ public class CommerceReadBffService {
         return callGet(fundingWebClient, "/api/campaigns/" + campaignId, headers)
                 .flatMap(response -> enrichFundingCampaignDetail(response, headers))
                 .onErrorResume(e -> {
-                    log.warn("[CommerceReadBff] funding detail failed. campaignId={}", campaignId, e);
+                    log.warn("Funding campaign detail lookup failed. campaignId={}", campaignId, e);
                     return Mono.just(badGateway("펀딩 상세 조회에 실패했습니다"));
                 })
                 .map(this::normalizeSnowflakeIds);
@@ -139,7 +139,7 @@ public class CommerceReadBffService {
         return callGet(hotDealWebClient, "/api/v1/hot-deals", queryParams, headers)
                 .flatMap(response -> enrichHotDealList(response, headers))
                 .onErrorResume(e -> {
-                    log.warn("[CommerceReadBff] hot-deal list failed", e);
+                    log.warn("Hot-deal list lookup failed.", e);
                     return Mono.just(badGateway("핫딜 목록 조회에 실패했습니다"));
                 })
                 .map(this::normalizeSnowflakeIds);
@@ -154,7 +154,7 @@ public class CommerceReadBffService {
         return callGet(hotDealWebClient, "/api/v1/hot-deals/" + hotDealId, headers)
                 .flatMap(response -> enrichHotDealDetail(response, headers))
                 .onErrorResume(e -> {
-                    log.warn("[CommerceReadBff] hot-deal detail failed. hotDealId={}", hotDealId, e);
+                    log.warn("Hot-deal detail lookup failed. hotDealId={}", hotDealId, e);
                     return Mono.just(badGateway("핫딜 상세 조회에 실패했습니다"));
                 })
                 .map(this::normalizeSnowflakeIds);
@@ -170,7 +170,7 @@ public class CommerceReadBffService {
             return callGet(productWebClient, "/api/products", queryParams, headers)
                     .flatMap(response -> enrichSalesProductList(response, headers))
                     .onErrorResume(e -> {
-                        log.warn("[CommerceReadBff] sales product list failed", e);
+                        log.warn("Sales product list lookup failed.", e);
                         return Mono.just(badGateway("일반 판매 목록 조회에 실패했습니다"));
                     })
                     .map(this::normalizeSnowflakeIds);
@@ -186,7 +186,7 @@ public class CommerceReadBffService {
                 callGet(productWebClient, "/api/products/" + saleId, headers)
                         .flatMap(response -> enrichSalesProductDetail(response, headers))
                         .onErrorResume(e -> {
-                            log.warn("[CommerceReadBff] sales product detail failed. saleId={}", saleId, e);
+                            log.warn("Sales product detail lookup failed. saleId={}", saleId, e);
                             return Mono.just(badGateway("일반 판매 상세 조회에 실패했습니다"));
                         })
                         .map(this::normalizeSnowflakeIds));
@@ -261,7 +261,7 @@ public class CommerceReadBffService {
                             });
                 })
                 .onErrorResume(e -> {
-                    log.debug("[CommerceReadBff] funding list enrichment skipped", e);
+                    log.debug("Funding campaign list enrichment skipped.", e);
                     return Mono.just(response);
                 });
     }
@@ -310,7 +310,7 @@ public class CommerceReadBffService {
                             .defaultIfEmpty(response);
                 })
                 .onErrorResume(e -> {
-                    log.debug("[CommerceReadBff] funding detail enrichment skipped", e);
+                    log.debug("Funding campaign detail enrichment skipped.", e);
                     return Mono.just(response);
                 });
     }
@@ -409,7 +409,7 @@ public class CommerceReadBffService {
                             });
                 })
                 .onErrorResume(e -> {
-                    log.debug("[CommerceReadBff] hot-deal list enrichment skipped", e);
+                    log.debug("Hot-deal list enrichment skipped.", e);
                     return Mono.just(response);
                 });
     }
@@ -458,7 +458,7 @@ public class CommerceReadBffService {
                     return detailMono.flatMap(r -> enrichThumbnailUrl(hotDeal, headers, response));
                 })
                 .onErrorResume(e -> {
-                    log.debug("[CommerceReadBff] hot-deal detail enrichment skipped", e);
+                    log.debug("Hot-deal detail enrichment skipped.", e);
                     return Mono.just(response);
                 });
     }
@@ -499,7 +499,7 @@ public class CommerceReadBffService {
                     return response;
                 })
                 .onErrorResume(e -> {
-                    log.debug("[CommerceReadBff] sales product list enrichment skipped", e);
+                    log.debug("Sales product list enrichment skipped.", e);
                     return Mono.just(response);
                 });
     }
@@ -515,7 +515,7 @@ public class CommerceReadBffService {
         ensureSalesDetailPlaceholders(data);
         return enrichThumbnailUrl(data, headers, response)
                 .onErrorResume(e -> {
-                    log.debug("[CommerceReadBff] sales product detail enrichment skipped", e);
+                    log.debug("Sales product detail enrichment skipped.", e);
                     return Mono.just(response);
                 });
     }
@@ -1020,7 +1020,7 @@ public class CommerceReadBffService {
         return sessionPrincipalResolver.resolveFromSecurityContext()
                 .map(Optional::of)
                 .onErrorResume(SessionClaimParseException.class, error -> {
-                    log.info("[CommerceReadBff] optional user context skipped. reason={}", error.getMessage());
+                    log.info("Optional user context skipped. reason={}", error.getMessage());
                     return Mono.just(Optional.empty());
                 })
                 .defaultIfEmpty(Optional.empty())

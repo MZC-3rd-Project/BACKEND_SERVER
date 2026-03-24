@@ -80,5 +80,7 @@ public class NotificationPaymentEventProcessor extends AbstractIdempotentEventSp
                 "결제 건 #" + notificationDispatchSupport.safeValue(event.getPaymentId()) + "이(가) 정상 처리되었습니다.",
                 variables
         );
+        log.info("Payment completion notification dispatched. eventId={}, paymentId={}, recipientId={}",
+                event.getEventId(), event.getPaymentId(), event.getUserId());
     }
 }

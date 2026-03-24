@@ -96,7 +96,7 @@ public class AuthService {
             if (syncProfileCreateOnSignup) {
                 profileServiceClient.createProfile(user.getId(), user.getEmail(), request.nickname());
             } else {
-                log.info("Sync profile create disabled by feature flag. userId={}", user.getId());
+                log.info("Profile sync skipped by feature flag. userId={}", user.getId());
             }
 
             // 7. Outbox 이벤트 발행
@@ -105,7 +105,7 @@ public class AuthService {
                     EventMetadata.of("USER", String.valueOf(user.getId()))
             );
 
-            log.info("Signup completed: userId={}, email={}", user.getId(), user.getEmail());
+            log.info("Signup completed. userId={}", user.getId());
             return SignupResponse.of(user.getId(), user.getEmail());
 
         } catch (Exception e) {
@@ -127,7 +127,7 @@ public class AuthService {
         // Keycloak 비밀번호 변경
         updateKeycloakPassword(user.getKeycloakId(), request.newPassword());
 
-        log.info("Password changed: userId={}", userId);
+        log.info("Password changed. userId={}", userId);
     }
 
     // ─── 이메일 변경 ──────────────────────────────────────────
@@ -155,7 +155,7 @@ public class AuthService {
                 EventMetadata.of("USER", String.valueOf(userId))
         );
 
-        log.info("Email changed: userId={}, {} -> {}", userId, oldEmail, request.newEmail());
+        log.info("Email changed. userId={}", userId);
     }
 
     // ─── 계정 탈퇴 ────────────────────────────────────────────
@@ -184,7 +184,7 @@ public class AuthService {
                 EventMetadata.of("USER", String.valueOf(userId))
         );
 
-        log.info("User withdrawn: userId={}", userId);
+        log.info("User withdrawn. userId={}", userId);
     }
 
     // ─── 이메일 인증 재발송 ────────────────────────────────────
@@ -200,7 +200,7 @@ public class AuthService {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.warn("Keycloak 인증 메일 재발송 실패 (Admin 설정 확인): email={}, error={}", email, e.getMessage());
+            log.warn("Verification email resend failed. reason={}", e.getMessage());
         }
     }
 
@@ -222,7 +222,7 @@ public class AuthService {
     public void updateLastLogin(Long userId) {
         User user = findActiveUser(userId);
         user.updateLastLoginAt();
-        log.debug("Last login updated: userId={}", userId);
+        log.debug("Last login updated. userId={}", userId);
     }
 
     // ─── Keycloak 헬퍼 메서드 ─────────────────────────────────
@@ -248,7 +248,7 @@ public class AuthService {
                     String locationHeader = response.getHeaderString("Location");
                     String keycloakUserId = locationHeader.substring(
                             locationHeader.lastIndexOf("/") + 1);
-                    log.info("Keycloak user created: keycloakId={}", keycloakUserId);
+                    log.info("Keycloak user created. keycloakId={}", keycloakUserId);
                     return keycloakUserId;
                 } else if (response.getStatus() == 409) {
                     throw new BusinessException(AuthErrorCode.EMAIL_ALREADY_EXISTS,
@@ -296,7 +296,7 @@ public class AuthService {
             credential.setTemporary(false);
 
             keycloakAdminClient.realm(realm).users().get(keycloakId).resetPassword(credential);
-            log.info("Keycloak password updated: keycloakId={}", keycloakId);
+            log.info("Keycloak password updated. keycloakId={}", keycloakId);
         } catch (Exception e) {
             throw new TechnicalException(AuthErrorCode.PASSWORD_CHANGE_FAILED,
                     "Keycloak 비밀번호 변경 실패", e);
@@ -310,7 +310,7 @@ public class AuthService {
             kcUser.setEmail(newEmail);
             kcUser.setUsername(newEmail);
             keycloakAdminClient.realm(realm).users().get(keycloakId).update(kcUser);
-            log.info("Keycloak email updated: keycloakId={}", keycloakId);
+            log.info("Keycloak email updated. keycloakId={}", keycloakId);
         } catch (Exception e) {
             throw new TechnicalException(AuthErrorCode.EMAIL_CHANGE_FAILED,
                     "Keycloak 이메일 변경 실패", e);
@@ -323,9 +323,9 @@ public class AuthService {
                     .users().get(keycloakId).toRepresentation();
             kcUser.setAttributes(Map.of("snowflakeId", List.of(String.valueOf(snowflakeId))));
             keycloakAdminClient.realm(realm).users().get(keycloakId).update(kcUser);
-            log.info("Keycloak user snowflakeId set: keycloakId={}, snowflakeId={}", keycloakId, snowflakeId);
+            log.info("Keycloak snowflakeId updated. keycloakId={}, snowflakeId={}", keycloakId, snowflakeId);
         } catch (Exception e) {
-            log.error("Failed to set snowflakeId on Keycloak user: keycloakId={}, snowflakeId={}",
+            log.error("Keycloak snowflakeId update failed. keycloakId={}, snowflakeId={}",
                     keycloakId, snowflakeId, e);
             throw new TechnicalException(AuthErrorCode.KEYCLOAK_COMMUNICATION_ERROR,
                     "Keycloak 사용자 snowflakeId 설정 실패", e);
@@ -338,7 +338,7 @@ public class AuthService {
                     .users().get(keycloakId).toRepresentation();
             kcUser.setEnabled(false);
             keycloakAdminClient.realm(realm).users().get(keycloakId).update(kcUser);
-            log.info("Keycloak user disabled: keycloakId={}", keycloakId);
+            log.info("Keycloak user disabled. keycloakId={}", keycloakId);
         } catch (Exception e) {
             throw new TechnicalException(AuthErrorCode.WITHDRAW_KEYCLOAK_FAILED,
                     "Keycloak 사용자 비활성화 실패", e);
@@ -348,9 +348,9 @@ public class AuthService {
     private void deleteKeycloakUserSafely(String keycloakUserId) {
         try {
             keycloakAdminClient.realm(realm).users().delete(keycloakUserId);
-            log.info("Keycloak user rolled back (deleted): keycloakId={}", keycloakUserId);
+            log.info("Keycloak user rollback completed. keycloakId={}", keycloakUserId);
         } catch (Exception e) {
-            log.error("Failed to rollback Keycloak user: keycloakId={}", keycloakUserId, e);
+            log.error("Keycloak user rollback failed. keycloakId={}", keycloakUserId, e);
         }
     }
 
@@ -360,9 +360,9 @@ public class AuthService {
         try {
             keycloakAdminClient.realm(realm).users().get(keycloakUserId)
                     .executeActionsEmail(List.of("VERIFY_EMAIL"));
-            log.info("Keycloak verification email sent: keycloakId={}", keycloakUserId);
+            log.info("Keycloak verification email sent. keycloakId={}", keycloakUserId);
         } catch (Exception e) {
-            log.warn("Keycloak verification email failed (SMTP 설정 확인 필요): keycloakId={}, error={}",
+            log.warn("Keycloak verification email delivery failed. keycloakId={}, reason={}",
                     keycloakUserId, e.getMessage());
         }
     }

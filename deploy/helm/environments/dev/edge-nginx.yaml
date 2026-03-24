@@ -82,12 +82,36 @@ fileConfigMaps:
     files:
       default.conf:
         content: |
-          log_format edge_demo '$remote_addr - $remote_user [$time_local] "$request" '
-                               '$status $body_bytes_sent "$http_referer" "$http_user_agent" '
-                               'conn=$connection conn_reqs=$connection_requests '
-                               'rt=$request_time uct=$upstream_connect_time '
-                               'uht=$upstream_header_time urt=$upstream_response_time '
-                               'ua="$upstream_addr" us="$upstream_status"';
+          log_format edge_json escape=json
+            '{'
+              '"timestamp":"$time_iso8601",'
+              '"service.name":"edge-nginx",'
+              '"log.type":"nginx_access",'
+              '"request_id":"$request_id",'
+              '"trace_id":"$http_x_b3_traceid",'
+              '"method":"$request_method",'
+              '"scheme":"$scheme",'
+              '"host":"$host",'
+              '"uri":"$uri",'
+              '"query_string":"$args",'
+              '"status":$status,'
+              '"request_time":$request_time,'
+              '"upstream_connect_time":"$upstream_connect_time",'
+              '"upstream_header_time":"$upstream_header_time",'
+              '"upstream_response_time":"$upstream_response_time",'
+              '"upstream_addr":"$upstream_addr",'
+              '"upstream_status":"$upstream_status",'
+              '"remote_addr":"$remote_addr",'
+              '"x_forwarded_for":"$http_x_forwarded_for",'
+              '"referer":"$http_referer",'
+              '"user_agent":"$http_user_agent",'
+              '"bytes_sent":$bytes_sent,'
+              '"body_bytes_sent":$body_bytes_sent,'
+              '"request_length":$request_length,'
+              '"gzip_ratio":"$gzip_ratio",'
+              '"connection":$connection,'
+              '"connection_requests":$connection_requests'
+            '}';
 
           upstream gateway_backend {
               server client-gateway:8080;
@@ -97,7 +121,8 @@ fileConfigMaps:
           server {
               listen 8080;
               server_name _;
-              access_log /var/log/nginx/access.log edge_demo;
+              access_log /dev/stdout edge_json;
+              error_log /dev/stderr warn;
               gzip on;
               gzip_vary on;
               gzip_proxied any;
@@ -133,6 +158,7 @@ fileConfigMaps:
                   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                   proxy_set_header X-Forwarded-Proto $scheme;
                   proxy_set_header X-Request-Id $request_id;
+                  proxy_set_header X-B3-TraceId $http_x_b3_traceid;
                   proxy_connect_timeout 3s;
                   proxy_send_timeout 30s;
                   proxy_read_timeout 30s;

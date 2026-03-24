@@ -1,13 +1,16 @@
 package com.example.config.tracing;
 
+import brave.sampler.Sampler;
 import io.micrometer.tracing.Tracer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
 @Slf4j
 @AutoConfiguration
@@ -28,11 +31,23 @@ public class TracingAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnClass(Sampler.class)
+    @ConditionalOnMissingBean(Sampler.class)
+    public Sampler braveSampler() {
+        float probability = Math.max(0.0f, Math.min(1.0f, properties.getSamplingRate()));
+        return Sampler.create(probability);
+    }
+
+    @Configuration(proxyBeanMethods = false)
     @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
     @ConditionalOnClass(name = "jakarta.servlet.Filter")
-    public MdcTracingFilter mdcTracingFilter(Tracer tracer) {
-        log.info("Registering MdcTracingFilter for trace context propagation to MDC");
-        return new MdcTracingFilter(tracer);
+    static class ServletTracingConfiguration {
+
+        @Bean
+        public MdcTracingFilter mdcTracingFilter(Tracer tracer) {
+            log.info("Registering MdcTracingFilter for trace context propagation to MDC");
+            return new MdcTracingFilter(tracer);
+        }
     }
 
     private void logTracingConfiguration() {

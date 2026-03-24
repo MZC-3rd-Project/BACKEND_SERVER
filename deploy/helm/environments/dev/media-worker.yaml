@@ -33,3 +33,8 @@ secretEnv:
   APP_SECURITY_CONTEXT_SIGNING_KEY:
     remoteRef: donmoa/dev/common
     property: APP_SECURITY_CONTEXT_SIGNING_KEY
+
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    prometheus: donmoa

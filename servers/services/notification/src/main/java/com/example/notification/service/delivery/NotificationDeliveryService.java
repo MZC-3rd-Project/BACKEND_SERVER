@@ -217,9 +217,13 @@ public class NotificationDeliveryService {
             case DELIVERED -> {
                 delivery.markSent(outcome.providerMessageId());
                 delivery.markDelivered();
+                log.info("Notification delivery completed. deliveryId={}, notificationId={}, channel={}, provider={}",
+                        delivery.getId(), delivery.getNotificationId(), delivery.getChannel(), outcome.provider());
             }
             case DROPPED -> {
                 delivery.markDropped(outcome.errorCode(), outcome.errorMessage());
+                log.warn("Notification delivery dropped. deliveryId={}, notificationId={}, channel={}, errorCode={}",
+                        delivery.getId(), delivery.getNotificationId(), delivery.getChannel(), outcome.errorCode());
                 incrementCounter("notification.delivery.dropped.total", delivery, outcome.errorCode());
             }
             case FAILED -> {

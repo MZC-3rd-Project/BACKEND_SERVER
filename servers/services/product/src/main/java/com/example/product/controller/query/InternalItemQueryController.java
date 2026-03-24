@@ -8,6 +8,9 @@ import com.example.product.dto.item.response.ItemSummaryResponse;
 import com.example.product.service.query.InternalItemQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,7 +38,9 @@ public class InternalItemQueryController {
 
     @Operation(summary = "상품 다건 조회 (내부)")
     @PostMapping("/batch")
-    public ApiResponse<List<ItemSummaryResponse>> findByIds(@RequestBody List<Long> itemIds) {
+    public ApiResponse<List<ItemSummaryResponse>> findByIds(
+            @Valid @RequestBody List<@NotNull @Positive Long> itemIds
+    ) {
         return ApiResponse.success(internalItemQueryService.findByIds(itemIds));
     }
 
@@ -59,7 +64,9 @@ public class InternalItemQueryController {
 
     @Operation(summary = "상품 검색 문서 다건 조회 (내부)")
     @PostMapping("/search-documents/batch")
-    public ApiResponse<List<ItemSearchDocumentResponse>> findSearchDocuments(@RequestBody List<Long> itemIds) {
+    public ApiResponse<List<ItemSearchDocumentResponse>> findSearchDocuments(
+            @Valid @RequestBody List<@NotNull @Positive Long> itemIds
+    ) {
         return ApiResponse.success(internalItemQueryService.findSearchDocuments(itemIds));
     }
 

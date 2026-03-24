@@ -103,5 +103,7 @@ public class ChatNotificationEventProcessor extends AbstractIdempotentEventSpecP
                         : "참여 중인 채팅방에 새 메시지가 도착했습니다.",
                 variables
         );
+        log.info("Chat notification dispatched. eventId={}, roomId={}, recipientId={}",
+                event.getEventId(), event.getRoomId(), event.getRecipientId());
     }
 }

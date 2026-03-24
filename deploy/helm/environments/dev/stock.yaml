@@ -45,3 +45,8 @@ secretEnv:
   APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:
     remoteRef: donmoa/dev/common
     property: APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN
+
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    prometheus: donmoa

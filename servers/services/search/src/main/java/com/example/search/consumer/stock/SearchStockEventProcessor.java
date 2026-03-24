@@ -64,5 +64,7 @@ public class SearchStockEventProcessor extends AbstractIdempotentEventSpecProces
 
     private void handleAvailableStockChanged(StockEventMessage event) {
         searchIndexingService.updateAvailableStock(event.getItemId(), event.getAvailableStockTotal());
+        log.debug("Search item stock snapshot updated. itemId={}, availableStock={}",
+                event.getItemId(), event.getAvailableStockTotal());
     }
 }

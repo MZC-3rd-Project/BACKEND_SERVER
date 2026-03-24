@@ -16,15 +16,17 @@ public class ProfileResponse {
     private String email;
     private String nickname;
     private Long mediaId;
+    private String mediaUrl;
     private String defaultAddress;
 
-    public static ProfileResponse from(Profiles profile, Optional<ProfileAddress> defaultAddress) {
+    public static ProfileResponse from(Profiles profile, Optional<ProfileAddress> defaultAddress, String mediaUrl) {
         return ProfileResponse.builder()
             .userId(profile.getUserId())
             .phone(profile.getPhoneNumber())
             .email(profile.getEmail())
             .nickname(profile.getNickname())
             .mediaId(profile.getProfileImage() == null ? null : profile.getProfileImage().getMediaId())
+            .mediaUrl(mediaUrl)
             .defaultAddress(defaultAddress.map(ProfileAddressResponse::buildFullAddress).orElse(null))
             .build();
     }

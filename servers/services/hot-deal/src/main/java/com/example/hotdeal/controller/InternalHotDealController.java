@@ -5,6 +5,12 @@ import com.example.hotdeal.dto.HotDealDetailResponse;
 import com.example.hotdeal.entity.HotDeal;
 import com.example.hotdeal.service.HotDealCommandService;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,7 +29,7 @@ public class InternalHotDealController {
 
     @Operation(summary = "핫딜 수동 생성 (내부/테스트용)")
     @PostMapping
-    public ApiResponse<HotDealDetailResponse> createHotDeal(@RequestBody CreateHotDealRequest request) {
+    public ApiResponse<HotDealDetailResponse> createHotDeal(@Valid @RequestBody CreateHotDealRequest request) {
         HotDeal hotDeal = hotDealCommandService.createAndActivate(
                 request.getItemId(),
                 request.getTitle(),
@@ -40,11 +46,27 @@ public class InternalHotDealController {
     @Getter
     @NoArgsConstructor
     public static class CreateHotDealRequest {
+        @NotNull(message = "상품 ID는 필수입니다")
+        @Positive(message = "상품 ID는 양수여야 합니다")
         private Long itemId;
+
+        @NotBlank(message = "핫딜 제목은 필수입니다")
         private String title;
+
+        @NotNull(message = "원가는 필수입니다")
+        @Min(value = 0, message = "원가는 0 이상이어야 합니다")
         private Long originalPrice;
+
+        @NotNull(message = "할인율은 필수입니다")
+        @Min(value = 1, message = "할인율은 1% 이상이어야 합니다")
+        @Max(value = 90, message = "할인율은 90% 이하여야 합니다")
         private Integer discountRate;
+
+        @NotNull(message = "최대 수량은 필수입니다")
+        @Min(value = 1, message = "최대 수량은 1 이상이어야 합니다")
         private Integer maxQuantity;
+
+        @Min(value = 1, message = "1인당 최대 구매 수량은 1 이상이어야 합니다")
         private Integer maxPerUser;
         private LocalDateTime startAt;
         private LocalDateTime endAt;

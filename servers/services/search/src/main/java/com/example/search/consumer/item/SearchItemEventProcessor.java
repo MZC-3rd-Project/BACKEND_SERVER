@@ -66,9 +66,11 @@ public class SearchItemEventProcessor extends AbstractIdempotentEventSpecProcess
 
     private void handleUpsert(ItemEventMessage event) {
         searchIndexingService.upsertItem(event.getItemId());
+        log.debug("Search item index upsert completed. itemId={}", event.getItemId());
     }
 
     private void handleDelete(ItemEventMessage event) {
         searchIndexingService.deleteItem(event.getItemId());
+        log.debug("Search item index delete completed. itemId={}", event.getItemId());
     }
 }

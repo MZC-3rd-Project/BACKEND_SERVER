@@ -29,6 +29,8 @@ include(":libs:config:resilience")
 include(":libs:config:webclient")
 include(":libs:config:tracing")
 include(":libs:config:shedlock")
+include(":libs:config:logging")
+include(":libs:config:metrics")
 
 // 이벤트 모듈
 include(":libs:event:domain")

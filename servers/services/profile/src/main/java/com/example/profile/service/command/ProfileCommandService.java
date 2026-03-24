@@ -50,6 +50,8 @@ public class ProfileCommandService {
                 .toList();
             profileAddressRepository.saveAll(addresses);
         }
+
+        log.info("Profile created. userId={}", profile.getUserId());
     }
 
     @Transactional
@@ -79,6 +81,9 @@ public class ProfileCommandService {
             ),
             EventMetadata.of("PROFILE", String.valueOf(profile.getId()))
         );
+
+        log.info("Profile updated. userId={}, profileId={}, mediaLinked={}",
+            userId, profile.getId(), canonicalMediaId != null);
     }
 
     @Transactional
@@ -97,6 +102,7 @@ public class ProfileCommandService {
             .ifPresent(ProfileAddress::unsetDefault);
 
         target.setAsDefault();
+        log.info("Default profile address updated. userId={}, addressId={}", userId, addressId);
     }
 
     private void validateNicknameAvailability(ProfileRequest req, Profiles profile) {
