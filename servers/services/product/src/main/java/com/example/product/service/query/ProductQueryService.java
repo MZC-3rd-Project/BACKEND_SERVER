@@ -47,6 +47,26 @@ public class ProductQueryService {
         return productDetailAssembler.toResponse(detailView);
     }
 
+    @UseWriteDataSource
+    public CursorResponse<GoodsDetailResponse> findSellerProductList(String cursor, int size, Long sellerId) {
+        Long cursorId = CursorUtils.decodeLong(cursor);
+        PageRequest pageable = PageRequest.of(0, size + 1);
+
+        List<Item> items = cursorId == null
+                ? itemRepository.findBySellerIdOrderByIdDesc(sellerId, pageable)
+                : itemRepository.findBySellerIdAndIdLessThanOrderByIdDesc(sellerId, cursorId, pageable);
+
+        boolean hasNext = items.size() > size;
+        List<Item> pageItems = hasNext ? items.subList(0, size) : items;
+        var detailViews = productItemDetailReader.readAll(pageItems);
+        List<GoodsDetailResponse> content = pageItems.stream()
+                .map(item -> productDetailAssembler.toResponse(detailViews.get(item.getId())))
+                .toList();
+
+        String nextCursor = hasNext ? CursorUtils.encode(pageItems.get(pageItems.size() - 1).getId()) : null;
+        return CursorResponse.of(content, nextCursor);
+    }
+
     public CursorResponse<GoodsDetailResponse> findProductList(String cursor, int size) {
         Long cursorId = CursorUtils.decodeLong(cursor);
         PageRequest pageable = PageRequest.of(0, size + 1);
