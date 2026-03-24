@@ -14,4 +14,5 @@ public class GatewayAuthProperties {
     private boolean enabled = false;
     private String authServiceUrl = "http://localhost:8081";
     private String userServiceUrl = "http://localhost:8082";
+    private String loginSuccessUrl = "/login/success";
 }

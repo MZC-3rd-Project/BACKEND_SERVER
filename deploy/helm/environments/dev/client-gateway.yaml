@@ -109,7 +109,7 @@ secretEnv:
     property: GATEWAY_SESSION_REFRESH_TOKEN_HASH_PEPPER
 
 serviceMonitor:
-  enabled: true
+  enabled: false
   additionalLabels:
     prometheus: donmoa
   relabelings:
