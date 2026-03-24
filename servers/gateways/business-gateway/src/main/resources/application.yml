@@ -39,6 +39,18 @@ spring:
               uri: ${app.service.hot-deal-url:http://localhost:8089}
               predicates:
                 - Path=/api/v1/hot-deals/**
+            - id: media-service
+              uri: ${app.service.media-url:http://localhost:8094}
+              predicates:
+                - Path=/api/v1/media/**
+            - id: order-service
+              uri: ${app.service.order-url:http://localhost:8075}
+              predicates:
+                - Path=/api/v1/orders/**
+            - id: order-query-service
+              uri: ${app.service.order-query-url:http://localhost:8073}
+              predicates:
+                - Path=/api/v1/order-query/**
 
 gateway:
   auth:
@@ -46,7 +58,7 @@ gateway:
     auth-service-url: ${app.service.auth-url:http://localhost:8081}
     user-service-url: ${app.service.user-url:http://localhost:8082}
   dev-login:
-    enabled: ${GATEWAY_DEV_LOGIN_ENABLED:false}
+    enabled: ${GATEWAY_DEV_LOGIN_ENABLED:true}
     username: ${GATEWAY_DEV_LOGIN_USERNAME:seller}
     password: ${GATEWAY_DEV_LOGIN_PASSWORD:seller123}
     user-id: ${GATEWAY_DEV_LOGIN_USER_ID:9000002}
@@ -57,9 +69,9 @@ gateway:
     internal-auth-token: ${GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
     allow-client-identity-headers: ${GATEWAY_SECURITY_ALLOW_CLIENT_IDENTITY_HEADERS:false}
     allow-client-signed-context-header: ${GATEWAY_SECURITY_ALLOW_CLIENT_SIGNED_CONTEXT_HEADER:false}
-    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/store,/api/campaigns,/api/v1/hot-deals}
-    require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:}
-    require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/store,/api/campaigns,/api/v1/hot-deals}
+    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/store,/api/campaigns,/api/v1/hot-deals,/api/v1/media,/api/v1/orders,/api/v1/order-query}
+    require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:/bff/v1,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/store,/api/campaigns,/api/v1/hot-deals,/api/v1/media,/api/v1/orders,/api/v1/order-query}
+    require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/bff/v1,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/store,/api/campaigns,/api/v1/hot-deals,/api/v1/media,/api/v1/orders}
   session:
     enabled: ${GATEWAY_SESSION_ENABLED:false}
     relay-header-enabled: ${GATEWAY_SESSION_RELAY_HEADER_ENABLED:true}
@@ -80,6 +92,16 @@ app:
     connect-timeout: ${GATEWAY_DOWNSTREAM_CONNECT_TIMEOUT_MS:5000}
     read-timeout: ${GATEWAY_DOWNSTREAM_READ_TIMEOUT_MS:10000}
     write-timeout: ${GATEWAY_DOWNSTREAM_WRITE_TIMEOUT_MS:10000}
+  service:
+    product-url: ${PRODUCT_SERVICE_URL:http://localhost:8084}
+    store-url: ${STORE_SERVICE_URL:http://localhost:8072}
+    funding-url: ${FUNDING_SERVICE_URL:http://localhost:8086}
+    hot-deal-url: ${HOT_DEAL_SERVICE_URL:http://localhost:8089}
+    media-url: ${MEDIA_SERVICE_URL:http://localhost:8094}
+    order-url: ${ORDER_SERVICE_URL:http://localhost:8075}
+    order-query-url: ${ORDER_QUERY_SERVICE_URL:http://localhost:8073}
+    auth-url: ${AUTH_SERVICE_URL:http://localhost:8081}
+    user-url: ${USER_SERVICE_URL:http://localhost:8082}
   security:
     context:
       signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}

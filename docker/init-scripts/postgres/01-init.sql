@@ -20,6 +20,7 @@ CREATE DATABASE store_db;
 CREATE DATABASE order_query_db;
 CREATE DATABASE analytics_db;
 CREATE DATABASE review_db;
+CREATE DATABASE media_db;
 
 -- auth_db 초기 설정
 \c auth_db;
@@ -79,4 +80,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 \c review_db;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+\c media_db;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
