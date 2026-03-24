@@ -30,8 +30,11 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Slf4j
@@ -39,24 +42,32 @@ import java.util.UUID;
 public class BusinessProductMediaBffService {
 
     private final WebClient webClient;
+    private final WebClient mediaWebClient;
     private final ObjectMapper objectMapper;
     private final GatewaySessionPrincipalResolver sessionPrincipalResolver;
     private final BusinessGatewaySecurityProperties securityProperties;
     private final ObjectProvider<HmacSigner> hmacSignerProvider;
+    private final BusinessMediaEnricher mediaEnricher;
 
     public BusinessProductMediaBffService(WebClient.Builder webClientBuilder,
                                           ObjectMapper objectMapper,
                                           GatewaySessionPrincipalResolver sessionPrincipalResolver,
                                           BusinessGatewaySecurityProperties securityProperties,
                                           ObjectProvider<HmacSigner> hmacSignerProvider,
-                                          @Value("${app.service.product-url:http://localhost:8084}") String productServiceUrl) {
+                                          BusinessMediaEnricher mediaEnricher,
+                                          @Value("${app.service.product-url:http://localhost:8084}") String productServiceUrl,
+                                          @Value("${app.service.media-url:http://localhost:8094}") String mediaServiceUrl) {
         this.webClient = webClientBuilder
                 .baseUrl(productServiceUrl)
+                .build();
+        this.mediaWebClient = webClientBuilder
+                .baseUrl(mediaServiceUrl)
                 .build();
         this.objectMapper = objectMapper;
         this.sessionPrincipalResolver = sessionPrincipalResolver;
         this.securityProperties = securityProperties;
         this.hmacSignerProvider = hmacSignerProvider;
+        this.mediaEnricher = mediaEnricher;
     }
 
     public Mono<ResponseEntity<JsonNode>> createProductWithMedia(BffItemCreateCommandRequest request) {
@@ -93,7 +104,8 @@ public class BusinessProductMediaBffService {
         }
         return withAuthHeaders(false, downstreamHeaders -> {
             String detailPath = itemType.sellerCollectionPath();
-            return callDownstream(HttpMethod.GET, detailPath + "/" + itemId, downstreamHeaders, null);
+            return callDownstream(HttpMethod.GET, detailPath + "/" + itemId, downstreamHeaders, null)
+                    .flatMap(response -> enrichResponseWithMediaUrls(response, downstreamHeaders));
         });
     }
 
@@ -115,7 +127,8 @@ public class BusinessProductMediaBffService {
         }
         String pathWithQuery = uriBuilder.build(true).toUriString();
         return withAuthHeaders(false, downstreamHeaders ->
-                callDownstream(HttpMethod.GET, pathWithQuery, downstreamHeaders, null));
+                callDownstream(HttpMethod.GET, pathWithQuery, downstreamHeaders, null)
+                        .flatMap(response -> enrichResponseWithMediaUrls(response, downstreamHeaders)));
     }
 
     private Mono<ResponseEntity<JsonNode>> createItemWithMedia(BffItemType itemType,
@@ -218,8 +231,66 @@ public class BusinessProductMediaBffService {
                                                            HttpHeaders downstreamHeaders,
                                                            ResponseEntity<JsonNode> fallbackResponse) {
         return callDownstream(HttpMethod.GET, itemType.sellerCollectionPath() + "/" + itemId, downstreamHeaders, null)
-                .map(detailResponse -> detailResponse.getStatusCode().is2xxSuccessful() ? detailResponse : fallbackResponse)
+                .flatMap(detailResponse -> {
+                    if (!detailResponse.getStatusCode().is2xxSuccessful()) {
+                        return Mono.just(fallbackResponse);
+                    }
+                    return enrichResponseWithMediaUrls(detailResponse, downstreamHeaders);
+                })
                 .onErrorReturn(fallbackResponse);
+    }
+
+    private Mono<ResponseEntity<JsonNode>> enrichResponseWithMediaUrls(ResponseEntity<JsonNode> response,
+                                                                        HttpHeaders downstreamHeaders) {
+        if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+            return Mono.just(response);
+        }
+
+        Set<Long> mediaIds = mediaEnricher.collectMediaIds(response.getBody());
+        if (mediaIds.isEmpty()) {
+            return Mono.just(response);
+        }
+
+        return fetchMediaUrlMap(mediaIds, downstreamHeaders)
+                .map(urlMap -> {
+                    JsonNode enriched = mediaEnricher.enrich(response.getBody(), urlMap);
+                    return ResponseEntity.status(response.getStatusCode()).body(enriched);
+                })
+                .onErrorResume(error -> {
+                    log.warn("[BusinessBff] media URL enrichment failed. mediaCount={}", mediaIds.size(), error);
+                    return Mono.just(response);
+                });
+    }
+
+    private Mono<Map<Long, String>> fetchMediaUrlMap(Set<Long> mediaIds, HttpHeaders downstreamHeaders) {
+        return mediaWebClient.post()
+                .uri("/internal/v1/media/urls/batch")
+                .headers(headers -> headers.addAll(downstreamHeaders))
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(Map.of("mediaIds", mediaIds.stream().toList()))
+                .retrieve()
+                .bodyToMono(JsonNode.class)
+                .map(this::toMediaUrlMap)
+                .onErrorReturn(Map.of());
+    }
+
+    private Map<Long, String> toMediaUrlMap(JsonNode responseBody) {
+        if (responseBody == null || !responseBody.path("success").asBoolean()) {
+            return Map.of();
+        }
+        JsonNode data = responseBody.path("data");
+        if (!data.isArray()) {
+            return Map.of();
+        }
+        Map<Long, String> result = new LinkedHashMap<>();
+        for (JsonNode node : data) {
+            long mediaId = node.path("mediaId").asLong(-1L);
+            String mediaUrl = node.path("mediaUrl").asText(null);
+            if (mediaId > 0 && StringUtils.hasText(mediaUrl)) {
+                result.put(mediaId, mediaUrl);
+            }
+        }
+        return result;
     }
 
     private Mono<Void> ensureSuccess(Mono<ResponseEntity<JsonNode>> call) {
