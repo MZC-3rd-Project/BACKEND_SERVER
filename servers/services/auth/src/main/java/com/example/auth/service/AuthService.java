@@ -24,6 +24,7 @@ import com.example.core.exception.BusinessException;
 import com.example.core.exception.TechnicalException;
 import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;
+import jakarta.persistence.EntityManager;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.keycloak.admin.client.Keycloak;
@@ -52,6 +53,7 @@ public class AuthService {
     private final Keycloak keycloakAdminClient;
     private final ProfileServicePort profileServiceClient;
     private final EventPublisher eventPublisher;
+    private final EntityManager entityManager;
     private final String realm;
     private final String keycloakServerUrl;
     private final String directGrantClientId;
@@ -63,6 +65,7 @@ public class AuthService {
                        Keycloak keycloakAdminClient,
                        ProfileServicePort profileServiceClient,
                        EventPublisher eventPublisher,
+                       EntityManager entityManager,
                        @Value("${keycloak.admin.realm}") String realm,
                        @Value("${keycloak.admin.server-url}") String keycloakServerUrl,
                        @Value("${keycloak.admin.direct-grant-client-id}") String directGrantClientId,
@@ -73,6 +76,7 @@ public class AuthService {
         this.keycloakAdminClient = keycloakAdminClient;
         this.profileServiceClient = profileServiceClient;
         this.eventPublisher = eventPublisher;
+        this.entityManager = entityManager;
         this.realm = realm;
         this.keycloakServerUrl = keycloakServerUrl;
         this.directGrantClientId = directGrantClientId;
@@ -101,33 +105,35 @@ public class AuthService {
 
             // 5. 상태 이력 기록
             UserStatusHistory history = UserStatusHistory.create(
-                    user.getId(), null, UserStatus.ACTIVE, "회원가입", user.getId());
+                    user.getId(), UserStatus.NONE, UserStatus.ACTIVE, "회원가입", user.getId());
             statusHistoryRepository.save(history);
 
-            // 6. Profile Service 동기 호출 (feature flag)
-            if (syncProfileCreateOnSignup) {
-                profileServiceClient.createProfile(user.getId(), user.getEmail(), request.nickname());
-            } else {
-                log.info("Sync profile create disabled by feature flag. userId={}", user.getId());
-            }
-
-            // 7. Outbox 이벤트 발행
-            eventPublisher.publish(
-                    new UserCreatedEvent(user.getId(), user.getEmail(), user.getNickname()),
-                    EventMetadata.of("USER", String.valueOf(user.getId()))
-            );
-
-            // 8. 이메일 인증 코드 생성 및 발행
+            // 6. 이메일 인증 코드 생성
             String verificationCode = VerificationCodeGenerator.generate();
             EmailVerification emailVerification = EmailVerification.create(
                     request.email(), verificationCode,
                     LocalDateTime.now().plusMinutes(VERIFICATION_CODE_EXPIRY_MINUTES));
             emailVerificationRepository.save(emailVerification);
 
+            // 7. Outbox 이벤트 발행
+            eventPublisher.publish(
+                    new UserCreatedEvent(user.getId(), user.getEmail(), user.getNickname()),
+                    EventMetadata.of("USER", String.valueOf(user.getId()))
+            );
             eventPublisher.publish(
                     new EmailConfirmEvent(request.email(), verificationCode),
                     EventMetadata.of("USER", String.valueOf(user.getId()))
             );
+
+            // 8. DB flush — 제약 조건 위반을 외부 호출 전에 즉시 감지
+            entityManager.flush();
+
+            // 9. Profile Service 동기 호출 (DB 성공 확인 후 실행)
+            if (syncProfileCreateOnSignup) {
+                profileServiceClient.createProfile(user.getId(), user.getEmail(), request.nickname());
+            } else {
+                log.info("Sync profile create disabled by feature flag. userId={}", user.getId());
+            }
 
             log.info("Signup completed: userId={}, email={}", user.getId(), user.getEmail());
             return SignupResponse.of(user.getId(), user.getEmail());
