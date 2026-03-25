@@ -47,14 +47,10 @@
 - 로컬/테스트에서는 `GATEWAY_SESSION_TRUSTED_HEADER_AUTH_ENABLED=true`일 때 `X-Gateway-Context` + `X-Session-Id`를 사용해 pre-auth를 구성할 수 있습니다(운영 비권장).
 - 상품 조회(`GET`)는 익명 접근을 허용하되, 클라이언트가 보낸 `X-User-*`/`X-Gateway-*` 스푸핑 헤더는 Gateway가 제거합니다.
 
-## BFF 인증 스켈레톤
-- `bff-auth` 프로필이 활성화될 때 OAuth2 BFF 보안체인/TokenRelay 라우팅이 켜집니다.
-- 예시: `SPRING_PROFILES_ACTIVE=bff-auth`
-- 활성화 시 라우팅:
+## BFF 인증 전환
+- 기존 `bff-auth` 프로필 기반 `oauth2Login` 경로는 제거되었습니다.
+- 인증은 `authorize -> callback -> Redis session` 커스텀 경로로 전환 중입니다.
+- 유지되는 라우팅:
   - `/api/v1/auth/**` -> Auth Service
   - `/api/profile`, `/api/profile/**` -> Profile Service
   - `/api/v1/users/**`, `/api/users/**` -> legacy compatibility path, internally rewritten to `/api/profile/**`
-- 필수 설정:
-  - `GATEWAY_OAUTH2_ISSUER_URI`
-  - `GATEWAY_OAUTH2_CLIENT_ID`
-  - `GATEWAY_OAUTH2_CLIENT_SECRET`
