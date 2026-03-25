@@ -16,7 +16,7 @@ public class GatewaySessionProperties {
     private String userSessionsKeyPrefix = "gateway:user:sessions:";
     private String activeStatus = "ACTIVE";
     private String revokedStatus = "REVOKED";
-    private String sessionCookieName = "SESSION";
+    private String sessionCookieName = "DONMOA_SESSION";
     private String sessionCookiePath = "/";
     private String refreshTokenHashPepper = "";
     private String refreshTokenEncryptionSecret = "";

@@ -2,6 +2,7 @@ package com.example.gateway.security.session.application;
 
 import com.example.gateway.config.GatewaySessionProperties;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpCookie;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
@@ -10,6 +11,7 @@ import org.springframework.web.server.ServerWebExchange;
 
 import java.time.Duration;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class GatewaySessionCookieManager {
@@ -25,6 +27,9 @@ public class GatewaySessionCookieManager {
     }
 
     public void addSessionCookie(ServerWebExchange exchange, String sessionId) {
+        log.info("Gateway session cookie set. path={}, sid={}",
+                exchange.getRequest().getURI().getPath(),
+                sessionId);
         exchange.getResponse().addCookie(ResponseCookie.from(sessionProperties.getSessionCookieName(), sessionId)
                 .path(sessionProperties.getSessionCookiePath())
                 .httpOnly(true)
@@ -34,6 +39,9 @@ public class GatewaySessionCookieManager {
     }
 
     public void expireSessionCookie(ServerWebExchange exchange) {
+        log.warn("Gateway session cookie expired. path={}, currentSid={}",
+                exchange.getRequest().getURI().getPath(),
+                extractSessionId(exchange));
         exchange.getResponse().addCookie(ResponseCookie.from(sessionProperties.getSessionCookieName(), "")
                 .path(sessionProperties.getSessionCookiePath())
                 .httpOnly(true)
