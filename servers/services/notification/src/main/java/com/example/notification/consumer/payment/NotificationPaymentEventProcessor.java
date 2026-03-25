@@ -64,17 +64,20 @@ public class NotificationPaymentEventProcessor extends AbstractIdempotentEventSp
     private void handlePaymentCompleted(PaymentEventMessage event) {
         Map<String, Object> variables = new LinkedHashMap<>();
         variables.put("paymentId", event.getPaymentId());
-        variables.put("purchaseId", event.getPurchaseId());
         variables.put("orderId", event.getOrderId());
-        variables.put("itemId", event.getItemId());
         variables.put("totalAmount", event.getTotalAmount());
-        variables.put("quantity", event.getQuantity());
+        if (event.getPurchaseId() != null) variables.put("purchaseId", event.getPurchaseId());
+        if (event.getItemId() != null) variables.put("itemId", event.getItemId());
+        if (event.getQuantity() != null) variables.put("quantity", event.getQuantity());
+
+        Long referenceId = event.getPurchaseId() != null ? event.getPurchaseId() : event.getOrderId();
+        String referenceType = event.getPurchaseId() != null ? "PURCHASE" : "ORDER";
 
         notificationDispatchSupport.dispatchNotification(
                 event.getUserId(),
                 NotificationType.PAYMENT,
-                "PURCHASE",
-                event.getPurchaseId(),
+                referenceType,
+                referenceId,
                 event.getEventId(),
                 "결제가 완료되었습니다",
                 "결제 건 #" + notificationDispatchSupport.safeValue(event.getPaymentId()) + "이(가) 정상 처리되었습니다.",

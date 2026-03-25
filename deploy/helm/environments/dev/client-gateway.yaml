@@ -69,6 +69,7 @@ env:
   GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES: /api/profile,/api/v1/users,/api/users,/api/v1/chat,/ws/chat,/api/v1/cart
   GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES: /bff/v1,/api/profile,/api/v1/users,/api/users,/api/store,/api/v1/cart,/api/v1/media,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders,/api/v1/payments,/api/v1/reviews
   GATEWAY_SESSION_TRUSTED_HEADER_AUTH_ENABLED: "false"
+  GATEWAY_SESSION_COOKIE_NAME: DONMOA_SESSION
   GATEWAY_SESSION_KEYCLOAK_LOGOUT_URL: http://auth-service:8081/internal/v1/users/sessions/logout
   GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_HEADER: X-Gateway-Auth
   APP_SECURITY_CONTEXT_MAX_AGE_MILLIS: "300000"

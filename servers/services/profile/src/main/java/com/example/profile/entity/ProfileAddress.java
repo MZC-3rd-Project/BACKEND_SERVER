@@ -54,6 +54,12 @@ public class ProfileAddress extends BaseEntity {
     @Column(name = "sort_order", columnDefinition = "INT DEFAULT 0")
     private int sortOrder = 0;
 
+    @Column(name = "recipient_name", nullable = true, length = 50)
+    private String recipientName;
+
+    @Column(name = "recipient_phone", nullable = true, length = 20)
+    private String recipientPhone;
+
     @Builder.Default
     @Column(name = "is_default", nullable = false)
     private boolean isDefault = false;
@@ -78,6 +84,8 @@ public class ProfileAddress extends BaseEntity {
         this.buildingNumber = req.buildingNumber();
         this.buildingName   = req.buildingName();
         this.detailAddress  = req.detailAddress();
+        this.recipientName  = req.recipientName();
+        this.recipientPhone = req.recipientPhone();
         // sortOrder는 클라이언트에서 관리하지 않음
     }
 
