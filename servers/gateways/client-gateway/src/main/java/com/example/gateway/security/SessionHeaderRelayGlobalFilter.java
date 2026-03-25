@@ -6,6 +6,7 @@ import com.example.gateway.security.session.application.GatewaySessionPrincipalR
 import com.example.security.gateway.GatewayContextHeaderCodec;
 import com.example.security.signature.HmacSigner;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -23,9 +24,11 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class SessionHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
@@ -47,18 +50,32 @@ public class SessionHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
                 : null);
 
         return sessionPrincipalResolver.resolve(exchange)
-                .flatMap(principal -> chain.filter(exchange.mutate().request(
-                        exchange.getRequest().mutate()
-                                .headers(headers -> applyHeaders(headers, principal))
-                                .build()
-                ).build()))
-                .switchIfEmpty(authRequired
-                        ? unauthorized(exchange, "GW-AUTH-003", "요청 경로는 인증 정보가 필요합니다")
-                        : chain.filter(exchange.mutate().request(
+                .map(Optional::of)
+                .defaultIfEmpty(Optional.empty())
+                .flatMap(optionalPrincipal -> {
+                    if (optionalPrincipal.isPresent()) {
+                        GatewaySessionPrincipal principal = optionalPrincipal.get();
+                        log.info("Gateway auth relay allowed. path={}, sid={}, userId={}",
+                                path,
+                                principal.sessionId(),
+                                principal.userId());
+                        return chain.filter(exchange.mutate().request(
                                 exchange.getRequest().mutate()
-                                        .headers(this::applyAnonymousHeaders)
+                                        .headers(headers -> applyHeaders(headers, principal))
                                         .build()
-                        ).build()));
+                        ).build());
+                    }
+
+                    if (authRequired) {
+                        return unauthorized(exchange, "GW-AUTH-003", "요청 경로는 인증 정보가 필요합니다");
+                    }
+
+                    return chain.filter(exchange.mutate().request(
+                            exchange.getRequest().mutate()
+                                    .headers(this::applyAnonymousHeaders)
+                                    .build()
+                    ).build());
+                });
     }
 
     private void applyHeaders(HttpHeaders headers, GatewaySessionPrincipal principal) {
@@ -116,6 +133,10 @@ public class SessionHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
     }
 
     private Mono<Void> unauthorized(ServerWebExchange exchange, String code, String message) {
+        log.warn("Gateway auth relay denied. path={}, code={}, message={}",
+                exchange.getRequest().getURI().getPath(),
+                code,
+                message);
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(HttpStatus.UNAUTHORIZED);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);

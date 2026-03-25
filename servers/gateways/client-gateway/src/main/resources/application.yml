@@ -158,7 +158,7 @@ gateway:
     refresh-reuse-detected-at-field: ${GATEWAY_SESSION_REFRESH_REUSE_DETECTED_AT_FIELD:reuseDetectedAt}
     refresh-token-hash-pepper: ${GATEWAY_SESSION_REFRESH_TOKEN_HASH_PEPPER:}
     refresh-token-encryption-secret: ${GATEWAY_SESSION_REFRESH_TOKEN_ENCRYPTION_SECRET:${GATEWAY_SESSION_REFRESH_TOKEN_HASH_PEPPER:}}
-    session-cookie-name: ${GATEWAY_SESSION_COOKIE_NAME:SESSION}
+    session-cookie-name: ${GATEWAY_SESSION_COOKIE_NAME:DONMOA_SESSION}
     session-cookie-path: ${GATEWAY_SESSION_COOKIE_PATH:/}
     keycloak-logout-url: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_URL:}
     keycloak-logout-auth-header: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_HEADER:${GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}}
