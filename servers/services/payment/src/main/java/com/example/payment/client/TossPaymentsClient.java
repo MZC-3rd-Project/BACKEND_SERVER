@@ -8,9 +8,9 @@ import com.example.payment.client.dto.TossPaymentResponse;
 
 public interface TossPaymentsClient {
 
-    TossConfirmResponse confirm(TossConfirmRequest request);
+    TossConfirmResponse confirm(TossConfirmRequest request, String idempotencyKey);
 
-    TossCancelResponse cancel(String paymentKey, TossCancelRequest request);
+    TossCancelResponse cancel(String paymentKey, TossCancelRequest request, String idempotencyKey);
 
     TossPaymentResponse query(String paymentKey);
 }

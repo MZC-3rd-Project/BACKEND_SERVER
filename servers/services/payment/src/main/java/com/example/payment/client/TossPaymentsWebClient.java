@@ -46,11 +46,12 @@ public class TossPaymentsWebClient implements TossPaymentsClient {
     }
 
     @Override
-    public TossConfirmResponse confirm(TossConfirmRequest request) {
+    public TossConfirmResponse confirm(TossConfirmRequest request, String idempotencyKey) {
         Supplier<TossConfirmResponse> supplier = () -> {
             try {
                 return webClient.post()
                         .uri("/v1/payments/confirm")
+                        .header("Idempotency-Key", idempotencyKey)
                         .bodyValue(request)
                         .retrieve()
                         .bodyToMono(TossConfirmResponse.class)
@@ -64,11 +65,12 @@ public class TossPaymentsWebClient implements TossPaymentsClient {
     }
 
     @Override
-    public TossCancelResponse cancel(String paymentKey, TossCancelRequest request) {
+    public TossCancelResponse cancel(String paymentKey, TossCancelRequest request, String idempotencyKey) {
         Supplier<TossCancelResponse> supplier = () -> {
             try {
                 return webClient.post()
                         .uri("/v1/payments/{paymentKey}/cancel", paymentKey)
+                        .header("Idempotency-Key", idempotencyKey)
                         .bodyValue(request)
                         .retrieve()
                         .bodyToMono(TossCancelResponse.class)

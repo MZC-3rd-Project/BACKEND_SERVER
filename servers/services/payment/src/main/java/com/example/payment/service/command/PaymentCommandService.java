@@ -59,7 +59,8 @@ public class PaymentCommandService {
 
         try {
             TossConfirmResponse tossResponse = tossPaymentsClient.confirm(
-                    new TossConfirmRequest(request.paymentKey(), String.valueOf(request.orderId()), request.amount())
+                    new TossConfirmRequest(request.paymentKey(), String.valueOf(request.orderId()), request.amount()),
+                    String.valueOf(request.orderId())
             );
 
             String tossResponseJson = serializeResponse(tossResponse);

@@ -40,7 +40,8 @@ public class PaymentEventService {
         try {
             tossPaymentsClient.cancel(
                     payment.getPaymentKey(),
-                    new TossCancelRequest("주문 환불 요청", payment.getAmount())
+                    new TossCancelRequest("주문 환불 요청", payment.getAmount()),
+                    payment.getOrderId() + ":refund"
             );
 
             payment.markCancelled("주문 환불 요청");
