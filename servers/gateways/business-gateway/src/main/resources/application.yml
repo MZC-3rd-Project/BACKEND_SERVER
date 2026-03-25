@@ -67,7 +67,7 @@ gateway:
     user-service-url: ${app.service.user-url:http://localhost:8082}
   dev-login:
     enabled: ${GATEWAY_DEV_LOGIN_ENABLED:true}
-    username: ${GATEWAY_DEV_LOGIN_USERNAME:seller}
+    username: ${GATEWAY_DEV_LOGIN_USERNAME:seller@naver.com}
     password: ${GATEWAY_DEV_LOGIN_PASSWORD:seller123}
     user-id: ${GATEWAY_DEV_LOGIN_USER_ID:9000002}
     roles: ${GATEWAY_DEV_LOGIN_ROLES:USER,SELLER}
