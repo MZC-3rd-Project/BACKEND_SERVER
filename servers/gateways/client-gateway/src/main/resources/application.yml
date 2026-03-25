@@ -144,34 +144,14 @@ gateway:
     require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:/api/profile,/api/v1/users,/api/users,/api/v1/chat,/ws/chat,/api/v1/cart}
     require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/bff/v1,/api/profile,/api/v1/users,/api/users,/api/store,/api/v1/cart,/api/v1/media,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders,/api/v1/payments,/api/v1/reviews}
   session:
-    relay-header-enabled: ${GATEWAY_SESSION_RELAY_HEADER_ENABLED:true}
-    ops-enabled: ${GATEWAY_SESSION_OPS_ENABLED:false}
-    keycloak-logout-enabled: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_ENABLED:false}
-    trusted-header-auth-enabled: ${GATEWAY_SESSION_TRUSTED_HEADER_AUTH_ENABLED:false}
     redis-key-prefix: ${GATEWAY_SESSION_REDIS_KEY_PREFIX:gateway:sess:}
     user-sessions-key-prefix: ${GATEWAY_SESSION_USER_SESSIONS_KEY_PREFIX:gateway:user:sessions:}
-    refresh-family-key-prefix: ${GATEWAY_SESSION_REFRESH_FAMILY_KEY_PREFIX:gateway:rtfam:}
-    status-field: ${GATEWAY_SESSION_STATUS_FIELD:status}
     active-status: ${GATEWAY_SESSION_ACTIVE_STATUS:ACTIVE}
     revoked-status: ${GATEWAY_SESSION_REVOKED_STATUS:REVOKED}
-    refresh-current-hash-field: ${GATEWAY_SESSION_REFRESH_CURRENT_HASH_FIELD:currentRtHash}
-    refresh-uid-field: ${GATEWAY_SESSION_REFRESH_UID_FIELD:uid}
-    refresh-sid-field: ${GATEWAY_SESSION_REFRESH_SID_FIELD:sid}
-    refresh-rotated-at-field: ${GATEWAY_SESSION_REFRESH_ROTATED_AT_FIELD:rotatedAt}
-    refresh-reuse-detected-field: ${GATEWAY_SESSION_REFRESH_REUSE_DETECTED_FIELD:reuseDetected}
-    refresh-reuse-detected-at-field: ${GATEWAY_SESSION_REFRESH_REUSE_DETECTED_AT_FIELD:reuseDetectedAt}
     refresh-token-hash-pepper: ${GATEWAY_SESSION_REFRESH_TOKEN_HASH_PEPPER:}
     refresh-token-encryption-secret: ${GATEWAY_SESSION_REFRESH_TOKEN_ENCRYPTION_SECRET:${GATEWAY_SESSION_REFRESH_TOKEN_HASH_PEPPER:}}
     session-cookie-name: ${GATEWAY_SESSION_COOKIE_NAME:DONMOA_SESSION}
     session-cookie-path: ${GATEWAY_SESSION_COOKIE_PATH:/}
-    keycloak-logout-url: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_URL:}
-    keycloak-logout-auth-header: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_HEADER:${GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}}
-    keycloak-logout-auth-token: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_TOKEN:${GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}}
-  deployment:
-    fail-fast-enabled: ${GATEWAY_DEPLOYMENT_FAIL_FAST_ENABLED:true}
-    enforced-profiles: ${GATEWAY_DEPLOYMENT_ENFORCED_PROFILES:prod,production,stg,stage}
-    require-explicit-auth-session-env: ${GATEWAY_DEPLOYMENT_REQUIRE_EXPLICIT_AUTH_SESSION_ENV:true}
-    require-auth-or-session-enabled: ${GATEWAY_DEPLOYMENT_REQUIRE_AUTH_OR_SESSION_ENABLED:true}
 
 app:
   tracing:

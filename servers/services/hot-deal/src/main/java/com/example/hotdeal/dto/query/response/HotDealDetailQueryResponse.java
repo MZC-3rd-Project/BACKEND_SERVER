@@ -1,13 +1,19 @@
 package com.example.hotdeal.dto.query.response;
 
 import com.example.core.id.jackson.SnowflakeId;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
 @Getter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class HotDealDetailQueryResponse {
 
     @SnowflakeId

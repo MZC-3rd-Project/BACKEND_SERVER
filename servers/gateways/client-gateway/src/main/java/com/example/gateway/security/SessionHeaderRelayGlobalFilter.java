@@ -138,6 +138,12 @@ public class SessionHeaderRelayGlobalFilter implements GlobalFilter, Ordered {
                 code,
                 message);
         ServerHttpResponse response = exchange.getResponse();
+        if (response.isCommitted()) {
+            log.warn("Gateway auth relay skipped unauthorized write because response is already committed. path={}, code={}",
+                    exchange.getRequest().getURI().getPath(),
+                    code);
+            return Mono.empty();
+        }
         response.setStatusCode(HttpStatus.UNAUTHORIZED);
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
         String body = """

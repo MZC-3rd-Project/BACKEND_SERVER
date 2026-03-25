@@ -60,6 +60,9 @@ public class ProfileCommandService {
         Profiles profile = profileProjectionRepairService.ensureProfile(userId)
             .orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_NOT_FOUND));
 
+        log.info("Profile update request received. userId={}, nickname={}, phone={}, mediaId={}, mediaRef={}",
+            userId, req.getNickname(), req.getPhone(), req.getMediaId(), req.getMediaRef());
+
         Long canonicalMediaId = profileMediaReferenceService.resolveCanonicalMediaId(req.getMediaId(), req.getMediaRef());
         profileMediaReferenceService.validateReadableMedia(canonicalMediaId);
 
@@ -69,6 +72,9 @@ public class ProfileCommandService {
 
         validateNicknameAvailability(req, profile);
         profile.updateProfile(req);
+        log.info("Profile entity mutated. userId={}, profileId={}, nickname={}, phone={}",
+            userId, profile.getId(), profile.getNickname(), profile.getPhoneNumber());
+        profileRepository.save(profile);
         profileMediaReferenceService.syncProfileImageLink(userId, canonicalMediaId);
 
         eventPublisher.publish(

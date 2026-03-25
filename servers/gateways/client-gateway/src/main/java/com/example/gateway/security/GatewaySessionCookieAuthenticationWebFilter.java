@@ -21,9 +21,16 @@ public class GatewaySessionCookieAuthenticationWebFilter implements WebFilter {
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         return sessionPrincipalResolver.resolve(exchange)
-                .flatMap(principal -> chain.filter(exchange.mutate().principal(Mono.just(principal)).build())
-                        .contextWrite(ReactiveSecurityContextHolder.withAuthentication(
-                                new GatewaySessionAuthentication(principal))))
-                .switchIfEmpty(Mono.defer(() -> chain.filter(exchange)));
+                .map(java.util.Optional::of)
+                .defaultIfEmpty(java.util.Optional.empty())
+                .flatMap(optionalPrincipal -> {
+                    if (optionalPrincipal.isPresent()) {
+                        GatewaySessionPrincipal principal = optionalPrincipal.get();
+                        return chain.filter(exchange.mutate().principal(Mono.just(principal)).build())
+                                .contextWrite(ReactiveSecurityContextHolder.withAuthentication(
+                                        new GatewaySessionAuthentication(principal)));
+                    }
+                    return chain.filter(exchange);
+                });
     }
 }

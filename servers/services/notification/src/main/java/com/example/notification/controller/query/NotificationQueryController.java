@@ -7,6 +7,8 @@ import com.example.notification.dto.query.response.NotificationHistoryItemRespon
 import com.example.notification.dto.query.response.UnreadCountResponse;
 import com.example.notification.service.query.NotificationQueryService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,12 +21,14 @@ public class NotificationQueryController implements NotificationQueryApi {
 
     @Override
     public ApiResponse<CursorResponse<NotificationHistoryItemResponse>> getMyNotifications(
-            Long userId, String cursor, int size) {
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "20") int size) {
         return ApiResponse.success(notificationQueryService.findMyNotifications(userId, cursor, size));
     }
 
     @Override
-    public ApiResponse<UnreadCountResponse> getUnreadCount(Long userId) {
+    public ApiResponse<UnreadCountResponse> getUnreadCount(@RequestHeader("X-User-Id") Long userId) {
         return ApiResponse.success(notificationQueryService.getUnreadCount(userId));
     }
 }

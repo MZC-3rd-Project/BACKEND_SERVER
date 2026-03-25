@@ -7,7 +7,10 @@ import com.example.notification.dto.setting.request.UpdateNotificationSettingReq
 import com.example.notification.dto.setting.response.NotificationGlobalPreferenceResponse;
 import com.example.notification.dto.setting.response.NotificationSettingItemResponse;
 import com.example.notification.service.setting.NotificationSettingService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -20,13 +23,15 @@ public class NotificationSettingCommandController implements NotificationSetting
 
     @Override
     public ApiResponse<NotificationGlobalPreferenceResponse> updateGlobalPreference(
-            Long userId, UpdateNotificationGlobalPreferenceRequest request) {
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestBody UpdateNotificationGlobalPreferenceRequest request) {
         return ApiResponse.success(notificationSettingService.updateGlobalPreference(userId, request));
     }
 
     @Override
-    public ApiResponse<NotificationSettingItemResponse> updateSetting(Long userId,
-                                                                      UpdateNotificationSettingRequest request) {
+    public ApiResponse<NotificationSettingItemResponse> updateSetting(
+            @RequestHeader("X-User-Id") Long userId,
+            @Valid @RequestBody UpdateNotificationSettingRequest request) {
         return ApiResponse.success(notificationSettingService.upsertSetting(userId, request));
     }
 }

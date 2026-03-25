@@ -10,7 +10,10 @@ import com.example.cart.dto.request.UpdateCartItemQuantityRequest;
 import com.example.cart.dto.response.CartCheckoutReservationResponse;
 import com.example.cart.dto.response.CartResponse;
 import com.example.cart.service.command.CartCommandService;
+import com.example.security.gateway.CurrentUserId;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -22,27 +25,33 @@ public class CartCommandController implements CartCommandApi {
     private final CartCommandService cartCommandService;
 
     @Override
-    public ApiResponse<CartResponse> addItem(AddCartItemRequest request, Long userId) {
+    public ApiResponse<CartResponse> addItem(@Valid @RequestBody AddCartItemRequest request,
+                                             @CurrentUserId Long userId) {
         return ApiResponse.success(cartCommandService.addItem(userId, request));
     }
 
     @Override
-    public ApiResponse<CartResponse> updateQuantity(UpdateCartItemQuantityRequest request, Long userId) {
+    public ApiResponse<CartResponse> updateQuantity(@Valid @RequestBody UpdateCartItemQuantityRequest request,
+                                                    @CurrentUserId Long userId) {
         return ApiResponse.success(cartCommandService.updateQuantity(userId, request));
     }
 
     @Override
-    public ApiResponse<CartResponse> changeSelection(ChangeCartSelectionRequest request, Long userId) {
+    public ApiResponse<CartResponse> changeSelection(@Valid @RequestBody ChangeCartSelectionRequest request,
+                                                     @CurrentUserId Long userId) {
         return ApiResponse.success(cartCommandService.changeSelection(userId, request));
     }
 
     @Override
-    public ApiResponse<CartResponse> removeItem(RemoveCartItemRequest request, Long userId) {
+    public ApiResponse<CartResponse> removeItem(@Valid @RequestBody RemoveCartItemRequest request,
+                                                @CurrentUserId Long userId) {
         return ApiResponse.success(cartCommandService.removeItem(userId, request));
     }
 
     @Override
-    public ApiResponse<CartCheckoutReservationResponse> startCheckout(StartCartCheckoutRequest request, Long userId) {
+    public ApiResponse<CartCheckoutReservationResponse> startCheckout(
+            @Valid @RequestBody StartCartCheckoutRequest request,
+            @CurrentUserId Long userId) {
         return ApiResponse.success(cartCommandService.startCheckout(userId, request));
     }
 }

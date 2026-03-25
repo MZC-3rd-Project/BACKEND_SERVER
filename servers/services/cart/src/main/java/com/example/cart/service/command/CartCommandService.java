@@ -13,10 +13,13 @@ import com.example.cart.dto.request.UpdateCartItemQuantityRequest;
 import com.example.cart.dto.response.CartCheckoutReservationResponse;
 import com.example.cart.dto.response.CartItemResponse;
 import com.example.cart.dto.response.CartResponse;
+import com.example.cart.exception.CartErrorCode;
 import com.example.cart.repository.CartRepository;
 import com.example.cart.service.CartSnapshotData;
 import com.example.cart.service.CartSnapshotEnricher;
+import com.example.core.exception.BusinessException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -110,10 +113,50 @@ public class CartCommandService {
 
     public CartCheckoutReservationResponse startCheckout(Long userId, StartCartCheckoutRequest request) {
         Cart cart = loadCart(userId);
-        CartCheckoutReservationResponse response = cartSalesClient.reserve(userId, request.getIdempotencyKey(), cart.selectedLines());
+        java.util.List<CartLine> linesToReserve = resolveRequestedCheckoutLines(cart, request);
+        CartCheckoutReservationResponse response = cartSalesClient.reserve(userId, request.getIdempotencyKey(), linesToReserve);
         log.info("Cart checkout started. userId={}, orderId={}, selectedItems={}",
-                userId, response.getOrderId(), cart.selectedLines().size());
+                userId, response.getOrderId(), linesToReserve.size());
         return response;
+    }
+
+    private java.util.List<CartLine> resolveRequestedCheckoutLines(Cart cart, StartCartCheckoutRequest request) {
+        if (request.getLineItems() == null || request.getLineItems().isEmpty()) {
+            return cart.selectedLines();
+        }
+
+        java.util.List<CartLine> selectedLines = cart.selectedLines();
+        Map<CartLineIdentity, CartLine> selectedLineMap = new LinkedHashMap<>();
+        for (CartLine selectedLine : selectedLines) {
+            selectedLineMap.put(selectedLine.getIdentity(), selectedLine);
+        }
+
+        java.util.List<CartLine> resolved = new ArrayList<>();
+        for (StartCartCheckoutRequest.LineItem lineItem : request.getLineItems()) {
+            CartLineIdentity identity = CartLineIdentity.of(
+                    lineItem.getItemId(),
+                    lineItem.getReferenceId(),
+                    lineItem.getChannelType(),
+                    lineItem.getChannelRefId()
+            );
+
+            CartLine cartLine = selectedLineMap.get(identity);
+            if (cartLine == null) {
+                throw new BusinessException(CartErrorCode.INVALID_CART_LINE);
+            }
+            if (!cartLine.getStockItemType().equalsIgnoreCase(lineItem.getStockItemType())) {
+                throw new BusinessException(CartErrorCode.INVALID_CART_LINE);
+            }
+            if (cartLine.getQuantity() != lineItem.getQuantity()) {
+                throw new BusinessException(CartErrorCode.INVALID_CART_LINE);
+            }
+            resolved.add(cartLine);
+        }
+
+        if (resolved.isEmpty()) {
+            throw new BusinessException(CartErrorCode.EMPTY_SELECTED_ITEMS);
+        }
+        return resolved;
     }
 
     private Cart loadCart(Long userId) {

@@ -5,8 +5,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -18,6 +20,16 @@ public class ProfileRequest {
     private String delivery;
     private String nickname;
     private String mediaRef;
+
+    @JsonSetter("phone")
+    public void setPhoneRaw(String phone) {
+        this.phone = phone;
+    }
+
+    @JsonSetter("nickname")
+    public void setNicknameRaw(String nickname) {
+        this.nickname = nickname;
+    }
 
     @JsonSetter("mediaId")
     public void setMediaIdRaw(Object mediaIdRaw) {

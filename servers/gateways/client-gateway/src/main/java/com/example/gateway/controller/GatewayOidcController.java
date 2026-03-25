@@ -10,6 +10,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
@@ -24,27 +25,30 @@ public class GatewayOidcController {
     private final GatewayOidcProperties oidcProperties;
 
     @GetMapping("/oauth2/authorization/keycloak")
-    public Mono<ResponseEntity<Void>> authorize(@RequestParam(name = "redirect", required = false) String redirect) {
+    public Mono<Void> authorize(@RequestParam(name = "redirect", required = false) String redirect,
+                                ServerWebExchange exchange) {
         return loginService.buildAuthorizationRedirect(redirect)
-                .map(uri -> ResponseEntity.status(HttpStatus.FOUND).location(URI.create(uri)).build());
+                .flatMap(uri -> redirect(exchange.getResponse(), uri));
     }
 
     @GetMapping("/login/oauth2/code/keycloak")
-    public Mono<ResponseEntity<Void>> callback(@RequestParam("code") String code,
-                                               @RequestParam("state") String state,
-                                               ServerWebExchange exchange) {
+    public Mono<Void> callback(@RequestParam("code") String code,
+                               @RequestParam("state") String state,
+                               ServerWebExchange exchange) {
         return loginService.completeLogin(exchange, code, state)
-                .map(redirectPath -> ResponseEntity.status(HttpStatus.FOUND)
-                        .location(URI.create(redirectPath))
-                        .<Void>build())
-                .onErrorResume(error -> Mono.just(ResponseEntity.status(HttpStatus.FOUND)
-                        .location(URI.create(oidcProperties.getLoginFailureUrl()))
-                        .<Void>build()));
+                .flatMap(redirectPath -> redirect(exchange.getResponse(), redirectPath))
+                .onErrorResume(error -> redirect(exchange.getResponse(), oidcProperties.getLoginFailureUrl()));
     }
 
     @PostMapping(value = "/logout", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<Map<String, Object>>> logout(ServerWebExchange exchange) {
         return loginService.logout(exchange)
                 .thenReturn(ResponseEntity.ok(Map.of("success", true)));
+    }
+
+    private Mono<Void> redirect(ServerHttpResponse response, String location) {
+        response.setStatusCode(HttpStatus.FOUND);
+        response.getHeaders().setLocation(URI.create(location));
+        return response.setComplete();
     }
 }

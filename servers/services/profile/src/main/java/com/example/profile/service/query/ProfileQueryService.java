@@ -6,9 +6,11 @@ import com.example.profile.dto.response.AddressResponse;
 import com.example.profile.dto.response.ProfileAddressResponse;
 import com.example.profile.dto.response.ProfileResponse;
 import com.example.profile.dto.response.internal.ProfileSnapshotResponse;
+import com.example.profile.entity.ProfilesImage;
 import com.example.profile.entity.Profiles;
 import com.example.profile.exception.ProfileErrorCode;
 import com.example.profile.repository.ProfileAddressRepository;
+import com.example.profile.repository.ProfileImageRepository;
 import com.example.profile.repository.ProfileRepository;
 import com.example.profile.service.ProfileProjectionRepairService;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ import java.util.List;
 public class ProfileQueryService {
     private final ProfileRepository profileRepository;
     private final ProfileAddressRepository profileAddressRepository;
+    private final ProfileImageRepository profileImageRepository;
     private final ProfileProjectionRepairService profileProjectionRepairService;
     private final MediaClientFacade mediaClientFacade;
 
@@ -32,7 +35,9 @@ public class ProfileQueryService {
         Profiles profile = profileProjectionRepairService.ensureProfileWithImage(userId)
             .orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_NOT_FOUND));
 
-        Long mediaId = profile.getProfileImage() == null ? null : profile.getProfileImage().getMediaId();
+        Long mediaId = profileImageRepository.findByUserId(userId)
+            .map(ProfilesImage::getMediaId)
+            .orElse(null);
         return ProfileResponse.from(
             profile,
             profileAddressRepository.findByProfileIdAndIsDefaultTrue(userId),
@@ -45,10 +50,13 @@ public class ProfileQueryService {
         Profiles profile = profileProjectionRepairService.ensureProfileWithImage(userId)
             .orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_NOT_FOUND));
 
+        Long mediaId = profileImageRepository.findByUserId(userId)
+            .map(ProfilesImage::getMediaId)
+            .orElse(null);
         return new ProfileSnapshotResponse(
             profile.getUserId(),
             profile.getNickname(),
-            profile.getProfileImage() == null ? null : profile.getProfileImage().getMediaId()
+            mediaId
         );
     }
 
