@@ -6,6 +6,7 @@ import com.example.gateway.config.GatewaySessionProperties;
 import com.example.gateway.config.GatewaySecurityProperties;
 import com.example.gateway.security.session.application.GatewaySessionPrincipalResolver;
 import com.example.gateway.security.session.application.port.GatewaySessionValidator;
+import com.example.gateway.security.session.application.port.GatewaySessionRepository;
 import com.example.gateway.security.session.domain.SessionValidationResult;
 import com.example.security.signature.HmacSigner;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 class SessionHeaderRelayGlobalFilterTest {
 
@@ -306,18 +308,13 @@ class SessionHeaderRelayGlobalFilterTest {
     }
 
     @Test
-    void filter_readsDevLoginPrincipalFromWebSessionForCartRequest() {
+    void filter_readsAuthenticatedPrincipalForCartRequest() {
         SessionHeaderRelayGlobalFilter filter = createFilter("gw-internal-token", null);
         MockServerHttpRequest request = MockServerHttpRequest.get("/api/v1/cart").build();
-        MockServerWebExchange exchange = MockServerWebExchange.from(request);
-        Authentication authentication = new UsernamePasswordAuthenticationToken(
-                "test",
-                "N/A",
-                List.of(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_BUYER"))
-        );
-        exchange.getSession().block().getAttributes().put(
-                WebSessionServerSecurityContextRepository.DEFAULT_SPRING_SECURITY_CONTEXT_ATTR_NAME,
-                new SecurityContextImpl(authentication)
+        ServerWebExchange exchange = authenticatedExchange(
+                request,
+                Map.of("userId", 9000001L, "roles", List.of("USER", "BUYER"), "sid", "dev-login-test"),
+                List.of("ROLE_USER", "ROLE_BUYER")
         );
         CapturingChain chain = new CapturingChain();
 
@@ -483,7 +480,12 @@ class SessionHeaderRelayGlobalFilterTest {
         devLoginProperties.setUserId(9000001L);
         devLoginProperties.setRoles(List.of("USER", "BUYER", "SELLER"));
         devLoginProperties.setSessionIdPrefix("dev-login");
-        GatewaySessionPrincipalResolver resolver = new GatewaySessionPrincipalResolver(new SessionClaimParser());
+        GatewaySessionRepository sessionRepository = mock(GatewaySessionRepository.class);
+        GatewaySessionPrincipalResolver resolver = new GatewaySessionPrincipalResolver(
+                new SessionClaimParser(),
+                sessionProperties
+        );
+        resolver.setSessionRepository(sessionRepository);
         resolver.setDevLoginProperties(devLoginProperties);
         return new SessionHeaderRelayGlobalFilter(
                 resolver,

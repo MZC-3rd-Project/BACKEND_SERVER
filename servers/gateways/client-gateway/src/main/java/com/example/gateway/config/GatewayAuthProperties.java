@@ -15,4 +15,5 @@ public class GatewayAuthProperties {
     private String authServiceUrl = "http://localhost:8081";
     private String userServiceUrl = "http://localhost:8082";
     private String loginSuccessUrl = "/login/success";
+    private String loginFailureUrl = "/auth/login?error=login_failed";
 }

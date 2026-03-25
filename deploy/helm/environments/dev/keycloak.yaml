@@ -71,10 +71,11 @@ env:
   KC_HEALTH_ENABLED: "true"
   KC_METRICS_ENABLED: "true"
   KC_PROXY_HEADERS: xforwarded
+  KC_HOSTNAME: daoy75hsrrswu.cloudfront.net
   KC_HOSTNAME_STRICT: "false"
-  KEYCLOAK_GATEWAY_REDIRECT_URI: http://k8s-donmoadevgateway-3983261778-1519590243.ap-northeast-2.elb.amazonaws.com/login/oauth2/code/keycloak
-  KEYCLOAK_GATEWAY_WEB_ORIGIN: http://k8s-donmoadevgateway-3983261778-1519590243.ap-northeast-2.elb.amazonaws.com
-  KEYCLOAK_GATEWAY_POST_LOGOUT_REDIRECT_URI: http://k8s-donmoadevgateway-3983261778-1519590243.ap-northeast-2.elb.amazonaws.com
+  KEYCLOAK_GATEWAY_REDIRECT_URI: https://daoy75hsrrswu.cloudfront.net/login/oauth2/code/keycloak
+  KEYCLOAK_GATEWAY_WEB_ORIGIN: https://daoy75hsrrswu.cloudfront.net
+  KEYCLOAK_GATEWAY_POST_LOGOUT_REDIRECT_URI: https://daoy75hsrrswu.cloudfront.net
   KEYCLOAK_ADMIN: admin
 
 secretEnv:

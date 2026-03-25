@@ -31,6 +31,7 @@ public class GatewaySessionProperties {
     private String refreshReuseDetectedField = "reuseDetected";
     private String refreshReuseDetectedAtField = "reuseDetectedAt";
     private String refreshTokenHashPepper = "";
+    private String refreshTokenEncryptionSecret = "";
     private String sessionCookieName = "SESSION";
     private String sessionCookiePath = "/";
     private String keycloakLogoutUrl = "";

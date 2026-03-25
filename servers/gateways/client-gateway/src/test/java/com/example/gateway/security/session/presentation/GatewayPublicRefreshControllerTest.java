@@ -1,8 +1,8 @@
 package com.example.gateway.security.session.presentation;
 
 import com.example.gateway.config.GatewaySessionProperties;
-import com.example.gateway.security.session.application.GatewayRefreshTokenOpsService;
-import com.example.gateway.security.session.domain.GatewayRefreshRotateRequest;
+import com.example.gateway.security.session.application.GatewayBrowserRefreshService;
+import com.example.gateway.security.session.application.GatewaySessionUnauthorizedException;
 import com.example.gateway.security.session.domain.GatewayRefreshRotateResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,7 +25,7 @@ import static org.mockito.Mockito.when;
 class GatewayPublicRefreshControllerTest {
 
     @Mock
-    private GatewayRefreshTokenOpsService refreshTokenOpsService;
+    private GatewayBrowserRefreshService browserRefreshService;
 
     private GatewayPublicRefreshController controller;
 
@@ -34,23 +34,20 @@ class GatewayPublicRefreshControllerTest {
         GatewaySessionProperties properties = new GatewaySessionProperties();
         properties.setSessionCookieName("SESSION");
         properties.setSessionCookiePath("/");
-        controller = new GatewayPublicRefreshController(refreshTokenOpsService, properties);
+        controller = new GatewayPublicRefreshController(browserRefreshService, properties);
     }
 
     @Test
     void refresh_returns200WhenRotationSucceeded() {
-        GatewayRefreshRotateRequest request = new GatewayRefreshRotateRequest(
-                1L, "family-1", "sid-1", "current-token", "next-token"
-        );
         GatewayRefreshRotateResponse response = new GatewayRefreshRotateResponse(
                 1L, "family-1", "ROTATED", 0L, false, false
         );
-        when(refreshTokenOpsService.rotateRefreshTokenFamily(request)).thenReturn(Mono.just(response));
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.post("/api/v1/auth/refresh").build()
         );
+        when(browserRefreshService.refresh(exchange)).thenReturn(Mono.just(response));
 
-        ResponseEntity<Map<String, Object>> entity = controller.refresh(request, exchange).block();
+        ResponseEntity<Map<String, Object>> entity = controller.refresh(exchange).block();
 
         assertThat(entity).isNotNull();
         assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -61,18 +58,15 @@ class GatewayPublicRefreshControllerTest {
 
     @Test
     void refresh_returns401AndExpiresCookieWhenReuseDetected() {
-        GatewayRefreshRotateRequest request = new GatewayRefreshRotateRequest(
-                1L, "family-1", "sid-1", "current-token", "next-token"
-        );
         GatewayRefreshRotateResponse response = new GatewayRefreshRotateResponse(
                 1L, "family-1", "REUSE_DETECTED", 3L, true, true
         );
-        when(refreshTokenOpsService.rotateRefreshTokenFamily(request)).thenReturn(Mono.just(response));
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.post("/api/v1/auth/refresh").build()
         );
+        when(browserRefreshService.refresh(exchange)).thenReturn(Mono.just(response));
 
-        ResponseEntity<Map<String, Object>> entity = controller.refresh(request, exchange).block();
+        ResponseEntity<Map<String, Object>> entity = controller.refresh(exchange).block();
 
         assertThat(entity).isNotNull();
         assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
@@ -83,20 +77,17 @@ class GatewayPublicRefreshControllerTest {
     }
 
     @Test
-    void refresh_returns400WhenValidationFails() {
-        GatewayRefreshRotateRequest request = new GatewayRefreshRotateRequest(
-                1L, "", "sid-1", "current-token", "next-token"
-        );
-        when(refreshTokenOpsService.rotateRefreshTokenFamily(request))
-                .thenReturn(Mono.error(new IllegalArgumentException("tokenFamilyId가 비어 있습니다")));
+    void refresh_returns401WhenSessionUnauthorized() {
         MockServerWebExchange exchange = MockServerWebExchange.from(
                 MockServerHttpRequest.post("/api/v1/auth/refresh").build()
         );
+        when(browserRefreshService.refresh(exchange))
+                .thenReturn(Mono.error(new GatewaySessionUnauthorizedException("세션 쿠키를 찾지 못했습니다")));
 
-        ResponseEntity<Map<String, Object>> entity = controller.refresh(request, exchange).block();
+        ResponseEntity<Map<String, Object>> entity = controller.refresh(exchange).block();
 
         assertThat(entity).isNotNull();
-        assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(entity.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         assertThat(entity.getBody()).containsEntry("success", false);
     }
 }

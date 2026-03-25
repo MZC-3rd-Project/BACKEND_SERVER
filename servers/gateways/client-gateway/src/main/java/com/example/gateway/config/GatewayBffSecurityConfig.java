@@ -1,22 +1,19 @@
 package com.example.gateway.config;
 
+import com.example.gateway.security.GatewayAuthFailureRedirectHandler;
+import com.example.gateway.security.GatewayRedisSessionAuthenticationSuccessHandler;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.userdetails.MapReactiveUserDetailsService;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.web.server.DefaultServerRedirectStrategy;
 import org.springframework.security.web.server.SecurityWebFilterChain;
-import org.springframework.security.web.server.authentication.RedirectServerAuthenticationSuccessHandler;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.List;
 
@@ -54,41 +51,28 @@ public class GatewayBffSecurityConfig {
     @Bean
     @Order(1)
     @ConditionalOnProperty(prefix = "gateway.auth", name = "enabled", havingValue = "true")
+    @ConditionalOnProperty(prefix = "gateway.session", name = "enabled", havingValue = "true")
     @ConditionalOnMissingBean(name = "devLoginSecurityWebFilterChain")
     public SecurityWebFilterChain oauth2SecurityWebFilterChain(ServerHttpSecurity http,
-                                                               GatewayAuthProperties properties) {
+                                                               GatewayRedisSessionAuthenticationSuccessHandler successHandler,
+                                                               GatewayAuthFailureRedirectHandler failureHandler) {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
-                .authorizeExchange(exchanges -> exchanges
-                        .pathMatchers("/api/profile", "/api/profile/**", "/api/v1/users/**", "/api/users/**")
-                        .authenticated()
-                        .anyExchange().permitAll())
-                .oauth2Login(oauth2 -> oauth2.authenticationSuccessHandler(loginSuccessHandler(properties)))
+                .authorizeExchange(exchanges -> exchanges.anyExchange().permitAll())
+                .oauth2Login(oauth2 -> oauth2
+                        .authenticationSuccessHandler(successHandler)
+                        .authenticationFailureHandler(failureHandler))
                 .oauth2Client(Customizer.withDefaults())
                 .build();
     }
 
     @Bean
     @Order(2)
-    @ConditionalOnProperty(prefix = "gateway.auth", name = "enabled", havingValue = "false", matchIfMissing = true)
-    @ConditionalOnMissingBean(name = "devLoginSecurityWebFilterChain")
+    @ConditionalOnMissingBean(name = {"devLoginSecurityWebFilterChain", "oauth2SecurityWebFilterChain"})
     public SecurityWebFilterChain permitAllSecurityWebFilterChain(ServerHttpSecurity http) {
         return http
                 .csrf(ServerHttpSecurity.CsrfSpec::disable)
                 .authorizeExchange(exchanges -> exchanges.anyExchange().permitAll())
                 .build();
-    }
-
-    private RedirectServerAuthenticationSuccessHandler loginSuccessHandler(GatewayAuthProperties properties) {
-        String successUrl = properties.getLoginSuccessUrl();
-        if (successUrl == null || successUrl.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "gateway.auth.login-success-url is empty");
-        }
-
-        RedirectServerAuthenticationSuccessHandler successHandler =
-                new RedirectServerAuthenticationSuccessHandler(successUrl);
-        successHandler.setRedirectStrategy(new DefaultServerRedirectStrategy());
-        successHandler.setLocation(UriComponentsBuilder.fromUriString(successUrl).build().toUri());
-        return successHandler;
     }
 }

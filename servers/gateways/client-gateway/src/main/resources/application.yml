@@ -127,6 +127,12 @@ gateway:
     auth-service-url: ${app.service.auth-url:http://localhost:8081}
     user-service-url: ${app.service.user-url:http://localhost:8082}
     login-success-url: ${GATEWAY_AUTH_LOGIN_SUCCESS_URL:/login/success}
+    login-failure-url: ${GATEWAY_AUTH_LOGIN_FAILURE_URL:/auth/login?error=login_failed}
+  oidc:
+    issuer-uri: ${GATEWAY_OAUTH2_ISSUER_URI:http://keycloak.internal:8080/realms/don-moa}
+    client-id: ${GATEWAY_OAUTH2_CLIENT_ID:don-moa-gateway}
+    client-secret: ${GATEWAY_OAUTH2_CLIENT_SECRET:}
+    client-authentication-method: ${GATEWAY_OAUTH2_CLIENT_AUTHENTICATION_METHOD:client_secret_basic}
   dev-login:
     enabled: ${GATEWAY_DEV_LOGIN_ENABLED:false}
     username: ${GATEWAY_DEV_LOGIN_USERNAME:test}
@@ -162,6 +168,7 @@ gateway:
     refresh-reuse-detected-field: ${GATEWAY_SESSION_REFRESH_REUSE_DETECTED_FIELD:reuseDetected}
     refresh-reuse-detected-at-field: ${GATEWAY_SESSION_REFRESH_REUSE_DETECTED_AT_FIELD:reuseDetectedAt}
     refresh-token-hash-pepper: ${GATEWAY_SESSION_REFRESH_TOKEN_HASH_PEPPER:}
+    refresh-token-encryption-secret: ${GATEWAY_SESSION_REFRESH_TOKEN_ENCRYPTION_SECRET:${GATEWAY_SESSION_REFRESH_TOKEN_HASH_PEPPER:}}
     session-cookie-name: ${GATEWAY_SESSION_COOKIE_NAME:SESSION}
     session-cookie-path: ${GATEWAY_SESSION_COOKIE_PATH:/}
     keycloak-logout-url: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_URL:}

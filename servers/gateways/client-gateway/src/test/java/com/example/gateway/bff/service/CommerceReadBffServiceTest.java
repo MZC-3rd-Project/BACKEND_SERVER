@@ -1,9 +1,11 @@
 package com.example.gateway.bff.service;
 
 import com.example.contracts.http.HttpHeaderNames;
+import com.example.gateway.config.GatewaySessionProperties;
 import com.example.gateway.config.GatewaySecurityProperties;
 import com.example.gateway.security.SessionClaimParser;
 import com.example.gateway.security.session.application.GatewaySessionPrincipalResolver;
+import com.example.gateway.security.session.application.port.GatewaySessionRepository;
 import com.example.security.signature.HmacSigner;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +35,7 @@ import java.util.Map;
 import java.util.Queue;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 class CommerceReadBffServiceTest {
 
@@ -48,7 +51,11 @@ class CommerceReadBffServiceTest {
         securityProperties.setInternalAuthToken("internal-secret");
 
         GatewaySessionPrincipalResolver sessionPrincipalResolver =
-                new GatewaySessionPrincipalResolver(new SessionClaimParser());
+                new GatewaySessionPrincipalResolver(
+                        new SessionClaimParser(),
+                        new GatewaySessionProperties()
+                );
+        sessionPrincipalResolver.setSessionRepository(mock(GatewaySessionRepository.class));
 
         StaticListableBeanFactory beanFactory = new StaticListableBeanFactory();
         beanFactory.addBean("hmacSigner", new HmacSigner("test-signing-key"));

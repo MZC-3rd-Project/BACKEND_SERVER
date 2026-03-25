@@ -3,38 +3,23 @@
   "namespace": "donmoa-dev",
   "fullDeploy": false,
   "selectedTargets": [
-    "keycloak",
-    "payment"
+    "client-gateway"
   ],
-  "generatedAt": "2026-03-24T02:07:30Z",
+  "generatedAt": "2026-03-24T23:22:05Z",
   "services": [
     {
-      "key": "keycloak",
-      "buildType": "external-image",
-      "gradleModule": null,
-      "namespace": "donmoa-dev",
-      "releaseName": "keycloak",
-      "rolloutName": "keycloak",
-      "workloadKind": "Deployment",
-      "rolloutWave": 2,
-      "serviceName": "keycloak",
-      "valuesFile": "deploy/helm/environments/dev/keycloak.yaml",
-      "imageRepository": "quay.io/keycloak/keycloak",
-      "imageTag": "24.0.5"
-    },
-    {
-      "key": "payment",
+      "key": "client-gateway",
       "buildType": "gradle",
-      "gradleModule": "servers:services:payment",
+      "gradleModule": "servers:gateways:client-gateway",
       "namespace": "donmoa-dev",
-      "releaseName": "payment",
-      "rolloutName": "payment-service",
-      "workloadKind": "Deployment",
-      "rolloutWave": 5,
-      "serviceName": "payment-service",
-      "valuesFile": "deploy/helm/environments/dev/payment.yaml",
-      "imageRepository": "682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-payment-service",
-      "imageTag": "20260324-full-redeploy"
+      "releaseName": "client-gateway",
+      "rolloutName": "client-gateway",
+      "workloadKind": "Rollout",
+      "rolloutWave": 3,
+      "serviceName": "client-gateway",
+      "valuesFile": "deploy/helm/environments/dev/client-gateway.yaml",
+      "imageRepository": "682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-client-gateway",
+      "imageTag": "login-success-20260325"
     }
   ]
 }

@@ -1,23 +1,20 @@
 package com.example.gateway.security.session.presentation;
 
 import com.example.gateway.config.GatewaySessionProperties;
-import com.example.gateway.security.session.application.GatewayRefreshTokenOpsService;
-import com.example.gateway.security.session.domain.GatewayRefreshRotateRequest;
+import com.example.gateway.security.session.application.GatewayBrowserRefreshService;
+import com.example.gateway.security.session.application.GatewaySessionUnauthorizedException;
 import com.example.gateway.security.session.domain.GatewayRefreshRotateResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.util.Map;
 
 @RestController
@@ -28,14 +25,14 @@ public class GatewayPublicRefreshController {
 
     private static final String CODE_INVALID_REQUEST = "GW-REFRESH-400";
     private static final String CODE_REUSE_DETECTED = "GW-REFRESH-401";
+    private static final String CODE_UNAUTHORIZED = "GW-REFRESH-403";
 
-    private final GatewayRefreshTokenOpsService refreshTokenOpsService;
+    private final GatewayBrowserRefreshService browserRefreshService;
     private final GatewaySessionProperties sessionProperties;
 
     @PostMapping("/refresh")
-    public Mono<ResponseEntity<Map<String, Object>>> refresh(@RequestBody GatewayRefreshRotateRequest request,
-                                                             ServerWebExchange exchange) {
-        return refreshTokenOpsService.rotateRefreshTokenFamily(request)
+    public Mono<ResponseEntity<Map<String, Object>>> refresh(ServerWebExchange exchange) {
+        return browserRefreshService.refresh(exchange)
                 .flatMap(response -> {
                     if (isReuseDetected(response)) {
                         return invalidateBrowserSession(exchange)
@@ -44,6 +41,10 @@ public class GatewayPublicRefreshController {
                     }
                     return Mono.just(ResponseEntity.ok(success(response)));
                 })
+                .onErrorResume(GatewaySessionUnauthorizedException.class,
+                        error -> invalidateBrowserSession(exchange)
+                                .thenReturn(ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                        .body(error(CODE_UNAUTHORIZED, error.getMessage()))))
                 .onErrorResume(IllegalArgumentException.class,
                         error -> Mono.just(ResponseEntity.badRequest()
                                 .body(error(CODE_INVALID_REQUEST, error.getMessage()))));
@@ -58,21 +59,19 @@ public class GatewayPublicRefreshController {
                 .flatMap(webSession -> webSession.invalidate()
                         .onErrorResume(error -> Mono.empty()))
                 .then(Mono.fromRunnable(() -> {
-                    String cookieName = sessionProperties.getSessionCookieName();
-                    if (!StringUtils.hasText(cookieName)) {
+                    if (!StringUtils.hasText(sessionProperties.getSessionCookieName())) {
                         return;
                     }
-                    boolean secure = "https".equalsIgnoreCase(exchange.getRequest().getURI().getScheme());
-                    ResponseCookie expiredCookie = ResponseCookie.from(cookieName, "")
+                    exchange.getResponse().addCookie(org.springframework.http.ResponseCookie.from(
+                                    sessionProperties.getSessionCookieName(), "")
                             .path(StringUtils.hasText(sessionProperties.getSessionCookiePath())
                                     ? sessionProperties.getSessionCookiePath()
                                     : "/")
                             .httpOnly(true)
-                            .secure(secure)
+                            .secure("https".equalsIgnoreCase(exchange.getRequest().getURI().getScheme()))
                             .sameSite("Lax")
-                            .maxAge(Duration.ZERO)
-                            .build();
-                    exchange.getResponse().addCookie(expiredCookie);
+                            .maxAge(java.time.Duration.ZERO)
+                            .build());
                 }));
     }
 
