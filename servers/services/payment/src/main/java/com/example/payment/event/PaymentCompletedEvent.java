@@ -15,7 +15,6 @@ public class PaymentCompletedEvent extends DomainEvent {
     private final Long userId;
     private final Long amount;
     private final LocalDateTime paidAt;
-    private final Long totalAmount;
 
     public PaymentCompletedEvent(Long paymentId, Long orderId, Long userId, Long amount, LocalDateTime paidAt) {
         super("payment-events");
@@ -24,7 +23,6 @@ public class PaymentCompletedEvent extends DomainEvent {
         this.userId = userId;
         this.amount = amount;
         this.paidAt = paidAt;
-        this.totalAmount = amount;
     }
 
     @Override
@@ -40,7 +38,6 @@ public class PaymentCompletedEvent extends DomainEvent {
         payload.put("userId", userId);
         payload.put("amount", amount);
         payload.put("paidAt", paidAt);
-        payload.put("totalAmount", totalAmount);
         return payload;
     }
 }
