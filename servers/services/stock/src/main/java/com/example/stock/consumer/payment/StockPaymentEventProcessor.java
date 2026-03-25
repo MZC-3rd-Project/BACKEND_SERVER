@@ -30,7 +30,8 @@ public class StockPaymentEventProcessor extends AbstractIdempotentEventSpecProce
         this.eventSpecs = Map.of(
                 "PAYMENT_COMPLETED", EventSpec.of(PaymentEventMessage.class, this::hasOrderOrReservation, this::handlePaymentCompleted),
                 "PAYMENT_CANCELLED", EventSpec.of(PaymentEventMessage.class, this::hasOrderOrReservation, this::handlePaymentCancelled),
-                "PAYMENT_TIMED_OUT", EventSpec.of(PaymentEventMessage.class, this::hasOrderOrReservation, this::handlePaymentTimedOut)
+                "PAYMENT_TIMED_OUT", EventSpec.of(PaymentEventMessage.class, this::hasOrderOrReservation, this::handlePaymentTimedOut),
+                "PAYMENT_REFUNDED", EventSpec.of(PaymentEventMessage.class, this::hasOrderOrReservation, this::handlePaymentRefunded)
         );
     }
 
@@ -64,6 +65,16 @@ public class StockPaymentEventProcessor extends AbstractIdempotentEventSpecProce
     @Override
     protected Map<String, EventSpec<PaymentEventMessage>> eventSpecs() {
         return eventSpecs;
+    }
+
+    private void handlePaymentRefunded(PaymentEventMessage event) {
+        if (event.getOrderId() != null) {
+            log.info("결제 환불 -> order 예약 취소 처리: orderId={}", event.getOrderId());
+            stockCommandService.cancelReservationsByOrderId(event.getOrderId());
+            return;
+        }
+        log.info("결제 환불 -> 예약 취소 처리: reservationId={}", event.getReservationId());
+        stockCommandService.cancelReservation(event.getReservationId());
     }
 
     private boolean hasOrderOrReservation(PaymentEventMessage event) {
