@@ -27,6 +27,9 @@ public interface HotDealRepository extends JpaRepository<HotDeal, Long> {
 
     boolean existsByItemIdAndStatusIn(Long itemId, List<HotDealStatus> statuses);
 
+    @Query(value = "SELECT * FROM hot_deals WHERE id = :id", nativeQuery = true)
+    Optional<HotDeal> findByIdIncludingDeleted(@Param("id") Long id);
+
     @Modifying
     @Query("""
             UPDATE HotDeal h

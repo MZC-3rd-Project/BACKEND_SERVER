@@ -2,6 +2,7 @@ package com.example.hotdeal.controller.api;
 
 import com.example.api.response.ApiResponse;
 import com.example.hotdeal.dto.*;
+import com.example.hotdeal.dto.UpdateHotDealRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -43,4 +44,18 @@ public interface HotDealCommandApi {
     SseEmitter streamQueue(
             @PathVariable Long hotDealId,
             @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long userId);
+
+    @Operation(summary = "핫딜 수정")
+    @PutMapping("/{hotDealId}")
+    ApiResponse<HotDealDetailResponse> updateHotDeal(
+            @PathVariable Long hotDealId,
+            @Valid @RequestBody UpdateHotDealRequest request);
+
+    @Operation(summary = "핫딜 삭제 (소프트)")
+    @DeleteMapping("/{hotDealId}")
+    ApiResponse<Void> deleteHotDeal(@PathVariable Long hotDealId);
+
+    @Operation(summary = "핫딜 삭제 취소 (복구)")
+    @PostMapping("/{hotDealId}/restore")
+    ApiResponse<HotDealDetailResponse> restoreHotDeal(@PathVariable Long hotDealId);
 }

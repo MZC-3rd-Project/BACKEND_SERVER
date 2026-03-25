@@ -107,4 +107,16 @@ public class HotDeal extends BaseEntity {
     public boolean isSoldOut() {
         return soldQuantity >= maxQuantity;
     }
+
+    public void update(Integer discountRate, Integer maxQuantity, Integer maxPerUser,
+                       LocalDateTime startAt, LocalDateTime endAt) {
+        if (discountRate != null) {
+            this.discountRate = discountRate;
+            this.discountedPrice = this.originalPrice * (100 - discountRate) / 100;
+        }
+        if (maxQuantity != null) this.maxQuantity = maxQuantity;
+        if (maxPerUser != null) this.maxPerUser = maxPerUser;
+        if (startAt != null) this.startAt = startAt;
+        if (endAt != null) this.endAt = endAt;
+    }
 }
