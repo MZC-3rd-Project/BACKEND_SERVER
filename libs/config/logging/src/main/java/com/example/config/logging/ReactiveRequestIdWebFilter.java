@@ -24,7 +24,15 @@ public class ReactiveRequestIdWebFilter implements WebFilter {
         exchange.getAttributes().put(RequestIdSupport.REQUEST_ID_KEY, requestId);
 
         if (properties.isWriteRequestIdResponseHeader()) {
-            exchange.getResponse().getHeaders().set(properties.getRequestIdHeader(), requestId);
+            exchange.getResponse().beforeCommit(() -> {
+                try {
+                    exchange.getResponse().getHeaders().set(properties.getRequestIdHeader(), requestId);
+                } catch (UnsupportedOperationException ignored) {
+                    // Response headers can become read-only on certain error/commit paths.
+                    // Skipping request-id echo is safer than failing the response after commit.
+                }
+                return Mono.empty();
+            });
         }
 
         return Mono.defer(() -> {
