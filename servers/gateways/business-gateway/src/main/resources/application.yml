@@ -59,6 +59,10 @@ spring:
               uri: ${app.service.chat-url:http://localhost:8093}
               predicates:
                 - Path=/api/v1/chat/**
+            - id: chat-websocket
+              uri: ${app.service.chat-ws-url:ws://localhost:8093}
+              predicates:
+                - Path=/ws/chat,/ws/chat/**
 
 gateway:
   auth:
@@ -77,7 +81,7 @@ gateway:
     internal-auth-token: ${GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
     allow-client-identity-headers: ${GATEWAY_SECURITY_ALLOW_CLIENT_IDENTITY_HEADERS:true}
     allow-client-signed-context-header: ${GATEWAY_SECURITY_ALLOW_CLIENT_SIGNED_CONTEXT_HEADER:false}
-    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/bff,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/seller,/api/store,/api/campaigns,/api/funding,/api/v1/hot-deals,/api/v1/media,/api/v1/orders,/api/v1/order-query,/api/v1/reviews,/api/v1/chat}
+    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/bff,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/seller,/api/store,/api/campaigns,/api/funding,/api/v1/hot-deals,/api/v1/media,/api/v1/orders,/api/v1/order-query,/api/v1/reviews,/api/v1/chat,/ws/chat}
     require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:}
     require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:}
   session:
@@ -110,6 +114,7 @@ app:
     order-query-url: ${ORDER_QUERY_SERVICE_URL:http://localhost:8073}
     review-url: ${REVIEW_SERVICE_URL:http://localhost:8097}
     chat-url: ${CHAT_SERVICE_URL:http://localhost:8093}
+    chat-ws-url: ${CHAT_WS_SERVICE_URL:ws://localhost:8093}
     auth-url: ${AUTH_SERVICE_URL:http://localhost:8081}
     user-url: ${USER_SERVICE_URL:http://localhost:8082}
   security:

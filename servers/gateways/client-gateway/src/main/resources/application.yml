@@ -127,7 +127,7 @@ gateway:
     auth-service-url: ${app.service.auth-url:http://localhost:8081}
     user-service-url: ${app.service.user-url:http://localhost:8082}
   dev-login:
-    enabled: ${GATEWAY_DEV_LOGIN_ENABLED:false}
+    enabled: ${GATEWAY_DEV_LOGIN_ENABLED:true}
     username: ${GATEWAY_DEV_LOGIN_USERNAME:test}
     password: ${GATEWAY_DEV_LOGIN_PASSWORD:test123}
     user-id: ${GATEWAY_DEV_LOGIN_USER_ID:9000001}
