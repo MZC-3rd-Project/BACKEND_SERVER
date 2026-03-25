@@ -13,7 +13,6 @@ import com.example.payment.domain.PaymentStatus;
 import com.example.payment.dto.request.PaymentConfirmRequest;
 import com.example.payment.dto.response.PaymentConfirmResponse;
 import com.example.payment.event.PaymentCompletedEvent;
-import com.example.payment.event.PaymentFailedEvent;
 import com.example.payment.exception.PaymentErrorCode;
 import com.example.payment.exception.TossPaymentsApiException;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -35,6 +34,7 @@ public class PaymentCommandService {
     private final TossPaymentsClient tossPaymentsClient;
     private final EventPublisher eventPublisher;
     private final ObjectMapper objectMapper;
+    private final PaymentFailureHandler paymentFailureHandler;
 
     @DistributedLock(key = "'payment:confirm:' + #request.orderId()", waitTime = 5, leaseTime = 15)
     public PaymentConfirmResponse confirmPayment(PaymentConfirmRequest request, Long userId) {
@@ -91,19 +91,9 @@ public class PaymentCommandService {
             return PaymentConfirmResponse.from(payment);
 
         } catch (TossPaymentsApiException e) {
-            payment.markFailed(request.paymentKey(), e.getResponseBody(), e.getResponseBody());
-
-            eventPublisher.publish(
-                    new PaymentFailedEvent(
-                            payment.getId(),
-                            payment.getOrderId(),
-                            payment.getUserId(),
-                            payment.getAmount(),
-                            e.getResponseBody()
-                    ),
-                    EventMetadata.of("Payment", String.valueOf(payment.getId()))
+            paymentFailureHandler.handleConfirmFailure(
+                    payment.getId(), request.paymentKey(), e.getResponseBody()
             );
-
             log.error("결제 승인 실패: paymentId={}, orderId={}, error={}",
                     payment.getId(), payment.getOrderId(), e.getResponseBody());
             throw new BusinessException(PaymentErrorCode.TOSS_CONFIRM_FAILED);
