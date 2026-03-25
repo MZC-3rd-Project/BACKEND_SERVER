@@ -5,6 +5,8 @@ import com.example.event.consumer.AbstractIdempotentEventSpecProcessor;
 import com.example.event.consumer.EventEnvelope;
 import com.example.event.consumer.EventSpec;
 import com.example.event.inbox.InboxConsumerBinding;
+import com.example.event.payment.PaymentEventPayload;
+import com.example.event.payment.PaymentEventType;
 import com.example.stock.service.command.StockCommandService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -19,7 +21,7 @@ public class StockPaymentEventProcessor extends AbstractIdempotentEventSpecProce
     public static final String CONSUMER_NAME = "stock-payment-events-consumer";
     private static final String IDEMPOTENT_EVENT_TYPE = "PAYMENT_EVENT";
     private final StockCommandService stockCommandService;
-    private final Map<String, EventSpec<PaymentEventMessage>> eventSpecs;
+    private final Map<String, EventSpec<PaymentEventPayload>> eventSpecs;
 
     public StockPaymentEventProcessor(
             StockCommandService stockCommandService,
@@ -27,10 +29,17 @@ public class StockPaymentEventProcessor extends AbstractIdempotentEventSpecProce
     ) {
         super(idempotentConsumerService);
         this.stockCommandService = stockCommandService;
-        this.eventSpecs = Map.of(
-                "PAYMENT_COMPLETED", EventSpec.of(PaymentEventMessage.class, this::hasOrderOrReservation, this::handlePaymentCompleted),
-                "PAYMENT_CANCELLED", EventSpec.of(PaymentEventMessage.class, this::hasOrderOrReservation, this::handlePaymentCancelled),
-                "PAYMENT_TIMED_OUT", EventSpec.of(PaymentEventMessage.class, this::hasOrderOrReservation, this::handlePaymentTimedOut)
+        this.eventSpecs = Map.ofEntries(
+                Map.entry(PaymentEventType.PAYMENT_COMPLETED.value(),
+                        EventSpec.of(PaymentEventPayload.class, this::hasOrderId, this::handlePaymentCompleted)),
+                Map.entry(PaymentEventType.PAYMENT_FAILED.value(),
+                        EventSpec.of(PaymentEventPayload.class, this::hasOrderId, this::handlePaymentFailed)),
+                Map.entry(PaymentEventType.PAYMENT_CANCELLED.value(),
+                        EventSpec.of(PaymentEventPayload.class, this::hasOrderId, this::handlePaymentCancelled)),
+                Map.entry(PaymentEventType.PAYMENT_TIMED_OUT.value(),
+                        EventSpec.of(PaymentEventPayload.class, this::hasOrderId, this::handlePaymentTimedOut)),
+                Map.entry(PaymentEventType.PAYMENT_REFUNDED.value(),
+                        EventSpec.of(PaymentEventPayload.class, this::hasOrderId, this::handlePaymentRefunded))
         );
     }
 
@@ -41,7 +50,7 @@ public class StockPaymentEventProcessor extends AbstractIdempotentEventSpecProce
 
     @Override
     protected <T extends EventEnvelope> void onInvalidPayload(T event, String message, String eventId, String eventType) {
-        log.error("[PaymentConsumer] orderId/reservationId가 모두 null입니다. message={}", message);
+        log.error("[PaymentConsumer] orderId가 null입니다. eventId={}, eventType={}, message={}", eventId, eventType, message);
     }
 
     @Override
@@ -62,41 +71,36 @@ public class StockPaymentEventProcessor extends AbstractIdempotentEventSpecProce
     }
 
     @Override
-    protected Map<String, EventSpec<PaymentEventMessage>> eventSpecs() {
+    protected Map<String, EventSpec<PaymentEventPayload>> eventSpecs() {
         return eventSpecs;
     }
 
-    private boolean hasOrderOrReservation(PaymentEventMessage event) {
-        return event.getOrderId() != null || event.getReservationId() != null;
+    private boolean hasOrderId(PaymentEventPayload event) {
+        return event.getOrderId() != null;
     }
 
-    private void handlePaymentCompleted(PaymentEventMessage event) {
-        if (event.getOrderId() != null) {
-            log.info("결제 완료 -> order 예약 확정 처리: orderId={}", event.getOrderId());
-            stockCommandService.confirmReservationsByOrderId(event.getOrderId());
-            return;
-        }
-        log.info("결제 완료 -> 예약 확정 처리: reservationId={}", event.getReservationId());
-        stockCommandService.confirmReservationById(event.getReservationId());
+    private void handlePaymentCompleted(PaymentEventPayload event) {
+        log.info("결제 완료 -> 재고 예약 확정: orderId={}", event.getOrderId());
+        stockCommandService.confirmReservationsByOrderId(event.getOrderId());
     }
 
-    private void handlePaymentCancelled(PaymentEventMessage event) {
-        if (event.getOrderId() != null) {
-            log.info("결제 취소 -> order 예약 취소 처리: orderId={}", event.getOrderId());
-            stockCommandService.cancelReservationsByOrderId(event.getOrderId());
-            return;
-        }
-        log.info("결제 취소 -> 예약 취소 처리: reservationId={}", event.getReservationId());
-        stockCommandService.cancelReservation(event.getReservationId());
+    private void handlePaymentFailed(PaymentEventPayload event) {
+        log.info("결제 실패 -> 재고 예약 취소: orderId={}", event.getOrderId());
+        stockCommandService.cancelReservationsByOrderId(event.getOrderId());
     }
 
-    private void handlePaymentTimedOut(PaymentEventMessage event) {
-        if (event.getOrderId() != null) {
-            log.info("결제 타임아웃 -> order 예약 취소 처리: orderId={}", event.getOrderId());
-            stockCommandService.cancelReservationsByOrderId(event.getOrderId());
-            return;
-        }
-        log.info("결제 타임아웃 -> 예약 취소 처리: reservationId={}", event.getReservationId());
-        stockCommandService.cancelReservation(event.getReservationId());
+    private void handlePaymentCancelled(PaymentEventPayload event) {
+        log.info("결제 취소 -> 재고 예약 취소: orderId={}", event.getOrderId());
+        stockCommandService.cancelReservationsByOrderId(event.getOrderId());
+    }
+
+    private void handlePaymentTimedOut(PaymentEventPayload event) {
+        log.info("결제 타임아웃 -> 재고 예약 취소: orderId={}", event.getOrderId());
+        stockCommandService.cancelReservationsByOrderId(event.getOrderId());
+    }
+
+    private void handlePaymentRefunded(PaymentEventPayload event) {
+        log.info("결제 환불 -> 재고 예약 취소: orderId={}", event.getOrderId());
+        stockCommandService.cancelReservationsByOrderId(event.getOrderId());
     }
 }

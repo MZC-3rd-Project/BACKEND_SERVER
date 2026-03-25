@@ -8,6 +8,8 @@ import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;
 import com.example.event.consumer.EventSpec;
 import com.example.event.inbox.InboxConsumerBinding;
+import com.example.event.payment.PaymentEventPayload;
+import com.example.event.payment.PaymentEventType;
 import com.example.order.domain.Order;
 import com.example.order.domain.OrderRepository;
 import com.example.order.domain.OrderStatus;
@@ -27,7 +29,7 @@ public class OrderPaymentEventProcessor extends AbstractIdempotentEventSpecProce
 
     private final OrderRepository orderRepository;
     private final EventPublisher eventPublisher;
-    private final Map<String, EventSpec<PaymentEventMessage>> eventSpecs;
+    private final Map<String, EventSpec<PaymentEventPayload>> eventSpecs;
 
     public OrderPaymentEventProcessor(
             OrderRepository orderRepository,
@@ -38,11 +40,11 @@ public class OrderPaymentEventProcessor extends AbstractIdempotentEventSpecProce
         this.orderRepository = orderRepository;
         this.eventPublisher = eventPublisher;
         this.eventSpecs = Map.ofEntries(
-                Map.entry("PAYMENT_COMPLETED", EventSpec.of(PaymentEventMessage.class, this::hasOrderId, this::handlePaymentCompleted)),
-                Map.entry("PAYMENT_FAILED", EventSpec.of(PaymentEventMessage.class, this::hasOrderId, this::handlePaymentFailed)),
-                Map.entry("PAYMENT_TIMED_OUT", EventSpec.of(PaymentEventMessage.class, this::hasOrderId, this::handlePaymentTimedOut)),
-                Map.entry("PAYMENT_REFUNDED", EventSpec.of(PaymentEventMessage.class, this::hasOrderId, this::handlePaymentRefunded)),
-                Map.entry("PAYMENT_CANCELLED", EventSpec.of(PaymentEventMessage.class, this::hasOrderId, this::handlePaymentCancelled))
+                Map.entry(PaymentEventType.PAYMENT_COMPLETED.value(), EventSpec.of(PaymentEventPayload.class, this::hasOrderId, this::handlePaymentCompleted)),
+                Map.entry(PaymentEventType.PAYMENT_FAILED.value(), EventSpec.of(PaymentEventPayload.class, this::hasOrderId, this::handlePaymentFailed)),
+                Map.entry(PaymentEventType.PAYMENT_TIMED_OUT.value(), EventSpec.of(PaymentEventPayload.class, this::hasOrderId, this::handlePaymentTimedOut)),
+                Map.entry(PaymentEventType.PAYMENT_REFUNDED.value(), EventSpec.of(PaymentEventPayload.class, this::hasOrderId, this::handlePaymentRefunded)),
+                Map.entry(PaymentEventType.PAYMENT_CANCELLED.value(), EventSpec.of(PaymentEventPayload.class, this::hasOrderId, this::handlePaymentCancelled))
         );
     }
 
@@ -70,15 +72,15 @@ public class OrderPaymentEventProcessor extends AbstractIdempotentEventSpecProce
     }
 
     @Override
-    protected Map<String, EventSpec<PaymentEventMessage>> eventSpecs() {
+    protected Map<String, EventSpec<PaymentEventPayload>> eventSpecs() {
         return eventSpecs;
     }
 
-    private boolean hasOrderId(PaymentEventMessage event) {
+    private boolean hasOrderId(PaymentEventPayload event) {
         return event.getOrderId() != null;
     }
 
-    private void handlePaymentCompleted(PaymentEventMessage event) {
+    private void handlePaymentCompleted(PaymentEventPayload event) {
         Order order = findOrder(event.getOrderId());
         if (order == null) return;
 
@@ -93,7 +95,7 @@ public class OrderPaymentEventProcessor extends AbstractIdempotentEventSpecProce
         }
     }
 
-    private void handlePaymentFailed(PaymentEventMessage event) {
+    private void handlePaymentFailed(PaymentEventPayload event) {
         Order order = findOrder(event.getOrderId());
         if (order == null) return;
 
@@ -107,7 +109,7 @@ public class OrderPaymentEventProcessor extends AbstractIdempotentEventSpecProce
         }
     }
 
-    private void handlePaymentTimedOut(PaymentEventMessage event) {
+    private void handlePaymentTimedOut(PaymentEventPayload event) {
         Order order = findOrder(event.getOrderId());
         if (order == null) return;
 
@@ -120,7 +122,7 @@ public class OrderPaymentEventProcessor extends AbstractIdempotentEventSpecProce
         }
     }
 
-    private void handlePaymentRefunded(PaymentEventMessage event) {
+    private void handlePaymentRefunded(PaymentEventPayload event) {
         Order order = findOrder(event.getOrderId());
         if (order == null) return;
 
@@ -138,7 +140,7 @@ public class OrderPaymentEventProcessor extends AbstractIdempotentEventSpecProce
         }
     }
 
-    private void handlePaymentCancelled(PaymentEventMessage event) {
+    private void handlePaymentCancelled(PaymentEventPayload event) {
         Order order = findOrder(event.getOrderId());
         if (order == null) return;
 

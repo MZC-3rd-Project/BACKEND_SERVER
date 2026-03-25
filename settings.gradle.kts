@@ -37,6 +37,7 @@ include(":libs:event:domain")
 include(":libs:event:consumer")
 include(":libs:event:outbox")
 include(":libs:event:inbox")
+include(":libs:event:payment")
 
 // API 문서
 include(":libs:openapi:config")

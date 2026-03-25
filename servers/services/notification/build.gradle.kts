@@ -28,6 +28,7 @@ dependencies {
     implementation(project(":libs:event:domain"))
     implementation(project(":libs:event:inbox"))
     implementation(project(":libs:event:outbox"))
+    implementation(project(":libs:event:payment"))
     implementation(project(":libs:security:security-starter"))
 
     // OpenAPI

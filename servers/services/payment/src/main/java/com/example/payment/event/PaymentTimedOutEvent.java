@@ -1,6 +1,7 @@
 package com.example.payment.event;
 
 import com.example.event.DomainEvent;
+import com.example.event.payment.PaymentEventType;
 import lombok.Getter;
 
 import java.util.LinkedHashMap;
@@ -24,7 +25,7 @@ public class PaymentTimedOutEvent extends DomainEvent {
 
     @Override
     public String getEventTypeName() {
-        return "PAYMENT_TIMED_OUT";
+        return PaymentEventType.PAYMENT_TIMED_OUT.value();
     }
 
     @Override
