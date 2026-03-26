@@ -76,8 +76,12 @@ public class CheckoutCommandService {
         if (existingAttempt != null) {
             validateExistingReserveAttempt(existingAttempt, request);
             if (!existingAttempt.isReplayable()) {
+                log.warn("Checkout reserve rejected because existing attempt is not replayable. userId={}, orderId={}",
+                        userId, existingAttempt.draft().getOrderId());
                 throw new BusinessException(SalesErrorCode.CHECKOUT_IDEMPOTENCY_CONFLICT);
             }
+            log.info("Checkout reserve replayed from existing attempt. userId={}, orderId={}",
+                    userId, existingAttempt.draft().getOrderId());
             return toReserveResponse(existingAttempt.draft());
         }
 
@@ -124,6 +128,8 @@ public class CheckoutCommandService {
         checkoutDraftRedisService.saveDraft(draft, ttl);
         checkoutSessionRepository.save(toCheckoutSession(request, userId, stockResponse));
         applicationEventPublisher.publishEvent(new CheckoutReservedEvent(stockResponse.orderId()));
+        log.info("Checkout reserve completed. userId={}, orderId={}, lineItemCount={}",
+                userId, stockResponse.orderId(), request.getLineItems().size());
         return CheckoutReserveResponse.builder()
                 .orderId(stockResponse.orderId())
                 .expiresAt(stockResponse.expiresAt())
@@ -142,6 +148,7 @@ public class CheckoutCommandService {
         validateSubmittableSession(session);
 
         if (session.getStatus() == CheckoutSessionStatus.ORDER_CREATED) {
+            log.info("Checkout submit replayed for existing order. userId={}, orderId={}", userId, session.getOrderId());
             return toSubmitResponse(session);
         }
 
@@ -159,6 +166,7 @@ public class CheckoutCommandService {
             OrderCreateResponse orderResponse = orderCreateClientFacade.createOrder(orderRequest);
             session.markOrderCreated();
             attempt.markSucceeded(toJson(orderResponse, "checkout submit response"));
+            log.info("Checkout submit completed. userId={}, orderId={}", userId, session.getOrderId());
             return toSubmitResponse(session);
         } catch (OrderClientException e) {
             handleSubmitFailure(session, attempt, e);
@@ -176,6 +184,8 @@ public class CheckoutCommandService {
         if (session.getStatus() == CheckoutSessionStatus.CANCELLED
                 || session.getStatus() == CheckoutSessionStatus.EXPIRED) {
             clearCheckoutCaches(session);
+            log.info("Checkout cancel replayed for terminal session. userId={}, orderId={}, status={}",
+                    userId, session.getOrderId(), session.getStatus());
             return toCancelResponse(session);
         }
 
@@ -188,6 +198,7 @@ public class CheckoutCommandService {
         }
 
         clearCheckoutCaches(session);
+        log.info("Checkout cancelled. userId={}, orderId={}", userId, session.getOrderId());
         return toCancelResponse(session);
     }
 
@@ -338,11 +349,17 @@ public class CheckoutCommandService {
         if (decision.retryable()) {
             Duration retryDelay = decision.retryDelay() == null ? Duration.ofMinutes(1) : decision.retryDelay();
             attempt.scheduleRetry(exception.getMessage(), LocalDateTime.now().plus(retryDelay));
+            log.warn("Checkout submit failed and scheduled retry. orderId={}, errorCode={}, retryDelaySeconds={}",
+                    session.getOrderId(), exception.getErrorCode(), retryDelay.toSeconds());
         } else {
             attempt.markFailed(exception.getMessage());
+            log.error("Checkout submit failed permanently. orderId={}, errorCode={}",
+                    session.getOrderId(), exception.getErrorCode(), exception);
         }
 
         if (!decision.releaseReservation()) {
+            log.warn("Checkout submit failure kept reservation. orderId={}, errorCode={}",
+                    session.getOrderId(), exception.getErrorCode());
             throw new BusinessException(decision.errorCode(), exception.getMessage(), exception);
         }
 
@@ -350,6 +367,7 @@ public class CheckoutCommandService {
             stockReservationClientFacade.cancelReservationsByOrderId(session.getOrderId());
             session.cancel();
             clearCheckoutCaches(session);
+            log.info("Checkout reservation released after submit failure. orderId={}", session.getOrderId());
         } catch (StockClientException e) {
             throw new BusinessException(SalesErrorCode.STOCK_SERVICE_ERROR, e.getMessage(), e);
         }
@@ -395,6 +413,7 @@ public class CheckoutCommandService {
 
     private void validateExistingReserveAttempt(ExistingReserveAttempt existingAttempt, CheckoutReserveRequest request) {
         if (!hasSameReserveIntent(existingAttempt.draft(), request)) {
+            log.warn("Checkout idempotency conflict detected. existingOrderId={}", existingAttempt.draft().getOrderId());
             throw new BusinessException(SalesErrorCode.CHECKOUT_IDEMPOTENCY_CONFLICT);
         }
     }

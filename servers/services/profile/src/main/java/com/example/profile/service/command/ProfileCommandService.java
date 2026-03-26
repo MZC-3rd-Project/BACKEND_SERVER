@@ -51,12 +51,17 @@ public class ProfileCommandService {
                 .toList();
             profileAddressRepository.saveAll(addresses);
         }
+
+        log.info("Profile created. userId={}", profile.getUserId());
     }
 
     @Transactional
     public void updateProfile(ProfileRequest req, Long userId) {
         Profiles profile = profileProjectionRepairService.ensureProfile(userId)
             .orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_NOT_FOUND));
+
+        log.info("Profile update request received. userId={}, nickname={}, phone={}, mediaId={}, mediaRef={}",
+            userId, req.getNickname(), req.getPhone(), req.getMediaId(), req.getMediaRef());
 
         Long canonicalMediaId = profileMediaReferenceService.resolveCanonicalMediaId(req.getMediaId(), req.getMediaRef());
         profileMediaReferenceService.validateReadableMedia(canonicalMediaId);
@@ -67,6 +72,9 @@ public class ProfileCommandService {
 
         validateNicknameAvailability(req, profile);
         profile.updateProfile(req);
+        log.info("Profile entity mutated. userId={}, profileId={}, nickname={}, phone={}",
+            userId, profile.getId(), profile.getNickname(), profile.getPhoneNumber());
+        profileRepository.save(profile);
         profileMediaReferenceService.syncProfileImageLink(userId, canonicalMediaId);
 
         eventPublisher.publish(
@@ -80,6 +88,9 @@ public class ProfileCommandService {
             ),
             EventMetadata.of("PROFILE", String.valueOf(profile.getId()))
         );
+
+        log.info("Profile updated. userId={}, profileId={}, mediaLinked={}",
+            userId, profile.getId(), canonicalMediaId != null);
     }
 
     @Transactional
@@ -98,6 +109,7 @@ public class ProfileCommandService {
             .ifPresent(ProfileAddress::unsetDefault);
 
         target.setAsDefault();
+        log.info("Default profile address updated. userId={}, addressId={}", userId, addressId);
     }
 
     @Transactional
@@ -120,6 +132,8 @@ public class ProfileCommandService {
             .buildingNumber(req.buildingNumber())
             .buildingName(req.buildingName())
             .detailAddress(req.detailAddress())
+            .recipientName(req.recipientName())
+            .recipientPhone(req.recipientPhone())
             .build();
 
         if (existing.isEmpty()) {

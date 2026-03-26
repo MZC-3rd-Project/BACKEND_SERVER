@@ -210,3 +210,21 @@ variable "cart_dynamodb_table_arn" {
   type        = string
   default     = null
 }
+
+variable "media_service_account_names" {
+  description = "Service account names that share the media S3 IRSA role"
+  type        = list(string)
+  default     = ["media-api", "media-worker"]
+}
+
+variable "media_s3_bucket_arn" {
+  description = "Optional S3 bucket ARN that media-api/media-worker may access through IRSA"
+  type        = string
+  default     = null
+}
+
+variable "media_s3_object_arn" {
+  description = "Optional S3 object ARN pattern for media-api/media-worker. Defaults to the configured media bucket ARN with /* appended when omitted."
+  type        = string
+  default     = null
+}

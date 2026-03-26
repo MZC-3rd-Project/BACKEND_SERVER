@@ -10,6 +10,14 @@ service:
 container:
   port: 8071
 
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
 env:
   SERVER_PORT: "8071"
   SPRING_PROFILES_ACTIVE: develop
@@ -30,3 +38,8 @@ secretEnv:
   DB_PASSWORD:
     remoteRef: donmoa/dev/profile-db
     property: password
+
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    prometheus: donmoa

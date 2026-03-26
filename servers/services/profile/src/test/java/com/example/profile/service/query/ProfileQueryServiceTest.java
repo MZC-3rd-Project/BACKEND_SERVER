@@ -1,5 +1,6 @@
 package com.example.profile.service.query;
 
+import com.example.clients.media.facade.MediaClientFacade;
 import com.example.profile.entity.Profiles;
 import com.example.profile.entity.ProfilesImage;
 import com.example.profile.repository.ProfileAddressRepository;
@@ -31,6 +32,9 @@ class ProfileQueryServiceTest {
     @Mock
     private ProfileProjectionRepairService profileProjectionRepairService;
 
+    @Mock
+    private MediaClientFacade mediaClientFacade;
+
     @InjectMocks
     private ProfileQueryService profileQueryService;
 
@@ -55,5 +59,51 @@ class ProfileQueryServiceTest {
         assertThat(result.userId()).isEqualTo(101L);
         assertThat(result.nickname()).isEqualTo("seller");
         assertThat(result.profileImageMediaId()).isEqualTo(999L);
+    }
+
+    @Test
+    @DisplayName("getProfile() 은 mediaId 와 mediaUrl 을 함께 반환한다")
+    void getProfile_returns_media_url() {
+        Profiles profile = Profiles.builder()
+            .userId(101L)
+            .email("seller@example.com")
+            .nickname("seller")
+            .build();
+        ProfilesImage profileImage = ProfilesImage.builder()
+            .userId(101L)
+            .mediaId(999L)
+            .build();
+        ReflectionTestUtils.setField(profile, "profileImage", profileImage);
+
+        given(profileProjectionRepairService.ensureProfileWithImage(101L)).willReturn(Optional.of(profile));
+        given(mediaClientFacade.getMediaUrl(999L)).willReturn("https://cdn.example.com/profile-999.webp");
+
+        var result = profileQueryService.getProfile(101L);
+
+        assertThat(result.getMediaId()).isEqualTo(999L);
+        assertThat(result.getMediaUrl()).isEqualTo("https://cdn.example.com/profile-999.webp");
+    }
+
+    @Test
+    @DisplayName("getProfile() 은 media url 해석 실패 시 mediaId 는 유지하고 mediaUrl 은 null 로 반환한다")
+    void getProfile_returns_null_media_url_when_resolution_fails() {
+        Profiles profile = Profiles.builder()
+            .userId(101L)
+            .email("seller@example.com")
+            .nickname("seller")
+            .build();
+        ProfilesImage profileImage = ProfilesImage.builder()
+            .userId(101L)
+            .mediaId(999L)
+            .build();
+        ReflectionTestUtils.setField(profile, "profileImage", profileImage);
+
+        given(profileProjectionRepairService.ensureProfileWithImage(101L)).willReturn(Optional.of(profile));
+        given(mediaClientFacade.getMediaUrl(999L)).willThrow(new IllegalStateException("media down"));
+
+        var result = profileQueryService.getProfile(101L);
+
+        assertThat(result.getMediaId()).isEqualTo(999L);
+        assertThat(result.getMediaUrl()).isNull();
     }
 }

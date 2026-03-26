@@ -42,6 +42,7 @@ public class SearchAnalyticsEventService {
         try {
             SearchRequestContext resolvedContext = withTraceCorrelation(context);
             if (!isTrackableUser(resolvedContext)) {
+                log.debug("Search executed analytics skipped because user context is not trackable.");
                 return;
             }
 
@@ -73,6 +74,8 @@ public class SearchAnalyticsEventService {
                             resolvedContext.causationId()
                     )
             );
+            log.debug("Search executed analytics event published. userId={}, resultCount={}",
+                    resolvedContext.userId(), resultItemIds.size());
         } catch (Exception exception) {
             log.warn("Search executed analytics event publish skipped", exception);
         }
@@ -87,6 +90,7 @@ public class SearchAnalyticsEventService {
                     request == null ? null : request.causationId()
             );
             if (!isTrackableUser(resolvedContext)) {
+                log.debug("Search item clicked analytics skipped because user context is not trackable.");
                 return;
             }
 
@@ -113,6 +117,8 @@ public class SearchAnalyticsEventService {
                             resolvedContext.causationId()
                     )
             );
+            log.debug("Search item clicked analytics event published. itemId={}, userId={}",
+                    request.itemId(), resolvedContext.userId());
         } catch (Exception exception) {
             Long itemId = request == null ? null : request.itemId();
             log.warn("Search item clicked analytics event publish skipped. itemId={}", itemId, exception);

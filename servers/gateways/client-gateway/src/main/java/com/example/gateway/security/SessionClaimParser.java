@@ -14,7 +14,7 @@ import java.util.Set;
 public class SessionClaimParser {
 
     private static final List<String> USER_ID_CLAIM_CANDIDATES =
-            List.of("userId", "user_id", "uid", "memberId", "sub");
+            List.of("userId", "user_id", "uid", "memberId", "snowflakeId", "snowflake_id", "sub");
     private static final List<String> SESSION_ID_CLAIM_CANDIDATES =
             List.of("sid", "session_state");
 
@@ -28,15 +28,12 @@ public class SessionClaimParser {
             throw new SessionClaimParseException("세션 클레임에서 유효한 사용자 ID를 찾지 못했습니다");
         }
 
-        List<String> roles = extractRoles(claims);
-        String sessionId = extractSessionId(claims);
-        return new GatewaySessionPrincipal(userId, roles, sessionId);
+        return new GatewaySessionPrincipal(userId, extractRoles(claims), extractSessionId(claims));
     }
 
     private Long extractUserId(Map<String, Object> claims) {
         for (String claimName : USER_ID_CLAIM_CANDIDATES) {
-            Object value = claims.get(claimName);
-            Long parsed = toPositiveLong(value);
+            Long parsed = toPositiveLong(claims.get(claimName));
             if (parsed != null) {
                 return parsed;
             }
@@ -79,7 +76,6 @@ public class SessionClaimParser {
 
     private List<String> extractRoles(Map<String, Object> claims) {
         Set<String> roles = new LinkedHashSet<>();
-
         addClaimValues(roles, claims.get("roles"));
         addClaimValues(roles, claims.get("role"));
         addClaimValues(roles, claims.get("authorities"));
@@ -125,8 +121,7 @@ public class SessionClaimParser {
     }
 
     private void addDelimitedValues(Set<String> roles, String text, String regex) {
-        String[] tokens = text.split(regex);
-        for (String token : tokens) {
+        for (String token : text.split(regex)) {
             addSingleRole(roles, token);
         }
     }

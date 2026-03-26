@@ -75,6 +75,10 @@ spring:
               uri: ${app.service.review-url:http://localhost:8097}
               predicates:
                 - Path=/api/v1/reviews/**
+            - id: profile-service
+              uri: ${app.service.profile-url:http://localhost:8071}
+              predicates:
+                - Path=/api/profile/**
             - id: chat-service-ws
               uri: ${app.service.chat-ws-url:ws://localhost:8093}
               predicates:
@@ -122,57 +126,38 @@ springdoc:
         url: /v3/api-docs-proxy/review
 
 gateway:
-  auth:
-    enabled: ${GATEWAY_AUTH_ENABLED:false}
-    auth-service-url: ${app.service.auth-url:http://localhost:8081}
-    user-service-url: ${app.service.user-url:http://localhost:8082}
-  dev-login:
-    enabled: ${GATEWAY_DEV_LOGIN_ENABLED:true}
-    username: ${GATEWAY_DEV_LOGIN_USERNAME:test}
-    password: ${GATEWAY_DEV_LOGIN_PASSWORD:test123}
-    user-id: ${GATEWAY_DEV_LOGIN_USER_ID:9000001}
-    roles: ${GATEWAY_DEV_LOGIN_ROLES:USER,BUYER,SELLER}
-    session-id-prefix: ${GATEWAY_DEV_LOGIN_SESSION_ID_PREFIX:dev-login}
+  oidc:
+    issuer-uri: ${GATEWAY_OAUTH2_ISSUER_URI:http://keycloak.internal:8080/realms/don-moa}
+    client-id: ${GATEWAY_OAUTH2_CLIENT_ID:don-moa-gateway}
+    client-secret: ${GATEWAY_OAUTH2_CLIENT_SECRET:}
+    client-authentication-method: ${GATEWAY_OAUTH2_CLIENT_AUTHENTICATION_METHOD:client_secret_basic}
+    scopes: ${GATEWAY_OAUTH2_SCOPES:openid,profile,email}
+    redirect-uri: ${GATEWAY_OIDC_REDIRECT_URI:http://localhost:18080/login/oauth2/code/keycloak}
+    login-success-url: ${GATEWAY_AUTH_LOGIN_SUCCESS_URL:/}
+    login-failure-url: ${GATEWAY_AUTH_LOGIN_FAILURE_URL:/auth/login?error=login_failed}
   security:
     internal-auth-header: ${GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}
     internal-auth-token: ${GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
     allow-client-identity-headers: ${GATEWAY_SECURITY_ALLOW_CLIENT_IDENTITY_HEADERS:false}
     allow-client-signed-context-header: ${GATEWAY_SECURITY_ALLOW_CLIENT_SIGNED_CONTEXT_HEADER:false}
-    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/store,/api/v1/store-query,/api/v1/cart,/api/v1/media,/api/v1/chat,/ws/chat,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders,/api/v1/payments,/api/v1/reviews}
-    require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:/api/v1/chat,/ws/chat,/api/v1/cart}
-    require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/bff/v1,/api/store,/api/v1/cart,/api/v1/media,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders,/api/v1/payments,/api/v1/reviews}
+    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/v1/auth,/api/profile,/api/v1/users,/api/users,/api/store,/api/v1/store-query,/api/v1/cart,/api/v1/media,/api/v1/chat,/ws/chat,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders,/api/v1/payments,/api/v1/reviews}
+    require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:/api/profile,/api/v1/users,/api/users,/api/v1/chat,/ws/chat,/api/v1/cart}
+    require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/bff/v1,/api/profile,/api/v1/users,/api/users,/api/store,/api/v1/cart,/api/v1/media,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders,/api/v1/payments,/api/v1/reviews}
   session:
-    enabled: ${GATEWAY_SESSION_ENABLED:false}
-    relay-header-enabled: ${GATEWAY_SESSION_RELAY_HEADER_ENABLED:true}
-    ops-enabled: ${GATEWAY_SESSION_OPS_ENABLED:false}
-    public-refresh-enabled: ${GATEWAY_SESSION_PUBLIC_REFRESH_ENABLED:false}
-    keycloak-logout-enabled: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_ENABLED:false}
-    trusted-header-auth-enabled: ${GATEWAY_SESSION_TRUSTED_HEADER_AUTH_ENABLED:false}
     redis-key-prefix: ${GATEWAY_SESSION_REDIS_KEY_PREFIX:gateway:sess:}
     user-sessions-key-prefix: ${GATEWAY_SESSION_USER_SESSIONS_KEY_PREFIX:gateway:user:sessions:}
-    refresh-family-key-prefix: ${GATEWAY_SESSION_REFRESH_FAMILY_KEY_PREFIX:gateway:rtfam:}
-    status-field: ${GATEWAY_SESSION_STATUS_FIELD:status}
     active-status: ${GATEWAY_SESSION_ACTIVE_STATUS:ACTIVE}
     revoked-status: ${GATEWAY_SESSION_REVOKED_STATUS:REVOKED}
-    refresh-current-hash-field: ${GATEWAY_SESSION_REFRESH_CURRENT_HASH_FIELD:currentRtHash}
-    refresh-uid-field: ${GATEWAY_SESSION_REFRESH_UID_FIELD:uid}
-    refresh-sid-field: ${GATEWAY_SESSION_REFRESH_SID_FIELD:sid}
-    refresh-rotated-at-field: ${GATEWAY_SESSION_REFRESH_ROTATED_AT_FIELD:rotatedAt}
-    refresh-reuse-detected-field: ${GATEWAY_SESSION_REFRESH_REUSE_DETECTED_FIELD:reuseDetected}
-    refresh-reuse-detected-at-field: ${GATEWAY_SESSION_REFRESH_REUSE_DETECTED_AT_FIELD:reuseDetectedAt}
     refresh-token-hash-pepper: ${GATEWAY_SESSION_REFRESH_TOKEN_HASH_PEPPER:}
-    session-cookie-name: ${GATEWAY_SESSION_COOKIE_NAME:SESSION}
+    refresh-token-encryption-secret: ${GATEWAY_SESSION_REFRESH_TOKEN_ENCRYPTION_SECRET:${GATEWAY_SESSION_REFRESH_TOKEN_HASH_PEPPER:}}
+    session-cookie-name: ${GATEWAY_SESSION_COOKIE_NAME:DONMOA_SESSION}
     session-cookie-path: ${GATEWAY_SESSION_COOKIE_PATH:/}
-    keycloak-logout-url: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_URL:}
-    keycloak-logout-auth-header: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_HEADER:Authorization}
-    keycloak-logout-auth-token: ${GATEWAY_SESSION_KEYCLOAK_LOGOUT_AUTH_TOKEN:}
-  deployment:
-    fail-fast-enabled: ${GATEWAY_DEPLOYMENT_FAIL_FAST_ENABLED:true}
-    enforced-profiles: ${GATEWAY_DEPLOYMENT_ENFORCED_PROFILES:prod,production,stg,stage}
-    require-explicit-auth-session-env: ${GATEWAY_DEPLOYMENT_REQUIRE_EXPLICIT_AUTH_SESSION_ENV:true}
-    require-auth-or-session-enabled: ${GATEWAY_DEPLOYMENT_REQUIRE_AUTH_OR_SESSION_ENABLED:true}
 
 app:
+  tracing:
+    sampling-rate: ${APP_TRACING_SAMPLING_RATE:0.1}
+  metrics:
+    cluster: ${APP_METRICS_CLUSTER:donmoa-dev-eks}
   feature:
     search-enabled: ${APP_FEATURE_SEARCH_ENABLED:true}
   webclient:
@@ -187,3 +172,12 @@ app:
       signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}
       max-age-millis: ${APP_SECURITY_CONTEXT_MAX_AGE_MILLIS:300000}
       parser-enabled: ${APP_SECURITY_CONTEXT_PARSER_ENABLED:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${ACTUATOR_ENDPOINTS:health,info,metrics,prometheus}
+  endpoint:
+    health:
+      show-details: always

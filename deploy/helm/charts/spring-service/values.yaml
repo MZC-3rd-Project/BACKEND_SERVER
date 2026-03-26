@@ -95,6 +95,17 @@ autoscaling:
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 80
 
+serviceMonitor:
+  enabled: false
+  interval: 30s
+  scrapeTimeout: 10s
+  path: /actuator/prometheus
+  scheme: http
+  additionalLabels: {}
+  relabelings: []
+  namespace: ""
+  honorLabels: false
+
 nodeSelector: {}
 tolerations: []
 affinity: {}

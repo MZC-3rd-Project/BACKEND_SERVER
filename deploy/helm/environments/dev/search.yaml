@@ -49,3 +49,8 @@ secretEnv:
   SEARCH_AI_ENRICHMENT_QUEUE_URL:
     remoteRef: donmoa/dev/search-ai-enrichment
     property: queue_url
+
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    prometheus: donmoa

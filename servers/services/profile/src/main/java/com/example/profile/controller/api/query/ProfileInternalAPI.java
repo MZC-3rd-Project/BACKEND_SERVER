@@ -6,6 +6,9 @@ import com.example.profile.dto.response.ProfileResponse;
 import com.example.profile.dto.response.internal.ProfileSnapshotResponse;
 import com.example.profile.entity.Profiles;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -14,7 +17,9 @@ import java.util.List;
 public interface ProfileInternalAPI {
 
     @PostMapping("/batch")
-    ApiResponse<List<Profiles>> findProfileList(@RequestBody List<Long> userIdList);
+    ApiResponse<List<Profiles>> findProfileList(
+            @Valid @RequestBody List<@NotNull @Positive Long> userIdList
+    );
 
     @GetMapping("/{userId}")
     ApiResponse<ProfileResponse> findProfile(@PathVariable("userId") Long userId);

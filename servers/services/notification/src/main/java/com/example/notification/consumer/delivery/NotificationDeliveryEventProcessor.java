@@ -97,6 +97,9 @@ public class NotificationDeliveryEventProcessor extends AbstractIdempotentEventS
                         .build()
         );
 
+        log.info("Notification delivery processed. notificationId={}, channel={}",
+                notification.getId(), channel);
+
         refreshNotificationStatus(notification.getId());
     }
 
@@ -119,6 +122,7 @@ public class NotificationDeliveryEventProcessor extends AbstractIdempotentEventS
                     || notification.getStatus() == NotificationStatus.FAILED) {
                 notification.markAsDispatched();
                 notificationRepository.save(notification);
+                log.info("Notification status updated to DISPATCHED. notificationId={}", notificationId);
             }
             return;
         }
@@ -127,6 +131,7 @@ public class NotificationDeliveryEventProcessor extends AbstractIdempotentEventS
         if (allFailed && notification.getStatus() == NotificationStatus.CREATED) {
             notification.markAsFailed();
             notificationRepository.save(notification);
+            log.warn("Notification status updated to FAILED after delivery attempts. notificationId={}", notificationId);
         }
     }
 

@@ -15,12 +15,14 @@ import com.example.funding.repository.FundingCampaignRepository;
 import com.example.funding.repository.FundingStatusHistoryRepository;
 import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -66,6 +68,9 @@ public class CampaignCommandService {
                 EventMetadata.of("FundingCampaign", String.valueOf(campaign.getId()))
         );
 
+        log.info("Funding campaign created. campaignId={}, itemId={}, sellerId={}, fundingType={}",
+                campaign.getId(), campaign.getItemId(), sellerId, fundingType);
+
         return CampaignResponse.from(campaign);
     }
 
@@ -87,6 +92,8 @@ public class CampaignCommandService {
                 request.getCategory(),
                 request.getThumbnailMediaId()
         );
+
+        log.info("Funding campaign updated. campaignId={}, sellerId={}", campaignId, sellerId);
 
         return CampaignResponse.from(campaign);
     }
@@ -110,6 +117,9 @@ public class CampaignCommandService {
                 ),
                 EventMetadata.of("FundingCampaign", String.valueOf(campaign.getId()))
         );
+
+        log.info("Funding campaign cancelled. campaignId={}, sellerId={}, previousStatus={}",
+                campaignId, sellerId, previousStatus);
     }
 
     public CampaignResponse reactivate(Long campaignId, CampaignUpdateRequest request, Long sellerId) {

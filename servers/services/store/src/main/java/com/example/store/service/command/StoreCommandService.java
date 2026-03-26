@@ -83,6 +83,9 @@ public class StoreCommandService {
             EventMetadata.of("STORE", String.valueOf(store.getId()))
         );
 
+        log.info("Store created. storeId={}, userId={}, imageCount={}",
+            store.getId(), store.getUserId(), storeImages.size());
+
         return StoreCreateResponse.of(
             store.getId(),
             store.getUserId(),
@@ -224,6 +227,9 @@ public class StoreCommandService {
             EventMetadata.of("STORE", String.valueOf(findStore.getId()))
         );
 
+        log.info("Store updated. storeId={}, userId={}, imageCount={}",
+            findStore.getId(), userId, imgList.size());
+
         return new StoreUpdateResponse(
             findStore.getId(),
             findStore.getUserId(),
@@ -316,6 +322,8 @@ public class StoreCommandService {
             ),
             EventMetadata.of("STORE", String.valueOf(stores.getId()))
         );
+
+        log.info("Store deleted. storeId={}, userId={}", storeId, userId);
 
         return StoreDeleteResponse.of(storeId);
     }

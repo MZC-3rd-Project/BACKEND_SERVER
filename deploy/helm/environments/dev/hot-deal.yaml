@@ -10,6 +10,14 @@ service:
 container:
   port: 8089
 
+probes:
+  liveness:
+    initialDelaySeconds: 120
+    failureThreshold: 12
+  readiness:
+    initialDelaySeconds: 90
+    failureThreshold: 6
+
 env:
   SERVER_PORT: "8089"
   SPRING_PROFILES_ACTIVE: develop
@@ -28,6 +36,7 @@ env:
   APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED: "true"
   APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER: X-Gateway-Auth
   APP_GATEWAY_SECURITY_USER_ID_HEADER: X-User-Id
+  APP_CORS_ALLOWED_ORIGIN_PATTERNS: http://localhost:3001,https://daoy75hsrrswu.cloudfront.net
 
 secretEnv:
   DB_PASSWORD:
@@ -39,3 +48,8 @@ secretEnv:
   APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:
     remoteRef: donmoa/dev/common
     property: APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN
+
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    prometheus: donmoa

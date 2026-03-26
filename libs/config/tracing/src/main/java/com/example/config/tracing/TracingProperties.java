@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class TracingProperties {
 
     private boolean enabled = true;
-    private float samplingRate = 1.0f;
+    private float samplingRate = 0.1f;
     private String serviceName;
     private String zipkinEndpoint = "http://localhost:9411/api/v2/spans";
     private String propagationType = "B3";

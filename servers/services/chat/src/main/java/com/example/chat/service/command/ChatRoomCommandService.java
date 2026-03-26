@@ -14,6 +14,7 @@ import com.example.chat.repository.ChatRoomRepository;
 import com.example.chat.service.audit.ChatAuditService;
 import com.example.chat.service.query.ChatSalesChannelResolver;
 import com.example.core.exception.BusinessException;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatRoomCommandService {
@@ -53,6 +55,8 @@ public class ChatRoomCommandService {
         String roomKey = INQUIRY_ROOM_KEY_FORMAT.formatted(request.getItemId(), buyerId, sellerId);
         ChatRoom existing = chatRoomRepository.findByRoomKey(roomKey).orElse(null);
         if (existing != null) {
+            log.info("Inquiry room reused. roomId={}, itemId={}, buyerId={}, sellerId={}",
+                    existing.getId(), request.getItemId(), buyerId, sellerId);
             return toResponse(existing);
         }
 
@@ -92,10 +96,14 @@ public class ChatRoomCommandService {
                     ChatAuditEventType.PARTICIPANT_ADDED,
                     Map.of("role", ChatParticipantRole.SELLER_ADMIN.name())
             );
+            log.info("Inquiry room created. roomId={}, itemId={}, buyerId={}, sellerId={}",
+                    room.getId(), request.getItemId(), buyerId, sellerId);
             return toResponse(room);
         } catch (DataIntegrityViolationException e) {
             ChatRoom room = chatRoomRepository.findByRoomKey(roomKey)
                     .orElseThrow(() -> e);
+            log.info("Inquiry room reused after concurrent create. roomId={}, itemId={}, buyerId={}, sellerId={}",
+                    room.getId(), request.getItemId(), buyerId, sellerId);
             return toResponse(room);
         }
     }

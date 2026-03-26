@@ -81,6 +81,8 @@ public class NotificationFundingEventProcessor extends AbstractIdempotentEventSp
                 "캠페인 #" + notificationDispatchSupport.safeValue(event.getCampaignId()) + "이(가) 목표를 달성했습니다.",
                 variables
         );
+        log.info("Funding success notification dispatched. eventId={}, campaignId={}, recipientId={}",
+                event.getEventId(), event.getCampaignId(), event.getSellerId());
     }
 
     private void handleFundingFailed(FundingEventMessage event) {
@@ -103,5 +105,7 @@ public class NotificationFundingEventProcessor extends AbstractIdempotentEventSp
                         + "이(가) 마감되었지만 목표 달성에 실패했습니다.",
                 variables
         );
+        log.info("Funding failure notification dispatched. eventId={}, campaignId={}, recipientId={}",
+                event.getEventId(), event.getCampaignId(), event.getSellerId());
     }
 }

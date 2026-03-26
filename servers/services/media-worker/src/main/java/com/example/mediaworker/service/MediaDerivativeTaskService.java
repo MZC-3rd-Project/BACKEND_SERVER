@@ -48,6 +48,8 @@ public class MediaDerivativeTaskService {
         Optional<MediaDerivativeTask> existing = mediaDerivativeTaskRepository
                 .findByMediaIdAndDerivativeProfileAndMediaVersion(mediaId, derivativeProfile, normalizedVersion);
         if (existing.isPresent()) {
+            log.debug("[MediaWorker] derivative task reused. taskId={}, mediaId={}, profile={}, version={}",
+                    existing.get().getId(), mediaId, derivativeProfile, normalizedVersion);
             return existing.get();
         }
 
@@ -58,15 +60,21 @@ public class MediaDerivativeTaskService {
                 sourceEventId
         );
         try {
-            return mediaDerivativeTaskRepository.save(pendingTask);
+            MediaDerivativeTask saved = mediaDerivativeTaskRepository.save(pendingTask);
+            log.info("[MediaWorker] derivative task enqueued. taskId={}, mediaId={}, profile={}, version={}",
+                    saved.getId(), mediaId, derivativeProfile, normalizedVersion);
+            return saved;
         } catch (DataIntegrityViolationException duplicate) {
             // 동일 키(mediaId + profile + version) 동시 생성 경쟁 시 재조회로 멱등 처리한다.
-            return mediaDerivativeTaskRepository.findByMediaIdAndDerivativeProfileAndMediaVersion(
+            MediaDerivativeTask reused = mediaDerivativeTaskRepository.findByMediaIdAndDerivativeProfileAndMediaVersion(
                             mediaId,
                             derivativeProfile,
                             normalizedVersion
                     )
                     .orElseThrow(() -> duplicate);
+            log.debug("[MediaWorker] derivative task reused after concurrent enqueue. taskId={}, mediaId={}, profile={}, version={}",
+                    reused.getId(), mediaId, derivativeProfile, normalizedVersion);
+            return reused;
         }
     }
 
@@ -143,6 +151,8 @@ public class MediaDerivativeTaskService {
                 return;
             }
             task.markCompleted(completedAt);
+            log.info("[MediaWorker] derivative task completed. taskId={}, mediaId={}, profile={}",
+                    task.getId(), task.getMediaId(), task.getDerivativeProfile());
         });
     }
 
@@ -186,11 +196,15 @@ public class MediaDerivativeTaskService {
             mediaDerivativeTaskDlqRepository.save(
                     MediaDerivativeTaskDlq.fromTask(task, decision.failureCode().name(), errorMessage)
             );
+            log.error("[MediaWorker] derivative task moved to DLQ. taskId={}, mediaId={}, profile={}, failureCode={}",
+                    task.getId(), task.getMediaId(), task.getDerivativeProfile(), decision.failureCode());
             return MediaDerivativeFailureHandleResult.dlqFailed(decision.failureCode(), task.getRetryCount());
         }
 
         long backoffSeconds = calculateBackoffSeconds(nextRetryCount);
         task.scheduleRetry(now.plusSeconds(backoffSeconds), errorMessage);
+        log.warn("[MediaWorker] derivative task scheduled for retry. taskId={}, mediaId={}, profile={}, retryCount={}, backoffSeconds={}",
+                task.getId(), task.getMediaId(), task.getDerivativeProfile(), task.getRetryCount(), backoffSeconds);
         return MediaDerivativeFailureHandleResult.retryScheduled(decision.failureCode(), task.getRetryCount());
     }
 

@@ -23,6 +23,7 @@ import com.example.core.exception.BusinessException;
 import com.example.core.util.JsonUtils;
 import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,7 @@ import org.springframework.util.StringUtils;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatMessageCommandService {
@@ -81,6 +83,8 @@ public class ChatMessageCommandService {
                     clientMessageId
             ).orElse(null);
             if (existing != null) {
+                log.info("Chat message reused by clientMessageId. roomId={}, senderId={}, messageId={}",
+                        roomId, senderId, existing.getId());
                 return toResponse(existing, true);
             }
         }
@@ -108,12 +112,16 @@ public class ChatMessageCommandService {
                     senderId,
                     clientMessageId
             ).orElseThrow(() -> e);
+            log.info("Chat message reused after concurrent create. roomId={}, senderId={}, messageId={}",
+                    roomId, senderId, existing.getId());
             return toResponse(existing, true);
         }
 
         publishMessageCreatedEvent(created);
         publishOfflineNotificationEvents(room, created);
         auditMessageSent(room, created);
+        log.info("Chat message sent. roomId={}, senderId={}, messageId={}, messageType={}",
+                roomId, senderId, created.getId(), created.getMessageType());
         return toResponse(created, false);
     }
 

@@ -63,6 +63,10 @@ output "cart_service_role_arn" {
   value = try(aws_iam_role.cart_service[0].arn, null)
 }
 
+output "media_service_role_arn" {
+  value = try(aws_iam_role.media_service[0].arn, null)
+}
+
 output "ebs_csi_role_arn" {
   value = aws_iam_role.ebs_csi.arn
 }

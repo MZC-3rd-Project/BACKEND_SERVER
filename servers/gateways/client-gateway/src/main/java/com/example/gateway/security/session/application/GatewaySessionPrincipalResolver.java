@@ -1,127 +1,64 @@
 package com.example.gateway.security.session.application;
 
-import com.example.gateway.config.GatewayDevLoginProperties;
+import com.example.gateway.config.GatewaySessionProperties;
 import com.example.gateway.security.GatewaySessionPrincipal;
-import com.example.gateway.security.SessionClaimParser;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.example.gateway.security.session.application.port.GatewaySessionRepository;
+import com.example.gateway.security.session.domain.GatewayServerSession;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
-import org.springframework.security.oauth2.core.OAuth2AuthenticatedPrincipal;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
-import org.springframework.web.server.ServerWebExchange;
-import org.springframework.security.web.server.context.WebSessionServerSecurityContextRepository;
 import reactor.core.publisher.Mono;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
-
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class GatewaySessionPrincipalResolver {
 
-    private final SessionClaimParser sessionClaimParser;
-    private GatewayDevLoginProperties devLoginProperties;
+    private final GatewaySessionRepository sessionRepository;
+    private final GatewaySessionCookieManager sessionCookieManager;
+    private final GatewaySessionProperties sessionProperties;
 
-    @Autowired(required = false)
-    public void setDevLoginProperties(GatewayDevLoginProperties devLoginProperties) {
-        this.devLoginProperties = devLoginProperties;
-    }
-
-    public Mono<GatewaySessionPrincipal> resolve(ServerWebExchange exchange) {
-        return resolveFromExchangePrincipal(exchange)
-                .switchIfEmpty(resolveFromSecurityContext())
-                .switchIfEmpty(resolveFromWebSession(exchange));
+    public Mono<GatewaySessionPrincipal> resolve(org.springframework.web.server.ServerWebExchange exchange) {
+        return resolveFromSecurityContext()
+                .switchIfEmpty(resolveFromSessionCookie(exchange));
     }
 
     public Mono<GatewaySessionPrincipal> resolveFromSecurityContext() {
         return ReactiveSecurityContextHolder.getContext()
                 .map(context -> context.getAuthentication())
-                .filter(Objects::nonNull)
                 .filter(Authentication::isAuthenticated)
-                .flatMap(this::mapAuthenticationToPrincipal);
-    }
-
-    private Mono<GatewaySessionPrincipal> resolveFromExchangePrincipal(ServerWebExchange exchange) {
-        return exchange.getPrincipal()
-                .ofType(Authentication.class)
-                .filter(Authentication::isAuthenticated)
-                .flatMap(this::mapAuthenticationToPrincipal);
-    }
-
-    private Mono<GatewaySessionPrincipal> resolveFromWebSession(ServerWebExchange exchange) {
-        return exchange.getSession()
-                .flatMap(session -> {
-                    Object securityContext =
-                            session.getAttributes()
-                                    .get(WebSessionServerSecurityContextRepository.DEFAULT_SPRING_SECURITY_CONTEXT_ATTR_NAME);
-                    if (!(securityContext instanceof SecurityContext context)) {
+                .flatMap(authentication -> {
+                    Object principal = authentication.getPrincipal();
+                    if (!(principal instanceof GatewaySessionPrincipal sessionPrincipal)) {
                         return Mono.empty();
                     }
-                    Authentication authentication = context.getAuthentication();
-                    if (authentication == null || !authentication.isAuthenticated()) {
-                        return Mono.empty();
-                    }
-                    return mapAuthenticationToPrincipal(authentication);
+                    return Mono.just(sessionPrincipal);
                 });
     }
 
-    private Mono<GatewaySessionPrincipal> mapAuthenticationToPrincipal(Authentication authentication) {
-        Map<String, Object> claims = extractClaims(authentication);
-        if (claims.isEmpty()) {
+    private Mono<GatewaySessionPrincipal> resolveFromSessionCookie(org.springframework.web.server.ServerWebExchange exchange) {
+        String sessionId = sessionCookieManager.extractSessionId(exchange);
+        if (sessionId == null || sessionId.isBlank()) {
+            log.info("Gateway session resolve skipped. path={}, reason=no-session-cookie",
+                    exchange.getRequest().getURI().getPath());
             return Mono.empty();
         }
-        return Mono.fromCallable(() -> sessionClaimParser.parseClaims(claims));
+        return sessionRepository.findSessionById(sessionId)
+                .filter(this::isActive)
+                .doOnNext(session -> log.info("Gateway session resolved from redis. path={}, sid={}, userId={}",
+                        exchange.getRequest().getURI().getPath(),
+                        session.sessionId(),
+                        session.userId()))
+                .flatMap(session -> sessionRepository.touchSession(session.sessionId(), System.currentTimeMillis())
+                        .thenReturn(new GatewaySessionPrincipal(session.userId(), session.roles(), session.sessionId())));
     }
 
-    private Map<String, Object> extractClaims(Authentication authentication) {
-        Map<String, Object> claims = new LinkedHashMap<>();
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof OidcUser oidcUser) {
-            claims.putAll(oidcUser.getClaims());
-        } else if (principal instanceof OAuth2AuthenticatedPrincipal oauth2Principal) {
-            claims.putAll(oauth2Principal.getAttributes());
-        } else if (supportsDevLogin(authentication)) {
-            claims.put("userId", devLoginProperties.getUserId());
-            claims.put("sid", devLoginProperties.getSessionIdPrefix() + "-" + authentication.getName());
-        } else {
-            return Map.of();
-        }
-
-        if (!claims.containsKey("roles")) {
-            List<String> roles = authentication.getAuthorities().stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .filter(StringUtils::hasText)
-                    .map(this::normalizeRoleAuthority)
-                    .collect(Collectors.toList());
-            if (!roles.isEmpty()) {
-                claims.put("roles", roles);
-            }
-        }
-        return claims;
-    }
-
-    private boolean supportsDevLogin(Authentication authentication) {
-        return devLoginProperties != null
-                && devLoginProperties.isEnabled()
-                && authentication != null
-                && StringUtils.hasText(authentication.getName())
-                && authentication.getName().equals(devLoginProperties.getUsername())
-                && devLoginProperties.getUserId() != null
-                && devLoginProperties.getUserId() > 0;
-    }
-
-    private String normalizeRoleAuthority(String authority) {
-        if (authority.startsWith("ROLE_")) {
-            return authority.substring("ROLE_".length());
-        }
-        return authority;
+    private boolean isActive(GatewayServerSession session) {
+        return session != null
+                && session.userId() != null
+                && session.userId() > 0
+                && sessionProperties.getActiveStatus().equalsIgnoreCase(session.status());
     }
 }

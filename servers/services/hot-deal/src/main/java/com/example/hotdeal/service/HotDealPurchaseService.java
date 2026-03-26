@@ -51,7 +51,10 @@ public class HotDealPurchaseService {
                 maxPerUser
         );
 
-        return hotDealCheckoutProcessor.checkout(command);
+        HotDealPurchaseResponse response = hotDealCheckoutProcessor.checkout(command);
+        log.info("Hot-deal purchase completed. hotDealId={}, userId={}, orderId={}, quantity={}",
+                hotDealId, userId, orderId, request.getQuantity());
+        return response;
     }
 
     private void validateQueueAdmission(Long hotDealId, Long userId, String token) {

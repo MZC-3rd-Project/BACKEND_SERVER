@@ -4,6 +4,7 @@ metadata:
   name: {{ include "spring-service.activeServiceName" . }}
   labels:
     {{- include "spring-service.labels" . | nindent 4 }}
+    observability.donmoa.io/metrics-target: active
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -21,6 +22,7 @@ metadata:
   name: {{ include "spring-service.previewServiceName" . }}
   labels:
     {{- include "spring-service.labels" . | nindent 4 }}
+    observability.donmoa.io/metrics-target: preview
 spec:
   type: {{ .Values.service.type }}
   ports:

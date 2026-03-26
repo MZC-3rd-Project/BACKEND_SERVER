@@ -2,6 +2,9 @@ locals {
   cluster_name          = coalesce(var.cluster_name, "${var.name_prefix}-${var.environment}-eks")
   node_group_name       = coalesce(var.node_group_name, "${var.environment}-apps-x86")
   application_namespace = coalesce(var.application_namespace, "${var.name_prefix}-${var.environment}")
+  media_s3_object_arn = var.media_s3_object_arn != null ? var.media_s3_object_arn : (
+    var.media_s3_bucket_arn != null ? "${var.media_s3_bucket_arn}/*" : null
+  )
 
   common_tags = merge(
     {

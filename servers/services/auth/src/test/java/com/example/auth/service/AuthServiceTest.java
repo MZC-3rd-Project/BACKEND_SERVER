@@ -8,12 +8,14 @@ import com.example.auth.entity.User;
 import com.example.auth.entity.UserStatusHistory;
 import com.example.auth.event.UserCreatedEvent;
 import com.example.auth.exception.AuthErrorCode;
+import com.example.auth.repository.EmailVerificationRepository;
 import com.example.auth.repository.UserRepository;
 import com.example.auth.repository.UserStatusHistoryRepository;
 import com.example.core.exception.BusinessException;
 import com.example.core.exception.TechnicalException;
 import com.example.event.DomainEvent;
 import com.example.event.EventPublisher;
+import jakarta.persistence.EntityManager;
 import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -51,10 +53,16 @@ class AuthServiceTest {
     private Keycloak keycloakAdminClient;
 
     @Mock
+    private EmailVerificationRepository emailVerificationRepository;
+
+    @Mock
     private ProfileServicePort profileServiceClient;
 
     @Mock
     private EventPublisher eventPublisher;
+
+    @Mock
+    private EntityManager entityManager;
 
     private AuthService authService;
 
@@ -63,12 +71,15 @@ class AuthServiceTest {
         authService = new AuthService(
                 userRepository,
                 statusHistoryRepository,
+                emailVerificationRepository,
                 keycloakAdminClient,
                 profileServiceClient,
                 eventPublisher,
+                entityManager,
                 "don-moa",
                 "http://localhost:43217",
                 "don-moa-gateway",
+                "gateway-secret",
                 true
         );
     }
@@ -113,9 +124,10 @@ class AuthServiceTest {
             assertThat(response.email()).isEqualTo("test@example.com");
             verify(profileServiceClient).createProfile(any(), eq("test@example.com"), eq("테스터"));
             ArgumentCaptor<DomainEvent> eventCaptor = ArgumentCaptor.forClass(DomainEvent.class);
-            verify(eventPublisher).publish(eventCaptor.capture(), any());
-            assertThat(eventCaptor.getValue()).isInstanceOf(UserCreatedEvent.class);
-            assertThat(eventCaptor.getValue().getPayload())
+            verify(eventPublisher, times(2)).publish(eventCaptor.capture(), any());
+            DomainEvent createdEvent = eventCaptor.getAllValues().get(0);
+            assertThat(createdEvent).isInstanceOf(UserCreatedEvent.class);
+            assertThat(createdEvent.getPayload())
                     .containsEntry("userId", response.userId())
                     .containsEntry("email", "test@example.com")
                     .containsEntry("nickname", "테스터");
@@ -128,12 +140,15 @@ class AuthServiceTest {
             AuthService asyncOnlyAuthService = new AuthService(
                     userRepository,
                     statusHistoryRepository,
+                    emailVerificationRepository,
                     keycloakAdminClient,
                     profileServiceClient,
                     eventPublisher,
+                    entityManager,
                     "don-moa",
                     "http://localhost:43217",
                     "don-moa-gateway",
+                    "gateway-secret",
                     false
             );
 
@@ -165,7 +180,7 @@ class AuthServiceTest {
             // then
             assertThat(response.email()).isEqualTo("flag-off@example.com");
             verify(profileServiceClient, never()).createProfile(any(), anyString(), anyString());
-            verify(eventPublisher).publish(any(DomainEvent.class), any());
+            verify(eventPublisher, times(2)).publish(any(DomainEvent.class), any());
         }
 
         @Test

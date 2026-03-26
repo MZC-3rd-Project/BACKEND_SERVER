@@ -13,15 +13,20 @@ import com.example.cart.dto.request.UpdateCartItemQuantityRequest;
 import com.example.cart.dto.response.CartCheckoutReservationResponse;
 import com.example.cart.dto.response.CartItemResponse;
 import com.example.cart.dto.response.CartResponse;
+import com.example.cart.exception.CartErrorCode;
 import com.example.cart.repository.CartRepository;
 import com.example.cart.service.CartSnapshotData;
 import com.example.cart.service.CartSnapshotEnricher;
+import com.example.core.exception.BusinessException;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CartCommandService {
@@ -55,6 +60,8 @@ public class CartCommandService {
 
         CartLine updated = cart.addOrMerge(line, now, expiresAtEpoch);
         cartRepository.save(updated, userId);
+        log.info("Cart item added or merged. userId={}, itemId={}, quantity={}",
+                userId, request.getItemId(), updated.getQuantity());
         return toResponse(cart);
     }
 
@@ -69,6 +76,8 @@ public class CartCommandService {
                 expiresAtEpoch
         );
         cartRepository.save(updated, userId);
+        log.info("Cart item quantity updated. userId={}, itemId={}, quantity={}",
+                userId, request.getItemId(), updated.getQuantity());
         return toResponse(cart);
     }
 
@@ -84,6 +93,7 @@ public class CartCommandService {
             );
         }
         cartRepository.saveAll(cart.changeSelections(changes, now, expiresAtEpoch), userId);
+        log.info("Cart selection updated. userId={}, changedItems={}", userId, changes.size());
         return toResponse(cart);
     }
 
@@ -97,12 +107,56 @@ public class CartCommandService {
         );
         cart.remove(identity);
         cartRepository.delete(userId, identity);
+        log.info("Cart item removed. userId={}, itemId={}", userId, request.getItemId());
         return toResponse(cart);
     }
 
     public CartCheckoutReservationResponse startCheckout(Long userId, StartCartCheckoutRequest request) {
         Cart cart = loadCart(userId);
-        return cartSalesClient.reserve(userId, request.getIdempotencyKey(), cart.selectedLines());
+        java.util.List<CartLine> linesToReserve = resolveRequestedCheckoutLines(cart, request);
+        CartCheckoutReservationResponse response = cartSalesClient.reserve(userId, request.getIdempotencyKey(), linesToReserve);
+        log.info("Cart checkout started. userId={}, orderId={}, selectedItems={}",
+                userId, response.getOrderId(), linesToReserve.size());
+        return response;
+    }
+
+    private java.util.List<CartLine> resolveRequestedCheckoutLines(Cart cart, StartCartCheckoutRequest request) {
+        if (request.getLineItems() == null || request.getLineItems().isEmpty()) {
+            return cart.selectedLines();
+        }
+
+        java.util.List<CartLine> selectedLines = cart.selectedLines();
+        Map<CartLineIdentity, CartLine> selectedLineMap = new LinkedHashMap<>();
+        for (CartLine selectedLine : selectedLines) {
+            selectedLineMap.put(selectedLine.getIdentity(), selectedLine);
+        }
+
+        java.util.List<CartLine> resolved = new ArrayList<>();
+        for (StartCartCheckoutRequest.LineItem lineItem : request.getLineItems()) {
+            CartLineIdentity identity = CartLineIdentity.of(
+                    lineItem.getItemId(),
+                    lineItem.getReferenceId(),
+                    lineItem.getChannelType(),
+                    lineItem.getChannelRefId()
+            );
+
+            CartLine cartLine = selectedLineMap.get(identity);
+            if (cartLine == null) {
+                throw new BusinessException(CartErrorCode.INVALID_CART_LINE);
+            }
+            if (!cartLine.getStockItemType().equalsIgnoreCase(lineItem.getStockItemType())) {
+                throw new BusinessException(CartErrorCode.INVALID_CART_LINE);
+            }
+            if (cartLine.getQuantity() != lineItem.getQuantity()) {
+                throw new BusinessException(CartErrorCode.INVALID_CART_LINE);
+            }
+            resolved.add(cartLine);
+        }
+
+        if (resolved.isEmpty()) {
+            throw new BusinessException(CartErrorCode.EMPTY_SELECTED_ITEMS);
+        }
+        return resolved;
     }
 
     private Cart loadCart(Long userId) {

@@ -24,3 +24,8 @@ secretEnv:
   DB_PASSWORD:
     remoteRef: donmoa/dev/store-db
     property: password
+
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    prometheus: donmoa

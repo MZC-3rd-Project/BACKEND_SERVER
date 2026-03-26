@@ -7,11 +7,13 @@ import com.example.notification.exception.NotificationErrorCode;
 import com.example.notification.repository.NotificationRepository;
 import com.example.notification.service.unread.NotificationUnreadCountService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -28,12 +30,14 @@ public class NotificationActionCommandService {
         if (unreadBefore) {
             notificationUnreadCountService.decreaseSafely(userId, 1);
         }
+        log.info("Notification marked as read. userId={}, notificationId={}", userId, notificationId);
     }
 
     public int markAllAsRead(Long userId) {
         int updated = notificationRepository.markAllAsRead(userId, LocalDateTime.now(), NotificationStatus.READ);
         if (updated > 0) {
             notificationUnreadCountService.decreaseSafely(userId, updated);
+            log.info("All notifications marked as read. userId={}, updatedCount={}", userId, updated);
         }
         return updated;
     }
@@ -46,5 +50,6 @@ public class NotificationActionCommandService {
         if (unreadBefore) {
             notificationUnreadCountService.decreaseSafely(userId, 1);
         }
+        log.info("Notification deleted. userId={}, notificationId={}", userId, notificationId);
     }
 }

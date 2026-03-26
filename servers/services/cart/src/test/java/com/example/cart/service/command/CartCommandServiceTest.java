@@ -8,6 +8,8 @@ import com.example.cart.dto.request.AddCartItemRequest;
 import com.example.cart.dto.request.StartCartCheckoutRequest;
 import com.example.cart.dto.response.CartCheckoutReservationResponse;
 import com.example.cart.dto.response.CartResponse;
+import com.example.cart.exception.CartErrorCode;
+import com.example.core.exception.BusinessException;
 import com.example.cart.repository.CartRepository;
 import com.example.cart.service.CartSnapshotData;
 import com.example.cart.service.CartSnapshotEnricher;
@@ -24,6 +26,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -136,5 +139,102 @@ class CartCommandServiceTest {
         assertThat(cartLinesCaptor.getValue()).hasSize(1);
         assertThat(cartLinesCaptor.getValue().get(0).getIdentity()).isEqualTo(CartLineIdentity.of(101L, 1001L, "NORMAL", null));
         assertThat(response.getOrderId()).isEqualTo(999L);
+    }
+
+    @Test
+    void startCheckout_usesRequestedLineItemsWhenProvided() {
+        StartCartCheckoutRequest request = new StartCartCheckoutRequest();
+        ReflectionTestUtils.setField(request, "idempotencyKey", "idem-2");
+
+        StartCartCheckoutRequest.LineItem requestedLine = new StartCartCheckoutRequest.LineItem();
+        ReflectionTestUtils.setField(requestedLine, "itemId", 202L);
+        ReflectionTestUtils.setField(requestedLine, "referenceId", 2002L);
+        ReflectionTestUtils.setField(requestedLine, "channelType", "FUNDING");
+        ReflectionTestUtils.setField(requestedLine, "channelRefId", 88L);
+        ReflectionTestUtils.setField(requestedLine, "stockItemType", "ITEM_OPTION");
+        ReflectionTestUtils.setField(requestedLine, "quantity", 1);
+        ReflectionTestUtils.setField(request, "lineItems", List.of(requestedLine));
+
+        CartLine selected = CartLine.create(
+                CartLineIdentity.of(101L, 1001L, "NORMAL", null),
+                "ITEM_OPTION",
+                2,
+                true,
+                77L,
+                "MZC shirt",
+                null,
+                "MZC store",
+                12000L,
+                "ON_SALE",
+                Instant.now(),
+                Instant.now(),
+                Instant.now().plusSeconds(3600).getEpochSecond()
+        );
+        CartLine requested = CartLine.create(
+                CartLineIdentity.of(202L, 2002L, "FUNDING", 88L),
+                "ITEM_OPTION",
+                1,
+                true,
+                88L,
+                "Funding item",
+                null,
+                "Funding store",
+                5000L,
+                "FUNDING",
+                Instant.now(),
+                Instant.now(),
+                Instant.now().plusSeconds(3600).getEpochSecond()
+        );
+
+        CartCheckoutReservationResponse expected = CartCheckoutReservationResponse.builder()
+                .orderId(1000L)
+                .build();
+
+        when(cartRepository.findAllByUserId(1L)).thenReturn(List.of(selected, requested));
+        when(cartSalesClient.reserve(eq(1L), eq("idem-2"), any())).thenReturn(expected);
+
+        CartCheckoutReservationResponse response = cartCommandService.startCheckout(1L, request);
+
+        verify(cartSalesClient).reserve(eq(1L), eq("idem-2"), cartLinesCaptor.capture());
+        assertThat(cartLinesCaptor.getValue()).hasSize(1);
+        assertThat(cartLinesCaptor.getValue().get(0).getIdentity()).isEqualTo(CartLineIdentity.of(202L, 2002L, "FUNDING", 88L));
+        assertThat(response.getOrderId()).isEqualTo(1000L);
+    }
+
+    @Test
+    void startCheckout_rejectsUnknownRequestedLineItem() {
+        StartCartCheckoutRequest request = new StartCartCheckoutRequest();
+        ReflectionTestUtils.setField(request, "idempotencyKey", "idem-3");
+
+        StartCartCheckoutRequest.LineItem requestedLine = new StartCartCheckoutRequest.LineItem();
+        ReflectionTestUtils.setField(requestedLine, "itemId", 999L);
+        ReflectionTestUtils.setField(requestedLine, "referenceId", 9999L);
+        ReflectionTestUtils.setField(requestedLine, "channelType", "NORMAL");
+        ReflectionTestUtils.setField(requestedLine, "stockItemType", "ITEM_OPTION");
+        ReflectionTestUtils.setField(requestedLine, "quantity", 1);
+        ReflectionTestUtils.setField(request, "lineItems", List.of(requestedLine));
+
+        CartLine selected = CartLine.create(
+                CartLineIdentity.of(101L, 1001L, "NORMAL", null),
+                "ITEM_OPTION",
+                2,
+                true,
+                77L,
+                "MZC shirt",
+                null,
+                "MZC store",
+                12000L,
+                "ON_SALE",
+                Instant.now(),
+                Instant.now(),
+                Instant.now().plusSeconds(3600).getEpochSecond()
+        );
+
+        when(cartRepository.findAllByUserId(1L)).thenReturn(List.of(selected));
+
+        assertThatThrownBy(() -> cartCommandService.startCheckout(1L, request))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(CartErrorCode.INVALID_CART_LINE);
     }
 }

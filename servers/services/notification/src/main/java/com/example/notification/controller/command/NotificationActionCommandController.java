@@ -5,6 +5,8 @@ import com.example.notification.controller.api.command.NotificationActionCommand
 import com.example.notification.dto.command.response.ReadAllResultResponse;
 import com.example.notification.service.command.NotificationActionCommandService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -16,19 +18,21 @@ public class NotificationActionCommandController implements NotificationActionCo
     private final NotificationActionCommandService notificationActionCommandService;
 
     @Override
-    public ApiResponse<Void> markAsRead(Long userId, Long notificationId) {
+    public ApiResponse<Void> markAsRead(@RequestHeader("X-User-Id") Long userId,
+                                        @PathVariable Long notificationId) {
         notificationActionCommandService.markAsRead(userId, notificationId);
         return ApiResponse.success();
     }
 
     @Override
-    public ApiResponse<ReadAllResultResponse> markAllAsRead(Long userId) {
+    public ApiResponse<ReadAllResultResponse> markAllAsRead(@RequestHeader("X-User-Id") Long userId) {
         int updated = notificationActionCommandService.markAllAsRead(userId);
         return ApiResponse.success(ReadAllResultResponse.of(updated));
     }
 
     @Override
-    public ApiResponse<Void> delete(Long userId, Long notificationId) {
+    public ApiResponse<Void> delete(@RequestHeader("X-User-Id") Long userId,
+                                    @PathVariable Long notificationId) {
         notificationActionCommandService.deleteNotification(userId, notificationId);
         return ApiResponse.success();
     }

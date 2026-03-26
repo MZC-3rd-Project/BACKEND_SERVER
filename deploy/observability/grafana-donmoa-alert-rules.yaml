@@ -1,0 +1,227 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: donmoa-log-alerts
+    folder: DonMoa
+    interval: 1m
+    rules:
+      - uid: donmoa_edge_5xx_spike
+        title: Edge 5xx Spike
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Alerting
+        dashboardUid: donmoa-observability
+        panelId: 9
+        annotations:
+          summary: Edge nginx is emitting multiple 5xx responses.
+          description: More than 5 ingress 5xx logs were observed in the last 5 minutes.
+          runbook_url: http://ec2-3-35-134-52.ap-northeast-2.compute.amazonaws.com:3000/d/donmoa-observability/donmoa-observability
+        labels:
+          severity: warning
+          area: edge
+          team: donmoa
+        data:
+          - refId: A
+            queryType: instant
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: "__LOKI_UID__"
+            model:
+              datasource:
+                type: loki
+                uid: "__LOKI_UID__"
+              editorMode: code
+              expr: sum(count_over_time({namespace="donmoa-dev",service_name="edge-nginx"} | json | status >= 500 [5m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              queryType: instant
+              refId: A
+          - refId: B
+            datasourceUid: "__expr__"
+            model:
+              datasource:
+                type: "__expr__"
+                uid: "__expr__"
+              expression: A
+              reducer: last
+              refId: B
+              settings:
+                mode: dropNN
+              type: reduce
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              datasource:
+                type: "__expr__"
+                uid: "__expr__"
+              expression: $B > 5
+              refId: C
+              type: math
+
+      - uid: donmoa_app_error_burst
+        title: Application Error Burst
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Alerting
+        dashboardUid: donmoa-observability
+        panelId: 7
+        annotations:
+          summary: Application WARN or ERROR logs spiked.
+          description: More than 30 warning/error application logs were observed in the last 10 minutes.
+          runbook_url: http://ec2-3-35-134-52.ap-northeast-2.compute.amazonaws.com:3000/d/donmoa-observability/donmoa-observability
+        labels:
+          severity: warning
+          area: application
+          team: donmoa
+        data:
+          - refId: A
+            queryType: instant
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: "__LOKI_UID__"
+            model:
+              datasource:
+                type: loki
+                uid: "__LOKI_UID__"
+              editorMode: code
+              expr: sum(count_over_time({namespace="donmoa-dev"} |~ "(ERROR|WARN|\\\"level\\\":\\\"ERROR\\\"|\\\"level\\\":\\\"WARN\\\")" [10m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              queryType: instant
+              refId: A
+          - refId: B
+            datasourceUid: "__expr__"
+            model:
+              datasource:
+                type: "__expr__"
+                uid: "__expr__"
+              expression: A
+              reducer: last
+              refId: B
+              settings:
+                mode: dropNN
+              type: reduce
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              datasource:
+                type: "__expr__"
+                uid: "__expr__"
+              expression: $B > 30
+              refId: C
+              type: math
+
+      - uid: donmoa_notification_delivery_fail
+        title: Notification Delivery Permanent Failure
+        condition: C
+        for: 2m
+        noDataState: OK
+        execErrState: Alerting
+        dashboardUid: donmoa-observability
+        panelId: 8
+        annotations:
+          summary: Notification deliveries are permanently failing.
+          description: Notification service logged permanent delivery failures in the last 10 minutes.
+          runbook_url: http://ec2-3-35-134-52.ap-northeast-2.compute.amazonaws.com:3000/d/donmoa-observability/donmoa-observability
+        labels:
+          severity: critical
+          area: notification
+          team: donmoa
+        data:
+          - refId: A
+            queryType: instant
+            relativeTimeRange:
+              from: 900
+              to: 0
+            datasourceUid: "__LOKI_UID__"
+            model:
+              datasource:
+                type: loki
+                uid: "__LOKI_UID__"
+              editorMode: code
+              expr: sum(count_over_time({namespace="donmoa-dev",service_name="notification-service"} |= "Notification delivery permanently failed" [10m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              queryType: instant
+              refId: A
+          - refId: B
+            datasourceUid: "__expr__"
+            model:
+              datasource:
+                type: "__expr__"
+                uid: "__expr__"
+              expression: A
+              reducer: last
+              refId: B
+              settings:
+                mode: dropNN
+              type: reduce
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              datasource:
+                type: "__expr__"
+                uid: "__expr__"
+              expression: $B > 0
+              refId: C
+              type: math
+
+      - uid: donmoa_mediaworker_dlq
+        title: Media Worker DLQ Event
+        condition: C
+        for: 1m
+        noDataState: OK
+        execErrState: Alerting
+        dashboardUid: donmoa-observability
+        panelId: 8
+        annotations:
+          summary: Media worker moved a derivative task to DLQ.
+          description: Media worker reported at least one DLQ event in the last 15 minutes.
+          runbook_url: http://ec2-3-35-134-52.ap-northeast-2.compute.amazonaws.com:3000/d/donmoa-observability/donmoa-observability
+        labels:
+          severity: critical
+          area: media
+          team: donmoa
+        data:
+          - refId: A
+            queryType: instant
+            relativeTimeRange:
+              from: 1200
+              to: 0
+            datasourceUid: "__LOKI_UID__"
+            model:
+              datasource:
+                type: loki
+                uid: "__LOKI_UID__"
+              editorMode: code
+              expr: sum(count_over_time({namespace="donmoa-dev",service_name="media-worker"} |= "moved to DLQ" [15m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              queryType: instant
+              refId: A
+          - refId: B
+            datasourceUid: "__expr__"
+            model:
+              datasource:
+                type: "__expr__"
+                uid: "__expr__"
+              expression: A
+              reducer: last
+              refId: B
+              settings:
+                mode: dropNN
+              type: reduce
+          - refId: C
+            datasourceUid: "__expr__"
+            model:
+              datasource:
+                type: "__expr__"
+                uid: "__expr__"
+              expression: $B > 0
+              refId: C
+              type: math

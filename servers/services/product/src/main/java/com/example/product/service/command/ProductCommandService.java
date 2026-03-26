@@ -28,6 +28,7 @@ import com.example.product.service.command.image.ItemThumbnailSyncService;
 import com.example.product.service.command.image.MediaReferenceService;
 import com.example.product.service.query.detail.ItemCategoryDetailResolver;
 import com.example.product.service.query.detail.ItemCategoryDetailView;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -94,6 +96,9 @@ public class ProductCommandService {
                         stockItems
                 ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
+
+        log.info("Product created. itemId={}, sellerId={}, storeId={}, optionCount={}",
+                item.getId(), sellerId, request.getStoreId(), options.size());
 
         ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(item.getId());
         List<ItemImage> images = itemImageRepository.findByItemIdOrderBySortOrder(item.getId());
@@ -170,6 +175,9 @@ public class ProductCommandService {
                 ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
 
+        log.info("Product updated. itemId={}, sellerId={}, optionsReplaced={}, thumbnailChanged={}",
+                itemId, sellerId, request.getOptions() != null, request.getThumbnailMediaId() != null || clearThumbnail);
+
         List<ItemOption> currentOptions = itemOptionRepository.findByItemId(itemId);
         ShippingInfo currentShippingInfo = shippingInfoRepository.findByItemId(itemId).orElse(null);
         ItemContentSnapshot contentSnapshot = itemContentService.findByItemId(itemId);
@@ -208,6 +216,8 @@ public class ProductCommandService {
                         item.getStoreId()
                 ),
                 EventMetadata.of("Item", String.valueOf(item.getId())));
+
+        log.info("Product deleted. itemId={}, sellerId={}", itemId, sellerId);
     }
 
     private List<ItemOption> saveOptions(Long itemId, List<ItemOptionRequest> requests) {

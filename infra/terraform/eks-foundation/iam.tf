@@ -330,3 +330,76 @@ resource "aws_iam_role_policy" "cart_service" {
   role   = aws_iam_role.cart_service[0].id
   policy = data.aws_iam_policy_document.cart_service[0].json
 }
+
+data "aws_iam_policy_document" "media_service_assume_role" {
+  count = var.media_s3_bucket_arn == null ? 0 : 1
+
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.this.arn]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_issuer_hostpath}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "${local.oidc_issuer_hostpath}:sub"
+      values = [
+        for service_account_name in var.media_service_account_names :
+        "system:serviceaccount:${local.application_namespace}:${service_account_name}"
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "media_service" {
+  count = var.media_s3_bucket_arn == null ? 0 : 1
+
+  name               = "${var.name_prefix}-${var.environment}-media-s3-role"
+  assume_role_policy = data.aws_iam_policy_document.media_service_assume_role[0].json
+
+  tags = local.common_tags
+}
+
+data "aws_iam_policy_document" "media_service" {
+  count = var.media_s3_bucket_arn == null ? 0 : 1
+
+  statement {
+    sid = "MediaBucketRead"
+
+    actions = [
+      "s3:GetBucketLocation",
+      "s3:ListBucket"
+    ]
+
+    resources = [var.media_s3_bucket_arn]
+  }
+
+  statement {
+    sid = "MediaObjectCrud"
+
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject",
+      "s3:AbortMultipartUpload"
+    ]
+
+    resources = [local.media_s3_object_arn]
+  }
+}
+
+resource "aws_iam_role_policy" "media_service" {
+  count = var.media_s3_bucket_arn == null ? 0 : 1
+
+  name   = "${var.name_prefix}-${var.environment}-media-s3-role-policy"
+  role   = aws_iam_role.media_service[0].id
+  policy = data.aws_iam_policy_document.media_service[0].json
+}

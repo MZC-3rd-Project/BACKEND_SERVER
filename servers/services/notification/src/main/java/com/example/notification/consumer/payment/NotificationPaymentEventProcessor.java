@@ -31,7 +31,11 @@ public class NotificationPaymentEventProcessor extends AbstractIdempotentEventSp
         super(idempotentConsumerService);
         this.notificationDispatchSupport = notificationDispatchSupport;
         this.eventSpecs = Map.of(
-                "PAYMENT_COMPLETED", EventSpec.of(PaymentEventMessage.class, this::hasUserId, this::handlePaymentCompleted)
+                "PAYMENT_COMPLETED", EventSpec.of(PaymentEventMessage.class, this::hasUserId, this::handlePaymentCompleted),
+                "PAYMENT_FAILED", EventSpec.of(PaymentEventMessage.class, this::hasUserId, this::handlePaymentFailed),
+                "PAYMENT_CANCELLED", EventSpec.of(PaymentEventMessage.class, this::hasUserId, this::handlePaymentCancelled),
+                "PAYMENT_TIMED_OUT", EventSpec.of(PaymentEventMessage.class, this::hasUserId, this::handlePaymentTimedOut),
+                "PAYMENT_REFUNDED", EventSpec.of(PaymentEventMessage.class, this::hasUserId, this::handlePaymentRefunded)
         );
     }
 
@@ -53,8 +57,8 @@ public class NotificationPaymentEventProcessor extends AbstractIdempotentEventSp
     @Override
     protected <T extends EventEnvelope> void onInvalidPayload(T event, String message, String eventId, String eventType) {
         PaymentEventMessage paymentEvent = (PaymentEventMessage) event;
-        log.warn("Skip PAYMENT_COMPLETED notification. userId is null. paymentId={}",
-                paymentEvent == null ? null : paymentEvent.getPaymentId());
+        log.warn("Skip payment notification. userId is null. eventType={}, paymentId={}",
+                eventType, paymentEvent == null ? null : paymentEvent.getPaymentId());
     }
 
     private boolean hasUserId(PaymentEventMessage event) {
@@ -64,21 +68,99 @@ public class NotificationPaymentEventProcessor extends AbstractIdempotentEventSp
     private void handlePaymentCompleted(PaymentEventMessage event) {
         Map<String, Object> variables = new LinkedHashMap<>();
         variables.put("paymentId", event.getPaymentId());
-        variables.put("purchaseId", event.getPurchaseId());
         variables.put("orderId", event.getOrderId());
-        variables.put("itemId", event.getItemId());
-        variables.put("totalAmount", event.getTotalAmount());
-        variables.put("quantity", event.getQuantity());
+        variables.put("amount", event.getAmount());
 
         notificationDispatchSupport.dispatchNotification(
                 event.getUserId(),
                 NotificationType.PAYMENT,
-                "PURCHASE",
-                event.getPurchaseId(),
+                "ORDER",
+                event.getOrderId(),
                 event.getEventId(),
                 "결제가 완료되었습니다",
                 "결제 건 #" + notificationDispatchSupport.safeValue(event.getPaymentId()) + "이(가) 정상 처리되었습니다.",
                 variables
         );
+        log.info("Payment COMPLETED notification dispatched. eventId={}, paymentId={}, userId={}",
+                event.getEventId(), event.getPaymentId(), event.getUserId());
+    }
+
+    private void handlePaymentFailed(PaymentEventMessage event) {
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put("paymentId", event.getPaymentId());
+        variables.put("orderId", event.getOrderId());
+        variables.put("failReason", event.getFailReason());
+
+        notificationDispatchSupport.dispatchNotification(
+                event.getUserId(),
+                NotificationType.PAYMENT,
+                "ORDER",
+                event.getOrderId(),
+                event.getEventId(),
+                "결제에 실패했습니다",
+                "결제 건 #" + notificationDispatchSupport.safeValue(event.getPaymentId()) + "이(가) 실패했습니다.",
+                variables
+        );
+        log.info("Payment FAILED notification dispatched. eventId={}, paymentId={}, userId={}",
+                event.getEventId(), event.getPaymentId(), event.getUserId());
+    }
+
+    private void handlePaymentCancelled(PaymentEventMessage event) {
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put("paymentId", event.getPaymentId());
+        variables.put("orderId", event.getOrderId());
+        variables.put("amount", event.getAmount());
+
+        notificationDispatchSupport.dispatchNotification(
+                event.getUserId(),
+                NotificationType.PAYMENT,
+                "ORDER",
+                event.getOrderId(),
+                event.getEventId(),
+                "결제가 취소되었습니다",
+                "결제 건 #" + notificationDispatchSupport.safeValue(event.getPaymentId()) + "이(가) 취소되었습니다.",
+                variables
+        );
+        log.info("Payment CANCELLED notification dispatched. eventId={}, paymentId={}, userId={}",
+                event.getEventId(), event.getPaymentId(), event.getUserId());
+    }
+
+    private void handlePaymentTimedOut(PaymentEventMessage event) {
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put("paymentId", event.getPaymentId());
+        variables.put("orderId", event.getOrderId());
+
+        notificationDispatchSupport.dispatchNotification(
+                event.getUserId(),
+                NotificationType.PAYMENT,
+                "ORDER",
+                event.getOrderId(),
+                event.getEventId(),
+                "결제 시간이 초과되었습니다",
+                "결제 건 #" + notificationDispatchSupport.safeValue(event.getPaymentId()) + "의 결제 시간이 초과되었습니다. 다시 시도해 주세요.",
+                variables
+        );
+        log.info("Payment TIMED_OUT notification dispatched. eventId={}, paymentId={}, userId={}",
+                event.getEventId(), event.getPaymentId(), event.getUserId());
+    }
+
+    private void handlePaymentRefunded(PaymentEventMessage event) {
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.put("paymentId", event.getPaymentId());
+        variables.put("orderId", event.getOrderId());
+        variables.put("amount", event.getAmount());
+
+        notificationDispatchSupport.dispatchNotification(
+                event.getUserId(),
+                NotificationType.PAYMENT,
+                "ORDER",
+                event.getOrderId(),
+                event.getEventId(),
+                "환불이 완료되었습니다",
+                "결제 건 #" + notificationDispatchSupport.safeValue(event.getPaymentId()) + "의 환불이 완료되었습니다.",
+                variables
+        );
+        log.info("Payment REFUNDED notification dispatched. eventId={}, paymentId={}, userId={}",
+                event.getEventId(), event.getPaymentId(), event.getUserId());
     }
 }

@@ -13,6 +13,7 @@ container:
 env:
   SERVER_PORT: "8092"
   SPRING_PROFILES_ACTIVE: develop
+  MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
   DB_URL: jdbc:postgresql://donmoa-dev-aurora.cluster-cfw84sg260sa.ap-northeast-2.rds.amazonaws.com:5432/notification_db
   DB_USERNAME: postgres
   REDIS_HOST: donmoa-dev-redis.awmnbx.ng.0001.apn2.cache.amazonaws.com
@@ -52,3 +53,8 @@ secretEnv:
   NOTIFICATION_EMAIL_FROM:
     remoteRef: donmoa/dev/notification-mail
     property: NOTIFICATION_EMAIL_FROM
+
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    prometheus: donmoa

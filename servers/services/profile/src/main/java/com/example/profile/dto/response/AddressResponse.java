@@ -7,14 +7,20 @@ public record AddressResponse(
     Long id,
     String deliveryName,
     boolean isDefault,
-    String fullAddress
+    String fullAddress,
+    String recipientName,
+    String recipientPhone,
+    String zipcode
 ) {
     public static AddressResponse from(ProfileAddress address) {
         return new AddressResponse(
             address.getId(),
             address.getDeliveryName(),
             address.isDefault(),
-            buildFullAddress(address)
+            buildFullAddress(address),
+            address.getRecipientName(),
+            address.getRecipientPhone(),
+            address.getZipcode()
         );
     }
 

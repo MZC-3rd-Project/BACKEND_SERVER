@@ -38,6 +38,14 @@ secretEnv:
   APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:
     remoteRef: donmoa/dev/common
     property: APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN
+  TOSSPAYMENTS_CLIENT_KEY:
+    remoteRef: donmoa/dev/payment-gateway
+    property: TOSSPAYMENTS_CLIENT_KEY
   TOSSPAYMENTS_SECRET_KEY:
     remoteRef: donmoa/dev/payment-gateway
     property: TOSSPAYMENTS_SECRET_KEY
+
+serviceMonitor:
+  enabled: true
+  additionalLabels:
+    prometheus: donmoa
