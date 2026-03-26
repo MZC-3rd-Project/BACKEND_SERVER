@@ -66,33 +66,42 @@ spring:
 
 gateway:
   auth:
-    enabled: ${GATEWAY_AUTH_ENABLED:false}
+    enabled: ${GATEWAY_AUTH_ENABLED:true}
     auth-service-url: ${app.service.auth-url:http://localhost:8081}
     user-service-url: ${app.service.user-url:http://localhost:8082}
-  dev-login:
-    enabled: ${GATEWAY_DEV_LOGIN_ENABLED:true}
-    username: ${GATEWAY_DEV_LOGIN_USERNAME:seller@naver.com}
-    password: ${GATEWAY_DEV_LOGIN_PASSWORD:seller123}
-    user-id: ${GATEWAY_DEV_LOGIN_USER_ID:9000002}
-    roles: ${GATEWAY_DEV_LOGIN_ROLES:USER,SELLER}
-    session-id-prefix: ${GATEWAY_DEV_LOGIN_SESSION_ID_PREFIX:dev-login-biz}
+  oidc:
+    issuer-uri: ${GATEWAY_OAUTH2_ISSUER_URI:http://keycloak.internal:8080/realms/don-moa}
+    client-id: ${GATEWAY_OAUTH2_CLIENT_ID:don-moa-business-gateway}
+    client-secret: ${GATEWAY_OAUTH2_CLIENT_SECRET:}
+    client-authentication-method: ${GATEWAY_OAUTH2_CLIENT_AUTHENTICATION_METHOD:client_secret_basic}
+    scopes: ${GATEWAY_OAUTH2_SCOPES:openid,profile,email}
+    redirect-uri: ${GATEWAY_OIDC_REDIRECT_URI:http://localhost:18081/login/oauth2/code/keycloak}
+    login-success-url: ${GATEWAY_AUTH_LOGIN_SUCCESS_URL:/}
+    login-failure-url: ${GATEWAY_AUTH_LOGIN_FAILURE_URL:/auth/login?error=login_failed}
   security:
     internal-auth-header: ${GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}
     internal-auth-token: ${GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
-    allow-client-identity-headers: ${GATEWAY_SECURITY_ALLOW_CLIENT_IDENTITY_HEADERS:true}
+    allow-client-identity-headers: ${GATEWAY_SECURITY_ALLOW_CLIENT_IDENTITY_HEADERS:false}
     allow-client-signed-context-header: ${GATEWAY_SECURITY_ALLOW_CLIENT_SIGNED_CONTEXT_HEADER:false}
     relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/bff,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/seller,/api/store,/api/campaigns,/api/funding,/api/v1/hot-deals,/api/v1/media,/api/v1/orders,/api/v1/order-query,/api/v1/reviews,/api/v1/chat,/ws/chat}
-    require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:}
-    require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:}
+    require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:/bff/v1,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/seller,/api/store,/api/campaigns,/api/funding,/api/v1/hot-deals,/api/v1/media,/api/v1/orders,/api/v1/order-query,/api/v1/reviews,/api/v1/chat,/ws/chat}
+    require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/bff/v1,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/seller,/api/store,/api/campaigns,/api/funding,/api/v1/hot-deals,/api/v1/media,/api/v1/orders,/api/v1/reviews}
   session:
-    enabled: ${GATEWAY_SESSION_ENABLED:false}
+    enabled: ${GATEWAY_SESSION_ENABLED:true}
     relay-header-enabled: ${GATEWAY_SESSION_RELAY_HEADER_ENABLED:true}
     redis-key-prefix: ${GATEWAY_SESSION_REDIS_KEY_PREFIX:gateway:sess:}
-    status-field: ${GATEWAY_SESSION_STATUS_FIELD:status}
+    auth-state-key-prefix: ${GATEWAY_SESSION_AUTH_STATE_KEY_PREFIX:gateway:auth:state:}
+    user-sessions-key-prefix: ${GATEWAY_SESSION_USER_SESSIONS_KEY_PREFIX:gateway:user:sessions:}
     active-status: ${GATEWAY_SESSION_ACTIVE_STATUS:ACTIVE}
     revoked-status: ${GATEWAY_SESSION_REVOKED_STATUS:REVOKED}
-    session-cookie-name: ${GATEWAY_SESSION_COOKIE_NAME:SESSION}
+    refresh-token-hash-pepper: ${GATEWAY_SESSION_REFRESH_TOKEN_HASH_PEPPER:}
+    refresh-token-encryption-secret: ${GATEWAY_SESSION_REFRESH_TOKEN_ENCRYPTION_SECRET:${GATEWAY_SESSION_REFRESH_TOKEN_HASH_PEPPER:}}
+    session-cookie-name: ${GATEWAY_SESSION_COOKIE_NAME:DONMOA_SESSION}
     session-cookie-path: ${GATEWAY_SESSION_COOKIE_PATH:/}
+    auth-state-ttl-seconds: ${GATEWAY_SESSION_AUTH_STATE_TTL_SECONDS:300}
+    cache-enabled: ${GATEWAY_SESSION_CACHE_ENABLED:true}
+    cache-maximum-size: ${GATEWAY_SESSION_CACHE_MAXIMUM_SIZE:10000}
+    cache-expire-after-write-seconds: ${GATEWAY_SESSION_CACHE_EXPIRE_AFTER_WRITE_SECONDS:5}
   deployment:
     fail-fast-enabled: ${GATEWAY_DEPLOYMENT_FAIL_FAST_ENABLED:true}
     enforced-profiles: ${GATEWAY_DEPLOYMENT_ENFORCED_PROFILES:prod,production,stg,stage}

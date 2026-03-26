@@ -11,6 +11,8 @@ import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 
+import java.util.Objects;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -28,6 +30,7 @@ public class GatewaySessionPrincipalResolver {
     public Mono<GatewaySessionPrincipal> resolveFromSecurityContext() {
         return ReactiveSecurityContextHolder.getContext()
                 .map(context -> context.getAuthentication())
+                .filter(Objects::nonNull)
                 .filter(Authentication::isAuthenticated)
                 .flatMap(authentication -> {
                     Object principal = authentication.getPrincipal();

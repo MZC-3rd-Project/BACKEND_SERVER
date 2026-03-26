@@ -21,4 +21,7 @@ public class GatewaySessionProperties {
     private String refreshTokenHashPepper = "";
     private String refreshTokenEncryptionSecret = "";
     private long authStateTtlSeconds = 300L;
+    private boolean cacheEnabled = true;
+    private long cacheMaximumSize = 10_000L;
+    private long cacheExpireAfterWriteSeconds = 5L;
 }

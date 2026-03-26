@@ -11,6 +11,9 @@ replicaCount: 2
 
 createIngressClassResource: true
 
+enableBackendSecurityGroup: false
+enableManageBackendSecurityGroupRules: false
+
 resources:
   requests:
     cpu: 100m

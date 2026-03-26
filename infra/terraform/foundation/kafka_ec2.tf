@@ -22,14 +22,6 @@ resource "aws_security_group" "ec2_kafka" {
   description = "EC2 Kafka access security group"
   vpc_id      = aws_vpc.this.id
 
-  ingress {
-    description     = "Kafka from ECS services"
-    from_port       = 9092
-    to_port         = 9092
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ecs_service.id]
-  }
-
   dynamic "ingress" {
     for_each = var.eks_node_security_group_id != null ? [var.eks_node_security_group_id] : []
 

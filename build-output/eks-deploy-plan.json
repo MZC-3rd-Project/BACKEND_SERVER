@@ -3,53 +3,23 @@
   "namespace": "donmoa-dev",
   "fullDeploy": false,
   "selectedTargets": [
-    "cart",
-    "hot-deal",
-    "notification"
+    "client-gateway"
   ],
-  "generatedAt": "2026-03-25T05:44:52Z",
+  "generatedAt": "2026-03-26T08:21:48Z",
   "services": [
     {
-      "key": "hot-deal",
+      "key": "client-gateway",
       "buildType": "gradle",
-      "gradleModule": "servers:services:hot-deal",
+      "gradleModule": "servers:gateways:client-gateway",
       "namespace": "donmoa-dev",
-      "releaseName": "hot-deal",
-      "rolloutName": "hot-deal-service",
-      "workloadKind": "Deployment",
-      "rolloutWave": 4,
-      "serviceName": "hot-deal-service",
-      "valuesFile": "deploy/helm/environments/dev/hot-deal.yaml",
-      "imageRepository": "682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-hot-deal-service",
-      "imageTag": "20260325-checkout-hotdeal"
-    },
-    {
-      "key": "notification",
-      "buildType": "gradle",
-      "gradleModule": "servers:services:notification",
-      "namespace": "donmoa-dev",
-      "releaseName": "notification",
-      "rolloutName": "notification-service",
-      "workloadKind": "Deployment",
-      "rolloutWave": 6,
-      "serviceName": "notification-service",
-      "valuesFile": "deploy/helm/environments/dev/notification.yaml",
-      "imageRepository": "682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-notification-service",
-      "imageTag": "20260325-checkout-hotdeal"
-    },
-    {
-      "key": "cart",
-      "buildType": "gradle",
-      "gradleModule": "servers:services:cart",
-      "namespace": "donmoa-dev",
-      "releaseName": "cart",
-      "rolloutName": "cart-service",
-      "workloadKind": "Deployment",
-      "rolloutWave": 9,
-      "serviceName": "cart-service",
-      "valuesFile": "deploy/helm/environments/dev/cart.yaml",
-      "imageRepository": "682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-cart-service",
-      "imageTag": "20260325-checkout-hotdeal"
+      "releaseName": "client-gateway",
+      "rolloutName": "client-gateway",
+      "workloadKind": "Rollout",
+      "rolloutWave": 3,
+      "serviceName": "client-gateway",
+      "valuesFile": "deploy/helm/environments/dev/client-gateway.yaml",
+      "imageRepository": "682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-client-gateway",
+      "imageTag": "cf4f2b3-orderfix"
     }
   ]
 }

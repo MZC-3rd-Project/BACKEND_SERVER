@@ -1,0 +1,427 @@
+<mxfile host="drawio-plugin" modified="2026-03-26T06:46:09.301Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" compressed="false" version="22.1.22" etag="S8D_9XxuU2oRo69qkmx8" type="embed" pages="4">
+  <diagram id="page-tcc-saga" name="TCC + Saga">
+    <mxGraphModel dx="5600" dy="5653" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="bg1" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=36;fillColor=#f8fafc;strokeColor=#e2e8f0;" parent="1" vertex="1">
+          <mxGeometry x="20" y="20" width="1880" height="1040" as="geometry" />
+        </mxCell>
+        <mxCell id="title1" value="TCC + Choreography Saga" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=30;fontStyle=1;fontColor=#0f172a;" parent="1" vertex="1">
+          <mxGeometry x="60" y="48" width="500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle1" value="재고 내부 정합성은 동기 TCC로, 서비스 간 최종 상태 전이는 비동기 Saga로 분리한 구매 흐름" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=15;fontColor=#475569;" parent="1" vertex="1">
+          <mxGeometry x="60" y="94" width="900" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="orderid-chip" value="공통 추적 키: orderId" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#0f172a;strokeColor=#0f172a;fontColor=#ffffff;fontSize=13;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="1600" y="52" width="220" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="left-panel1" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=28;fillColor=#fff7ed;strokeColor=#fdba74;" parent="1" vertex="1">
+          <mxGeometry x="60" y="150" width="840" height="840" as="geometry" />
+        </mxCell>
+        <mxCell id="right-panel1" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=28;fillColor=#eff6ff;strokeColor=#93c5fd;" parent="1" vertex="1">
+          <mxGeometry x="940" y="150" width="900" height="840" as="geometry" />
+        </mxCell>
+        <mxCell id="left-label1" value="Synchronous Guard Rail" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=20;fontStyle=1;fontColor=#9a3412;" parent="1" vertex="1">
+          <mxGeometry x="96" y="184" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="left-copy1" value="구매 시작 채널은 먼저 재고를 Try로 잠그고, 예약 성공 이후에만 주문 생성 단계로 진입" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=13;fontColor=#7c2d12;" parent="1" vertex="1">
+          <mxGeometry x="96" y="220" width="620" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="right-label1" value="Async State Propagation" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=20;fontStyle=1;fontColor=#1d4ed8;" parent="1" vertex="1">
+          <mxGeometry x="980" y="184" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="right-copy1" value="주문 생성 이후의 상태 전파는 이벤트 기반 Saga로 분리하고, 각 서비스는 자신의 로컬 상태만 책임" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=13;fontColor=#1e3a8a;" parent="1" vertex="1">
+          <mxGeometry x="980" y="220" width="640" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="origin1" value="Sales / Hot-Deal / Funding&#xa;구매 시작 채널" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#f59e0b;fontColor=#7c2d12;fontSize=18;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="100" y="310" width="220" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="stocktry1" value="Stock Service&#xa;Try: reserveOrderStock()&#xa;Redis 분산락 + DB 비관적 락&#xa;TTL 10분 / idempotencyKey" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#ea580c;fontColor=#7c2d12;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="360" y="292" width="280" height="146" as="geometry" />
+        </mxCell>
+        <mxCell id="ordercreate1" value="Order Service&#xa;submit 이후 주문 생성&#xa;ORDER_CREATED_EVENT 발행" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#fb7185;fontColor=#9f1239;fontSize=18;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="700" y="310" width="180" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="reserve-note1" value="TRY 결과&#xa;RESERVED + orderId + expiresAt" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffedd5;strokeColor=#fdba74;fontColor=#9a3412;fontSize=14;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="392" y="470" width="220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="tcc-flow1" value="TCC 상태 전이" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=18;fontStyle=1;fontColor=#9a3412;" parent="1" vertex="1">
+          <mxGeometry x="100" y="610" width="220" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="try-box1" value="Try&#xa;available -&gt; reserved" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#fff7ed;strokeColor=#fdba74;fontColor=#9a3412;fontSize=16;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="100" y="660" width="190" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="confirm-box1" value="Confirm&#xa;PAYMENT_COMPLETED 수신&#xa;reserved -&gt; sold" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ecfdf5;strokeColor=#34d399;fontColor=#166534;fontSize=16;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="360" y="660" width="190" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="cancel-box1" value="Cancel / Expire&#xa;PAYMENT_FAILED / CANCELLED / TIMED_OUT&#xa;또는 TTL 만료 복원" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#fef2f2;strokeColor=#fca5a5;fontColor=#991b1b;fontSize=16;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="620" y="660" width="220" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="left-kpi1" value="핵심 메시지&#xa;재고는 동기 경계에서 먼저 보호하고, 이후 서비스 정합성은 이벤트로 분리해 초과판매와 결제 실패 전파를 동시에 제어" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#ffffff;strokeColor=#fed7aa;fontColor=#7c2d12;fontSize=15;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="100" y="820" width="740" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="eventhub1" value="Kafka Event Hub&#xa;order-events / payment-events" style="rounded=1;whiteSpace=wrap;html=1;arcSize=22;fillColor=#0f172a;strokeColor=#0f172a;fontColor=#ffffff;fontSize=18;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="1280" y="300" width="220" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="payment1" value="Payment Service&#xa;READY 생성&#xa;confirm / cancel / timeout" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#38bdf8;fontColor=#0c4a6e;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="980" y="500" width="220" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="orderconsumer1" value="Order Consumer&#xa;PAYMENT_COMPLETED -&gt; PAID&#xa;PAYMENT_CANCELLED/TIMED_OUT -&gt; CANCELLED" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#818cf8;fontColor=#312e81;fontSize=16;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="1250" y="500" width="250" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="stockconsumer1" value="Stock Consumer&#xa;confirmReservationsByOrderId()&#xa;cancelReservationsByOrderId()" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#34d399;fontColor=#166534;fontSize=16;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="1550" y="500" width="240" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="channelconsumer1" value="Channel Consumer&#xa;HotDeal / Funding&#xa;local session confirm or release" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#60a5fa;fontColor=#1d4ed8;fontSize=16;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="1250" y="690" width="270" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="failureband1" value="Failure branch&#xa;결제 실패, 취소, 타임아웃이 오면 각 서비스는 같은 orderId를 기준으로 취소 / 복원 / 세션 해제만 수행" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#bfdbfe;fontColor=#1e3a8a;fontSize=15;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="980" y="860" width="810" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1-1" value="1. sync reserve" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#c2410c;strokeWidth=2;fontSize=13;labelBackgroundColor=#fff7ed;" parent="1" source="origin1" target="stocktry1" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1-2" value="2. submit -&gt; create order" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#c2410c;strokeWidth=2;fontSize=13;labelBackgroundColor=#fff7ed;" parent="1" source="stocktry1" target="ordercreate1" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1-3" value="sync guard completed" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#c2410c;strokeWidth=2;dashed=1;fontSize=13;labelBackgroundColor=#fff7ed;" parent="1" source="ordercreate1" target="eventhub1" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1-4" value="ORDER_CREATED_EVENT" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;dashed=1;fontSize=13;labelBackgroundColor=#eff6ff;" parent="1" source="eventhub1" target="payment1" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1-5" value="PAYMENT_COMPLETED / FAILED / CANCELLED / TIMED_OUT" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;dashed=1;fontSize=13;labelBackgroundColor=#eff6ff;" parent="1" source="payment1" target="eventhub1" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1-6" value="Saga consumer" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;dashed=1;fontSize=13;labelBackgroundColor=#eff6ff;" parent="1" source="eventhub1" target="orderconsumer1" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1-7" value="Saga consumer" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;dashed=1;fontSize=13;labelBackgroundColor=#eff6ff;" parent="1" source="eventhub1" target="stockconsumer1" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1-8" value="Saga consumer" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;dashed=1;fontSize=13;labelBackgroundColor=#eff6ff;" parent="1" source="eventhub1" target="channelconsumer1" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-read-write" name="Read Write Split">
+    <mxGraphModel dx="1200" dy="1211" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="bg2" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=36;fillColor=#f8fafc;strokeColor=#e2e8f0;" parent="1" vertex="1">
+          <mxGeometry x="20" y="20" width="1880" height="1040" as="geometry" />
+        </mxCell>
+        <mxCell id="title2" value="Read / Write Split" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=30;fontStyle=1;fontColor=#0f172a;" parent="1" vertex="1">
+          <mxGeometry x="60" y="48" width="500" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle2" value="단일 DB 병목을 공통 라우팅 모듈로 분리하고, 최신성이 필요한 조회만 Writer로 강제하는 구조" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=15;fontColor=#475569;" parent="1" vertex="1">
+          <mxGeometry x="60" y="94" width="900" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="asis2" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=26;fillColor=#fff1f2;strokeColor=#fda4af;" parent="1" vertex="1">
+          <mxGeometry x="60" y="180" width="380" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="asis-label2" value="As-Is: Single DB 집중" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=20;fontStyle=1;fontColor=#9f1239;" parent="1" vertex="1">
+          <mxGeometry x="92" y="208" width="280" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="asis-service2" value="Query + Command&#xa;모든 요청이 같은 DB로 집중" style="rounded=1;whiteSpace=wrap;html=1;arcSize=16;fillColor=#ffffff;strokeColor=#fb7185;fontColor=#9f1239;fontSize=17;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="102" y="270" width="170" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="asis-db2" value="Writer DB&#xa;read + write 동시 처리" style="rounded=1;whiteSpace=wrap;html=1;arcSize=16;fillColor=#ffffff;strokeColor=#e11d48;fontColor=#9f1239;fontSize=17;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="292" y="270" width="110" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="asis-copy2" value="문제: 목록 조회 피크가 쓰기 경로까지 같이 잠그면서 CPU 상승, lock wait 재발" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#fecdd3;fontColor=#881337;fontSize=14;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="92" y="400" width="310" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="asis-edge2" value="read + write contention" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#e11d48;strokeWidth=2;fontSize=12;labelBackgroundColor=#fff1f2;" parent="1" source="asis-service2" target="asis-db2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="tobe2" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=26;fillColor=#eff6ff;strokeColor=#93c5fd;" parent="1" vertex="1">
+          <mxGeometry x="480" y="180" width="1360" height="820" as="geometry" />
+        </mxCell>
+        <mxCell id="tobe-label2" value="To-Be: Common Routing + Replica Offload" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=20;fontStyle=1;fontColor=#1d4ed8;" parent="1" vertex="1">
+          <mxGeometry x="512" y="208" width="500" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="tobe-copy2" value="서비스별 정책 차이를 제거하고, readOnly 트랜잭션은 Reader로, 최신성 보장 조회는 Writer로 강제" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=13;fontColor=#1e3a8a;" parent="1" vertex="1">
+          <mxGeometry x="512" y="244" width="800" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="client2" value="Client / Gateway" style="rounded=1;whiteSpace=wrap;html=1;arcSize=16;fillColor=#ffffff;strokeColor=#60a5fa;fontColor=#1d4ed8;fontSize=18;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="540" y="340" width="180" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="service2" value="Domain Service&#xa;@Transactional(readOnly = true)&#xa;@UseWriteDataSource" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#3b82f6;fontColor=#1e3a8a;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="790" y="320" width="280" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="module2" value="libs:data:entity&#xa;TransactionRoutingDataSource&#xa;기본 WRITE / readOnly는 READ&#xa;강제 라우팅 컨텍스트 지원" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#2563eb;fontColor=#1e3a8a;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="1140" y="300" width="320" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="reader2" value="Aurora Reader&#xa;일반 조회 / fan-out query&#xa;readOnly offload" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#dbeafe;strokeColor=#60a5fa;fontColor=#1d4ed8;fontSize=18;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="1540" y="270" width="220" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="writer2" value="Aurora Writer&#xa;command / 최신성 강제 조회&#xa;critical path" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffedd5;strokeColor=#fb923c;fontColor=#9a3412;fontSize=18;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="1540" y="470" width="220" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="route-legend2" value="라우팅 규칙" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=18;fontStyle=1;fontColor=#1d4ed8;" parent="1" vertex="1">
+          <mxGeometry x="540" y="560" width="200" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="rule-read2" value="1. 일반 조회&#xa;@Transactional(readOnly = true)&#xa;Reader로 우선 라우팅" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#93c5fd;fontColor=#1e3a8a;fontSize=16;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="540" y="610" width="240" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="rule-write2" value="2. 최신 스냅샷 조회&#xa;@UseWriteDataSource&#xa;Writer 직접 강제" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#fdba74;fontColor=#9a3412;fontSize=16;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="830" y="610" width="240" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="rule-fallback2" value="3. fallback&#xa;Read DB 미설정이면&#xa;read 요청도 Writer로 폴백" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#cbd5e1;fontColor=#334155;fontSize=16;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="1120" y="610" width="240" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="kpi2" value="KPI&#xa;Writer lock wait 1.21 -&gt; 1.01&#xa;Writer CPU 254.52% -&gt; 87.80%&#xa;write p95 508.71ms -&gt; 507.01ms 유지" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#ffffff;strokeColor=#bfdbfe;fontColor=#0f172a;fontSize=18;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="1420" y="680" width="360" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="summary2" value="핵심 메시지&#xa;개별 서비스 튜닝이 아니라 공통 라우팅 계층으로 정책을 고정해, Writer는 쓰기와 최신성 보장 경로에 집중시키는 구조" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#ffffff;strokeColor=#dbeafe;fontColor=#1e3a8a;fontSize=15;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="540" y="810" width="800" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2-1" value="request" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;fontSize=13;labelBackgroundColor=#eff6ff;" parent="1" source="client2" target="service2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2-2" value="invoke routing module" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;fontSize=13;labelBackgroundColor=#eff6ff;" parent="1" source="service2" target="module2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2-3" value="readOnly query" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;fontSize=13;labelBackgroundColor=#eff6ff;" parent="1" source="module2" target="reader2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2-4" value="default / forced write" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#ea580c;strokeWidth=2;fontSize=13;labelBackgroundColor=#fff7ed;" parent="1" source="module2" target="writer2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2-5" value="fallback if no read datasource" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#64748b;strokeWidth=2;dashed=1;fontSize=12;labelBackgroundColor=#f8fafc;" parent="1" source="reader2" target="writer2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-media" name="Media Progressive Delivery">
+    <mxGraphModel dx="3360" dy="3392" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="bg3" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=36;fillColor=#f8fafc;strokeColor=#e2e8f0;" parent="1" vertex="1">
+          <mxGeometry x="20" y="20" width="1880" height="1040" as="geometry" />
+        </mxCell>
+        <mxCell id="title3" value="Media Progressive Delivery" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=30;fontStyle=1;fontColor=#0f172a;" parent="1" vertex="1">
+          <mxGeometry x="60" y="48" width="560" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle3" value="원본은 먼저 즉시 노출하고, 파생본은 백그라운드에서 만들어 같은 mediaId 조회 결과를 점진 전환" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=15;fontColor=#475569;" parent="1" vertex="1">
+          <mxGeometry x="60" y="94" width="980" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="left-panel3" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=28;fillColor=#fff7ed;strokeColor=#fdba74;" parent="1" vertex="1">
+          <mxGeometry x="60" y="150" width="760" height="840" as="geometry" />
+        </mxCell>
+        <mxCell id="right-panel3" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=28;fillColor=#eff6ff;strokeColor=#93c5fd;" parent="1" vertex="1">
+          <mxGeometry x="860" y="150" width="980" height="840" as="geometry" />
+        </mxCell>
+        <mxCell id="left-label3" value="Upload + First Render" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=20;fontStyle=1;fontColor=#9a3412;" parent="1" vertex="1">
+          <mxGeometry x="96" y="184" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="right-label3" value="Async Optimization + Safe Recovery" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=20;fontStyle=1;fontColor=#1d4ed8;" parent="1" vertex="1">
+          <mxGeometry x="896" y="184" width="420" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="user3" value="Client + Domain Service" style="rounded=1;whiteSpace=wrap;html=1;arcSize=16;fillColor=#ffffff;strokeColor=#f59e0b;fontColor=#9a3412;fontSize=18;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="100" y="280" width="220" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="mediaapi-intent3" value="Media API&#xa;upload-intents&#xa;presignedUrl + uploadToken + mediaId" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#ea580c;fontColor=#9a3412;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="370" y="250" width="270" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="s3raw3" value="S3 Raw Bucket" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#65a30d;fontColor=#166534;fontSize=18;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="680" y="280" width="110" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="mediaapi-confirm3" value="confirm&#xa;HeadObject 검증&#xa;size / content-type 확인&#xa;media.confirmed 발행" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#fb923c;fontColor=#9a3412;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="370" y="470" width="270" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="firstrender3" value="First Render&#xa;same mediaId -&gt; raw URL&#xa;사용자는 바로 이미지 확인" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#f59e0b;fontColor=#9a3412;fontSize=18;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="100" y="500" width="220" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="upload-note3" value="업로드 규칙&#xa;intent -&gt; S3 PUT -&gt; confirm 순서를 고정하고, confirm 전 mediaId는 비즈니스 링크에 사용하지 않음" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#fed7aa;fontColor=#7c2d12;fontSize=14;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="100" y="720" width="690" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="kpi3" value="성과&#xa;first render p95 428ms(썸네일) / 600ms(일반)&#xa;다운로드 p95 2408.96ms -&gt; 297.64ms, 3388.08ms -&gt; 929.56ms" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#ffffff;strokeColor=#fdba74;fontColor=#7c2d12;fontSize=16;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="100" y="860" width="690" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="event3" value="media.confirmed" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#0f172a;strokeColor=#0f172a;fontColor=#ffffff;fontSize=18;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="930" y="290" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="task3" value="Derivative Task Service&#xa;THUMBNAIL_WEBP / ORIGINAL_WEBP&#xa;versioned enqueue" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#3b82f6;fontColor=#1e3a8a;fontSize=16;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="1180" y="260" width="270" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="worker3" value="Media Worker&#xa;resize / webp 변환&#xa;retry / backoff / stale recovery&#xa;DLQ replay" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#2563eb;fontColor=#1e3a8a;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="1510" y="240" width="270" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="query3" value="Media Query&#xa;latest variant reader" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#60a5fa;fontColor=#1d4ed8;fontSize=17;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="930" y="520" width="180" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="s3derived3" value="S3 Derived Objects" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#22c55e;fontColor=#166534;fontSize=18;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="1180" y="500" width="220" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="cloudfront3" value="CloudFront CDN" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#38bdf8;fontColor=#0c4a6e;fontSize=18;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="1510" y="500" width="220" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="switch3" value="same mediaId, different response&#xa;초기에는 raw URL fallback&#xa;variant READY 이후에는 optimized URL로 점진 전환" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#ffffff;strokeColor=#bfdbfe;fontColor=#1e3a8a;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="930" y="700" width="800" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="policy3" value="변환 정책&#xa;썸네일: resize + webp&#xa;일반 이미지: webp only&#xa;파이프라인 실패는 사용자 경로와 분리" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#ffffff;strokeColor=#dbeafe;fontColor=#1e3a8a;fontSize=15;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="930" y="870" width="800" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3-1" value="1. intent request" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#c2410c;strokeWidth=2;fontSize=13;labelBackgroundColor=#fff7ed;" parent="1" source="user3" target="mediaapi-intent3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3-2" value="2. presigned PUT" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#c2410c;strokeWidth=2;fontSize=13;labelBackgroundColor=#fff7ed;" parent="1" source="mediaapi-intent3" target="s3raw3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3-3" value="3. upload complete + confirm" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#c2410c;strokeWidth=2;fontSize=13;labelBackgroundColor=#fff7ed;" parent="1" source="s3raw3" target="mediaapi-confirm3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3-4" value="4. immediate response" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#c2410c;strokeWidth=2;fontSize=13;labelBackgroundColor=#fff7ed;" parent="1" source="mediaapi-confirm3" target="firstrender3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3-5" value="publish" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;dashed=1;fontSize=13;labelBackgroundColor=#eff6ff;" parent="1" source="mediaapi-confirm3" target="event3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3-6" value="enqueue task" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;dashed=1;fontSize=13;labelBackgroundColor=#eff6ff;" parent="1" source="event3" target="task3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3-7" value="claim + process" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;fontSize=13;labelBackgroundColor=#eff6ff;" parent="1" source="task3" target="worker3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3-8" value="write optimized object" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;fontSize=13;labelBackgroundColor=#eff6ff;" parent="1" source="worker3" target="s3derived3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3-9" value="serve optimized asset" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;fontSize=13;labelBackgroundColor=#eff6ff;" parent="1" source="s3derived3" target="cloudfront3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3-10" value="latest variant lookup" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;dashed=1;fontSize=13;labelBackgroundColor=#eff6ff;" parent="1" source="query3" target="switch3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3-11" value="optimized URL" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;dashed=1;fontSize=13;labelBackgroundColor=#eff6ff;" parent="1" source="cloudfront3" target="switch3" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="page-observability" name="Observability Pipeline">
+    <mxGraphModel dx="1800" dy="735" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="bg4" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=36;fillColor=#f8fafc;strokeColor=#e2e8f0;" parent="1" vertex="1">
+          <mxGeometry x="20" y="20" width="1880" height="1040" as="geometry" />
+        </mxCell>
+        <mxCell id="title4" value="Observability Pipeline" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=30;fontStyle=1;fontColor=#0f172a;" parent="1" vertex="1">
+          <mxGeometry x="60" y="48" width="520" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle4" value="Metrics / Logs / Trace를 분리 수집하되 requestId, traceId, spanId로 운영 탐색과 원인 수렴 속도를 높인 구성" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=15;fontColor=#475569;" parent="1" vertex="1">
+          <mxGeometry x="60" y="94" width="1100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="source-bar4" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=24;fillColor=#ffffff;strokeColor=#cbd5e1;" parent="1" vertex="1">
+          <mxGeometry x="60" y="150" width="1780" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="source-title4" value="Signal Sources" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=20;fontStyle=1;fontColor=#0f172a;" parent="1" vertex="1">
+          <mxGeometry x="92" y="178" width="220" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="nginx4" value="edge-nginx&#xa;JSON access log&#xa;request_id / status / path / latency" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#eff6ff;strokeColor=#93c5fd;fontColor=#1e3a8a;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="100" y="225" width="280" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="apps4" value="Spring Services&#xa;stdout JSON log&#xa;service.name / requestId / traceId / spanId" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ecfeff;strokeColor=#67e8f9;fontColor=#155e75;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="470" y="225" width="360" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="metricsource4" value="Actuator Metrics&#xa;/actuator/prometheus&#xa;serviceMonitor label: observability.donmoa.io/metrics-target=active" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ecfdf5;strokeColor=#86efac;fontColor=#166534;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="920" y="225" width="420" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="trace4" value="Tracing Module&#xa;Micrometer + Brave&#xa;Zipkin reporter / MDC propagation" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#fff7ed;strokeColor=#fdba74;fontColor=#9a3412;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="1430" y="225" width="320" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="metrics-lane4" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=26;fillColor=#ecfdf5;strokeColor=#86efac;" parent="1" vertex="1">
+          <mxGeometry x="60" y="380" width="560" height="540" as="geometry" />
+        </mxCell>
+        <mxCell id="logs-lane4" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=26;fillColor=#eff6ff;strokeColor=#93c5fd;" parent="1" vertex="1">
+          <mxGeometry x="660" y="380" width="560" height="540" as="geometry" />
+        </mxCell>
+        <mxCell id="trace-lane4" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=26;fillColor=#fff7ed;strokeColor=#fdba74;" parent="1" vertex="1">
+          <mxGeometry x="1260" y="380" width="580" height="540" as="geometry" />
+        </mxCell>
+        <mxCell id="metrics-title4" value="Metrics" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=20;fontStyle=1;fontColor=#166534;" parent="1" vertex="1">
+          <mxGeometry x="92" y="408" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="logs-title4" value="Logs" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=20;fontStyle=1;fontColor=#1d4ed8;" parent="1" vertex="1">
+          <mxGeometry x="692" y="408" width="120" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="trace-title4" value="Trace + Correlation" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=20;fontStyle=1;fontColor=#9a3412;" parent="1" vertex="1">
+          <mxGeometry x="1292" y="408" width="220" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="servicemonitor4" value="ServiceMonitor&#xa;30s scrape" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#4ade80;fontColor=#166534;fontSize=17;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="100" y="490" width="150" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="prom4" value="Prometheus&#xa;kube-prometheus-stack&#xa;internal NLB / 5d retention" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#22c55e;fontColor=#166534;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="310" y="470" width="220" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="grafana-metrics4" value="Grafana Metrics Dashboard&#xa;rate, error, saturation, p95&#xa;alert rules 연결" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#15803d;fontColor=#166534;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="180" y="700" width="330" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="alloy4" value="Grafana Alloy&#xa;pod discovery&#xa;donmoa-dev / donmoa-system 수집" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#60a5fa;fontColor=#1e3a8a;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="720" y="480" width="220" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="loki4" value="Loki&#xa;SingleBinary&#xa;retention 168h" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#3b82f6;fontColor=#1e3a8a;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="1000" y="470" width="170" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="s3irsa4" value="S3 Backend + IRSA&#xa;chunks / ruler / admin&#xa;Loki object storage" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#38bdf8;fontColor=#0c4a6e;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="860" y="700" width="300" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="grafana-logs4" value="Grafana Observability / Log Explorer&#xa;Loki datasource + LogQL alerting&#xa;media-worker DLQ 알림 연계" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#1d4ed8;fontColor=#1e3a8a;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="670" y="700" width="370" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="mdc4" value="MDC Correlation&#xa;requestId / traceId / spanId" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#fb923c;fontColor=#9a3412;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="1320" y="490" width="220" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="zipkin4" value="Zipkin (local)&#xa;tracing verification" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#f59e0b;fontColor=#9a3412;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="1600" y="480" width="180" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="grafana-trace4" value="Grafana Request Trace Dashboard&#xa;traceId로 로그 탐색 진입&#xa;requestId 우선, traceId는 점진 확대" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#ea580c;fontColor=#9a3412;fontSize=17;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="1400" y="700" width="330" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="bottom-band4" value="운영 원칙&#xa;label은 service_name, env, log_type, level 정도로 최소화하고, requestId / traceId / path / userId는 payload에 보관해 조회 유연성과 cardinality를 동시에 관리" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#ffffff;strokeColor=#cbd5e1;fontColor=#334155;fontSize=15;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="60" y="950" width="1780" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4-1" value="scrape target" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#16a34a;strokeWidth=2;fontSize=12;labelBackgroundColor=#ecfdf5;" parent="1" source="metricsource4" target="servicemonitor4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4-2" value="scrape" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#16a34a;strokeWidth=2;fontSize=12;labelBackgroundColor=#ecfdf5;" parent="1" source="servicemonitor4" target="prom4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4-3" value="dashboard + alerts" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#16a34a;strokeWidth=2;fontSize=12;labelBackgroundColor=#ecfdf5;" parent="1" source="prom4" target="grafana-metrics4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4-4" value="stdout JSON log" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;fontSize=12;labelBackgroundColor=#eff6ff;" parent="1" source="nginx4" target="alloy4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4-5" value="stdout JSON log" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;fontSize=12;labelBackgroundColor=#eff6ff;" parent="1" source="apps4" target="alloy4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4-6" value="ship logs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;fontSize=12;labelBackgroundColor=#eff6ff;" parent="1" source="alloy4" target="loki4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4-7" value="object storage" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;fontSize=12;labelBackgroundColor=#eff6ff;" parent="1" source="loki4" target="s3irsa4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4-8" value="search + alert" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=2;fontSize=12;labelBackgroundColor=#eff6ff;" parent="1" source="loki4" target="grafana-logs4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4-9" value="trace context" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#c2410c;strokeWidth=2;fontSize=12;labelBackgroundColor=#fff7ed;" parent="1" source="trace4" target="mdc4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4-10" value="report spans" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#c2410c;strokeWidth=2;fontSize=12;labelBackgroundColor=#fff7ed;" parent="1" source="mdc4" target="zipkin4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4-11" value="explore by traceId" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#c2410c;strokeWidth=2;fontSize=12;labelBackgroundColor=#fff7ed;" parent="1" source="mdc4" target="grafana-trace4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

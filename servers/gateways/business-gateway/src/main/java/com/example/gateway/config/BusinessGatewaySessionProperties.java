@@ -11,13 +11,19 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "gateway.session")
 public class BusinessGatewaySessionProperties {
 
-    private boolean enabled = false;
+    private boolean enabled = true;
     private boolean relayHeaderEnabled = true;
-    // client-gateway와 동일한 Redis 키 프리픽스 사용 → 세션 공유
     private String redisKeyPrefix = "gateway:sess:";
-    private String statusField = "status";
+    private String authStateKeyPrefix = "gateway:auth:state:";
+    private String userSessionsKeyPrefix = "gateway:user:sessions:";
     private String activeStatus = "ACTIVE";
     private String revokedStatus = "REVOKED";
-    private String sessionCookieName = "SESSION";
+    private String sessionCookieName = "DONMOA_SESSION";
     private String sessionCookiePath = "/";
+    private String refreshTokenHashPepper = "";
+    private String refreshTokenEncryptionSecret = "";
+    private long authStateTtlSeconds = 300L;
+    private boolean cacheEnabled = true;
+    private long cacheMaximumSize = 10_000L;
+    private long cacheExpireAfterWriteSeconds = 5L;
 }

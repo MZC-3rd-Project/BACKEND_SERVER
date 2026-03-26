@@ -12,6 +12,14 @@ default_tags = {
 vpc_id = "vpc-xxxxxxxx"
 # alb_security_group_id = "sg-xxxxxxxx"
 # alb_to_node_ingress_ports = [8080]
+# additional_lb_security_group_rules = [
+#   {
+#     source_security_group_id = "sg-prometheus-nlb"
+#     from_port                = 9090
+#     to_port                  = 9090
+#     description              = "Prometheus internal NLB traffic"
+#   }
+# ]
 
 private_subnet_ids = [
   "subnet-private-a",

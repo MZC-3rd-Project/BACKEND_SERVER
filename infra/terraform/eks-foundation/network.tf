@@ -90,3 +90,17 @@ resource "aws_security_group_rule" "alb_to_nodes_app_ports" {
   source_security_group_id = var.alb_security_group_id
   description              = "Application traffic from ALB frontend security group"
 }
+
+resource "aws_security_group_rule" "additional_lb_to_nodes" {
+  for_each = {
+    for idx, rule in var.additional_lb_security_group_rules : tostring(idx) => rule
+  }
+
+  type                     = "ingress"
+  from_port                = each.value.from_port
+  to_port                  = each.value.to_port
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.nodes.id
+  source_security_group_id = each.value.source_security_group_id
+  description              = each.value.description
+}

@@ -76,6 +76,27 @@ variable "alb_to_node_ingress_ports" {
   }
 }
 
+variable "additional_lb_security_group_rules" {
+  description = "Additional load balancer frontend security-group rules that must reach EKS worker nodes"
+  type = list(object({
+    source_security_group_id = string
+    from_port                = number
+    to_port                  = number
+    description              = string
+  }))
+  default = []
+
+  validation {
+    condition = alltrue([
+      for rule in var.additional_lb_security_group_rules :
+      rule.from_port >= 1 && rule.from_port <= 65535 &&
+      rule.to_port >= 1 && rule.to_port <= 65535 &&
+      rule.to_port >= rule.from_port
+    ])
+    error_message = "additional_lb_security_group_rules must use valid TCP port ranges between 1 and 65535."
+  }
+}
+
 variable "cluster_endpoint_private_access" {
   description = "Whether the EKS API endpoint is reachable privately"
   type        = bool

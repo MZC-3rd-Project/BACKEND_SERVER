@@ -24,6 +24,7 @@ prometheus:
       service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
       service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
     port: 9090
+    reloaderWebPort: null
   prometheusSpec:
     replicas: 1
     retention: 5d

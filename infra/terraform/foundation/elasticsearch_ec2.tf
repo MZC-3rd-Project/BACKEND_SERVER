@@ -34,18 +34,6 @@ resource "aws_security_group" "ec2_elasticsearch" {
   })
 }
 
-resource "aws_security_group_rule" "ec2_elasticsearch_from_ecs_services" {
-  count = var.enable_ec2_elasticsearch ? 1 : 0
-
-  type                     = "ingress"
-  from_port                = 9200
-  to_port                  = 9200
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.ec2_elasticsearch[0].id
-  source_security_group_id = aws_security_group.ecs_service.id
-  description              = "Elasticsearch HTTP from ECS services"
-}
-
 resource "aws_security_group_rule" "ec2_elasticsearch_from_eks_nodes" {
   count = var.enable_ec2_elasticsearch && var.eks_node_security_group_id != null ? 1 : 0
 

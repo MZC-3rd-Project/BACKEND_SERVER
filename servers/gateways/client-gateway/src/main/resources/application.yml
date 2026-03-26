@@ -145,6 +145,7 @@ gateway:
     require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/bff/v1,/api/profile,/api/v1/users,/api/users,/api/store,/api/v1/cart,/api/v1/media,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/campaigns,/api/v1/sales,/api/v1/hot-deals,/api/v1/notifications,/api/v1/orders,/api/v1/payments,/api/v1/reviews}
   session:
     redis-key-prefix: ${GATEWAY_SESSION_REDIS_KEY_PREFIX:gateway:sess:}
+    auth-state-key-prefix: ${GATEWAY_SESSION_AUTH_STATE_KEY_PREFIX:gateway:auth:state:}
     user-sessions-key-prefix: ${GATEWAY_SESSION_USER_SESSIONS_KEY_PREFIX:gateway:user:sessions:}
     active-status: ${GATEWAY_SESSION_ACTIVE_STATUS:ACTIVE}
     revoked-status: ${GATEWAY_SESSION_REVOKED_STATUS:REVOKED}
@@ -152,6 +153,10 @@ gateway:
     refresh-token-encryption-secret: ${GATEWAY_SESSION_REFRESH_TOKEN_ENCRYPTION_SECRET:${GATEWAY_SESSION_REFRESH_TOKEN_HASH_PEPPER:}}
     session-cookie-name: ${GATEWAY_SESSION_COOKIE_NAME:DONMOA_SESSION}
     session-cookie-path: ${GATEWAY_SESSION_COOKIE_PATH:/}
+    auth-state-ttl-seconds: ${GATEWAY_SESSION_AUTH_STATE_TTL_SECONDS:300}
+    cache-enabled: ${GATEWAY_SESSION_CACHE_ENABLED:true}
+    cache-maximum-size: ${GATEWAY_SESSION_CACHE_MAXIMUM_SIZE:10000}
+    cache-expire-after-write-seconds: ${GATEWAY_SESSION_CACHE_EXPIRE_AFTER_WRITE_SECONDS:5}
 
 app:
   tracing:

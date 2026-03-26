@@ -65,14 +65,6 @@ resource "aws_security_group" "db" {
   description = "Aurora access security group"
   vpc_id      = aws_vpc.this.id
 
-  ingress {
-    description     = "PostgreSQL from ECS services"
-    from_port       = 5432
-    to_port         = 5432
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ecs_service.id]
-  }
-
   dynamic "ingress" {
     for_each = var.eks_node_security_group_id != null ? [var.eks_node_security_group_id] : []
 
@@ -111,14 +103,6 @@ resource "aws_security_group" "redis" {
   name        = "${var.name_prefix}-${var.environment}-redis-sg"
   description = "ElastiCache Redis access security group"
   vpc_id      = aws_vpc.this.id
-
-  ingress {
-    description     = "Redis from ECS services"
-    from_port       = var.redis_port
-    to_port         = var.redis_port
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ecs_service.id]
-  }
 
   dynamic "ingress" {
     for_each = var.eks_node_security_group_id != null ? [var.eks_node_security_group_id] : []
