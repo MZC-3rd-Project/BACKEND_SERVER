@@ -52,10 +52,16 @@ app:
     worker-id: ${SNOWFLAKE_WORKER_ID:9}
 
   gateway-security:
-    enabled: ${APP_GATEWAY_SECURITY_ENABLED:false}
-    internal-auth-header: X-Gateway-Auth
+    enabled: ${APP_GATEWAY_SECURITY_ENABLED:true}
+    gateway-auth-enabled: ${APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED:true}
+    internal-auth-header: ${APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}
     internal-auth-token: ${APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
-    user-id-header: X-User-Id
+    user-id-header: ${APP_GATEWAY_SECURITY_USER_ID_HEADER:X-User-Id}
+    required-paths:
+      - /api/v1/orders/*/cancel
+      - /api/v1/orders/*/refund
+    optional-user-context-paths:
+      - /api/v1/orders/**
 
   openapi:
     enabled: true

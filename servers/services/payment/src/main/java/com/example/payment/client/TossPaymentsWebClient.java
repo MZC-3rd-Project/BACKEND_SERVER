@@ -58,6 +58,9 @@ public class TossPaymentsWebClient implements TossPaymentsClient {
             } catch (WebClientResponseException e) {
                 log.error("토스페이먼츠 결제 승인 실패: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
                 throw new TossPaymentsApiException(e.getStatusCode().value(), e.getResponseBodyAsString(), e);
+            } catch (Exception e) {
+                log.error("토스페이먼츠 결제 승인 중 연결 오류: {}", e.getMessage(), e);
+                throw new TossPaymentsApiException(0, e.getMessage(), e);
             }
         };
         return circuitBreakerHelper.executeWithCircuitBreakerAndRetry(CB_CONFIRM, supplier);
@@ -76,6 +79,9 @@ public class TossPaymentsWebClient implements TossPaymentsClient {
             } catch (WebClientResponseException e) {
                 log.error("토스페이먼츠 결제 취소 실패: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
                 throw new TossPaymentsApiException(e.getStatusCode().value(), e.getResponseBodyAsString(), e);
+            } catch (Exception e) {
+                log.error("토스페이먼츠 결제 취소 중 연결 오류: {}", e.getMessage(), e);
+                throw new TossPaymentsApiException(0, e.getMessage(), e);
             }
         };
         return circuitBreakerHelper.executeWithCircuitBreakerAndRetry(CB_CANCEL, supplier);
@@ -92,6 +98,9 @@ public class TossPaymentsWebClient implements TossPaymentsClient {
         } catch (WebClientResponseException e) {
             log.error("토스페이먼츠 결제 조회 실패: status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
             throw new TossPaymentsApiException(e.getStatusCode().value(), e.getResponseBodyAsString(), e);
+        } catch (Exception e) {
+            log.error("토스페이먼츠 결제 조회 중 연결 오류: {}", e.getMessage(), e);
+            throw new TossPaymentsApiException(0, e.getMessage(), e);
         }
     }
 }
