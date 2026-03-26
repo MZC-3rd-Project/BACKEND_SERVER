@@ -10,6 +10,7 @@ This package provisions the AWS foundation required before deploying application
   - NAT gateway (single NAT by default for cost)
 - Security
   - ALB / ECS service / DB / Redis security groups
+  - Optional private-subnet NACL for a second defensive layer in front of EKS/data workloads
 - Compute base
   - ECS cluster
   - ECS task execution role and task role
@@ -139,6 +140,7 @@ terraform apply -var-file=terraform.tfvars
 Security note:
 - `0.0.0.0/0` is possible for temporary dev convenience, but not recommended.
 - Prefer team CIDR allow-list, and rotate/limit SSH keys.
+- Prefer SG chaining for runtime flows: ALB/backend SG -> EKS worker SG -> DB/Kafka/Redis SG.
 
 ## Core Output Mapping To `ecs-app`
 
@@ -147,6 +149,7 @@ Use these outputs to fill `infra/terraform/ecs-app/terraform.tfvars`:
 - `ecs_cluster_arn` -> `cluster_arn`
 - `private_subnet_ids` -> `subnet_ids`
 - `ecs_service_security_group_id` -> `security_group_ids[0]`
+- `alb_security_group_id` / `alb_security_group_name` -> `alb.ingress.kubernetes.io/security-groups`
 - `ecs_task_execution_role_arn` -> `task_execution_role_arn`
 - `ecs_task_role_arn` -> `task_role_arn`
 - `gateway_target_group_arn` -> `services["client-gateway"].target_group_arn`
@@ -158,6 +161,7 @@ Use these outputs to fill `infra/terraform/ecs-app/terraform.tfvars`:
 - `ec2_elasticsearch_endpoint` -> `ELASTICSEARCH_URIS` (when `enable_ec2_elasticsearch=true`)
 - `search_ai_enrichment_queue_url` -> `SEARCH_AI_ENRICHMENT_QUEUE_URL` (when `enable_search_ai_enrichment=true`)
 - `search_ai_enrichment_queue_arn` -> `search_ai_enrichment_queue_arn` input in `infra/terraform/eks-foundation`
+- `node_security_group_id` from `infra/terraform/eks-foundation` -> `eks_node_security_group_id`
 - `msk_bootstrap_brokers(_tls)` -> `KAFKA_BOOTSTRAP_SERVERS` (when `enable_msk=true`)
 - `opensearch_endpoint` -> `ELASTICSEARCH_URIS` (when `enable_opensearch=true`)
 - `service_discovery_namespace_id` -> `service_discovery_namespace_id` (for ECS Cloud Map registration)

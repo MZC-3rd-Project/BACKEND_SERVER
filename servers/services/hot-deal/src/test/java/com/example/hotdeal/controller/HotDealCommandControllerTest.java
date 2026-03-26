@@ -7,6 +7,7 @@ import com.example.hotdeal.service.HotDealPurchaseService;
 import com.example.hotdeal.service.QueueSseEventPublisher;
 import com.example.hotdeal.service.QueueSseService;
 import com.example.hotdeal.service.QueueService;
+import com.example.hotdeal.service.checkout.HotDealCheckoutService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
@@ -29,6 +30,7 @@ class HotDealCommandControllerTest {
     void setUp() {
         HotDealCommandService hotDealCommandService = mock(HotDealCommandService.class);
         HotDealPurchaseService hotDealPurchaseService = mock(HotDealPurchaseService.class);
+        HotDealCheckoutService hotDealCheckoutService = mock(HotDealCheckoutService.class);
         queueService = mock(QueueService.class);
         QueueSseService queueSseService = mock(QueueSseService.class);
         queueSseEventPublisher = mock(QueueSseEventPublisher.class);
@@ -36,6 +38,7 @@ class HotDealCommandControllerTest {
         HotDealCommandController controller = new HotDealCommandController(
                 hotDealCommandService,
                 hotDealPurchaseService,
+                hotDealCheckoutService,
                 queueService,
                 queueSseService,
                 queueSseEventPublisher

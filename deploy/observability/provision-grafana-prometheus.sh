@@ -30,14 +30,24 @@ cat >/tmp/grafana-prometheus-datasource.json <<EOF
 }
 EOF
 
-curl -sS -u "admin:${PASSWORD}" \
-  -H 'Content-Type: application/json' \
-  -X POST \
-  "${GRAFANA_URL}/api/datasources" \
-  -d @/tmp/grafana-prometheus-datasource.json >/tmp/grafana-prometheus-datasource-response.json || true
+EXISTING_PROM_UID="$(curl -sS -u "admin:${PASSWORD}" "${GRAFANA_URL}/api/datasources/name/Prometheus" | jq -r '.uid // empty')"
 
-PROM_UID="$(curl -sS -u "admin:${PASSWORD}" "${GRAFANA_URL}/api/datasources/name/Prometheus" | jq -r '.uid')"
-if [[ -z "${PROM_UID}" || "${PROM_UID}" == "null" ]]; then
+if [[ -n "${EXISTING_PROM_UID}" ]]; then
+  curl -sS -u "admin:${PASSWORD}" \
+    -H 'Content-Type: application/json' \
+    -X PUT \
+    "${GRAFANA_URL}/api/datasources/uid/${EXISTING_PROM_UID}" \
+    -d @/tmp/grafana-prometheus-datasource.json >/tmp/grafana-prometheus-datasource-response.json
+else
+  curl -sS -u "admin:${PASSWORD}" \
+    -H 'Content-Type: application/json' \
+    -X POST \
+    "${GRAFANA_URL}/api/datasources" \
+    -d @/tmp/grafana-prometheus-datasource.json >/tmp/grafana-prometheus-datasource-response.json
+fi
+
+PROM_UID="$(curl -sS -u "admin:${PASSWORD}" "${GRAFANA_URL}/api/datasources/name/Prometheus" | jq -r '.uid // empty')"
+if [[ -z "${PROM_UID}" ]]; then
   echo "[ERROR] Prometheus datasource not found after provisioning" >&2
   cat /tmp/grafana-prometheus-datasource-response.json >&2 || true
   exit 1

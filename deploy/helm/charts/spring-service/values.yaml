@@ -71,6 +71,13 @@ resources:
     memory: 2Gi
 
 probes:
+  startup:
+    enabled: true
+    path: /actuator/health
+    port: http
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
   liveness:
     enabled: true
     path: /actuator/health

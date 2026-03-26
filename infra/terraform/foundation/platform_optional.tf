@@ -23,6 +23,30 @@ resource "aws_security_group" "msk" {
     security_groups = [aws_security_group.ecs_service.id]
   }
 
+  dynamic "ingress" {
+    for_each = var.eks_node_security_group_id != null ? [var.eks_node_security_group_id] : []
+
+    content {
+      description     = "Kafka plaintext from EKS worker nodes"
+      from_port       = 9092
+      to_port         = 9092
+      protocol        = "tcp"
+      security_groups = [ingress.value]
+    }
+  }
+
+  dynamic "ingress" {
+    for_each = var.eks_node_security_group_id != null ? [var.eks_node_security_group_id] : []
+
+    content {
+      description     = "Kafka TLS from EKS worker nodes"
+      from_port       = 9094
+      to_port         = 9094
+      protocol        = "tcp"
+      security_groups = [ingress.value]
+    }
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -84,6 +108,18 @@ resource "aws_security_group" "opensearch" {
     to_port         = 443
     protocol        = "tcp"
     security_groups = [aws_security_group.ecs_service.id]
+  }
+
+  dynamic "ingress" {
+    for_each = var.eks_node_security_group_id != null ? [var.eks_node_security_group_id] : []
+
+    content {
+      description     = "HTTPS from EKS worker nodes"
+      from_port       = 443
+      to_port         = 443
+      protocol        = "tcp"
+      security_groups = [ingress.value]
+    }
   }
 
   egress {

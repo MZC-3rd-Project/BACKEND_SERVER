@@ -66,6 +66,7 @@ app:
   # ─── Service URLs ──────────────────────────────
   service:
     product-url: ${PRODUCT_SERVICE_URL:http://localhost:8084}
+    order-url: ${ORDER_SERVICE_URL:http://localhost:8090}
     stock-url: ${STOCK_SERVICE_URL:http://localhost:8085}
 
   # ─── OpenAPI ──────────────────────────────────

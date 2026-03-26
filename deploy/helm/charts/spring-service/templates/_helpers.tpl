@@ -164,6 +164,16 @@ template:
         resources:
           {{- toYaml . | nindent 10 }}
         {{- end }}
+        {{- $startupProbe := (index .Values.probes "startup") | default dict }}
+        {{- if ($startupProbe.enabled | default false) }}
+        startupProbe:
+          httpGet:
+            path: {{ $startupProbe.path | default "/actuator/health" }}
+            port: {{ $startupProbe.port | default "http" }}
+          periodSeconds: {{ $startupProbe.periodSeconds | default 10 }}
+          timeoutSeconds: {{ $startupProbe.timeoutSeconds | default 5 }}
+          failureThreshold: {{ $startupProbe.failureThreshold | default 30 }}
+        {{- end }}
         {{- if .Values.probes.liveness.enabled }}
         livenessProbe:
           httpGet:

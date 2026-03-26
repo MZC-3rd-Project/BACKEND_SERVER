@@ -60,12 +60,6 @@ variable "private_subnet_cidrs" {
   }
 }
 
-variable "runtime_ingress_cidr_blocks" {
-  description = "CIDR blocks allowed to access runtime dependencies from app workloads"
-  type        = list(string)
-  default     = []
-}
-
 variable "eks_node_security_group_id" {
   description = "Optional EKS worker node security group allowed to reach shared dependencies"
   type        = string
@@ -88,6 +82,25 @@ variable "single_nat_gateway" {
   description = "Use single NAT gateway (cost-optimized)"
   type        = bool
   default     = true
+}
+
+variable "enable_private_subnet_network_acl" {
+  description = "Whether to attach a custom least-privilege network ACL to private subnets"
+  type        = bool
+  default     = false
+}
+
+variable "private_subnet_alb_target_ports" {
+  description = "TCP target ports that internet-facing ALBs in public subnets may reach inside private subnets"
+  type        = list(number)
+  default     = [8080]
+
+  validation {
+    condition = alltrue([
+      for port in var.private_subnet_alb_target_ports : port >= 1 && port <= 65535
+    ])
+    error_message = "private_subnet_alb_target_ports must contain valid TCP ports between 1 and 65535."
+  }
 }
 
 variable "enable_service_discovery" {

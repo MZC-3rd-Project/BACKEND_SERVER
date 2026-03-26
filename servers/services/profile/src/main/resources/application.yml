@@ -87,6 +87,16 @@ app:
     dummy-bootstrap:
       enabled: false
 
+# ─── Actuator ─────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ${ACTUATOR_ENDPOINTS:health,info,metrics,prometheus}
+  endpoint:
+    health:
+      show-details: always
+
 ---
 spring:
   config:
@@ -105,16 +115,6 @@ app:
       email: "dummy@dev.local"
       nickname: "개발더미유저"
       phone: "010-1234-5678"
-
-# ─── Actuator ─────────────────────────────────
-management:
-  endpoints:
-    web:
-      exposure:
-        include: ${ACTUATOR_ENDPOINTS:health,info,metrics,prometheus}
-  endpoint:
-    health:
-      show-details: always
 
 # ─── Logging ──────────────────────────────────
 logging:

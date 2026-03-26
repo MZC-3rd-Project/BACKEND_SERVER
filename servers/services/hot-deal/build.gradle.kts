@@ -15,6 +15,7 @@ dependencies {
 
     // Data
     implementation(project(":libs:data:entity"))
+    implementation(project(":libs:clients:order-client"))
     implementation(project(":libs:clients:product-client"))
     implementation(project(":libs:clients:stock-client"))
 

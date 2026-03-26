@@ -31,14 +31,14 @@ resource "aws_security_group" "ec2_kafka" {
   }
 
   dynamic "ingress" {
-    for_each = var.runtime_ingress_cidr_blocks
+    for_each = var.eks_node_security_group_id != null ? [var.eks_node_security_group_id] : []
 
     content {
-      description = "Kafka from runtime CIDR"
-      from_port   = 9092
-      to_port     = 9092
-      protocol    = "tcp"
-      cidr_blocks = [ingress.value]
+      description     = "Kafka from EKS worker nodes"
+      from_port       = 9092
+      to_port         = 9092
+      protocol        = "tcp"
+      security_groups = [ingress.value]
     }
   }
 

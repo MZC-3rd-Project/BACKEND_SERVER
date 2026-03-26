@@ -8,6 +8,7 @@ import com.example.hotdeal.service.HotDealPurchaseService;
 import com.example.hotdeal.service.QueueSseEventPublisher;
 import com.example.hotdeal.service.QueueSseService;
 import com.example.hotdeal.service.QueueService;
+import com.example.hotdeal.service.checkout.HotDealCheckoutService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ public class HotDealCommandController implements HotDealCommandApi {
 
     private final HotDealCommandService hotDealCommandService;
     private final HotDealPurchaseService hotDealPurchaseService;
+    private final HotDealCheckoutService hotDealCheckoutService;
     private final QueueService queueService;
     private final QueueSseService queueSseService;
     private final QueueSseEventPublisher queueSseEventPublisher;
@@ -42,6 +44,25 @@ public class HotDealCommandController implements HotDealCommandApi {
                                                          @Valid @RequestBody HotDealPurchaseRequest request,
                                                          @RequestHeader("X-User-Id") Long userId) {
         return ApiResponse.success(hotDealPurchaseService.purchase(hotDealId, request, userId));
+    }
+
+    @Override
+    public ApiResponse<HotDealCheckoutReserveResponse> reserveCheckout(@PathVariable Long hotDealId,
+                                                                       @Valid @RequestBody HotDealCheckoutReserveRequest request,
+                                                                       @RequestHeader("X-User-Id") Long userId) {
+        return ApiResponse.success(hotDealCheckoutService.reserve(hotDealId, request, userId));
+    }
+
+    @Override
+    public ApiResponse<HotDealCheckoutSubmitResponse> submitCheckout(@Valid @RequestBody HotDealCheckoutSubmitRequest request,
+                                                                     @RequestHeader("X-User-Id") Long userId) {
+        return ApiResponse.success(hotDealCheckoutService.submit(request, userId));
+    }
+
+    @Override
+    public ApiResponse<HotDealCheckoutCancelResponse> cancelCheckout(@Valid @RequestBody HotDealCheckoutCancelRequest request,
+                                                                     @RequestHeader("X-User-Id") Long userId) {
+        return ApiResponse.success(hotDealCheckoutService.cancel(request, userId));
     }
 
     @Override

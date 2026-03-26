@@ -76,3 +76,17 @@ resource "aws_security_group_rule" "nodes_to_cluster_https" {
   security_group_id        = aws_security_group.cluster.id
   source_security_group_id = aws_security_group.nodes.id
 }
+
+resource "aws_security_group_rule" "alb_to_nodes_app_ports" {
+  for_each = var.alb_security_group_id != null ? {
+    for port in var.alb_to_node_ingress_ports : tostring(port) => port
+  } : {}
+
+  type                     = "ingress"
+  from_port                = each.value
+  to_port                  = each.value
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.nodes.id
+  source_security_group_id = var.alb_security_group_id
+  description              = "Application traffic from ALB frontend security group"
+}

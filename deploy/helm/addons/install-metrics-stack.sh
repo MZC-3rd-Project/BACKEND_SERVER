@@ -38,4 +38,7 @@ kubectl rollout status statefulset/prometheus-donmoa-monitoring-prometheus \
   --namespace "${SYSTEM_NAMESPACE}" \
   --timeout 600s
 
+echo "[INFO] applying shared ServiceMonitor for donmoa-dev services"
+kubectl apply -f "${ROOT_DIR}/deploy/helm/addons/donmoa-dev-services-servicemonitor.yaml"
+
 echo "[INFO] metrics stack is ready"

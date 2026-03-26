@@ -57,6 +57,25 @@ variable "private_subnet_ids" {
   }
 }
 
+variable "alb_security_group_id" {
+  description = "Optional ALB security group that may reach application ports on EKS worker nodes"
+  type        = string
+  default     = null
+}
+
+variable "alb_to_node_ingress_ports" {
+  description = "Application TCP ports exposed from ALB to EKS worker nodes"
+  type        = list(number)
+  default     = [8080]
+
+  validation {
+    condition = alltrue([
+      for port in var.alb_to_node_ingress_ports : port >= 1 && port <= 65535
+    ])
+    error_message = "alb_to_node_ingress_ports must contain valid TCP ports between 1 and 65535."
+  }
+}
+
 variable "cluster_endpoint_private_access" {
   description = "Whether the EKS API endpoint is reachable privately"
   type        = bool
@@ -72,7 +91,12 @@ variable "cluster_endpoint_public_access" {
 variable "cluster_endpoint_public_access_cidrs" {
   description = "CIDRs allowed to access the public EKS API endpoint"
   type        = list(string)
-  default     = ["0.0.0.0/0"]
+  default     = []
+
+  validation {
+    condition     = !var.cluster_endpoint_public_access || length(var.cluster_endpoint_public_access_cidrs) > 0
+    error_message = "cluster_endpoint_public_access_cidrs must contain at least one CIDR when cluster_endpoint_public_access=true."
+  }
 }
 
 variable "enabled_cluster_log_types" {

@@ -10,6 +10,8 @@ default_tags = {
 
 # Reuse outputs from infra/terraform/foundation
 vpc_id = "vpc-xxxxxxxx"
+# alb_security_group_id = "sg-xxxxxxxx"
+# alb_to_node_ingress_ports = [8080]
 
 private_subnet_ids = [
   "subnet-private-a",
@@ -28,7 +30,7 @@ node_group_instance_types = [
 ]
 
 node_group_capacity_type = "ON_DEMAND"
-node_group_desired_size  = 3
+node_group_desired_size  = 4
 node_group_min_size      = 1
 node_group_max_size      = 4
 

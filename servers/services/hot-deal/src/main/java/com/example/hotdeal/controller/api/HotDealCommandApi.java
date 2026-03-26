@@ -26,6 +26,25 @@ public interface HotDealCommandApi {
             @Valid @RequestBody HotDealPurchaseRequest request,
             @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long userId);
 
+    @Operation(summary = "핫딜 체크아웃 예약")
+    @PostMapping("/{hotDealId}/checkout/reservations")
+    ApiResponse<HotDealCheckoutReserveResponse> reserveCheckout(
+            @PathVariable Long hotDealId,
+            @Valid @RequestBody HotDealCheckoutReserveRequest request,
+            @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long userId);
+
+    @Operation(summary = "핫딜 체크아웃 주문 생성")
+    @PostMapping("/checkout/submit")
+    ApiResponse<HotDealCheckoutSubmitResponse> submitCheckout(
+            @Valid @RequestBody HotDealCheckoutSubmitRequest request,
+            @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long userId);
+
+    @Operation(summary = "핫딜 체크아웃 예약 취소")
+    @PostMapping("/checkout/cancellations")
+    ApiResponse<HotDealCheckoutCancelResponse> cancelCheckout(
+            @Valid @RequestBody HotDealCheckoutCancelRequest request,
+            @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long userId);
+
     @Operation(summary = "대기열 진입")
     @PostMapping("/{hotDealId}/queue/enter")
     ApiResponse<QueueEnterResponse> enterQueue(

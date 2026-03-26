@@ -29,8 +29,9 @@ env:
   REDIS_HOST: donmoa-dev-redis.awmnbx.ng.0001.apn2.cache.amazonaws.com
   REDIS_PORT: "6379"
   KAFKA_BOOTSTRAP_SERVERS: 10.30.130.193:9092
-  SPRING_KAFKA_LISTENER_AUTO_STARTUP: "false"
+  SPRING_KAFKA_LISTENER_AUTO_STARTUP: "true"
   PRODUCT_SERVICE_URL: http://product-service:8084
+  ORDER_SERVICE_URL: http://order-service:8090
   STOCK_SERVICE_URL: http://stock-service:8085
   APP_GATEWAY_SECURITY_ENABLED: "true"
   APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED: "true"

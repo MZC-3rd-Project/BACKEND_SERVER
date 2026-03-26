@@ -74,14 +74,14 @@ resource "aws_security_group" "db" {
   }
 
   dynamic "ingress" {
-    for_each = var.runtime_ingress_cidr_blocks
+    for_each = var.eks_node_security_group_id != null ? [var.eks_node_security_group_id] : []
 
     content {
-      description = "PostgreSQL from runtime CIDR"
-      from_port   = 5432
-      to_port     = 5432
-      protocol    = "tcp"
-      cidr_blocks = [ingress.value]
+      description     = "PostgreSQL from EKS worker nodes"
+      from_port       = 5432
+      to_port         = 5432
+      protocol        = "tcp"
+      security_groups = [ingress.value]
     }
   }
 
@@ -121,14 +121,14 @@ resource "aws_security_group" "redis" {
   }
 
   dynamic "ingress" {
-    for_each = var.runtime_ingress_cidr_blocks
+    for_each = var.eks_node_security_group_id != null ? [var.eks_node_security_group_id] : []
 
     content {
-      description = "Redis from runtime CIDR"
-      from_port   = var.redis_port
-      to_port     = var.redis_port
-      protocol    = "tcp"
-      cidr_blocks = [ingress.value]
+      description     = "Redis from EKS worker nodes"
+      from_port       = var.redis_port
+      to_port         = var.redis_port
+      protocol        = "tcp"
+      security_groups = [ingress.value]
     }
   }
 

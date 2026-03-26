@@ -165,6 +165,12 @@ public class QueueService {
         stringRedisTemplate.opsForZSet().remove(admissionSlotKey(hotDealId), userId.toString());
     }
 
+    public void consumeAdmission(Long hotDealId, Long userId) {
+        redisTemplate.delete(ADMITTED_KEY_PREFIX + hotDealId + ":" + userId);
+        redisTemplate.delete(TOKEN_KEY_PREFIX + hotDealId + ":" + userId);
+        releaseAdmissionSlot(hotDealId, userId);
+    }
+
     private String resolveOrIssueToken(Long hotDealId, Long userId) {
         String tokenKey = TOKEN_KEY_PREFIX + hotDealId + ":" + userId;
         Object stored = redisTemplate.opsForValue().get(tokenKey);

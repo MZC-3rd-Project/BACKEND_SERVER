@@ -2,6 +2,10 @@ aws_region  = "ap-northeast-2"
 environment = "dev"
 name_prefix = "donmoa"
 
+# Reuse output `node_security_group_id` from infra/terraform/eks-foundation
+# when workloads run on EKS and need access to shared VPC dependencies.
+# eks_node_security_group_id = "sg-xxxxxxxx"
+
 default_tags = {
   Team    = "backend"
   Managed = "terraform"
@@ -21,7 +25,10 @@ private_subnet_cidrs = [
 
 enable_nat_gateway = true
 single_nat_gateway = true
+enable_private_subnet_network_acl = true
+private_subnet_alb_target_ports   = [8080]
 
+alb_ingress_cidrs       = ["0.0.0.0/0"]
 create_alb              = true
 gateway_container_port  = 8080
 gateway_health_check_path = "/actuator/health"

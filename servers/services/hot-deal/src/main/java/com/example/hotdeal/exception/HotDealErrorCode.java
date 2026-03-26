@@ -20,6 +20,11 @@ public enum HotDealErrorCode implements DomainErrorCode {
     PURCHASE_QUANTITY_EXCEEDED("HOTDEAL-101", "구매 가능 수량을 초과했습니다.", HttpStatus.BAD_REQUEST),
     PURCHASE_ALREADY_EXISTS("HOTDEAL-102", "이미 구매한 핫딜입니다.", HttpStatus.CONFLICT),
     RESERVATION_EXPIRED("HOTDEAL-103", "임시 예약이 만료되었습니다.", HttpStatus.CONFLICT),
+    CHECKOUT_ALREADY_RESERVED("HOTDEAL-104", "이미 진행 중인 핫딜 결제가 있습니다.", HttpStatus.CONFLICT),
+    CHECKOUT_SESSION_NOT_FOUND("HOTDEAL-105", "핫딜 결제 세션을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    CHECKOUT_SESSION_FORBIDDEN("HOTDEAL-106", "다른 사용자의 핫딜 결제 세션에는 접근할 수 없습니다.", HttpStatus.FORBIDDEN),
+    CHECKOUT_IDEMPOTENCY_CONFLICT("HOTDEAL-107", "기존 핫딜 결제 요청과 다른 내용으로 재시도할 수 없습니다.", HttpStatus.CONFLICT),
+    CHECKOUT_ALREADY_COMPLETED("HOTDEAL-108", "이미 완료된 핫딜 결제입니다.", HttpStatus.CONFLICT),
 
     // ─── 대기열 ────────────────────────────────
     QUEUE_ALREADY_ENTERED("HOTDEAL-201", "이미 대기열에 등록되어 있습니다.", HttpStatus.CONFLICT),
@@ -29,6 +34,7 @@ public enum HotDealErrorCode implements DomainErrorCode {
     // ─── 외부 서비스 ────────────────────────────
     PRODUCT_SERVICE_ERROR("HOTDEAL-301", "상품 서비스 호출 중 오류가 발생했습니다.", HttpStatus.SERVICE_UNAVAILABLE),
     STOCK_SERVICE_ERROR("HOTDEAL-302", "재고 서비스 호출 중 오류가 발생했습니다.", HttpStatus.SERVICE_UNAVAILABLE),
+    ORDER_SERVICE_ERROR("HOTDEAL-303", "주문 서비스 호출 중 오류가 발생했습니다.", HttpStatus.SERVICE_UNAVAILABLE),
 
     // ─── 분산 락 ────────────────────────────────
     LOCK_ACQUISITION_FAILED("HOTDEAL-401", "락 획득에 실패했습니다. 잠시 후 다시 시도해주세요.", HttpStatus.SERVICE_UNAVAILABLE);

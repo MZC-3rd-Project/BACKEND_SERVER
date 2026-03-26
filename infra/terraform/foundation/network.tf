@@ -121,3 +121,144 @@ resource "aws_route_table_association" "private" {
   subnet_id      = each.value.id
   route_table_id = aws_route_table.private[each.key].id
 }
+
+locals {
+  private_subnet_nacl_private_rules = {
+    for idx, cidr in var.private_subnet_cidrs : idx => {
+      cidr            = cidr
+      ingress_rule_no = 100 + idx
+      egress_rule_no  = 200 + idx
+    }
+  }
+
+  private_subnet_nacl_public_alb_rules = {
+    for rule in flatten([
+      for cidr_idx, cidr in var.public_subnet_cidrs : [
+        for port_idx, port in var.private_subnet_alb_target_ports : {
+          key     = "${cidr_idx}-${port_idx}"
+          cidr    = cidr
+          port    = port
+          rule_no = 300 + (cidr_idx * 10) + port_idx
+        }
+      ]
+    ]) : rule.key => rule
+  }
+
+  private_subnet_nacl_public_response_rules = {
+    for idx, cidr in var.public_subnet_cidrs : idx => {
+      cidr    = cidr
+      rule_no = 400 + idx
+    }
+  }
+}
+
+# Private subnets host both EKS workloads and shared data services, so this NACL
+# blocks direct public ingress except ALB target ports while preserving private
+# east-west traffic and NAT return traffic.
+resource "aws_network_acl" "private" {
+  count = var.enable_private_subnet_network_acl ? 1 : 0
+
+  vpc_id     = aws_vpc.this.id
+  subnet_ids = [for s in values(aws_subnet.private) : s.id]
+
+  dynamic "ingress" {
+    for_each = local.private_subnet_nacl_private_rules
+
+    content {
+      rule_no    = ingress.value.ingress_rule_no
+      protocol   = "-1"
+      action     = "allow"
+      cidr_block = ingress.value.cidr
+      from_port  = 0
+      to_port    = 0
+    }
+  }
+
+  dynamic "ingress" {
+    for_each = local.private_subnet_nacl_public_alb_rules
+
+    content {
+      rule_no    = ingress.value.rule_no
+      protocol   = "tcp"
+      action     = "allow"
+      cidr_block = ingress.value.cidr
+      from_port  = ingress.value.port
+      to_port    = ingress.value.port
+    }
+  }
+
+  ingress {
+    rule_no    = 500
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 1024
+    to_port    = 65535
+  }
+
+  dynamic "egress" {
+    for_each = local.private_subnet_nacl_private_rules
+
+    content {
+      rule_no    = egress.value.egress_rule_no
+      protocol   = "-1"
+      action     = "allow"
+      cidr_block = egress.value.cidr
+      from_port  = 0
+      to_port    = 0
+    }
+  }
+
+  egress {
+    rule_no    = 300
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 80
+    to_port    = 80
+  }
+
+  egress {
+    rule_no    = 310
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 443
+    to_port    = 443
+  }
+
+  egress {
+    rule_no    = 320
+    protocol   = "udp"
+    action     = "allow"
+    cidr_block = var.vpc_cidr
+    from_port  = 53
+    to_port    = 53
+  }
+
+  egress {
+    rule_no    = 330
+    protocol   = "tcp"
+    action     = "allow"
+    cidr_block = var.vpc_cidr
+    from_port  = 53
+    to_port    = 53
+  }
+
+  dynamic "egress" {
+    for_each = local.private_subnet_nacl_public_response_rules
+
+    content {
+      rule_no    = egress.value.rule_no
+      protocol   = "tcp"
+      action     = "allow"
+      cidr_block = egress.value.cidr
+      from_port  = 1024
+      to_port    = 65535
+    }
+  }
+
+  tags = merge(local.common_tags, {
+    Name = "${var.name_prefix}-${var.environment}-nacl-private"
+  })
+}
