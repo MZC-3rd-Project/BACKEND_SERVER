@@ -26,7 +26,7 @@ spring:
             - id: product-service
               uri: ${app.service.product-url:http://localhost:8084}
               predicates:
-                - Path=/api/products/**,/api/goods/**,/api/performances/**,/api/categories/**,/api/items/**
+                - Path=/api/products/**,/api/goods/**,/api/performances/**,/api/categories/**,/api/items/**,/api/seller/**
             - id: store-service
               uri: ${app.service.store-url:http://localhost:8072}
               predicates:
@@ -34,11 +34,35 @@ spring:
             - id: funding-service
               uri: ${app.service.funding-url:http://localhost:8086}
               predicates:
-                - Path=/api/campaigns/**
+                - Path=/api/campaigns/**,/api/funding/**
             - id: hot-deal-service
               uri: ${app.service.hot-deal-url:http://localhost:8089}
               predicates:
                 - Path=/api/v1/hot-deals/**
+            - id: media-service
+              uri: ${app.service.media-url:http://localhost:8094}
+              predicates:
+                - Path=/api/v1/media/**
+            - id: order-service
+              uri: ${app.service.order-url:http://localhost:8075}
+              predicates:
+                - Path=/api/v1/orders/**
+            - id: order-query-service
+              uri: ${app.service.order-query-url:http://localhost:8073}
+              predicates:
+                - Path=/api/v1/order-query/**
+            - id: review-service
+              uri: ${app.service.review-url:http://localhost:8097}
+              predicates:
+                - Path=/api/v1/reviews/**
+            - id: chat-service
+              uri: ${app.service.chat-url:http://localhost:8093}
+              predicates:
+                - Path=/api/v1/chat/**
+            - id: chat-websocket
+              uri: ${app.service.chat-ws-url:ws://localhost:8093}
+              predicates:
+                - Path=/ws/chat,/ws/chat/**
 
 gateway:
   auth:
@@ -46,8 +70,8 @@ gateway:
     auth-service-url: ${app.service.auth-url:http://localhost:8081}
     user-service-url: ${app.service.user-url:http://localhost:8082}
   dev-login:
-    enabled: ${GATEWAY_DEV_LOGIN_ENABLED:false}
-    username: ${GATEWAY_DEV_LOGIN_USERNAME:seller}
+    enabled: ${GATEWAY_DEV_LOGIN_ENABLED:true}
+    username: ${GATEWAY_DEV_LOGIN_USERNAME:seller@naver.com}
     password: ${GATEWAY_DEV_LOGIN_PASSWORD:seller123}
     user-id: ${GATEWAY_DEV_LOGIN_USER_ID:9000002}
     roles: ${GATEWAY_DEV_LOGIN_ROLES:USER,SELLER}
@@ -55,11 +79,11 @@ gateway:
   security:
     internal-auth-header: ${GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}
     internal-auth-token: ${GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
-    allow-client-identity-headers: ${GATEWAY_SECURITY_ALLOW_CLIENT_IDENTITY_HEADERS:false}
+    allow-client-identity-headers: ${GATEWAY_SECURITY_ALLOW_CLIENT_IDENTITY_HEADERS:true}
     allow-client-signed-context-header: ${GATEWAY_SECURITY_ALLOW_CLIENT_SIGNED_CONTEXT_HEADER:false}
-    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/store,/api/campaigns,/api/v1/hot-deals}
+    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/bff,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/seller,/api/store,/api/campaigns,/api/funding,/api/v1/hot-deals,/api/v1/media,/api/v1/orders,/api/v1/order-query,/api/v1/reviews,/api/v1/chat,/ws/chat}
     require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:}
-    require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/store,/api/campaigns,/api/v1/hot-deals}
+    require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:}
   session:
     enabled: ${GATEWAY_SESSION_ENABLED:false}
     relay-header-enabled: ${GATEWAY_SESSION_RELAY_HEADER_ENABLED:true}
@@ -80,6 +104,19 @@ app:
     connect-timeout: ${GATEWAY_DOWNSTREAM_CONNECT_TIMEOUT_MS:5000}
     read-timeout: ${GATEWAY_DOWNSTREAM_READ_TIMEOUT_MS:10000}
     write-timeout: ${GATEWAY_DOWNSTREAM_WRITE_TIMEOUT_MS:10000}
+  service:
+    product-url: ${PRODUCT_SERVICE_URL:http://localhost:8084}
+    store-url: ${STORE_SERVICE_URL:http://localhost:8072}
+    funding-url: ${FUNDING_SERVICE_URL:http://localhost:8086}
+    hot-deal-url: ${HOT_DEAL_SERVICE_URL:http://localhost:8089}
+    media-url: ${MEDIA_SERVICE_URL:http://localhost:8094}
+    order-url: ${ORDER_SERVICE_URL:http://localhost:8075}
+    order-query-url: ${ORDER_QUERY_SERVICE_URL:http://localhost:8073}
+    review-url: ${REVIEW_SERVICE_URL:http://localhost:8097}
+    chat-url: ${CHAT_SERVICE_URL:http://localhost:8093}
+    chat-ws-url: ${CHAT_WS_SERVICE_URL:ws://localhost:8093}
+    auth-url: ${AUTH_SERVICE_URL:http://localhost:8081}
+    user-url: ${USER_SERVICE_URL:http://localhost:8082}
   security:
     context:
       signing-key: ${APP_SECURITY_CONTEXT_SIGNING_KEY:}

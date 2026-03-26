@@ -122,6 +122,43 @@ public class CampaignCommandService {
                 campaignId, sellerId, previousStatus);
     }
 
+    public CampaignResponse reactivate(Long campaignId, CampaignUpdateRequest request, Long sellerId) {
+        FundingCampaign campaign = findCampaign(campaignId);
+        campaign.validateOwnership(sellerId);
+
+        validatePeriod(request.getStartAt(), request.getEndAt());
+
+        FundingStatus previousStatus = campaign.getStatus();
+
+        campaign.reactivate(
+                request.getGoalAmount(),
+                request.getGoalQuantity(),
+                request.getMinAmount(),
+                request.getStartAt(),
+                request.getEndAt(),
+                request.getTitle(),
+                request.getSummary(),
+                request.getMakerName(),
+                request.getCategory(),
+                request.getThumbnailMediaId()
+        );
+
+        statusHistoryRepository.save(
+                FundingStatusHistory.create(campaignId, previousStatus, FundingStatus.ACTIVE, "seller-reactivate")
+        );
+
+        eventPublisher.publish(
+                new FundingCreatedEvent(
+                        campaign.getId(), campaign.getItemId(), campaign.getSellerId(),
+                        campaign.getFundingType().name(), campaign.getGoalAmount(),
+                        campaign.getStartAt(), campaign.getEndAt()
+                ),
+                EventMetadata.of("FundingCampaign", String.valueOf(campaign.getId()))
+        );
+
+        return CampaignResponse.from(campaign);
+    }
+
     private FundingCampaign findCampaign(Long campaignId) {
         return campaignRepository.findById(campaignId)
                 .orElseThrow(() -> new BusinessException(FundingErrorCode.CAMPAIGN_NOT_FOUND));

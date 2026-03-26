@@ -10,7 +10,7 @@ spring:
 
   # ─── DataSource ───────────────────────────────
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/funding_db}
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/funding_db}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
@@ -48,7 +48,7 @@ app:
 
   gateway-security:
     enabled: ${APP_GATEWAY_SECURITY_ENABLED:true}
-    gateway-auth-enabled: ${APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED:true}
+    gateway-auth-enabled: ${APP_GATEWAY_SECURITY_GATEWAY_AUTH_ENABLED:false}
     internal-auth-header: ${APP_GATEWAY_SECURITY_INTERNAL_AUTH_HEADER:X-Gateway-Auth}
     internal-auth-token: ${APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
     user-id-header: ${APP_GATEWAY_SECURITY_USER_ID_HEADER:X-User-Id}

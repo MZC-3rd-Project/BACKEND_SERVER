@@ -6,6 +6,7 @@ import com.example.clients.product.facade.ProductItemQueryClientFacade;
 import com.example.core.exception.BusinessException;
 import com.example.hotdeal.dto.CreateHotDealRequest;
 import com.example.hotdeal.dto.HotDealDetailResponse;
+import com.example.hotdeal.dto.UpdateHotDealRequest;
 import com.example.hotdeal.entity.HotDeal;
 import com.example.hotdeal.entity.HotDealStatus;
 import com.example.hotdeal.entity.HotDealStatusHistory;
@@ -135,6 +136,51 @@ public class HotDealCommandService {
         log.info("Hot deal activated: id={}, itemId={}, discountRate={}%", hotDeal.getId(), itemId, discountRate);
 
         return hotDeal;
+    }
+
+    @Transactional
+    public HotDealDetailResponse update(Long hotDealId, UpdateHotDealRequest request) {
+        HotDeal hotDeal = hotDealRepository.findById(hotDealId)
+                .orElseThrow(() -> new BusinessException(HotDealErrorCode.HOT_DEAL_NOT_FOUND));
+
+        hotDeal.update(
+                request.getDiscountRate(),
+                request.getMaxQuantity(),
+                request.getMaxPerUser(),
+                request.getStartAt(),
+                request.getEndAt()
+        );
+
+        if (request.getMaxQuantity() != null) {
+            stringRedisTemplate.opsForValue().set(STOCK_KEY_PREFIX + hotDealId,
+                    String.valueOf(request.getMaxQuantity() - hotDeal.getSoldQuantity()));
+        }
+        if (request.getMaxPerUser() != null) {
+            stringRedisTemplate.opsForValue().set(MAX_PER_USER_KEY_PREFIX + hotDealId,
+                    String.valueOf(request.getMaxPerUser()));
+        }
+
+        clearDetailCache(hotDealId);
+        return HotDealDetailResponse.from(hotDeal);
+    }
+
+    @Transactional
+    public void delete(Long hotDealId) {
+        HotDeal hotDeal = hotDealRepository.findById(hotDealId)
+                .orElseThrow(() -> new BusinessException(HotDealErrorCode.HOT_DEAL_NOT_FOUND));
+
+        hotDeal.softDelete();
+        clearDetailCache(hotDealId);
+    }
+
+    @Transactional
+    public HotDealDetailResponse restore(Long hotDealId) {
+        HotDeal hotDeal = hotDealRepository.findByIdIncludingDeleted(hotDealId)
+                .orElseThrow(() -> new BusinessException(HotDealErrorCode.HOT_DEAL_NOT_FOUND));
+
+        hotDeal.restore();
+        clearDetailCache(hotDealId);
+        return HotDealDetailResponse.from(hotDeal);
     }
 
     public void endExpiredDeals() {
