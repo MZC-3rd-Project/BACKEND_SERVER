@@ -32,4 +32,9 @@ public class CampaignCommandController implements CampaignCommandApi {
         campaignCommandService.cancel(campaignId, reason, sellerId);
         return ApiResponse.success();
     }
+
+    @Override
+    public ApiResponse<CampaignResponse> reactivate(Long campaignId, CampaignUpdateRequest request, Long sellerId) {
+        return ApiResponse.success(campaignCommandService.reactivate(campaignId, request, sellerId));
+    }
 }

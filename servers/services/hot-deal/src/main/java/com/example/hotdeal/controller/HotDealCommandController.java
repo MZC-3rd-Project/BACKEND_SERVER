@@ -3,6 +3,7 @@ package com.example.hotdeal.controller;
 import com.example.api.response.ApiResponse;
 import com.example.hotdeal.controller.api.HotDealCommandApi;
 import com.example.hotdeal.dto.*;
+import com.example.hotdeal.dto.UpdateHotDealRequest;
 import com.example.hotdeal.service.HotDealCommandService;
 import com.example.hotdeal.service.HotDealPurchaseService;
 import com.example.hotdeal.service.QueueSseEventPublisher;
@@ -63,5 +64,21 @@ public class HotDealCommandController implements HotDealCommandApi {
     public SseEmitter streamQueue(@PathVariable Long hotDealId,
                                   @RequestHeader("X-User-Id") Long userId) {
         return queueSseService.subscribe(hotDealId, userId);
+    }
+
+    @Override
+    public ApiResponse<HotDealDetailResponse> updateHotDeal(Long hotDealId, UpdateHotDealRequest request) {
+        return ApiResponse.success(hotDealCommandService.update(hotDealId, request));
+    }
+
+    @Override
+    public ApiResponse<Void> deleteHotDeal(Long hotDealId) {
+        hotDealCommandService.delete(hotDealId);
+        return ApiResponse.success();
+    }
+
+    @Override
+    public ApiResponse<HotDealDetailResponse> restoreHotDeal(Long hotDealId) {
+        return ApiResponse.success(hotDealCommandService.restore(hotDealId));
     }
 }

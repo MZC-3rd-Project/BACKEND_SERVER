@@ -48,4 +48,16 @@ public interface CampaignCommandApi {
             @PathVariable Long campaignId,
             @RequestParam(required = false) String reason,
             @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long sellerId);
+
+    @Operation(summary = "펀딩 캠페인 재활성화")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "재활성화 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "캠페인 없음")
+    })
+    @PostMapping("/{campaignId}/reactivate")
+    ApiResponse<CampaignResponse> reactivate(
+            @PathVariable Long campaignId,
+            @Valid @RequestBody CampaignUpdateRequest request,
+            @Parameter(hidden = true) @RequestHeader(value = "X-User-Id") Long sellerId);
 }

@@ -144,6 +144,25 @@ public class FundingCampaign extends BaseEntity {
         }
     }
 
+    public void reactivate(Long goalAmount, Integer goalQuantity, Long minAmount,
+                           LocalDateTime startAt, LocalDateTime endAt,
+                           String title, String summary, String makerName,
+                           String category, Long thumbnailMediaId) {
+        this.status = FundingStatus.ACTIVE;
+        this.currentAmount = 0L;
+        this.currentQuantity = 0;
+        this.goalAmount = goalAmount;
+        this.goalQuantity = goalQuantity;
+        this.minAmount = minAmount;
+        this.startAt = startAt;
+        this.endAt = endAt;
+        if (title != null) this.title = title;
+        if (summary != null) this.summary = summary;
+        if (makerName != null) this.makerName = makerName;
+        if (category != null) this.category = category;
+        if (thumbnailMediaId != null) this.thumbnailMediaId = thumbnailMediaId;
+    }
+
     public void update(Long goalAmount, Integer goalQuantity, Long minAmount,
                        LocalDateTime startAt, LocalDateTime endAt,
                        String title, String summary, String makerName,
