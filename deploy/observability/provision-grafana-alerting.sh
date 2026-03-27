@@ -46,7 +46,7 @@ cat <<'CFG' | sudo tee -a /tmp/grafana.ini.cleaned >/dev/null
 [unified_alerting.state_history]
 enabled = true
 backend = loki
-loki_remote_url = http://${LOKI_PRIVATE_URL}
+loki_remote_url = http://${LOKI_PRIVATE_URL}:3100
 
 [feature_toggles]
 enable = alertingCentralAlertHistory

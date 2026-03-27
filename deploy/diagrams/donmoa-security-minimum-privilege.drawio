@@ -1,6 +1,6 @@
-<mxfile host="drawio-plugin" modified="2026-03-26T03:37:00.592Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" compressed="false" version="22.1.22" etag="ghLt403qbuMiwWq-Vq3n" type="embed" pages="2">
+<mxfile host="drawio-plugin" modified="2026-03-26T13:30:57.800Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" compressed="false" etag="endlvNvSCZU1feQ6tswM" version="22.1.22" type="embed" pages="2">
   <diagram id="security-overview" name="최소 권한 보안 아키텍처">
-    <mxGraphModel dx="1029" dy="808" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="1500" background="#ffffff" math="0" shadow="0">
+    <mxGraphModel dx="7950" dy="3230" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="1500" background="#ffffff" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -155,7 +155,7 @@
     </mxGraphModel>
   </diagram>
   <diagram id="security-checklist" name="보안 체크리스트">
-    <mxGraphModel dx="1800" dy="1413" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1400" background="#ffffff" math="0" shadow="0">
+    <mxGraphModel dx="795" dy="323" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1400" background="#ffffff" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />

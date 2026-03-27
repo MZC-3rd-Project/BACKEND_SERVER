@@ -124,7 +124,8 @@ class SellerDashboardOverviewQueryServiceTest {
         when(rawSalesEventRepository.aggregateByStoreIdAndSellerIdAndOccurredAtBetween(anyLong(), anyLong(), any(), any()))
                 .thenReturn(List.of(
                         new AnalyticsRawSalesEventAggregateRow("PURCHASE_CREATED", 1L, 10000L, 10000L),
-                        new AnalyticsRawSalesEventAggregateRow("PURCHASE_CANCELLED", 1L, 0L, -2000L)
+                        new AnalyticsRawSalesEventAggregateRow("PURCHASE_CANCELLED", 1L, 0L, -2000L),
+                        new AnalyticsRawSalesEventAggregateRow("PURCHASE_REFUNDED", 1L, 0L, -3000L)
                 ));
         when(rawSalesEventRepository.findLatestTimestampByStoreIdAndSellerIdAndOccurredAtBetween(anyLong(), anyLong(), any(), any()))
                 .thenReturn(now.minusMinutes(20));
@@ -146,9 +147,10 @@ class SellerDashboardOverviewQueryServiceTest {
         SellerDashboardOverviewResponse response = service.getOverviewByStore(10L, 20L, query);
 
         assertThat(response.getSales().getGrossSales()).isEqualTo(10000L);
-        assertThat(response.getSales().getNetSales()).isEqualTo(8000L);
+        assertThat(response.getSales().getNetSales()).isEqualTo(5000L);
         assertThat(response.getSales().getOrderCount()).isEqualTo(1L);
         assertThat(response.getSales().getCancelCount()).isEqualTo(1L);
+        assertThat(response.getSales().getRefundCount()).isEqualTo(1L);
         assertThat(response.getSearch().getSearchCount()).isEqualTo(1L);
         assertThat(response.getSearch().getClickCount()).isEqualTo(1L);
         assertThat(response.getSearch().getCtr()).isEqualTo(1.0d);

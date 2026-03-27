@@ -84,6 +84,9 @@ app:
   # ─── Service URLs ────────────────────────────
   service:
     product-url: ${PRODUCT_SERVICE_URL:http://localhost:8084}
+    profile-url: ${PROFILE_SERVICE_URL:http://localhost:8071}
+    store-url: ${STORE_SERVICE_URL:http://localhost:8072}
+    media-url: ${MEDIA_SERVICE_URL:http://localhost:8094}
     funding-url: ${FUNDING_SERVICE_URL:http://localhost:8086}
     notification-url: ${NOTIFICATION_SERVICE_URL:http://localhost:8092}
 

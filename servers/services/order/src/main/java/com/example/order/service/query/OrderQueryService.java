@@ -10,8 +10,10 @@ import com.example.order.dto.response.OrderDetailResponse;
 import com.example.order.dto.response.OrderListResponse;
 import com.example.order.exception.OrderErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,7 +25,17 @@ public class OrderQueryService {
     private final OrderRepository orderRepository;
 
     public Page<OrderListResponse> getMyOrders(Long userId, Pageable pageable) {
-        return orderRepository.findByUserIdAndDeletedAtIsNull(userId, pageable)
+        Pageable effectivePageable = pageable;
+        if (pageable == null || pageable.getSort().isUnsorted()) {
+            int page = pageable == null ? 0 : pageable.getPageNumber();
+            int size = pageable == null ? 20 : pageable.getPageSize();
+            effectivePageable = PageRequest.of(
+                    page,
+                    size,
+                    Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
+            );
+        }
+        return orderRepository.findByUserIdAndDeletedAtIsNull(userId, effectivePageable)
                 .map(OrderListResponse::from);
     }
 
@@ -58,6 +70,8 @@ public class OrderQueryService {
     }
 
     private boolean isReviewableStatus(OrderStatus status) {
-        return status == OrderStatus.DELIVERED || status == OrderStatus.COMPLETED;
+        return status == OrderStatus.PAID
+                || status == OrderStatus.DELIVERED
+                || status == OrderStatus.COMPLETED;
     }
 }

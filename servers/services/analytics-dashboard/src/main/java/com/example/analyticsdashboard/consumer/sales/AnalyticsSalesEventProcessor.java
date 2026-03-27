@@ -27,7 +27,8 @@ public class AnalyticsSalesEventProcessor extends AbstractAnalyticsEventProcesso
         this.analyticsEventIngestService = analyticsEventIngestService;
         this.eventSpecs = Map.of(
                 "PURCHASE_CREATED", eventSpec(this::isPresent, this::ingestSalesEvent),
-                "PURCHASE_CANCELLED", eventSpec(this::isPresent, this::ingestSalesEvent)
+                "PURCHASE_CANCELLED", eventSpec(this::isPresent, this::ingestSalesEvent),
+                "PURCHASE_REFUNDED", eventSpec(this::isPresent, this::ingestSalesEvent)
         );
     }
 

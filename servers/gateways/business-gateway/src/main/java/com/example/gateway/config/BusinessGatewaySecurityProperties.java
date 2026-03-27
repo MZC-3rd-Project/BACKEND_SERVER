@@ -20,12 +20,14 @@ public class BusinessGatewaySecurityProperties {
     private boolean allowClientSignedContextHeader = false;
     private List<String> relayPathPrefixes = List.of(
             "/bff/v1",
+            "/api/profile",
             "/api/products",
             "/api/goods",
             "/api/performances",
             "/api/items",
             "/api/categories",
             "/api/store",
+            "/api/v1/store-query",
             "/api/campaigns",
             "/api/v1/hot-deals",
             "/api/v1/media",
@@ -34,12 +36,14 @@ public class BusinessGatewaySecurityProperties {
     );
     private List<String> requireAuthPathPrefixes = List.of(
             "/bff/v1",
+            "/api/profile",
             "/api/products",
             "/api/goods",
             "/api/performances",
             "/api/items",
             "/api/categories",
             "/api/store",
+            "/api/v1/store-query",
             "/api/campaigns",
             "/api/v1/hot-deals",
             "/api/v1/media",
@@ -48,6 +52,7 @@ public class BusinessGatewaySecurityProperties {
     );
     private List<String> requireAuthWritePathPrefixes = List.of(
             "/bff/v1",
+            "/api/profile",
             "/api/products",
             "/api/goods",
             "/api/performances",

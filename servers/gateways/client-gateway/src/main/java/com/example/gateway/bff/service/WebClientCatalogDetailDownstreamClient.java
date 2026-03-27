@@ -69,6 +69,17 @@ public class WebClientCatalogDetailDownstreamClient implements CatalogDetailDown
     }
 
     @Override
+    public Mono<ResponseEntity<JsonNode>> fetchSellerDetail(BffItemType itemType,
+                                                            Long itemId,
+                                                            Long sellerId,
+                                                            HttpHeaders headers) {
+        HttpHeaders sellerHeaders = new HttpHeaders();
+        sellerHeaders.addAll(headers);
+        sellerHeaders.set("X-User-Id", String.valueOf(sellerId));
+        return callGet(productWebClient, sellerCollectionPath(itemType) + "/" + itemId, sellerHeaders);
+    }
+
+    @Override
     public Mono<ResponseEntity<JsonNode>> fetchItemSummary(Long itemId, HttpHeaders headers) {
         return callGet(productWebClient, "/internal/v1/items/" + itemId, headers);
     }
@@ -121,5 +132,13 @@ public class WebClientCatalogDetailDownstreamClient implements CatalogDetailDown
                 .exchangeToMono(response -> response.bodyToMono(JsonNode.class)
                         .defaultIfEmpty(objectMapper.createObjectNode())
                         .map(payload -> ResponseEntity.status(response.statusCode()).body(payload)));
+    }
+
+    private String sellerCollectionPath(BffItemType itemType) {
+        return switch (itemType) {
+            case GOODS -> "/api/seller/goods";
+            case PERFORMANCE -> "/api/seller/performances";
+            case PRODUCT -> "/api/seller/products";
+        };
     }
 }

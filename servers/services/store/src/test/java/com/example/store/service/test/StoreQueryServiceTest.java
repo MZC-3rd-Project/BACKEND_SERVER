@@ -5,7 +5,11 @@ import com.example.store.dto.response.internal.StoreSnapshotResponse;
 import com.example.store.entity.AddressType;
 import com.example.store.entity.ContactType;
 import com.example.store.entity.ImageType;
+import com.example.store.entity.StoreAddress;
+import com.example.store.entity.StoreContact;
 import com.example.store.entity.StoreStatus;
+import com.example.store.repository.StoreAddressRepository;
+import com.example.store.repository.StoreContactRepository;
 import com.example.store.repository.StoresRepository;
 import com.example.store.service.query.StoreDetailAssembler;
 import com.example.store.service.query.StoreImageSelectionPolicy;
@@ -43,13 +47,24 @@ class StoreQueryServiceTest {
     @Mock
     private StoresRepository storesRepository;
 
+    @Mock
+    private StoreAddressRepository storeAddressRepository;
+
+    @Mock
+    private StoreContactRepository storeContactRepository;
+
     private StoreQueryService storeQueryService;
 
     @BeforeEach
     void setUp() {
         StoreImageSelectionPolicy storeImageSelectionPolicy = new StoreImageSelectionPolicy();
         StoreDetailAssembler storeDetailAssembler = new StoreDetailAssembler(storeImageSelectionPolicy);
-        storeQueryService = new StoreQueryService(storesRepository, storeDetailAssembler);
+        storeQueryService = new StoreQueryService(
+            storesRepository,
+            storeAddressRepository,
+            storeContactRepository,
+            storeDetailAssembler
+        );
     }
 
     private StoreListView storeListView() {
@@ -103,6 +118,24 @@ class StoreQueryServiceTest {
             new StoreImageView(11L, 1L, 10L, ImageType.THUMBNAIL, 0, now.minusHours(1)),
             new StoreImageView(12L, 1L, 11L, ImageType.GALLERY, 1, now)
         );
+    }
+
+    private StoreAddress fallbackAddress() {
+        return StoreAddress.builder()
+            .id(101L)
+            .addressType(AddressType.MAIN)
+            .address("서울시 강남구 fallback")
+            .isDefault(false)
+            .build();
+    }
+
+    private StoreContact fallbackContact() {
+        return StoreContact.builder()
+            .id(201L)
+            .contactType(ContactType.PHONE)
+            .contactValue("010-9999-0000")
+            .isPrimary(false)
+            .build();
     }
 
     @Nested
@@ -220,6 +253,38 @@ class StoreQueryServiceTest {
             assertThat(result.images().get(0).mediaId()).isEqualTo(10L);
             then(storesRepository).should(times(1)).findSnapshotBaseByStoreId(1L);
             then(storesRepository).should(times(1)).findImagesByStoreId(1L);
+        }
+
+        @Test
+        @DisplayName("기본 주소/주연락처가 없으면 활성 레코드로 fallback 한다")
+        void snapshot_falls_back_to_first_active_address_and_contact() {
+            LocalDateTime now = LocalDateTime.now();
+            given(storesRepository.findSnapshotBaseByStoreId(1L))
+                .willReturn(Optional.of(new StoreSnapshotBaseView(
+                    1L,
+                    2L,
+                    "테스트 가게",
+                    StoreStatus.ACTIVE,
+                    "맛있는 음식점입니다.",
+                    null,
+                    null,
+                    null,
+                    null,
+                    now.minusDays(1),
+                    now.minusHours(1)
+                )));
+            given(storesRepository.findImagesByStoreId(1L)).willReturn(storeImageViews());
+            given(storeAddressRepository.findFirstByStoreIdAndDeletedAtIsNullOrderByIsDefaultDescIdAsc(1L))
+                .willReturn(Optional.of(fallbackAddress()));
+            given(storeContactRepository.findFirstByStoreIdAndDeletedAtIsNullOrderByIsPrimaryDescIdAsc(1L))
+                .willReturn(Optional.of(fallbackContact()));
+
+            StoreSnapshotResponse result = storeQueryService.getStoreSnapshot(1L);
+
+            assertThat(result.address()).isEqualTo("서울시 강남구 fallback");
+            assertThat(result.contactValue()).isEqualTo("010-9999-0000");
+            assertThat(result.addressType()).isEqualTo(AddressType.MAIN);
+            assertThat(result.contactType()).isEqualTo(ContactType.PHONE);
         }
     }
 

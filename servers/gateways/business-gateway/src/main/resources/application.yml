@@ -31,6 +31,10 @@ spring:
               uri: ${app.service.store-url:http://localhost:8072}
               predicates:
                 - Path=/api/store/**
+            - id: store-query-service
+              uri: ${app.service.store-query-url:http://localhost:8091}
+              predicates:
+                - Path=/api/v1/store-query/**
             - id: funding-service
               uri: ${app.service.funding-url:http://localhost:8086}
               predicates:
@@ -55,6 +59,10 @@ spring:
               uri: ${app.service.review-url:http://localhost:8097}
               predicates:
                 - Path=/api/v1/reviews/**
+            - id: profile-service
+              uri: ${app.service.profile-url:http://localhost:8071}
+              predicates:
+                - Path=/api/profile/**
             - id: chat-service
               uri: ${app.service.chat-url:http://localhost:8093}
               predicates:
@@ -83,9 +91,9 @@ gateway:
     internal-auth-token: ${GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:}
     allow-client-identity-headers: ${GATEWAY_SECURITY_ALLOW_CLIENT_IDENTITY_HEADERS:false}
     allow-client-signed-context-header: ${GATEWAY_SECURITY_ALLOW_CLIENT_SIGNED_CONTEXT_HEADER:false}
-    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/bff,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/seller,/api/store,/api/campaigns,/api/funding,/api/v1/hot-deals,/api/v1/media,/api/v1/orders,/api/v1/order-query,/api/v1/reviews,/api/v1/chat,/ws/chat}
-    require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:/bff/v1,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/seller,/api/store,/api/campaigns,/api/funding,/api/v1/hot-deals,/api/v1/media,/api/v1/orders,/api/v1/order-query,/api/v1/reviews,/api/v1/chat,/ws/chat}
-    require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/bff/v1,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/seller,/api/store,/api/campaigns,/api/funding,/api/v1/hot-deals,/api/v1/media,/api/v1/orders,/api/v1/reviews}
+    relay-path-prefixes: ${GATEWAY_SECURITY_RELAY_PATH_PREFIXES:/bff/v1,/api/bff,/api/profile,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/seller,/api/store,/api/v1/store-query,/api/campaigns,/api/funding,/api/v1/hot-deals,/api/v1/media,/api/v1/orders,/api/v1/order-query,/api/v1/reviews,/api/v1/chat,/ws/chat}
+    require-auth-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_PATH_PREFIXES:/bff/v1,/api/profile,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/seller,/api/store,/api/v1/store-query,/api/campaigns,/api/funding,/api/v1/hot-deals,/api/v1/media,/api/v1/orders,/api/v1/order-query,/api/v1/reviews,/api/v1/chat,/ws/chat}
+    require-auth-write-path-prefixes: ${GATEWAY_SECURITY_REQUIRE_AUTH_WRITE_PATH_PREFIXES:/bff/v1,/api/profile,/api/products,/api/goods,/api/performances,/api/items,/api/categories,/api/seller,/api/store,/api/campaigns,/api/funding,/api/v1/hot-deals,/api/v1/media,/api/v1/orders,/api/v1/reviews}
   session:
     enabled: ${GATEWAY_SESSION_ENABLED:true}
     relay-header-enabled: ${GATEWAY_SESSION_RELAY_HEADER_ENABLED:true}
@@ -116,12 +124,15 @@ app:
   service:
     product-url: ${PRODUCT_SERVICE_URL:http://localhost:8084}
     store-url: ${STORE_SERVICE_URL:http://localhost:8072}
+    store-query-url: ${STORE_QUERY_SERVICE_URL:http://localhost:8091}
     funding-url: ${FUNDING_SERVICE_URL:http://localhost:8086}
     hot-deal-url: ${HOT_DEAL_SERVICE_URL:http://localhost:8089}
     media-url: ${MEDIA_SERVICE_URL:http://localhost:8094}
     order-url: ${ORDER_SERVICE_URL:http://localhost:8075}
     order-query-url: ${ORDER_QUERY_SERVICE_URL:http://localhost:8073}
     review-url: ${REVIEW_SERVICE_URL:http://localhost:8097}
+    profile-url: ${PROFILE_SERVICE_URL:http://localhost:8071}
+    analytics-dashboard-url: ${ANALYTICS_DASHBOARD_SERVICE_URL:http://localhost:8095}
     chat-url: ${CHAT_SERVICE_URL:http://localhost:8093}
     chat-ws-url: ${CHAT_WS_SERVICE_URL:ws://localhost:8093}
     auth-url: ${AUTH_SERVICE_URL:http://localhost:8081}

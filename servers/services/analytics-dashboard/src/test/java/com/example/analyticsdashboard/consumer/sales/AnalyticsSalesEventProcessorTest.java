@@ -49,6 +49,21 @@ class AnalyticsSalesEventProcessorTest {
     }
 
     @Test
+    void process_ingestsRefundedEvent() {
+        String message = """
+                {
+                  "eventId": "evt-sales-refund-1",
+                  "eventType": "PURCHASE_REFUNDED"
+                }
+                """;
+        stubIdempotent("evt-sales-refund-1", "ANALYTICS_SALES_EVENT");
+
+        processor.process(message, "evt-sales-refund-1", "PURCHASE_REFUNDED");
+
+        verify(analyticsEventIngestService).ingestSalesEvent(any(AnalyticsSalesEventMessage.class));
+    }
+
+    @Test
     void process_ignoresUnsupportedType() {
         String message = """
                 {

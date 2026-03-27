@@ -18,6 +18,8 @@ public interface CatalogDetailDownstreamClient {
 
     Mono<ResponseEntity<JsonNode>> fetchNormalDetail(BffItemType itemType, Long itemId, HttpHeaders headers);
 
+    Mono<ResponseEntity<JsonNode>> fetchSellerDetail(BffItemType itemType, Long itemId, Long sellerId, HttpHeaders headers);
+
     Mono<ResponseEntity<JsonNode>> fetchItemSummary(Long itemId, HttpHeaders headers);
 
     Mono<ResponseEntity<JsonNode>> fetchFundingParticipations(Long campaignId, HttpHeaders headers);

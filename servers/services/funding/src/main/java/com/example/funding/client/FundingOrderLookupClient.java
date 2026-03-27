@@ -110,11 +110,23 @@ public class FundingOrderLookupClient {
     }
 
     private Long positiveLong(JsonNode node) {
-        if (node == null || node.isNull() || node.isMissingNode() || !node.canConvertToLong()) {
+        if (node == null || node.isNull() || node.isMissingNode()) {
             return null;
         }
-        long value = node.asLong();
-        return value > 0L ? value : null;
+        if (node.canConvertToLong()) {
+            long value = node.asLong();
+            return value > 0L ? value : null;
+        }
+        String text = textOrNull(node);
+        if (!StringUtils.hasText(text)) {
+            return null;
+        }
+        try {
+            long value = Long.parseLong(text);
+            return value > 0L ? value : null;
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     private Integer positiveInteger(JsonNode node) {

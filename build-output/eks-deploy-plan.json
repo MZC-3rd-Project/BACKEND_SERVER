@@ -3,23 +3,23 @@
   "namespace": "donmoa-dev",
   "fullDeploy": false,
   "selectedTargets": [
-    "client-gateway"
+    "hot-deal"
   ],
-  "generatedAt": "2026-03-26T08:21:48Z",
+  "generatedAt": "2026-03-27T05:33:29Z",
   "services": [
     {
-      "key": "client-gateway",
+      "key": "hot-deal",
       "buildType": "gradle",
-      "gradleModule": "servers:gateways:client-gateway",
+      "gradleModule": "servers:services:hot-deal",
       "namespace": "donmoa-dev",
-      "releaseName": "client-gateway",
-      "rolloutName": "client-gateway",
-      "workloadKind": "Rollout",
-      "rolloutWave": 3,
-      "serviceName": "client-gateway",
-      "valuesFile": "deploy/helm/environments/dev/client-gateway.yaml",
-      "imageRepository": "682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-client-gateway",
-      "imageTag": "cf4f2b3-orderfix"
+      "releaseName": "hot-deal",
+      "rolloutName": "hot-deal-service",
+      "workloadKind": "Deployment",
+      "rolloutWave": 4,
+      "serviceName": "hot-deal-service",
+      "valuesFile": "deploy/helm/environments/dev/hot-deal.yaml",
+      "imageRepository": "682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-hot-deal-service",
+      "imageTag": "localdev"
     }
   ]
 }

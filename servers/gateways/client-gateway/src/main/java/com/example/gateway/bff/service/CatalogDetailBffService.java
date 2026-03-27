@@ -295,8 +295,40 @@ public class CatalogDetailBffService {
                     }
                     return response;
                 })
+                .flatMap(r -> dataNode.has("item")
+                        ? Mono.just(r)
+                        : fallbackToSellerItemDetail(request, itemType, itemId, headers, r, dataNode))
                 .onErrorResume(e -> {
                     log.debug("[CatalogDetail] normal item enrichment skipped. itemId={}", itemId, e);
+                    return fallbackToSellerItemDetail(request, itemType, itemId, headers, response, dataNode);
+                });
+    }
+
+    private Mono<ResponseEntity<JsonNode>> fallbackToSellerItemDetail(CatalogDetailRequest request,
+                                                                      BffItemType itemType,
+                                                                      Long itemId,
+                                                                      HttpHeaders headers,
+                                                                      ResponseEntity<JsonNode> response,
+                                                                      ObjectNode dataNode) {
+        if (request.salesChannel() != CatalogSalesChannel.FUNDING) {
+            return Mono.just(response);
+        }
+
+        Long sellerId = positiveLong(dataNode.path("sellerId"), null);
+        if (sellerId == null || itemType == null) {
+            return Mono.just(response);
+        }
+
+        return downstreamClient.fetchSellerDetail(itemType, itemId, sellerId, headers)
+                .map(sellerResponse -> {
+                    ObjectNode itemData = dataObject(sellerResponse);
+                    if (itemData != null) {
+                        mergeItemData(dataNode, itemData);
+                    }
+                    return response;
+                })
+                .onErrorResume(e -> {
+                    log.debug("[CatalogDetail] seller item enrichment skipped. itemId={}, sellerId={}", itemId, sellerId, e);
                     return Mono.just(response);
                 });
     }
@@ -409,6 +441,8 @@ public class CatalogDetailBffService {
                 }
                 ObjectNode optionStock = optionStocks.addObject();
                 optionStock.put("itemOptionId", itemOptionId);
+                optionStock.put("referenceId", itemOptionId);
+                optionStock.put("stockItemType", "ITEM_OPTION");
                 putNullableInt(optionStock, "availableQuantity", intOrNull(node.path("availableQuantity")));
                 putNullableBoolean(optionStock, "soldOut", booleanOrNull(node.path("soldOut")));
             }
@@ -449,13 +483,22 @@ public class CatalogDetailBffService {
             reservedQuantity += reserved;
             everySoldOut = everySoldOut && available <= 0;
 
-            if (populateFallbackOptionStocks && "ITEM_OPTION".equalsIgnoreCase(textOrNull(node.path("stockItemType")))) {
-                Long itemOptionId = positiveLong(node.path("referenceId"), null);
-                if (itemOptionId == null) {
+            if (populateFallbackOptionStocks) {
+                String stockItemType = textOrNull(node.path("stockItemType"));
+                if (!"ITEM_OPTION".equalsIgnoreCase(stockItemType)
+                        && !"SEAT_GRADE".equalsIgnoreCase(stockItemType)) {
+                    continue;
+                }
+                Long referenceId = positiveLong(node.path("referenceId"), null);
+                if (referenceId == null) {
                     continue;
                 }
                 ObjectNode optionStock = optionStocks.addObject();
-                optionStock.put("itemOptionId", itemOptionId);
+                optionStock.put("referenceId", referenceId);
+                optionStock.put("stockItemType", stockItemType);
+                if ("ITEM_OPTION".equalsIgnoreCase(stockItemType)) {
+                    optionStock.put("itemOptionId", referenceId);
+                }
                 optionStock.put("availableQuantity", available);
                 optionStock.put("soldOut", available <= 0);
             }
@@ -513,6 +556,7 @@ public class CatalogDetailBffService {
         ArrayNode rewardOptions = objectMapper.createArrayNode();
         JsonNode itemNode = dataNode.path("item");
         JsonNode options = itemNode.path("options");
+        JsonNode seatGrades = itemNode.path("seatGrades");
         Long basePrice = positiveLong(itemNode.path("price"), positiveLong(dataNode.path("price"), null));
         String shippingText = textOrNull(itemNode.path("shippingInfo").path("shippingNotice"));
 
@@ -529,6 +573,8 @@ public class CatalogDetailBffService {
                 if (itemOptionId != null) {
                     rewardOption.put("id", itemOptionId);
                     rewardOption.put("itemOptionId", itemOptionId);
+                    rewardOption.put("referenceId", itemOptionId);
+                    rewardOption.put("stockItemType", "ITEM_OPTION");
                 }
                 if (StringUtils.hasText(title)) {
                     rewardOption.put("title", title);
@@ -538,6 +584,44 @@ public class CatalogDetailBffService {
                 }
                 if (StringUtils.hasText(shippingText)) {
                     rewardOption.put("shippingText", shippingText);
+                }
+            }
+        }
+
+        if (rewardOptions.isEmpty() && seatGrades.isArray()) {
+            String bookingNotice = textOrNull(itemNode.path("bookingNotice"));
+            String venue = textOrNull(itemNode.path("venue"));
+            String performanceDate = textOrNull(itemNode.path("performanceDate"));
+            String performanceTime = textOrNull(itemNode.path("performanceTime"));
+            String descriptor = String.join(" · ",
+                    java.util.stream.Stream.of(venue, performanceDate, performanceTime)
+                            .filter(StringUtils::hasText)
+                            .toList());
+
+            for (JsonNode seatGrade : seatGrades) {
+                Long seatGradeId = positiveLong(seatGrade.path("id"), null);
+                String title = textOrNull(seatGrade.path("gradeName"));
+                Long price = positiveLong(seatGrade.path("price"), basePrice);
+                if (seatGradeId == null && !StringUtils.hasText(title)) {
+                    continue;
+                }
+
+                ObjectNode rewardOption = rewardOptions.addObject();
+                if (seatGradeId != null) {
+                    rewardOption.put("id", seatGradeId);
+                    rewardOption.put("referenceId", seatGradeId);
+                    rewardOption.put("stockItemType", "SEAT_GRADE");
+                }
+                if (StringUtils.hasText(title)) {
+                    rewardOption.put("title", title);
+                }
+                if (price != null) {
+                    rewardOption.put("price", price);
+                }
+                if (StringUtils.hasText(descriptor)) {
+                    rewardOption.put("shippingText", descriptor);
+                } else if (StringUtils.hasText(bookingNotice)) {
+                    rewardOption.put("shippingText", bookingNotice);
                 }
             }
         }

@@ -912,6 +912,61 @@
       ]
     },
     {
+      "id": "f0c0b6c9-514e-4b15-9bdf-2d1ef2c9d90e",
+      "clientId": "don-moa-business-gateway",
+      "name": "Business Gateway BFF Client",
+      "description": "",
+      "rootUrl": "",
+      "adminUrl": "",
+      "baseUrl": "",
+      "surrogateAuthRequired": false,
+      "enabled": true,
+      "alwaysDisplayInConsole": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "__GATEWAY_OAUTH2_CLIENT_SECRET__",
+      "redirectUris": [
+        "__KEYCLOAK_BUSINESS_GATEWAY_REDIRECT_URI__"
+      ],
+      "webOrigins": [
+        "__KEYCLOAK_BUSINESS_GATEWAY_WEB_ORIGIN__"
+      ],
+      "notBefore": 0,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "publicClient": false,
+      "frontchannelLogout": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "oidc.ciba.grant.enabled": "false",
+        "backchannel.logout.session.required": "true",
+        "post.logout.redirect.uris": "__KEYCLOAK_BUSINESS_GATEWAY_POST_LOGOUT_REDIRECT_URI__",
+        "oauth2.device.authorization.grant.enabled": "false",
+        "backchannel.logout.revoke.offline.tokens": "false"
+      },
+      "authenticationFlowBindingOverrides": {
+      },
+      "fullScopeAllowed": true,
+      "nodeReRegistrationTimeout": -1,
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "roles",
+        "profile",
+        "email",
+        "snowflake-id"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    },
+    {
       "id": "0a0b220f-9012-4200-a3ae-8d6501dd1514",
       "clientId": "realm-management",
       "name": "${client_realm-management}",

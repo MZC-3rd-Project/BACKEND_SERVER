@@ -1,5 +1,6 @@
 {
   "client-gateway": "donmoa-dev-eks-deploy",
+  "business-gateway": "donmoa-dev-eks-deploy",
   "keycloak": "donmoa-dev-eks-deploy",
   "auth": "donmoa-dev-eks-deploy",
   "profile": "donmoa-dev-eks-deploy",

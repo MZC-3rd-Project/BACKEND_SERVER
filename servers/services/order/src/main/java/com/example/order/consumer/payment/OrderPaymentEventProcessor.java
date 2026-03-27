@@ -6,15 +6,20 @@ import com.example.event.consumer.AbstractIdempotentEventSpecProcessor;
 import com.example.event.consumer.EventEnvelope;
 import com.example.event.EventMetadata;
 import com.example.event.EventPublisher;
+import com.example.order.event.OrderPaidEvent;
+import com.example.order.event.PurchaseCreatedEvent;
+import com.example.order.event.PurchaseRefundedEvent;
 import com.example.event.consumer.EventSpec;
 import com.example.event.inbox.InboxConsumerBinding;
 import com.example.order.domain.Order;
+import com.example.order.domain.OrderItem;
 import com.example.order.domain.OrderRepository;
 import com.example.order.domain.OrderStatus;
 import com.example.order.event.OrderRefundedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 @Slf4j
@@ -85,8 +90,11 @@ public class OrderPaymentEventProcessor extends AbstractIdempotentEventSpecProce
         try {
             order.transitTo(OrderStatus.PAID);
             log.info("Order status transitioned to PAID. orderId={}", event.getOrderId());
-            // TODO: Delivery 서비스 구현 시 ORDER_PAID_EVENT Outbox 발행 추가
-            // payload에 배송지 포함 여부도 Delivery 구현 시 결정
+            eventPublisher.publish(
+                    new OrderPaidEvent(event.getOrderId(), order.getUserId()),
+                    EventMetadata.of("Order", String.valueOf(event.getOrderId()))
+            );
+            publishPurchaseEvents(order, event.getPaidAt(), true);
         } catch (BusinessException e) {
             log.warn("Order status transition skipped. targetStatus=PAID, orderId={}, currentStatus={}",
                     event.getOrderId(), order.getStatus());
@@ -132,6 +140,7 @@ public class OrderPaymentEventProcessor extends AbstractIdempotentEventSpecProce
                     new OrderRefundedEvent(event.getOrderId(), order.getUserId()),
                     EventMetadata.of("Order", String.valueOf(event.getOrderId()))
             );
+            publishPurchaseEvents(order, null, false);
         } catch (BusinessException e) {
             log.warn("Order status transition skipped. targetStatus=REFUNDED, orderId={}, currentStatus={}",
                     event.getOrderId(), order.getStatus());
@@ -155,5 +164,32 @@ public class OrderPaymentEventProcessor extends AbstractIdempotentEventSpecProce
             log.warn("Payment event skipped because order was not found. orderId={}", orderId);
             return null;
         });
+    }
+
+    private void publishPurchaseEvents(Order order, LocalDateTime occurredAt, boolean created) {
+        if (order == null || order.getOrderItems() == null || order.getOrderItems().isEmpty()) {
+            return;
+        }
+
+        LocalDateTime resolvedOccurredAt = occurredAt == null ? LocalDateTime.now() : occurredAt;
+        EventMetadata metadata = EventMetadata.of("Order", String.valueOf(order.getId()));
+        for (OrderItem orderItem : order.getOrderItems()) {
+            if (!isNormalChannel(orderItem)) {
+                continue;
+            }
+
+            if (created) {
+                eventPublisher.publish(new PurchaseCreatedEvent(order, orderItem, resolvedOccurredAt), metadata);
+            } else {
+                eventPublisher.publish(new PurchaseRefundedEvent(order, orderItem, resolvedOccurredAt), metadata);
+            }
+        }
+    }
+
+    private boolean isNormalChannel(OrderItem orderItem) {
+        if (orderItem == null || orderItem.getChannelType() == null) {
+            return false;
+        }
+        return "NORMAL".equalsIgnoreCase(orderItem.getChannelType());
     }
 }

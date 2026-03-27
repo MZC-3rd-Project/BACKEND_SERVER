@@ -7,6 +7,7 @@ image:
 
 service:
   port: 8080
+  metricsTargetLabel: ""
 
 container:
   port: 8080
@@ -24,12 +25,18 @@ container:
       gateway_redirect_uri="$(escape_sed_replacement "${KEYCLOAK_GATEWAY_REDIRECT_URI}")"
       gateway_web_origin="$(escape_sed_replacement "${KEYCLOAK_GATEWAY_WEB_ORIGIN}")"
       gateway_post_logout_redirect_uri="$(escape_sed_replacement "${KEYCLOAK_GATEWAY_POST_LOGOUT_REDIRECT_URI}")"
+      business_gateway_redirect_uri="$(escape_sed_replacement "${KEYCLOAK_BUSINESS_GATEWAY_REDIRECT_URI}")"
+      business_gateway_web_origin="$(escape_sed_replacement "${KEYCLOAK_BUSINESS_GATEWAY_WEB_ORIGIN}")"
+      business_gateway_post_logout_redirect_uri="$(escape_sed_replacement "${KEYCLOAK_BUSINESS_GATEWAY_POST_LOGOUT_REDIRECT_URI}")"
       sed \
         -e "s|__KC_ADMIN_CLIENT_SECRET__|${kc_admin_client_secret}|g" \
         -e "s|__GATEWAY_OAUTH2_CLIENT_SECRET__|${gateway_client_secret}|g" \
         -e "s|__KEYCLOAK_GATEWAY_REDIRECT_URI__|${gateway_redirect_uri}|g" \
         -e "s|__KEYCLOAK_GATEWAY_WEB_ORIGIN__|${gateway_web_origin}|g" \
         -e "s|__KEYCLOAK_GATEWAY_POST_LOGOUT_REDIRECT_URI__|${gateway_post_logout_redirect_uri}|g" \
+        -e "s|__KEYCLOAK_BUSINESS_GATEWAY_REDIRECT_URI__|${business_gateway_redirect_uri}|g" \
+        -e "s|__KEYCLOAK_BUSINESS_GATEWAY_WEB_ORIGIN__|${business_gateway_web_origin}|g" \
+        -e "s|__KEYCLOAK_BUSINESS_GATEWAY_POST_LOGOUT_REDIRECT_URI__|${business_gateway_post_logout_redirect_uri}|g" \
         /opt/keycloak/bootstrap/don-moa-realm.eks.example.json > /opt/keycloak/data/import/don-moa-realm.json
       exec /opt/keycloak/bin/kc.sh start --import-realm
   extraVolumeMounts:
@@ -78,6 +85,9 @@ env:
   KEYCLOAK_GATEWAY_REDIRECT_URI: https://daoy75hsrrswu.cloudfront.net/login/oauth2/code/keycloak
   KEYCLOAK_GATEWAY_WEB_ORIGIN: https://daoy75hsrrswu.cloudfront.net
   KEYCLOAK_GATEWAY_POST_LOGOUT_REDIRECT_URI: https://daoy75hsrrswu.cloudfront.net
+  KEYCLOAK_BUSINESS_GATEWAY_REDIRECT_URI: https://d1gtl8s8lkzt35.cloudfront.net/login/oauth2/code/keycloak
+  KEYCLOAK_BUSINESS_GATEWAY_WEB_ORIGIN: https://d1gtl8s8lkzt35.cloudfront.net
+  KEYCLOAK_BUSINESS_GATEWAY_POST_LOGOUT_REDIRECT_URI: https://d1gtl8s8lkzt35.cloudfront.net
   KEYCLOAK_ADMIN: admin
 
 secretEnv:
@@ -95,6 +105,13 @@ secretEnv:
     property: GATEWAY_OAUTH2_CLIENT_SECRET
 
 probes:
+  startup:
+    enabled: true
+    path: /health/started
+    port: http
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
   liveness:
     enabled: true
     path: /health/live

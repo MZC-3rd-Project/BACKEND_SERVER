@@ -72,6 +72,10 @@ notification:
     from-address: ${NOTIFICATION_EMAIL_FROM:no-reply@example.com}
     ses-region: ${NOTIFICATION_SES_REGION:ap-northeast-2}
     configuration-set: ${NOTIFICATION_SES_CONFIGURATION_SET:}
+  ops-alert:
+    enabled: ${NOTIFICATION_OPS_ALERT_ENABLED:true}
+    to-address: ${NOTIFICATION_OPS_ALERT_TO:ddingsha9@teambind.co.kr}
+    payload-preview-length: ${NOTIFICATION_OPS_ALERT_PAYLOAD_PREVIEW_LENGTH:1000}
 
 # ─── Snowflake ID ────────────────────────────
 app:
