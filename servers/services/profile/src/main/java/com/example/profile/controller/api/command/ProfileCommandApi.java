@@ -3,6 +3,7 @@ package com.example.profile.controller.api.command;
 import com.example.api.response.ApiResponse;
 import com.example.profile.dto.request.ProfileAddressRequest;
 import com.example.profile.dto.request.ProfileRequest;
+import com.example.profile.dto.response.AddressResponse;
 import com.example.profile.dto.response.ProfileResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,7 +27,7 @@ public interface ProfileCommandApi {
 
     @Operation(summary = "배송지 추가")
     @PostMapping("/addresses")
-    ApiResponse<Void> createAddress(
+    ApiResponse<AddressResponse> createAddress(
         @RequestBody ProfileAddressRequest req,
         @RequestHeader("X-User-Id") Long userId
     );

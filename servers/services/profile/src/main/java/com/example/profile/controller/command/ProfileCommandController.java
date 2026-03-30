@@ -5,6 +5,8 @@ import com.example.api.response.ApiResponse;
 import com.example.profile.controller.api.command.ProfileCommandApi;
 import com.example.profile.dto.request.ProfileAddressRequest;
 import com.example.profile.dto.request.ProfileRequest;
+import com.example.profile.dto.response.AddressResponse;
+import com.example.profile.entity.ProfileAddress;
 import com.example.profile.service.command.ProfileCommandService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,9 +27,9 @@ public class ProfileCommandController implements ProfileCommandApi {
     }
 
     @Override
-    public ApiResponse<Void> createAddress(ProfileAddressRequest req, Long userId) {
-        profileService.createAddress(userId, req);
-        return ApiResponse.success();
+    public ApiResponse<AddressResponse> createAddress(ProfileAddressRequest req, Long userId) {
+        ProfileAddress created = profileService.createAddress(userId, req);
+        return ApiResponse.success(AddressResponse.from(created));
     }
 
     @Override
