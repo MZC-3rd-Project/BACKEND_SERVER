@@ -113,7 +113,7 @@ public class ProfileCommandService {
     }
 
     @Transactional
-    public void createAddress(Long userId, ProfileAddressRequest req) {
+    public ProfileAddress createAddress(Long userId, ProfileAddressRequest req) {
         profileProjectionRepairService.ensureProfile(userId)
             .orElseThrow(() -> new BusinessException(ProfileErrorCode.PROFILE_NOT_FOUND));
 
@@ -140,7 +140,7 @@ public class ProfileCommandService {
             address.setAsDefault();
         }
 
-        profileAddressRepository.save(address);
+        return profileAddressRepository.save(address);
     }
 
     @Transactional
