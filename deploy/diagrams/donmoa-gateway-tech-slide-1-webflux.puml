@@ -1,0 +1,45 @@
+@startuml
+title 1번 슬라이드. 왜 Gateway에서 WebFlux를 썼는가
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam rectangle {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  FontColor #0F172A
+  RoundCorner 18
+}
+
+skinparam note {
+  BackgroundColor #EFF6FF
+  BorderColor #93C5FD
+  FontColor #1E3A8A
+}
+
+top to bottom direction
+
+rectangle "Spring Cloud Gateway\nspring-cloud-starter-gateway" as SCG #DBEAFE
+rectangle "WebFlux + Mono/Flux\n비동기 요청 오케스트레이션" as WebFlux #FEF3C7
+rectangle "WebClient 기반 fan-out / fan-in\nCatalogBffService\nCommerceReadBffService\nBusinessProductMediaBffService" as WebClientBff #FDE68A
+rectangle "Reactive Security / WebFilter\nGatewaySessionCookieAuthenticationWebFilter\nSessionHeaderRelayGlobalFilter" as ReactiveSecurity #DCFCE7
+rectangle "Reactive Redis Session\nspring-boot-starter-data-redis-reactive" as ReactiveRedis #F8FAFC
+rectangle "WebSocket route support\n/ws/chat" as WebSocket #F8FAFC
+
+SCG --> WebFlux
+WebFlux --> WebClientBff
+WebFlux --> ReactiveSecurity
+WebFlux --> ReactiveRedis
+WebFlux --> WebSocket
+
+note bottom of WebFlux
+Gateway는 여러 downstream 호출을 묶고,
+세션/보안 필터와 WebSocket 라우팅까지 처리한다.
+이 특성상 요청당 blocking thread 모델보다
+reactive 조합이 더 잘 맞는다.
+end note
+
+@enduml

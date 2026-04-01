@@ -1,0 +1,40 @@
+@startuml
+title Gateway는 단순 프록시가 아니라 Edge + BFF + Security Boundary다
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam rectangle {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  FontColor #0F172A
+  RoundCorner 18
+}
+
+top to bottom direction
+
+rectangle "Gateway\nclient-gateway + business-gateway" as Gateway #DBEAFE
+
+rectangle "Routing & Entry\n- API route / rewrite\n- WebSocket route\n- GatewayAuthRouteConfig\n- application.yml routes" as Routing #F8FAFC
+rectangle "Session & Token Boundary\n- OIDC login -> Redis session\n- session cookie 발급\n- signed context header relay\n- GatewayLoginService\n- SessionHeaderRelayGlobalFilter" as Session #F8FAFC
+rectangle "BFF Orchestration\n- 읽기 응답 조합과 보강\n- 쓰기 흐름 순차 호출\n- 클라이언트 복잡도 감소\n- CatalogBffService\n- BusinessProductMediaBffService" as Bff #F8FAFC
+rectangle "User Experience Protection\n- WebClient timeout\n- fallback / degrade\n- best effort relay\n- SearchClickRelayService\n- CatalogBffService" as Resilience #F8FAFC
+
+rectangle "왜 WebFlux?\n비동기 fan-out / fan-in,\ncustom filter chain,\nreactive Redis session,\nSpring Cloud Gateway + WebClient" as WhyWebFlux #FEF3C7
+
+rectangle "한 문장 정리\nGateway는 단순 경로 분기 계층이 아니라\n라우팅 + 세션/보안 경계 + BFF 조합 + 복원력 관리 계층이다" as Summary #FDE68A
+
+Gateway -[hidden]down-> Routing
+Gateway -[hidden]down-> Session
+Routing -[hidden]right-> Session
+Routing -[hidden]down-> Bff
+Session -[hidden]down-> Resilience
+Bff -[hidden]right-> Resilience
+Bff -[hidden]down-> WhyWebFlux
+Resilience -[hidden]down-> WhyWebFlux
+WhyWebFlux -[hidden]down-> Summary
+
+@enduml

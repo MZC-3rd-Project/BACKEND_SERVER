@@ -1,0 +1,98 @@
+@startuml
+title DonMoa 비동기 이벤트 소비 클래스 구조
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultFontName Pretendard
+skinparam defaultTextAlignment center
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  ArrowColor #475569
+  FontColor #0F172A
+  AttributeFontColor #334155
+  HeaderBackgroundColor #F8FAFC
+}
+
+skinparam note {
+  BackgroundColor #FFF7ED
+  BorderColor #FDBA74
+  FontColor #7C2D12
+}
+
+top to bottom direction
+
+package "Event Source" #F8FAFC {
+  class "Kafka Topic\npayment-events" as KafkaTopic <<external>> #F8FAFC
+}
+
+package "Consumer Entry" #EFF6FF {
+  class "NotificationPaymentEventConsumer" as Consumer #DBEAFE {
+    + consume(record)
+  }
+}
+
+package "Inbox Layer" #F0FDF4 {
+  class "InboxEnqueueService" as InboxEnqueue #FFFFFF {
+    + enqueue(consumerName, eventId, eventType, payload)
+  }
+
+  class "InboxWorkerScheduler" as InboxWorker #FFFFFF {
+    + signal(consumerName)
+    + pollAndProcess()
+  }
+}
+
+package "Business Processing" #FFF7ED {
+  class "NotificationPaymentEventProcessor" as Processor #FFFFFF {
+    + process(message, eventId, eventType)
+  }
+
+  class "NotificationDispatchSupport" as DispatchSupport #FFFFFF {
+    + dispatchNotification(...)
+  }
+}
+
+KafkaTopic --> Consumer : event delivery
+Consumer --> InboxEnqueue : save message
+InboxEnqueue --> InboxWorker : trigger worker
+InboxWorker --> Processor : execute
+Processor --> DispatchSupport : business action
+
+' layout helpers
+KafkaTopic -[hidden]down-> Consumer
+Consumer -[hidden]down-> InboxEnqueue
+InboxEnqueue -[hidden]down-> InboxWorker
+InboxWorker -[hidden]down-> Processor
+Processor -[hidden]down-> DispatchSupport
+
+note right of Consumer
+Kafka 에서 이벤트를 받는 진입점
+end note
+
+note right of InboxEnqueue
+이벤트를 먼저 안전하게 적재
+중복 이벤트는 여기서 걸러짐
+end note
+
+note right of InboxWorker
+적재된 이벤트를 꺼내서
+재시도 / 복구를 포함해 처리
+end note
+
+note right of Processor
+실제 비즈니스 로직 담당
+예: 결제 완료 알림 발송
+end note
+
+note bottom
+메시지:
+비동기 소비는 "받자마자 실행"이 아니라
+Consumer -> Inbox -> Worker -> Processor 구조로 나눠
+중복 방지와 재시도를 공통화한 클래스 구조다.
+end note
+
+@enduml

@@ -1,0 +1,83 @@
+@startuml
+title 비동기 이벤트 수신 구조 역할 분리
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam package {
+  BorderColor #CBD5E1
+  FontColor #0F172A
+  BackgroundColor #FFFFFF
+}
+
+skinparam rectangle {
+  BorderColor #94A3B8
+  FontColor #0F172A
+  RoundCorner 12
+}
+
+skinparam note {
+  BackgroundColor #FFF7ED
+  BorderColor #FDBA74
+  FontColor #7C2D12
+}
+
+top to bottom direction
+
+package "1. 진입 계층" #EFF6FF {
+  rectangle "Listener" as Listener #DBEAFE
+}
+
+package "2. 인프라 계층" #F0FDF4 {
+  rectangle "Routing" as Routing #DCFCE7
+  rectangle "Inbox" as Inbox #DCFCE7
+  rectangle "Worker" as Worker #BBF7D0
+}
+
+package "3. 처리 계층" #FFF7ED {
+  rectangle "Processor" as Processor #FDE68A
+}
+
+package "4. 도메인 계층" #FEF3C7 {
+  rectangle "비즈니스 서비스" as Service #FDE68A
+  rectangle "Repository / 외부 클라이언트" as InfraDependency #FEF3C7
+}
+
+Listener --> Routing
+Routing --> Inbox
+Inbox --> Worker
+Worker --> Processor
+Processor --> Service
+Service --> InfraDependency
+
+note right of Listener
+역할:
+Kafka record를 받는다.
+
+핵심:
+수신 진입점만 맡고
+비즈니스 로직은 들고 있지 않는다.
+end note
+
+note right of Worker
+역할:
+적재된 메시지를 꺼내 처리한다.
+
+핵심:
+재시도, stale recovery,
+순차 처리 제어를 담당한다.
+end note
+
+note right of Processor
+역할:
+이벤트 타입을 해석하고
+도메인 서비스 호출로 연결한다.
+
+핵심:
+서비스별 규칙이 모이는 지점이다.
+end note
+
+@enduml

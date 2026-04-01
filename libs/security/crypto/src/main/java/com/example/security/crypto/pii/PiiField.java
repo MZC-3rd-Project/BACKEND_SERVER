@@ -12,6 +12,5 @@ import java.lang.annotation.Target;
 @Target({ElementType.FIELD, ElementType.METHOD, ElementType.PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface PiiField {
-
     PiiType type() default PiiType.GENERAL;
 }

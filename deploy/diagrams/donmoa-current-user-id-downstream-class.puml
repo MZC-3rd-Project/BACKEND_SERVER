@@ -1,0 +1,138 @@
+@startuml
+title 다운스트림에서 CurrentUserId까지 전달되는 클래스 구조
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  ArrowColor #475569
+  FontColor #0F172A
+  HeaderBackgroundColor #F8FAFC
+}
+
+skinparam interface {
+  BackgroundColor #F8FAFC
+  BorderColor #94A3B8
+  FontColor #0F172A
+}
+
+skinparam note {
+  BackgroundColor #EFF6FF
+  BorderColor #93C5FD
+  FontColor #1E3A8A
+}
+
+left to right direction
+
+package "Gateway" #EFF6FF {
+  class "SessionHeaderRelayGlobalFilter" as SessionHeaderRelayGlobalFilter {
+    + filter(exchange, chain): Mono<Void>
+    - applyHeaders(headers, principal): void
+  }
+
+  class "GatewaySessionPrincipalResolver" as GatewaySessionPrincipalResolver {
+    + resolve(exchange): Mono<GatewaySessionPrincipal>
+  }
+
+  class "GatewaySessionPrincipal" as GatewaySessionPrincipal {
+    + userId(): Long
+    + rolesHeaderValue(): String
+  }
+
+  class "GatewayContextHeaderCodec" as GatewayContextHeaderCodec {
+    + encodeSigned(userId, roles, nonce, timestamp, signer): String
+  }
+}
+
+package "Downstream Security Starter" #F0FDF4 {
+  class "GatewaySecurityValidationFilter" as GatewaySecurityValidationFilter {
+    + doFilterInternal(request, response, chain): void
+  }
+
+  interface "GatewaySecurityClient" as GatewaySecurityClient {
+    + validateGatewayAuth(request): boolean
+    + validateUserContext(request): boolean
+    + validateOptionalUserContext(request): boolean
+  }
+
+  class "GatewayRequestVerifier" as GatewayRequestVerifier {
+    + validateUserContext(request): boolean
+    - validateGatewayContextToken(token): boolean
+    - validateLegacyHeaders(request, required): boolean
+  }
+
+  class "AuthContextHolder" as AuthContextHolder {
+    + setContext(context): void
+    + getContext(): AuthContext
+    + clear(): void
+  }
+
+  class "AuthContext" as AuthContext {
+    + userId: String
+    + roles: List<String>
+  }
+
+  class "GatewaySecurityWebMvcConfigurer" as GatewaySecurityWebMvcConfigurer {
+    + addArgumentResolvers(resolvers): void
+  }
+
+  class "CurrentUserIdArgumentResolver" as CurrentUserIdArgumentResolver {
+    + supportsParameter(parameter): boolean
+    + resolveArgument(...): Object
+  }
+
+  class "CurrentUserId" as CurrentUserId <<annotation>> {
+    + required(): boolean
+  }
+}
+
+package "Downstream Controller Example" #FFF7ED {
+  class "CartQueryController" as CartQueryController {
+    + getCart(@CurrentUserId userId): ApiResponse<CartResponse>
+  }
+}
+
+SessionHeaderRelayGlobalFilter --> GatewaySessionPrincipalResolver : 세션 사용자 조회
+GatewaySessionPrincipalResolver --> GatewaySessionPrincipal : userId 포함 principal 반환
+SessionHeaderRelayGlobalFilter --> GatewayContextHeaderCodec : X-Gateway-Context 생성
+
+SessionHeaderRelayGlobalFilter ..> GatewaySecurityValidationFilter : HTTP 헤더 전달\n(X-Gateway-Context / X-User-Id)
+
+GatewaySecurityValidationFilter --> GatewaySecurityClient : 헤더 검증 요청
+GatewayRequestVerifier ..|> GatewaySecurityClient
+GatewayRequestVerifier --> GatewayContextHeaderCodec : 헤더 decode
+GatewayRequestVerifier --> AuthContextHolder : AuthContext 저장
+AuthContextHolder --> AuthContext
+
+GatewaySecurityWebMvcConfigurer --> CurrentUserIdArgumentResolver : Resolver 등록
+CurrentUserIdArgumentResolver ..> CurrentUserId : @CurrentUserId 파라미터 지원
+CurrentUserIdArgumentResolver --> AuthContextHolder : userId 조회
+CartQueryController ..> CurrentUserId : 메서드 파라미터 선언
+CartQueryController ..> CurrentUserIdArgumentResolver : 파라미터 바인딩 사용
+
+note bottom of SessionHeaderRelayGlobalFilter
+Gateway는 로그인 세션에서 userId를 꺼내
+downstream 요청 헤더에 실어 보낸다.
+end note
+
+note bottom of GatewayRequestVerifier
+Downstream 서비스는 전달받은 헤더를 검증한 뒤
+AuthContextHolder에 userId를 저장한다.
+end note
+
+note bottom of CurrentUserIdArgumentResolver
+컨트롤러에서 @CurrentUserId Long userId를 선언하면
+AuthContextHolder의 값을 Long으로 변환해 주입한다.
+end note
+
+note bottom
+요청 종료 후에는 AuthContextCleanupFilter가
+AuthContextHolder ThreadLocal을 정리한다.
+end note
+
+@enduml

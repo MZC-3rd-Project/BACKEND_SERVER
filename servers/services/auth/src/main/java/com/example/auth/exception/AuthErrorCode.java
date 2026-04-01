@@ -13,7 +13,6 @@ public enum AuthErrorCode implements DomainErrorCode {
     EMAIL_ALREADY_EXISTS("AUTH-001", "이미 사용 중인 이메일입니다", HttpStatus.CONFLICT),
     SIGNUP_KEYCLOAK_FAILED("AUTH-002", "Keycloak 사용자 생성에 실패했습니다", HttpStatus.BAD_GATEWAY),
     SIGNUP_PROFILE_FAILED("AUTH-003", "프로필 생성에 실패했습니다", HttpStatus.BAD_GATEWAY),
-
     // 인증
     USER_NOT_FOUND("AUTH-010", "사용자를 찾을 수 없습니다", HttpStatus.NOT_FOUND),
     INVALID_PASSWORD("AUTH-011", "비밀번호가 올바르지 않습니다", HttpStatus.BAD_REQUEST),

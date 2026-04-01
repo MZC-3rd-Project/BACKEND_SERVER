@@ -1,0 +1,94 @@
+@startuml
+title DonMoa 동기 호출 패턴
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultFontName Pretendard
+skinparam defaultTextAlignment left
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  ArrowColor #475569
+  FontColor #0F172A
+  AttributeFontColor #334155
+  HeaderBackgroundColor #F8FAFC
+}
+
+skinparam note {
+  BackgroundColor #EFF6FF
+  BorderColor #93C5FD
+  FontColor #1E3A8A
+}
+
+left to right direction
+
+class "Application Service\n(CheckoutCommandService)" as Service #DBEAFE {
+  - stockOrderReservationClientFacade: StockOrderReservationClientFacade
+  - orderClient: OrderCreateClientFacade
+  + reserve(...)
+  + submit(...)
+  + cancel(...)
+}
+
+interface "StockOrderReservationClientFacade" as StockReserve {
+  + reserveOrderStock(request)
+}
+
+interface "OrderCreateClientFacade" as OrderCreate {
+  + createOrder(request)
+}
+
+class "DefaultStockClientFacade" as DefaultStock #FFFFFF {
+  - webClient: WebClient
+  - objectMapper: ObjectMapper
+  + reserveOrderStock(request)
+  + cancelReservationsByOrderId(orderId)
+}
+
+class "DefaultOrderClientFacade" as DefaultOrder #FFFFFF {
+  - webClient: WebClient
+  - objectMapper: ObjectMapper
+  + createOrder(request)
+}
+
+class "StockClientAutoConfiguration" as StockConfig #FFF7ED {
+  + stockOrderReservationClientFacade(delegate)
+  + stockReservationClientFacade(delegate)
+}
+
+class "OrderClientAutoConfiguration" as OrderConfig #FFF7ED {
+  + orderCreateClientFacade(delegate)
+}
+
+class "Stock Service" as StockService #F8FAFC
+class "Order Service" as OrderService #F8FAFC
+
+Service --> StockReserve : function call
+Service --> OrderCreate : function call
+
+StockReserve <|.. DefaultStock
+OrderCreate <|.. DefaultOrder
+
+StockConfig --> DefaultStock : create / expose
+OrderConfig --> DefaultOrder : create / expose
+
+DefaultStock --> StockService : WebClient HTTP call
+DefaultOrder --> OrderService : WebClient HTTP call
+
+note bottom of Service
+서비스 로직은 HTTP 세부사항을 모르고
+"reserveOrderStock()", "createOrder()" 같은
+함수 호출만 사용한다.
+end note
+
+note right of DefaultStock
+HTTP 호출, 응답 파싱, 예외 처리,
+재시도 정책 같은 기술 관심사는
+facade 구현체 안으로 숨긴다.
+end note
+
+
+@enduml

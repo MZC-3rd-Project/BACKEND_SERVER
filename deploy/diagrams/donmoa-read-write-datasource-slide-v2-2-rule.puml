@@ -1,0 +1,55 @@
+@startuml
+title 2번 슬라이드. 라우팅 규칙은 기본 규칙 + 예외 규칙으로 결정된다
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam rectangle {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  FontColor #0F172A
+  RoundCorner 18
+}
+
+skinparam note {
+  BackgroundColor #F0FDF4
+  BorderColor #86EFAC
+  FontColor #166534
+}
+
+left to right direction
+
+rectangle "UseWriteDataSourceAspect\n@UseWriteDataSource가 붙으면\nWRITE 강제" as Aspect #FDE68A
+
+rectangle "DataSourceRoutingContext\n강제 경로 저장" as Context #FEF3C7
+
+rectangle "TransactionRoutingDataSource\n최종 라우팅 결정" as Routing #DBEAFE
+
+rectangle "@Transactional(readOnly = true)\n기본 READ 힌트" as Tx #DCFCE7
+
+rectangle "READ" as Read #DCFCE7
+rectangle "WRITE" as Write #FDE68A
+
+Aspect --> Context
+Context --> Routing
+Tx --> Routing
+Routing --> Read
+Routing --> Write
+
+note bottom of Routing
+결정 순서
+1. 강제 경로가 있으면 우선 사용
+2. 없으면 readOnly면 READ
+3. 나머지는 WRITE
+end note
+
+note bottom of Aspect
+즉, @UseWriteDataSource는
+readOnly보다 더 높은 우선순위로
+WRITE를 강제하는 예외 규칙이다.
+end note
+
+@enduml

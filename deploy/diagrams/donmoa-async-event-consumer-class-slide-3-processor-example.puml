@@ -1,0 +1,58 @@
+@startuml
+title 비동기 이벤트 수신 클래스 구조 - Processor 예시
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  ArrowColor #475569
+  FontColor #0F172A
+  HeaderBackgroundColor #F8FAFC
+}
+
+skinparam interface {
+  BackgroundColor #F8FAFC
+  BorderColor #94A3B8
+  FontColor #0F172A
+}
+
+skinparam note {
+  BackgroundColor #FFF7ED
+  BorderColor #FDBA74
+  FontColor #7C2D12
+}
+
+left to right direction
+
+package "Order 서비스" #EFF6FF {
+  abstract class "AbstractIdempotentEventSpecProcessor" as AbstractIdempotentEventSpecProcessor
+  class "OrderPaymentEventProcessor" as OrderPaymentEventProcessor
+  interface "OrderRepository" as OrderRepository
+  interface "EventPublisher" as EventPublisher
+
+  OrderPaymentEventProcessor --|> AbstractIdempotentEventSpecProcessor
+  OrderPaymentEventProcessor --> OrderRepository : 주문 조회 / 상태 변경
+  OrderPaymentEventProcessor --> EventPublisher : 후속 이벤트 발행
+}
+
+package "Chat 서비스" #F0FDF4 {
+  abstract class "AbstractIdempotentRoutingJsonMessageConsumer" as AbstractIdempotentRoutingJsonMessageConsumer
+  class "ChatFundingEventProcessor" as ChatFundingEventProcessor
+  class "ChatFundingSyncService" as ChatFundingSyncService
+
+  ChatFundingEventProcessor --|> AbstractIdempotentRoutingJsonMessageConsumer
+  ChatFundingEventProcessor --> ChatFundingSyncService : 채팅방 동기화
+}
+
+note bottom
+Processor가 핵심 비즈니스 연결 지점이다.
+서비스마다 Processor 뒤쪽 의존성은 다르지만,
+"멱등 처리 후 도메인 로직 호출"이라는 구조는 같다.
+end note
+
+@enduml

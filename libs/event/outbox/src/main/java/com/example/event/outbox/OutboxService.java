@@ -19,11 +19,6 @@ public class OutboxService implements EventPublisher {
     private final OutboxRepository outboxRepository;
     private final ApplicationEventPublisher applicationEventPublisher;
 
-    @Override
-    @Transactional
-    public void publish(DomainEvent event) {
-        publish(event, EventMetadata.of("UNKNOWN", "UNKNOWN"));
-    }
 
     @Override
     @Transactional
@@ -48,5 +43,11 @@ public class OutboxService implements EventPublisher {
         outboxRepository.save(message);
         applicationEventPublisher.publishEvent(new OutboxSavedEvent(message.getId()));
         log.debug("Outbox message saved: eventId={}, type={}", event.getEventId(), event.getEventTypeName());
+    }
+
+    @Override
+    @Transactional
+    public void publish(DomainEvent event) {
+        publish(event, EventMetadata.of("UNKNOWN", "UNKNOWN"));
     }
 }

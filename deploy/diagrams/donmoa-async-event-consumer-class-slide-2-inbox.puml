@@ -1,0 +1,75 @@
+@startuml
+title 비동기 이벤트 수신 클래스 구조 - Inbox 처리
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  ArrowColor #475569
+  FontColor #0F172A
+  HeaderBackgroundColor #F8FAFC
+}
+
+skinparam interface {
+  BackgroundColor #F8FAFC
+  BorderColor #94A3B8
+  FontColor #0F172A
+}
+
+skinparam note {
+  BackgroundColor #F0FDF4
+  BorderColor #86EFAC
+  FontColor #166534
+}
+
+top to bottom direction
+
+class "InboxEnqueueService" as InboxEnqueueService {
+  + enqueue(...): boolean
+}
+
+interface "InboxRepository" as InboxRepository
+
+class "InboxWorkerScheduler" as InboxWorkerScheduler {
+  + signal(consumerName): void
+  + pollAndProcess(): void
+}
+
+class "InboxHandlerRegistry" as InboxHandlerRegistry {
+  + findHandler(...): Optional<InboxEventHandler>
+}
+
+interface "InboxEventHandler" as InboxEventHandler {
+  + handle(eventId, eventType, payload): void
+}
+
+class "ProcessorBackedInboxEventHandler" as ProcessorBackedInboxEventHandler
+
+interface "EventMessageProcessor" as EventMessageProcessor {
+  + process(message, eventId, eventType): void
+}
+
+InboxEnqueueService --> InboxRepository : pending 메시지 저장
+InboxWorkerScheduler --> InboxRepository : due 메시지 조회 / 상태 변경
+InboxWorkerScheduler --> InboxHandlerRegistry : 처리 핸들러 조회
+InboxHandlerRegistry --> InboxEventHandler
+ProcessorBackedInboxEventHandler ..|> InboxEventHandler
+ProcessorBackedInboxEventHandler --> EventMessageProcessor
+
+note right of InboxEnqueueService
+메시지를 먼저 안전하게 적재한다.
+중복 메시지는 여기서 걸러진다.
+end note
+
+note right of InboxWorkerScheduler
+적재된 메시지를 가져와서
+재시도, stale recovery,
+실제 처리 호출을 담당한다.
+end note
+
+@enduml

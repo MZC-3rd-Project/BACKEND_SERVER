@@ -16,16 +16,12 @@ import java.util.concurrent.TimeUnit;
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface DistributedLock {
-
     /** SpEL expression for lock key */
     String key();
-
     /** 락 획득 대기 시간 (default 3초) */
     long waitTime() default 3;
-
     /** 락 보유 시간 (default 5초, 비즈니스 로직 완료 후 자동 해제) */
-    long leaseTime() default 5;
-
+    long leaseTime() default 30;
     /** 시간 단위 */
     TimeUnit timeUnit() default TimeUnit.SECONDS;
 }

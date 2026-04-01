@@ -1,0 +1,67 @@
+@startuml
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam sequence {
+  ArrowColor #334155
+  LifeLineBorderColor #94A3B8
+  LifeLineBackgroundColor #FFFFFF
+  ParticipantBorderColor #CBD5E1
+  ParticipantBackgroundColor #F8FAFC
+  ParticipantFontColor #0F172A
+}
+
+skinparam note {
+  BackgroundColor #EFF6FF
+  BorderColor #93C5FD
+  FontColor #1E3A8A
+}
+
+participant "PaymentCommandService" as PaymentService
+participant "EventPublisher\n(OutboxService)" as OutboxService
+participant "OutboxRepository" as OutboxRepo
+participant "ImmediatePublisher" as ImmediatePublisher
+participant "Kafka Topic\npayment-events" as Kafka
+participant "NotificationPaymentEventConsumer" as Consumer
+participant "InboxEnqueueService" as InboxEnqueue
+participant "InboxWorkerScheduler" as InboxWorker
+participant "NotificationPaymentEventProcessor" as Processor
+
+== Producer side ==
+PaymentService -> OutboxService : publish(PaymentCompletedEvent, metadata)
+OutboxService -> OutboxRepo : save OutboxMessage
+OutboxService -> ImmediatePublisher : OutboxSavedEvent
+ImmediatePublisher -> Kafka : publish async
+
+note right of PaymentService
+서비스 코드는 결제 완료 후
+eventPublisher.publish() 만 호출한다.
+Kafka 전송 코드는 모른다.
+end note
+
+== Consumer side ==
+Kafka -> Consumer : @KafkaListener consume(record)
+Consumer -> InboxEnqueue : enqueue(...)
+InboxEnqueue -> InboxWorker : signal(consumerName)
+InboxWorker -> Processor : process(message, eventId, eventType)
+Processor -> Processor : idempotent + eventSpec routing
+
+note right of Consumer
+consumer 는 record 를 받고
+inbox/direct routing 만 결정한다.
+end note
+
+note right of Processor
+실제 비즈니스 처리는 processor 가 맡는다.
+중복 방지, 재시도, stale recovery 는
+inbox/consumer 공통 레이어가 담당한다.
+end note
+
+note bottom
+DX 메시지:
+Producer 는 publish() 만,
+Consumer 는 process() 만 신경 쓰면 된다.
+비동기 인프라 복잡도는 공통 이벤트 레이어가 흡수한다.
+end note
+
+@enduml

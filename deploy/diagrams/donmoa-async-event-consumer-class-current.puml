@@ -1,0 +1,258 @@
+@startuml
+title DonMoa Async Event Consumer Class Diagram (Current)
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  ArrowColor #475569
+  FontColor #0F172A
+  AttributeFontColor #334155
+  HeaderBackgroundColor #F8FAFC
+}
+
+skinparam interface {
+  BackgroundColor #F8FAFC
+  BorderColor #94A3B8
+  FontColor #0F172A
+}
+
+skinparam note {
+  BackgroundColor #FFF7ED
+  BorderColor #FDBA74
+  FontColor #7C2D12
+}
+
+top to bottom direction
+
+package "Consumer Routing" #EFF6FF {
+  class "RoutedEventConsumer" as RoutedEventConsumer <<annotation>> {
+    + consumerName(): String
+    + defaultMode(): ConsumerRoutingMode
+  }
+
+  enum "ConsumerRoutingMode" as ConsumerRoutingMode {
+    DIRECT
+    INBOX
+  }
+
+  interface "EventEnvelope" as EventEnvelope {
+    + getEventId(): String
+    + getEventType(): String
+  }
+
+  interface "EventMessageProcessor" as EventMessageProcessor {
+    + supports(eventType): boolean
+    + process(message, eventId, eventType): void
+  }
+
+  abstract class "AbstractEnvelopeRoutingConsumer" as AbstractEnvelopeRoutingConsumer {
+    # consumeRecord(record): void
+    # supports(eventType): boolean
+    # routeToInbox(envelope): boolean
+    # enqueue(envelope, message): boolean
+    # handleDirect(message, envelope): void
+  }
+
+  abstract class "AbstractProcessorRoutingConsumer" as AbstractProcessorRoutingConsumer {
+    - inboxRoutingSupport: InboxRoutingSupport
+    - eventMessageProcessor: EventMessageProcessor
+  }
+
+  class "EventConsumerRoutingResolver" as EventConsumerRoutingResolver {
+    + resolveMode(consumerType): ConsumerRoutingMode
+    + isInbox(consumerType): boolean
+    + consumerName(consumerType): String
+  }
+
+  class "EventConsumerRoutingProperties" as EventConsumerRoutingProperties
+
+  abstract class "AbstractIdempotentEventSpecProcessor" as AbstractIdempotentEventSpecProcessor {
+    - idempotentConsumerService: IdempotentConsumerService
+    # eventSpecs(): Map<String, EventSpec>
+    # idempotentEventType(): String
+  }
+
+  abstract class "AbstractIdempotentRoutingJsonMessageConsumer<T>" as AbstractIdempotentRoutingJsonMessageConsumer {
+    - idempotentConsumerService: IdempotentConsumerService
+    # routeSpecs(): Map<String, RouteSpec<T>>
+    # payloadType(): Class<T>
+    # idempotentEventType(): String
+  }
+
+  class "EventSpec<T>" as EventSpec
+  class "RouteSpec<T>" as RouteSpec
+}
+
+package "Inbox" #F0FDF4 {
+  class "InboxConsumerBinding" as InboxConsumerBinding <<annotation>> {
+    + consumerName(): String
+  }
+
+  interface "InboxSignalPublisher" as InboxSignalPublisher {
+    + signal(consumerName): void
+  }
+
+  interface "InboxEventHandler" as InboxEventHandler {
+    + consumerName(): String
+    + supports(eventType): boolean
+    + handle(eventId, eventType, payload): void
+  }
+
+  class "InboxRoutingSupport" as InboxRoutingSupport {
+    - inboxEnqueueService: InboxEnqueueService
+    - eventConsumerRoutingResolver: EventConsumerRoutingResolver
+    + isInbox(consumerType): boolean
+    + enqueue(consumerType, envelope, message): boolean
+  }
+
+  class "InboxEnqueueService" as InboxEnqueueService {
+    - inboxRepository: InboxRepository
+    - inboxSignalPublisherProvider: ObjectProvider
+    + enqueue(consumerName, eventId, eventType, payload): boolean
+  }
+
+  class "InboxWorkerScheduler" as InboxWorkerScheduler {
+    - inboxRepository: InboxRepository
+    - inboxHandlerRegistry: InboxHandlerRegistry
+    + signal(consumerName): void
+    + pollAndProcess(): void
+  }
+
+  class "InboxHandlerRegistry" as InboxHandlerRegistry {
+    + consumerNames(): Set<String>
+    + findHandler(consumerName, eventType): Optional<InboxEventHandler>
+  }
+
+  class "ProcessorBackedInboxEventHandler" as ProcessorBackedInboxEventHandler {
+    - consumerName: String
+    - processor: EventMessageProcessor
+  }
+
+  class "InboxHandlerAdapters" as InboxHandlerAdapters {
+    + merge(handlers, processors): List<InboxEventHandler>
+  }
+
+  interface "InboxRepository" as InboxRepository
+  class "InboxMessage" as InboxMessage
+}
+
+package "Order Example" #FFF7ED {
+  class "PaymentEventConsumer" as PaymentEventConsumer {
+    + consume(record): void
+  }
+
+  class "OrderPaymentEventProcessor" as OrderPaymentEventProcessor {
+    + CONSUMER_NAME: String
+    - orderRepository: OrderRepository
+    - eventPublisher: EventPublisher
+    - eventSpecs: Map<String, EventSpec<PaymentEventMessage>>
+  }
+
+  class "PaymentEventMessage" as PaymentEventMessage {
+    + eventId: String
+    + eventType: String
+    + orderId: Long
+  }
+
+  interface "OrderRepository" as OrderRepository
+  interface "EventPublisher" as EventPublisher
+}
+
+package "Chat Example" #FEF3C7 {
+  class "FundingEventConsumer" as FundingEventConsumer {
+    + consume(record): void
+  }
+
+  class "ChatFundingEventProcessor" as ChatFundingEventProcessor {
+    + CONSUMER_NAME: String
+    - chatFundingSyncService: ChatFundingSyncService
+    - routeSpecs: Map<String, RouteSpec<FundingEventMessage>>
+  }
+
+  class "FundingEventMessage" as FundingEventMessage {
+    + eventId: String
+    + eventType: String
+    + campaignId: Long
+    + userId: Long
+  }
+
+  class "ChatFundingSyncService" as ChatFundingSyncService
+}
+
+class "IdempotentConsumerService" as IdempotentConsumerService
+
+AbstractProcessorRoutingConsumer --|> AbstractEnvelopeRoutingConsumer
+AbstractIdempotentEventSpecProcessor ..|> EventMessageProcessor
+AbstractIdempotentRoutingJsonMessageConsumer ..|> EventMessageProcessor
+PaymentEventMessage ..|> EventEnvelope
+FundingEventMessage ..|> EventEnvelope
+ProcessorBackedInboxEventHandler ..|> InboxEventHandler
+InboxWorkerScheduler ..|> InboxSignalPublisher
+
+AbstractProcessorRoutingConsumer --> InboxRoutingSupport
+AbstractProcessorRoutingConsumer --> EventMessageProcessor
+InboxRoutingSupport --> InboxEnqueueService
+InboxRoutingSupport --> EventConsumerRoutingResolver
+EventConsumerRoutingResolver --> EventConsumerRoutingProperties
+InboxEnqueueService --> InboxRepository
+InboxEnqueueService --> InboxSignalPublisher
+InboxWorkerScheduler --> InboxRepository
+InboxWorkerScheduler --> InboxHandlerRegistry
+InboxHandlerRegistry --> InboxEventHandler
+ProcessorBackedInboxEventHandler --> EventMessageProcessor
+InboxHandlerAdapters --> ProcessorBackedInboxEventHandler
+InboxRepository --> InboxMessage
+
+AbstractIdempotentEventSpecProcessor --> IdempotentConsumerService
+AbstractIdempotentEventSpecProcessor --> EventSpec
+AbstractIdempotentRoutingJsonMessageConsumer --> IdempotentConsumerService
+AbstractIdempotentRoutingJsonMessageConsumer --> RouteSpec
+
+PaymentEventConsumer --|> AbstractProcessorRoutingConsumer
+PaymentEventConsumer ..> RoutedEventConsumer
+PaymentEventConsumer --> OrderPaymentEventProcessor
+OrderPaymentEventProcessor --|> AbstractIdempotentEventSpecProcessor
+OrderPaymentEventProcessor ..> InboxConsumerBinding
+OrderPaymentEventProcessor --> OrderRepository
+OrderPaymentEventProcessor --> EventPublisher
+OrderPaymentEventProcessor --> PaymentEventMessage
+
+FundingEventConsumer --|> AbstractProcessorRoutingConsumer
+FundingEventConsumer ..> RoutedEventConsumer
+FundingEventConsumer --> ChatFundingEventProcessor
+ChatFundingEventProcessor --|> AbstractIdempotentRoutingJsonMessageConsumer
+ChatFundingEventProcessor ..> InboxConsumerBinding
+ChatFundingEventProcessor --> ChatFundingSyncService
+ChatFundingEventProcessor --> FundingEventMessage
+
+note right of AbstractProcessorRoutingConsumer
+Kafka listener implementations
+only decide inbox or direct routing
+after receiving a record.
+end note
+
+note right of InboxWorkerScheduler
+Claims persisted messages
+and delegates them to
+the matched processor handler.
+end note
+
+note bottom of OrderPaymentEventProcessor
+Order consumers use EventSpec
+to map eventType to
+payload class and action.
+end note
+
+note bottom of ChatFundingEventProcessor
+Chat and Media consumers use RouteSpec
+to route multiple event types
+within a single payload model.
+end note
+
+@enduml

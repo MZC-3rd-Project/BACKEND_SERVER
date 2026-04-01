@@ -26,11 +26,41 @@ public class KafkaAutoConfiguration {
     }
 
     @Bean
+    public DeadLetterStoreService deadLetterStoreService(
+            DeadLetterMessageRepository deadLetterMessageRepository,
+            DeadLetterAlertPublisher deadLetterAlertPublisher,
+            DeadLetterProperties deadLetterProperties
+    ) {
+        return new DeadLetterStoreService(
+                deadLetterMessageRepository,
+                deadLetterAlertPublisher,
+                deadLetterProperties
+        );
+    }
+
+    @Bean
     public DeadLetterAlertPublisher deadLetterAlertPublisher(
             ObjectProvider<EventPublisher> eventPublisherProvider,
             Environment environment
     ) {
         return new DeadLetterAlertPublisher(eventPublisherProvider, environment);
+    }
+
+    @Bean
+    public DeadLetterRecoveryService deadLetterRecoveryService(
+            DeadLetterMessageRepository deadLetterMessageRepository,
+            ProcessedEventRepository processedEventRepository,
+            org.springframework.kafka.core.KafkaTemplate<String, Object> kafkaTemplate,
+            DeadLetterProperties deadLetterProperties,
+            DeadLetterAlertPublisher deadLetterAlertPublisher
+    ) {
+        return new DeadLetterRecoveryService(
+                deadLetterMessageRepository,
+                processedEventRepository,
+                kafkaTemplate,
+                deadLetterProperties,
+                deadLetterAlertPublisher
+        );
     }
 
     @Bean

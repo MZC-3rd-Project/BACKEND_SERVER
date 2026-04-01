@@ -1,0 +1,80 @@
+@startuml
+title 비동기 이벤트 소비 구조 - 1. 진입과 라우팅
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  ArrowColor #475569
+  FontColor #0F172A
+  HeaderBackgroundColor #F8FAFC
+}
+
+skinparam interface {
+  BackgroundColor #F8FAFC
+  BorderColor #94A3B8
+  FontColor #0F172A
+}
+
+skinparam note {
+  BackgroundColor #EFF6FF
+  BorderColor #93C5FD
+  FontColor #1E3A8A
+}
+
+left to right direction
+
+class "Kafka Topic\npayment-events" as KafkaTopic <<external>>
+
+class "PaymentEventConsumer" as PaymentEventConsumer {
+  + consume(record): void
+}
+
+abstract class "AbstractProcessorRoutingConsumer" as AbstractProcessorRoutingConsumer
+
+class "RoutedEventConsumer" as RoutedEventConsumer <<annotation>> {
+  + consumerName(): String
+  + defaultMode(): ConsumerRoutingMode
+}
+
+enum "ConsumerRoutingMode" as ConsumerRoutingMode {
+  DIRECT
+  INBOX
+}
+
+interface "EventMessageProcessor" as EventMessageProcessor {
+  + supports(eventType): boolean
+  + process(message, eventId, eventType): void
+}
+
+class "InboxRoutingSupport" as InboxRoutingSupport {
+  + isInbox(consumerType): boolean
+  + enqueue(consumerType, envelope, message): boolean
+}
+
+class "EventConsumerRoutingResolver" as EventConsumerRoutingResolver {
+  + resolveMode(consumerType): ConsumerRoutingMode
+}
+
+class "EventConsumerRoutingProperties" as EventConsumerRoutingProperties
+
+KafkaTopic --> PaymentEventConsumer : 이벤트 레코드 전달
+PaymentEventConsumer --|> AbstractProcessorRoutingConsumer
+PaymentEventConsumer ..> RoutedEventConsumer
+AbstractProcessorRoutingConsumer --> InboxRoutingSupport : 처리 경로 결정
+AbstractProcessorRoutingConsumer --> EventMessageProcessor : 직접 처리 위임
+InboxRoutingSupport --> EventConsumerRoutingResolver : 라우팅 설정 조회
+EventConsumerRoutingResolver --> EventConsumerRoutingProperties
+
+note bottom of AbstractProcessorRoutingConsumer
+Listener 구현체는 얇게 유지한다.
+Kafka 레코드를 받은 뒤
+Inbox 적재 또는 직접 처리만 결정한다.
+end note
+
+@enduml

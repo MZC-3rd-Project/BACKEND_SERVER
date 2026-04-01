@@ -1,0 +1,50 @@
+@startuml
+title 2번 슬라이드. 토큰은 직접 들고 다니지 않고 Gateway 세션으로 관리한다
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam rectangle {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  FontColor #0F172A
+  RoundCorner 18
+}
+
+skinparam note {
+  BackgroundColor #F0FDF4
+  BorderColor #86EFAC
+  FontColor #166534
+}
+
+left to right direction
+
+rectangle "GatewayOidcController" as OidcController #DBEAFE
+rectangle "GatewayLoginService" as LoginService #FEF3C7
+rectangle "GatewayAuthorizationStateService\nstate 저장/소비" as AuthState #DCFCE7
+rectangle "GatewayOidcTokenClient\n인가코드 / refresh token 교환" as TokenClient #F8FAFC
+rectangle "GatewaySessionTokenCipher\nGatewayRefreshTokenHasher" as TokenProtection #FDE68A
+rectangle "RedisGatewaySessionRepository\nGatewayServerSession 저장" as SessionRepo #F8FAFC
+rectangle "GatewaySessionCookieManager\nDONMOA_SESSION 쿠키 발급" as CookieManager #DBEAFE
+
+OidcController --> LoginService
+LoginService --> AuthState
+LoginService --> TokenClient
+LoginService --> TokenProtection
+LoginService --> SessionRepo
+LoginService --> CookieManager
+
+note bottom of TokenProtection
+refresh token은 평문으로 저장하지 않고
+암호화 값과 hash를 함께 세션에 저장한다.
+end note
+
+note bottom of CookieManager
+브라우저는 access token 자체가 아니라
+gateway session id가 담긴 쿠키를 가진다.
+end note
+
+@enduml

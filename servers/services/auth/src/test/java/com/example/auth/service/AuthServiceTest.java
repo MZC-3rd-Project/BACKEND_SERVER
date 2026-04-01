@@ -4,6 +4,7 @@ import com.example.auth.client.ProfileServicePort;
 import com.example.auth.dto.request.SignupRequest;
 import com.example.auth.dto.request.WithdrawRequest;
 import com.example.auth.dto.response.SignupResponse;
+import com.example.auth.entity.EmailVerification;
 import com.example.auth.entity.User;
 import com.example.auth.entity.UserStatusHistory;
 import com.example.auth.event.UserCreatedEvent;
@@ -80,7 +81,9 @@ class AuthServiceTest {
                 "http://localhost:43217",
                 "don-moa-gateway",
                 "gateway-secret",
-                true
+                true,
+                "test",
+                ""
         );
     }
 
@@ -149,7 +152,9 @@ class AuthServiceTest {
                     "http://localhost:43217",
                     "don-moa-gateway",
                     "gateway-secret",
-                    false
+                    false,
+                    "test",
+                    ""
             );
 
             SignupRequest request = new SignupRequest("flag-off@example.com", "password123", "플래그오프");
@@ -292,6 +297,91 @@ class AuthServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                             .isEqualTo(AuthErrorCode.USER_NOT_FOUND));
+        }
+    }
+
+    @Nested
+    @DisplayName("이메일 인증")
+    class VerifyEmailTest {
+
+        @Test
+        @DisplayName("성공 - develop override 코드 72816 허용")
+        void verifyEmail_success_withDevelopOverrideCode() {
+            AuthService developAuthService = new AuthService(
+                    userRepository,
+                    statusHistoryRepository,
+                    emailVerificationRepository,
+                    keycloakAdminClient,
+                    profileServiceClient,
+                    eventPublisher,
+                    entityManager,
+                    "don-moa",
+                    "http://localhost:43217",
+                    "don-moa-gateway",
+                    "gateway-secret",
+                    true,
+                    "develop",
+                    "72816"
+            );
+
+            EmailVerification verification = EmailVerification.create(
+                    "dev@example.com",
+                    "REAL12",
+                    java.time.LocalDateTime.now().plusMinutes(5)
+            );
+            when(emailVerificationRepository.findTopByEmailAndVerifiedFalseOrderByCreatedAtDesc("dev@example.com"))
+                    .thenReturn(Optional.of(verification));
+
+            RealmResource realmResource = mock(RealmResource.class);
+            UsersResource usersResource = mock(UsersResource.class);
+            UserResource userResource = mock(UserResource.class);
+            UserRepresentation userRepresentation = new UserRepresentation();
+            userRepresentation.setId("kc-dev-user");
+            when(keycloakAdminClient.realm("don-moa")).thenReturn(realmResource);
+            when(realmResource.users()).thenReturn(usersResource);
+            when(usersResource.searchByEmail("dev@example.com", true)).thenReturn(java.util.List.of(userRepresentation));
+            when(usersResource.get("kc-dev-user")).thenReturn(userResource);
+
+            var response = developAuthService.verifyEmail("dev@example.com", "72816");
+
+            assertThat(response.verified()).isTrue();
+            assertThat(response.email()).isEqualTo("dev@example.com");
+            assertThat(verification.isVerified()).isTrue();
+            verify(userResource).update(any(UserRepresentation.class));
+        }
+
+        @Test
+        @DisplayName("실패 - non-develop 에서는 override 코드 거부")
+        void verifyEmail_fail_withOverrideCodeOutsideDevelop() {
+            AuthService nonDevelopAuthService = new AuthService(
+                    userRepository,
+                    statusHistoryRepository,
+                    emailVerificationRepository,
+                    keycloakAdminClient,
+                    profileServiceClient,
+                    eventPublisher,
+                    entityManager,
+                    "don-moa",
+                    "http://localhost:43217",
+                    "don-moa-gateway",
+                    "gateway-secret",
+                    true,
+                    "prod",
+                    "72816"
+            );
+
+            EmailVerification verification = EmailVerification.create(
+                    "prod@example.com",
+                    "REAL12",
+                    java.time.LocalDateTime.now().plusMinutes(5)
+            );
+            when(emailVerificationRepository.findTopByEmailAndVerifiedFalseOrderByCreatedAtDesc("prod@example.com"))
+                    .thenReturn(Optional.of(verification));
+
+            assertThatThrownBy(() -> nonDevelopAuthService.verifyEmail("prod@example.com", "72816"))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(AuthErrorCode.VERIFICATION_CODE_INVALID));
         }
     }
 }

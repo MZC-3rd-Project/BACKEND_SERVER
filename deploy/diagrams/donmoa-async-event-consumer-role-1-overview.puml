@@ -1,0 +1,55 @@
+@startuml
+title 비동기 이벤트 수신 구조 한눈에 보기
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam rectangle {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  RoundCorner 12
+  FontColor #0F172A
+}
+
+skinparam note {
+  BackgroundColor #EFF6FF
+  BorderColor #93C5FD
+  FontColor #1E3A8A
+}
+
+left to right direction
+
+rectangle "Kafka Topic\n이벤트 소스" as KafkaTopic #F8FAFC
+rectangle "Listener\n이벤트 수신 진입점" as Listener #DBEAFE
+rectangle "Routing\n직접 처리 / Inbox 적재 결정" as Routing #E0F2FE
+rectangle "Inbox\n메시지 안전 적재" as Inbox #DCFCE7
+rectangle "Worker\n재시도와 복구를 포함한 처리 실행" as Worker #BBF7D0
+rectangle "Processor\n이벤트 종류 분기 + 멱등 처리" as Processor #FEF3C7
+rectangle "비즈니스 서비스\n실제 도메인 로직 수행" as Service #FDE68A
+
+KafkaTopic --> Listener : Kafka 메시지 전달
+Listener --> Routing : record 전달
+Routing --> Inbox : inbox 모드
+Inbox --> Worker : 적재 후 처리 신호
+Worker --> Processor : 처리 위임
+Processor --> Service : 비즈니스 실행
+
+note bottom of Listener
+Controller처럼 얇게 유지한다.
+메시지를 받고 다음 단계로 넘기는 역할이다.
+end note
+
+note bottom of Inbox
+바로 처리하지 않고 먼저 저장해서
+중복, 재처리, 일시 장애 대응을 쉽게 만든다.
+end note
+
+note bottom of Processor
+서비스별 비즈니스 분기점이다.
+어떤 이벤트를 어떤 로직으로 처리할지 여기서 정한다.
+end note
+
+@enduml

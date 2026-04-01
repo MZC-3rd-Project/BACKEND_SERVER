@@ -1,0 +1,81 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="900" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F8FBFF"/>
+      <stop offset="1" stop-color="#F7F7FB"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#0EA5E9"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#0F172A" flood-opacity="0.10"/>
+    </filter>
+    <style>
+      .title { font: 700 46px 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; fill: #0F172A; }
+      .subtitle { font: 400 20px 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; fill: #475569; }
+      .section { font: 700 24px 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; fill: #0F172A; }
+      .body { font: 600 24px 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; fill: #1E293B; }
+      .small { font: 500 18px 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; fill: #475569; }
+      .label { font: 700 14px 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; letter-spacing: 0.12em; fill: #2563EB; }
+      .note { font: 600 18px 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; fill: #7C2D12; }
+      .mono { font: 600 20px 'SFMono-Regular', 'Menlo', 'Consolas', monospace; fill: #0F172A; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" rx="32" fill="url(#bg)"/>
+  <circle cx="1360" cy="120" r="190" fill="#DBEAFE" opacity="0.55"/>
+  <circle cx="1490" cy="250" r="90" fill="#E0F2FE" opacity="0.8"/>
+  <circle cx="170" cy="760" r="150" fill="#EEF2FF" opacity="0.9"/>
+
+  <rect x="60" y="56" width="1480" height="788" rx="28" fill="#FFFFFF" filter="url(#shadow)"/>
+
+  <text x="110" y="126" class="label">TCC FLOW</text>
+  <text x="110" y="186" class="title">재고 보호를 위한 TCC 흐름</text>
+  <text x="110" y="226" class="subtitle">재고는 먼저 예약하고, 결제 결과에 따라 확정하거나 복구하는 구매 흐름</text>
+
+  <rect x="100" y="286" width="1400" height="330" rx="24" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2"/>
+  <text x="140" y="338" class="section">핵심 흐름</text>
+
+  <rect x="130" y="420" width="180" height="84" rx="20" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+  <text x="166" y="455" class="body">구매 시작</text>
+  <text x="164" y="486" class="small">Sales / HotDeal / Funding</text>
+
+  <rect x="380" y="406" width="240" height="110" rx="22" fill="#FFF7ED" stroke="#FDBA74" stroke-width="2"/>
+  <text x="466" y="444" class="body">Try</text>
+  <text x="429" y="475" class="small">reserveOrderStock()</text>
+  <text x="422" y="502" class="small">available → reserved</text>
+
+  <rect x="690" y="420" width="220" height="84" rx="20" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+  <text x="758" y="455" class="body">주문 생성</text>
+  <text x="721" y="486" class="small">orderId / expiresAt 확보</text>
+
+  <rect x="980" y="420" width="220" height="84" rx="20" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+  <text x="1056" y="455" class="body">결제 진행</text>
+  <text x="1037" y="486" class="small">confirm / cancel / timeout</text>
+
+  <rect x="1290" y="356" width="220" height="96" rx="22" fill="#ECFDF5" stroke="#86EFAC" stroke-width="2"/>
+  <text x="1362" y="394" class="body">Confirm</text>
+  <text x="1326" y="425" class="small">PAYMENT_COMPLETED</text>
+
+  <rect x="1290" y="488" width="220" height="112" rx="22" fill="#FEF2F2" stroke="#FCA5A5" stroke-width="2"/>
+  <text x="1368" y="526" class="body">Cancel</text>
+  <text x="1318" y="557" class="small">FAILED / CANCELLED /</text>
+  <text x="1348" y="582" class="small">TIMED_OUT / TTL 만료</text>
+
+  <path d="M310 462H380" stroke="#2563EB" stroke-width="6" stroke-linecap="round"/>
+  <path d="M620 462H690" stroke="#2563EB" stroke-width="6" stroke-linecap="round"/>
+  <path d="M910 462H980" stroke="#2563EB" stroke-width="6" stroke-linecap="round"/>
+  <path d="M1200 462H1240L1240 404H1290" stroke="#16A34A" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M1200 462H1240L1240 544H1290" stroke="#DC2626" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <rect x="100" y="654" width="670" height="150" rx="24" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="2"/>
+  <text x="136" y="702" class="section">왜 TCC를 썼는가</text>
+  <text x="136" y="744" class="small">결제 전에도 재고를 먼저 보호해야 초과 판매를 막을 수 있기 때문입니다.</text>
+  <text x="136" y="776" class="small">즉시 잠가야 하지만, 아직 최종 판매 확정은 할 수 없는 자원에 적합한 패턴입니다.</text>
+
+  <rect x="820" y="654" width="680" height="150" rx="24" fill="#FFF7ED" stroke="#FED7AA" stroke-width="2"/>
+  <text x="856" y="702" class="section">Trade-off</text>
+  <text x="856" y="744" class="small">초과 판매를 줄일 수 있지만, reserved 상태와 TTL, 복구 로직을 함께 관리해야 합니다.</text>
+  <text x="856" y="776" class="small">즉 TCC는 안전성을 얻는 대신 상태 관리 복잡도를 감수하는 구조입니다.</text>
+</svg>

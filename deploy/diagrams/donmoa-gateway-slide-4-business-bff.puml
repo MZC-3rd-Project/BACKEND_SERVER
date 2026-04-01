@@ -1,0 +1,47 @@
+@startuml
+title 4번 슬라이드. business-gateway는 쓰기 흐름을 하나의 BFF로 묶는다
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam rectangle {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  FontColor #0F172A
+  RoundCorner 18
+}
+
+skinparam note {
+  BackgroundColor #EFF6FF
+  BorderColor #93C5FD
+  FontColor #1E3A8A
+}
+
+top to bottom direction
+
+rectangle "BusinessProductMediaBffService" as ProductMediaBff #DBEAFE
+rectangle "Product Service\n상품 / 굿즈 / 공연 생성 및 수정" as ProductService #F8FAFC
+rectangle "Media Service\n이미지 추가 / 삭제 / 재정렬" as MediaService #F8FAFC
+rectangle "상세 재조회 + Media URL 보강" as Refetch #FEF3C7
+rectangle "클라이언트는 한 번 호출,\nGateway 내부는 여러 downstream 호출" as Output #FDE68A
+
+ProductMediaBff --> ProductService
+ProductMediaBff --> MediaService
+ProductService --> Refetch
+MediaService --> Refetch
+Refetch --> Output
+
+note bottom of ProductMediaBff
+생성/수정 이후 이미지 연산과 상세 재조회까지
+하나의 BFF 흐름으로 묶어준다.
+end note
+
+note bottom of Output
+클라이언트는 복잡한 순차 호출을 몰라도 되고,
+게이트웨이가 쓰기 흐름을 오케스트레이션한다.
+end note
+
+@enduml

@@ -1,0 +1,57 @@
+@startuml
+title DonMoa Async Event Producer Side
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam sequence {
+  ArrowColor #334155
+  LifeLineBorderColor #94A3B8
+  LifeLineBackgroundColor #FFFFFF
+  ParticipantBorderColor #CBD5E1
+  ParticipantBackgroundColor #F8FAFC
+  ParticipantFontColor #0F172A
+}
+
+skinparam note {
+  BackgroundColor #EFF6FF
+  BorderColor #93C5FD
+  FontColor #1E3A8A
+}
+
+participant "PaymentCommandService" as PaymentService
+participant "EventPublisher\n(OutboxService)" as OutboxService
+participant "OutboxRepository" as OutboxRepo
+participant "ImmediatePublisher" as ImmediatePublisher
+participant "OutboxRelayScheduler" as Relay
+participant "Kafka Topic\npayment-events" as Kafka
+
+PaymentService -> OutboxService : publish(PaymentCompletedEvent, metadata)
+OutboxService -> OutboxRepo : save OutboxMessage
+OutboxService -> ImmediatePublisher : OutboxSavedEvent
+ImmediatePublisher -> Kafka : publish async
+
+alt immediate publish failed
+  ImmediatePublisher -> Relay : revert to pending
+  Relay -> OutboxRepo : fetch pending messages
+  Relay -> Kafka : retry publish
+end
+
+note right of PaymentService
+서비스는 결제 완료 후
+eventPublisher.publish() 만 호출한다.
+Kafka 전송 코드는 직접 다루지 않는다.
+end note
+
+note right of OutboxService
+이벤트 유실 방지를 위해
+먼저 outbox 에 저장한 뒤
+after-commit 시점에 발행을 트리거한다.
+end note
+
+note bottom
+Producer 메시지:
+비동기 발행도 서비스 코드에서는 publish() 한 줄로 보이게 만들고,
+outbox / immediate publish / relay retry 는 공통 레이어가 맡도록 했다.
+end note
+
+@enduml

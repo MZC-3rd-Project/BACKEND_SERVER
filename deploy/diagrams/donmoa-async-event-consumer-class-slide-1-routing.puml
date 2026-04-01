@@ -1,0 +1,74 @@
+@startuml
+title 비동기 이벤트 수신 클래스 구조 - 진입과 라우팅
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  ArrowColor #475569
+  FontColor #0F172A
+  HeaderBackgroundColor #F8FAFC
+}
+
+skinparam interface {
+  BackgroundColor #F8FAFC
+  BorderColor #94A3B8
+  FontColor #0F172A
+}
+
+skinparam note {
+  BackgroundColor #EFF6FF
+  BorderColor #93C5FD
+  FontColor #1E3A8A
+}
+
+left to right direction
+
+class "PaymentEventConsumer" as PaymentEventConsumer {
+  + consume(record): void
+}
+
+abstract class "AbstractProcessorRoutingConsumer" as AbstractProcessorRoutingConsumer
+
+class "InboxRoutingSupport" as InboxRoutingSupport {
+  + isInbox(consumerType): boolean
+  + enqueue(consumerType, envelope, message): boolean
+}
+
+class "EventConsumerRoutingResolver" as EventConsumerRoutingResolver {
+  + resolveMode(consumerType): ConsumerRoutingMode
+}
+
+interface "EventMessageProcessor" as EventMessageProcessor {
+  + supports(eventType): boolean
+  + process(message, eventId, eventType): void
+}
+
+enum "ConsumerRoutingMode" as ConsumerRoutingMode {
+  DIRECT
+  INBOX
+}
+
+PaymentEventConsumer --|> AbstractProcessorRoutingConsumer
+AbstractProcessorRoutingConsumer --> InboxRoutingSupport : inbox 여부 판단
+AbstractProcessorRoutingConsumer --> EventMessageProcessor : 직접 처리 위임
+InboxRoutingSupport --> EventConsumerRoutingResolver : 라우팅 모드 조회
+EventConsumerRoutingResolver --> ConsumerRoutingMode
+
+note bottom of PaymentEventConsumer
+실제 KafkaListener가 붙는 진입 클래스.
+메시지를 직접 처리하지 않고
+공통 라우팅 구조로 넘긴다.
+end note
+
+note bottom of InboxRoutingSupport
+이 Consumer가 바로 처리할지,
+Inbox에 적재할지를 결정한다.
+end note
+
+@enduml
