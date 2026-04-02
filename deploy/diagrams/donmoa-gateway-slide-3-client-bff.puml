@@ -1,0 +1,47 @@
+@startuml
+title 3번 슬라이드. client-gateway는 읽기 중심 BFF 조합과 응답 보강을 맡는다
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam rectangle {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  FontColor #0F172A
+  RoundCorner 18
+}
+
+skinparam note {
+  BackgroundColor #FFF7ED
+  BorderColor #FDBA74
+  FontColor #7C2D12
+}
+
+top to bottom direction
+
+rectangle "CatalogBffService\n검색 응답 진입점" as CatalogBff #DBEAFE
+rectangle "Search Service\n목록 / 검색 결과" as SearchService #F8FAFC
+rectangle "Media Service\n썸네일 URL 조회" as MediaService #F8FAFC
+rectangle "SearchThumbnailFallbackEnricher\nCatalogResponseMapper" as Mapper #FEF3C7
+rectangle "클라이언트 친화 응답\nFallback / Enrichment / Mapping" as Output #FDE68A
+
+CatalogBff --> SearchService
+CatalogBff --> MediaService
+SearchService --> Mapper
+MediaService --> Mapper
+Mapper --> Output
+
+note bottom of CatalogBff
+단순 전달이 아니라 검색 결과를 받아
+미디어 URL 보강, fallback, 응답 매핑까지 수행한다.
+end note
+
+note bottom of Output
+클라이언트는 여러 서비스를 직접 호출하지 않고,
+정리된 하나의 응답만 받게 된다.
+end note
+
+@enduml

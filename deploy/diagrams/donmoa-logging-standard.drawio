@@ -1,0 +1,149 @@
+<mxfile host="drawio-plugin" modified="2026-03-28T05:10:39.386Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" compressed="false" version="22.1.22" etag="cLUk5_hjGqR80DdHb_5t" type="embed" pages="2">
+  <diagram id="logging-standard-main" name="로깅 표준 설계">
+    <mxGraphModel dx="1183" dy="833" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="1500" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" value="DonMoa 로깅 표준 설계" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=34;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
+          <mxGeometry x="50" y="26" width="760" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="옵저빌리티 파이프라인이 잘 동작하려면 수집 이전에 로그 포맷, 필드, 레벨, 보안, 라벨 규칙이 먼저 고정되어야 한다" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=18;fontColor=#4b5563;" parent="1" vertex="1">
+          <mxGeometry x="54" y="78" width="1450" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="10" value="1. 로그 발생 지점" style="rounded=1;whiteSpace=wrap;html=1;arcSize=24;fillColor=#eff6ff;strokeColor=#1d4ed8;strokeWidth=2;fontSize=22;fontStyle=1;fontColor=#1e3a8a;align=left;verticalAlign=top;spacing=14;" parent="1" vertex="1">
+          <mxGeometry x="40" y="150" width="560" height="860" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="Spring 서비스 로그&#xa;공통 logback-spring.xml&#xa;CONSOLE_JSON + LogstashEncoder&#xa;stdout JSON 출력" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#2563eb;strokeWidth=3;fontColor=#1e3a8a;fontSize=21;fontStyle=1;spacing=14;" parent="10" vertex="1">
+          <mxGeometry x="35" y="80" width="490" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="Tracing / MDC 보강&#xa;includeMdc=true&#xa;requestId / traceId / spanId 유지&#xa;Micrometer Tracing + Brave 연계" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffedd5;strokeColor=#c2410c;strokeWidth=3;fontColor=#9a3412;fontSize=20;fontStyle=1;spacing=14;" parent="10" vertex="1">
+          <mxGeometry x="85" y="320" width="390" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="13" value="edge-nginx access log&#xa;log_format edge_json escape=json&#xa;access_log /dev/stdout&#xa;request_id / trace_id / status / uri / request_time" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ede9fe;strokeColor=#6d28d9;strokeWidth=3;fontColor=#5b21b6;fontSize=20;fontStyle=1;spacing=14;" parent="10" vertex="1">
+          <mxGeometry x="35" y="580" width="490" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="100" value="MDC 주입" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#c2410c;strokeWidth=4;fontSize=14;fontColor=#9a3412;labelBackgroundColor=#ffffff;" parent="10" source="12" target="11" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="20" value="2. 공통 로그 스키마" style="rounded=1;whiteSpace=wrap;html=1;arcSize=24;fillColor=#f0fdf4;strokeColor=#15803d;strokeWidth=2;fontSize=22;fontStyle=1;fontColor=#166534;align=left;verticalAlign=top;spacing=14;" parent="1" vertex="1">
+          <mxGeometry x="660" y="150" width="760" height="860" as="geometry" />
+        </mxCell>
+        <mxCell id="21" value="필수 필드&#xa;timestamp / service.name / deployment.environment / log.type / level / logger / thread / message / requestId / traceId / spanId" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#16a34a;strokeWidth=3;fontColor=#166534;fontSize=21;fontStyle=1;spacing=14;" parent="20" vertex="1">
+          <mxGeometry x="40" y="80" width="680" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="메시지 작성 규칙&#xa;짧고 명확한 문장&#xa;결과와 원인을 같이 작성&#xa;placeholder 사용&#xa;다중 행 로그 금지" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#22c55e;strokeWidth=3;fontColor=#166534;fontSize=20;fontStyle=1;spacing=14;" parent="20" vertex="1">
+          <mxGeometry x="40" y="300" width="300" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="23" value="비즈니스 키 규칙&#xa;requestId는 최대한 유지&#xa;business key는 1~3개만 추가&#xa;예외는 exception 인자로 전달" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#4ade80;strokeWidth=3;fontColor=#166534;fontSize=20;fontStyle=1;spacing=14;" parent="20" vertex="1">
+          <mxGeometry x="410" y="300" width="310" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="3. 운영 규칙과 저장 전략" style="rounded=1;whiteSpace=wrap;html=1;arcSize=24;fillColor=#fff7ed;strokeColor=#ea580c;strokeWidth=2;fontSize=22;fontStyle=1;fontColor=#9a3412;align=left;verticalAlign=top;spacing=14;" parent="1" vertex="1">
+          <mxGeometry x="1480" y="150" width="860" height="860" as="geometry" />
+        </mxCell>
+        <mxCell id="31" value="로그 레벨 규칙&#xa;DEBUG: 저수준 진단&#xa;INFO: 의미 있는 정상 이벤트&#xa;WARN: 복구 가능 오류 / fallback&#xa;ERROR: 운영자 개입 필요" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#fb923c;strokeWidth=3;fontColor=#9a3412;fontSize=20;fontStyle=1;spacing=14;" parent="30" vertex="1">
+          <mxGeometry x="40" y="80" width="350" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="32" value="민감정보 금지&#xa;비밀번호 / 토큰 / 카드 정보&#xa;전화번호 / 이메일 원문&#xa;외부 시스템 전체 payload 금지" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#f97316;strokeWidth=3;fontColor=#9a3412;fontSize=20;fontStyle=1;spacing=14;" parent="30" vertex="1">
+          <mxGeometry x="450" y="80" width="350" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="33" value="Loki label 최소화&#xa;허용: service_name / env / log_type / level&#xa;금지: requestId / traceId / userId / sessionId / path / clientIp" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#f59e0b;strokeWidth=3;fontColor=#92400e;fontSize=20;fontStyle=1;spacing=14;" parent="30" vertex="1">
+          <mxGeometry x="140" y="380" width="560" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="34" value="수집 / 조회 결과&#xa;stdout JSON -&gt; Alloy -&gt; Loki -&gt; Grafana&#xa;requestId / traceId 기준 상관관계 조회&#xa;label cardinality 폭증 방지" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#fffaf0;strokeColor=#facc15;strokeWidth=3;fontColor=#854d0e;fontSize=20;fontStyle=1;spacing=14;" parent="30" vertex="1">
+          <mxGeometry x="140" y="660" width="560" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="104" value="조회 가능성 확보" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#111827;strokeWidth=6;fontSize=14;fontColor=#111827;labelBackgroundColor=#ffffff;" parent="30" source="33" target="34" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="101" value="공통 필드화" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#111827;strokeWidth=6;fontSize=14;fontColor=#111827;labelBackgroundColor=#ffffff;" parent="1" source="11" target="21" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="102" value="같은 기준 적용" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#111827;strokeWidth=6;fontSize=14;fontColor=#111827;labelBackgroundColor=#ffffff;" parent="1" source="13" target="21" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="640" y="815" />
+              <mxPoint x="640" y="305" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="103" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#111827;strokeWidth=6;" parent="1" source="21" target="33" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="logging-standard-talk" name="발표 포인트">
+    <mxGraphModel dx="710" dy="500" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1400" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" value="로깅 표준 발표 포인트" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=32;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
+          <mxGeometry x="40" y="24" width="700" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="옵저빌리티 파이프라인 앞단의 설계 의도를 1분 안에 설명하기 위한 발표 보조 페이지" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=17;fontColor=#4b5563;" parent="1" vertex="1">
+          <mxGeometry x="44" y="72" width="980" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="10" value="30초 버전" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#eff6ff;strokeColor=#1d4ed8;strokeWidth=3;fontColor=#1e3a8a;fontSize=24;fontStyle=1;spacing=14;" parent="1" vertex="1">
+          <mxGeometry x="60" y="150" width="2080" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="저희는 Alloy나 Loki를 붙이는 것보다 먼저 로그 표준을 고정했습니다. 모든 애플리케이션 로그는 공통 logback 설정으로 JSON stdout에 남기고, edge-nginx access log도 같은 방식으로 JSON화했습니다. 그리고 requestId, traceId, spanId를 공통 키로 맞춰서 Grafana에서 한 요청 흐름을 추적할 수 있게 했습니다." style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#93c5fd;strokeWidth=2;fontColor=#334155;fontSize=23;spacing=16;" parent="10" vertex="1">
+          <mxGeometry x="24" y="54" width="2032" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="20" value="좋은 로그 예시" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#f0fdf4;strokeColor=#15803d;strokeWidth=3;fontColor=#166534;fontSize=24;fontStyle=1;spacing=14;" parent="1" vertex="1">
+          <mxGeometry x="60" y="400" width="640" height="380" as="geometry" />
+        </mxCell>
+        <mxCell id="21" value="메시지 예시&#xa;Order created. orderId={}&#xa;Funding detail lookup failed. campaignId={}&#xa;Email delivery skipped by user settings. userId={}, type={}" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#86efac;strokeWidth=2;fontColor=#334155;fontSize=21;spacing=14;" parent="20" vertex="1">
+          <mxGeometry x="24" y="56" width="592" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="좋은 이유&#xa;짧고 명확함&#xa;결과와 원인이 같이 보임&#xa;placeholder라 검색성과 보안성이 좋음" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#bbf7d0;strokeWidth=2;fontColor=#334155;fontSize=20;spacing=14;" parent="20" vertex="1">
+          <mxGeometry x="24" y="228" width="592" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="피해야 할 로그" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#fff7ed;strokeColor=#ea580c;strokeWidth=3;fontColor=#9a3412;fontSize=24;fontStyle=1;spacing=14;" parent="1" vertex="1">
+          <mxGeometry x="780" y="400" width="640" height="380" as="geometry" />
+        </mxCell>
+        <mxCell id="31" value="비권장 예시&#xa;성공&#xa;여기까지 옴&#xa;에러남&#xa;원문 payload 전체 출력" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#fdba74;strokeWidth=2;fontColor=#334155;fontSize=21;spacing=14;" parent="30" vertex="1">
+          <mxGeometry x="24" y="56" width="592" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="32" value="왜 문제인가&#xa;맥락이 없어서 장애 분석에 도움이 안 됨&#xa;PII / 토큰 / 외부 응답 노출 위험&#xa;로그 볼륨만 늘고 검색 품질은 떨어짐" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#fed7aa;strokeWidth=2;fontColor=#334155;fontSize=20;spacing=14;" parent="30" vertex="1">
+          <mxGeometry x="24" y="228" width="592" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="40" value="질의응답 대비" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#ecfeff;strokeColor=#0891b2;strokeWidth=3;fontColor=#155e75;fontSize=24;fontStyle=1;spacing=14;" parent="1" vertex="1">
+          <mxGeometry x="1500" y="400" width="640" height="380" as="geometry" />
+        </mxCell>
+        <mxCell id="41" value="Q. 왜 JSON + stdout인가?&#xa;A. 수집기가 가장 단순하게 붙고, 서비스 간 포맷을 통일하기 쉽다." style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#67e8f9;strokeWidth=2;fontColor=#334155;fontSize=20;spacing=14;" parent="40" vertex="1">
+          <mxGeometry x="24" y="56" width="592" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="42" value="Q. 왜 requestId / traceId를 label로 안 뒀나?&#xa;A. Loki cardinality가 급증해서 운영성이 나빠지기 때문이다. 상세 키는 payload에서 찾는다." style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#a5f3fc;strokeWidth=2;fontColor=#334155;fontSize=20;spacing=14;" parent="40" vertex="1">
+          <mxGeometry x="24" y="158" width="592" height="92" as="geometry" />
+        </mxCell>
+        <mxCell id="43" value="Q. 왜 로깅 표준을 먼저 잡았나?&#xa;A. 파이프라인만 있어도 포맷이 제각각이면 결국 검색과 상관관계가 깨지기 때문이다." style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#cffafe;strokeWidth=2;fontColor=#334155;fontSize=20;spacing=14;" parent="40" vertex="1">
+          <mxGeometry x="24" y="272" width="592" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="50" value="짧은 발표 키워드" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#f9fafb;strokeColor=#111827;strokeWidth=2;fontSize=24;fontStyle=1;fontColor=#111827;align=left;verticalAlign=top;spacing=14;" parent="1" vertex="1">
+          <mxGeometry x="120" y="900" width="1960" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="51" value="JSON stdout" style="rounded=1;whiteSpace=wrap;html=1;arcSize=16;fillColor=#dbeafe;strokeColor=#60a5fa;strokeWidth=2;fontColor=#1e3a8a;fontSize=20;fontStyle=1;spacing=12;" parent="50" vertex="1">
+          <mxGeometry x="40" y="86" width="250" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="52" value="requestId / traceId" style="rounded=1;whiteSpace=wrap;html=1;arcSize=16;fillColor=#ffedd5;strokeColor=#fdba74;strokeWidth=2;fontColor=#9a3412;fontSize=20;fontStyle=1;spacing=12;" parent="50" vertex="1">
+          <mxGeometry x="350" y="86" width="280" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="53" value="공통 필드명" style="rounded=1;whiteSpace=wrap;html=1;arcSize=16;fillColor=#dcfce7;strokeColor=#86efac;strokeWidth=2;fontColor=#166534;fontSize=20;fontStyle=1;spacing=12;" parent="50" vertex="1">
+          <mxGeometry x="690" y="86" width="250" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="54" value="최소 label" style="rounded=1;whiteSpace=wrap;html=1;arcSize=16;fillColor=#fef3c7;strokeColor=#facc15;strokeWidth=2;fontColor=#854d0e;fontSize=20;fontStyle=1;spacing=12;" parent="50" vertex="1">
+          <mxGeometry x="1000" y="86" width="220" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="55" value="No PII" style="rounded=1;whiteSpace=wrap;html=1;arcSize=16;fillColor=#fee2e2;strokeColor=#f87171;strokeWidth=2;fontColor=#991b1b;fontSize=20;fontStyle=1;spacing=12;" parent="50" vertex="1">
+          <mxGeometry x="1280" y="86" width="200" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="56" value="Grafana 검색 가능성" style="rounded=1;whiteSpace=wrap;html=1;arcSize=16;fillColor=#ede9fe;strokeColor=#a78bfa;strokeWidth=2;fontColor=#5b21b6;fontSize=20;fontStyle=1;spacing=12;" parent="50" vertex="1">
+          <mxGeometry x="1540" y="86" width="300" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="57" value="한 줄 요약: 로깅 표준은 수집기 설정이 아니라, 검색 가능한 운영 데이터를 만들기 위한 공통 계약이다" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#cbd5e1;strokeWidth=2;fontColor=#334155;fontSize=21;spacing=14;" parent="50" vertex="1">
+          <mxGeometry x="180" y="170" width="1600" height="44" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

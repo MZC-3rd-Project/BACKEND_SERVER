@@ -5,9 +5,60 @@ AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-ap-northeast-2}"
 AWS_PROFILE="${AWS_PROFILE:-${aws_profile:-}}"
 GRAFANA_URL="${GRAFANA_URL:?GRAFANA_URL is required}"
 GRAFANA_ADMIN_PARAM_NAME="${GRAFANA_ADMIN_PARAM_NAME:-/donmoa/dev/grafana/admin-password}"
-PROMETHEUS_URL="${PROMETHEUS_URL:?PROMETHEUS_URL is required}"
+SYSTEM_NAMESPACE="${SYSTEM_NAMESPACE:-donmoa-system}"
+PROMETHEUS_SERVICE_NAME="${PROMETHEUS_SERVICE_NAME:-donmoa-monitoring-prometheus}"
+PROMETHEUS_URL="${PROMETHEUS_URL:-}"
 FOLDER_UID="${FOLDER_UID:-donmoa}"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+resolve_load_balancer_endpoint() {
+  local service_name="$1"
+  local namespace="$2"
+  local timeout_seconds="${3:-300}"
+  local start_ts endpoint
+
+  if ! command -v kubectl >/dev/null 2>&1; then
+    echo "[ERROR] kubectl is required to resolve ${namespace}/${service_name}" >&2
+    exit 1
+  fi
+
+  start_ts="$(date +%s)"
+
+  while true; do
+    endpoint="$(kubectl get service "${service_name}" \
+      --namespace "${namespace}" \
+      -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)"
+    if [[ -n "${endpoint}" ]]; then
+      echo "${endpoint}"
+      return
+    fi
+
+    endpoint="$(kubectl get service "${service_name}" \
+      --namespace "${namespace}" \
+      -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)"
+    if [[ -n "${endpoint}" ]]; then
+      echo "${endpoint}"
+      return
+    fi
+
+    if (( $(date +%s) - start_ts >= timeout_seconds )); then
+      echo "[ERROR] Timed out waiting for ${namespace}/${service_name} load balancer endpoint" >&2
+      exit 1
+    fi
+
+    sleep 5
+  done
+}
+
+ensure_prometheus_url() {
+  if [[ -n "${PROMETHEUS_URL}" ]]; then
+    return
+  fi
+
+  PROMETHEUS_URL="$(resolve_load_balancer_endpoint "${PROMETHEUS_SERVICE_NAME}" "${SYSTEM_NAMESPACE}")"
+}
+
+ensure_prometheus_url
 
 PASSWORD="$(env AWS_PROFILE="${AWS_PROFILE}" AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION}" \
   aws ssm get-parameter \
@@ -21,7 +72,7 @@ cat >/tmp/grafana-prometheus-datasource.json <<EOF
   "name": "Prometheus",
   "type": "prometheus",
   "access": "proxy",
-  "url": "http://${PROMETHEUS_URL}",
+  "url": "http://${PROMETHEUS_URL}:9090",
   "isDefault": false,
   "editable": false,
   "jsonData": {
@@ -74,3 +125,4 @@ fi
 
 echo "PROMETHEUS_UID=${PROM_UID}"
 echo "DASHBOARD_UID=${DASHBOARD_UID}"
+echo "PROMETHEUS_URL=${PROMETHEUS_URL}"

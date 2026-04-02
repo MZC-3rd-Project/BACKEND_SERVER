@@ -37,6 +37,7 @@ gateway_health_check_path = "/actuator/health"
 # Actual repository name = {name_prefix}-{environment}-{suffix}
 ecr_repositories = [
   "client-gateway",
+  "business-gateway",
   "keycloak",
   "auth-service",
   "profile-service",

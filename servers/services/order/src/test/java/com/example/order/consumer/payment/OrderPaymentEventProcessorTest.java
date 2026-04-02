@@ -1,8 +1,13 @@
 package com.example.order.consumer.payment;
 
 import com.example.config.kafka.IdempotentConsumerService;
+import com.example.event.DomainEvent;
 import com.example.event.EventPublisher;
+import com.example.order.event.OrderPaidEvent;
+import com.example.order.event.PurchaseCreatedEvent;
+import com.example.order.event.PurchaseRefundedEvent;
 import com.example.order.domain.Order;
+import com.example.order.domain.OrderItem;
 import com.example.order.domain.OrderRepository;
 import com.example.order.domain.OrderStatus;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.lang.reflect.Field;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -44,6 +50,8 @@ class OrderPaymentEventProcessorTest {
     void paymentCompleted_orderBecomesPaid() {
         // given
         Order order = Order.create(101L, 100L, 50000L, null, null, null, null, null);
+        order.addItem(normalItem(1001L, 501L, 11L, 2, 25000L, 50000L));
+        order.addItem(nonNormalItem(1002L));
         when(orderRepository.findById(101L)).thenReturn(Optional.of(order));
         when(idempotentConsumerService.executeIdempotent(eq("evt-1"), eq("PAYMENT_EVENT"), any()))
                 .thenAnswer(invocation -> {
@@ -61,6 +69,9 @@ class OrderPaymentEventProcessorTest {
 
         // then
         assertThat(order.getStatus()).isEqualTo(OrderStatus.PAID);
+        verify(eventPublisher, times(2)).publish(any(DomainEvent.class), any());
+        verify(eventPublisher).publish(any(OrderPaidEvent.class), any());
+        verify(eventPublisher).publish(any(PurchaseCreatedEvent.class), any());
     }
 
     @Test
@@ -170,6 +181,8 @@ class OrderPaymentEventProcessorTest {
     void paymentRefunded_orderBecomesRefunded() {
         // given
         Order order = Order.create(105L, 100L, 50000L, null, null, null, null, null);
+        order.addItem(normalItem(2001L, 601L, 21L, 1, 50000L, 50000L));
+        order.addItem(nonNormalItem(2002L));
         order.transitTo(OrderStatus.PAID);
         order.transitTo(OrderStatus.REFUND_REQUESTED);
         when(orderRepository.findById(105L)).thenReturn(Optional.of(order));
@@ -189,6 +202,34 @@ class OrderPaymentEventProcessorTest {
 
         // then
         assertThat(order.getStatus()).isEqualTo(OrderStatus.REFUNDED);
-        verify(eventPublisher).publish(any(), any());
+        verify(eventPublisher, times(2)).publish(any(DomainEvent.class), any());
+        verify(eventPublisher).publish(any(PurchaseRefundedEvent.class), any());
+    }
+
+    private OrderItem normalItem(Long purchaseId,
+                                 Long itemId,
+                                 Long storeId,
+                                 int quantity,
+                                 Long unitPrice,
+                                 Long lineAmount) {
+        OrderItem orderItem = OrderItem.create("NORMAL", null, itemId, storeId, quantity, unitPrice, lineAmount);
+        setField(orderItem, "id", purchaseId);
+        return orderItem;
+    }
+
+    private OrderItem nonNormalItem(Long purchaseId) {
+        OrderItem orderItem = OrderItem.create("FUNDING", 1L, 999L, 88L, 1, 1000L, 1000L);
+        setField(orderItem, "id", purchaseId);
+        return orderItem;
+    }
+
+    private void setField(Object target, String fieldName, Object value) {
+        try {
+            Field field = target.getClass().getDeclaredField(fieldName);
+            field.setAccessible(true);
+            field.set(target, value);
+        } catch (ReflectiveOperationException exception) {
+            throw new IllegalStateException(exception);
+        }
     }
 }

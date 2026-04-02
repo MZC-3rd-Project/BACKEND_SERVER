@@ -20,7 +20,9 @@ podLabels: {}
 podSecurityContext: {}
 securityContext: {}
 
-env: {}
+env:
+  TZ: Asia/Seoul
+  JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Seoul
 extraEnv: []
 fileConfigMaps: []
 
@@ -36,6 +38,7 @@ externalSecret:
 service:
   type: ClusterIP
   port: 8080
+  metricsTargetLabel: active
 
 container:
   port: 8080

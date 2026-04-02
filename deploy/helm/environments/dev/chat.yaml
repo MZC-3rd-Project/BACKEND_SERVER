@@ -19,6 +19,9 @@ env:
   REDIS_PORT: "6379"
   KAFKA_BOOTSTRAP_SERVERS: 10.30.130.193:9092
   PRODUCT_SERVICE_URL: http://product-service:8084
+  PROFILE_SERVICE_URL: http://profile-service:8071
+  STORE_SERVICE_URL: http://store-service:8072
+  MEDIA_SERVICE_URL: http://media-api:8094
   FUNDING_SERVICE_URL: http://funding-service:8086
   NOTIFICATION_SERVICE_URL: http://notification-service:8092
   APP_GATEWAY_SECURITY_ENABLED: "true"

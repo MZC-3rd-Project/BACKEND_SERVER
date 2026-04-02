@@ -4,6 +4,7 @@ set -euo pipefail
 AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-ap-northeast-2}"
 AWS_PROFILE="${AWS_PROFILE:-${aws_profile:-}}"
 SYSTEM_NAMESPACE="${SYSTEM_NAMESPACE:-donmoa-system}"
+PROMETHEUS_SERVICE_NAME="${PROMETHEUS_SERVICE_NAME:-donmoa-monitoring-prometheus}"
 
 GRAFANA_NAME="${GRAFANA_NAME:-donmoa-dev-grafana}"
 GRAFANA_SUBNET_ID="${GRAFANA_SUBNET_ID:-subnet-058c9c6c2b3e5f341}"
@@ -13,6 +14,7 @@ GRAFANA_AMI_ID="${GRAFANA_AMI_ID:-ami-0ecfdfd1c8ae01aec}"
 GRAFANA_ALLOWED_CIDR="${GRAFANA_ALLOWED_CIDR:?GRAFANA_ALLOWED_CIDR is required}"
 GRAFANA_ADMIN_PARAM_NAME="${GRAFANA_ADMIN_PARAM_NAME:-/donmoa/dev/grafana/admin-password}"
 LOKI_PRIVATE_URL="${LOKI_PRIVATE_URL:-}"
+PROMETHEUS_PRIVATE_URL="${PROMETHEUS_PRIVATE_URL:-}"
 
 resolve_load_balancer_endpoint() {
   local service_name="$1"
@@ -59,6 +61,14 @@ ensure_loki_private_url() {
   fi
 
   LOKI_PRIVATE_URL="$(resolve_load_balancer_endpoint "loki-private" "${SYSTEM_NAMESPACE}")"
+}
+
+ensure_prometheus_private_url() {
+  if [[ -n "${PROMETHEUS_PRIVATE_URL}" ]]; then
+    return
+  fi
+
+  PROMETHEUS_PRIVATE_URL="$(resolve_load_balancer_endpoint "${PROMETHEUS_SERVICE_NAME}" "${SYSTEM_NAMESPACE}")"
 }
 
 wait_for_instance_running() {
@@ -115,9 +125,22 @@ datasources:
   - name: Loki
     type: loki
     access: proxy
-    url: http://${LOKI_PRIVATE_URL}
+    url: http://${LOKI_PRIVATE_URL}:3100
     isDefault: true
     editable: false
+DATASOURCE
+
+cat <<'DATASOURCE' | sudo tee /etc/grafana/provisioning/datasources/prometheus.yaml >/dev/null
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://${PROMETHEUS_PRIVATE_URL}:9090
+    isDefault: false
+    editable: false
+    jsonData:
+      httpMethod: POST
 DATASOURCE
 
 for _ in \$(seq 1 60); do
@@ -340,9 +363,22 @@ datasources:
   - name: Loki
     type: loki
     access: proxy
-    url: http://${LOKI_PRIVATE_URL}
+    url: http://${LOKI_PRIVATE_URL}:3100
     isDefault: true
     editable: false
+DATASOURCE
+
+cat >/etc/grafana/provisioning/datasources/prometheus.yaml <<DATASOURCE
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://${PROMETHEUS_PRIVATE_URL}:9090
+    isDefault: false
+    editable: false
+    jsonData:
+      httpMethod: POST
 DATASOURCE
 
 systemctl enable grafana-server
@@ -374,6 +410,7 @@ EOF
 
 ensure_admin_password
 ensure_loki_private_url
+ensure_prometheus_private_url
 PROFILE_NAME="$(ensure_role_and_instance_profile)"
 SG_ID="$(ensure_security_group)"
 INSTANCE_ID="$(launch_instance "${PROFILE_NAME}" "${SG_ID}")"
@@ -385,3 +422,4 @@ echo "SECURITY_GROUP_ID=${SG_ID}"
 echo "INSTANCE_PROFILE=${PROFILE_NAME}"
 echo "GRAFANA_ADMIN_PARAM_NAME=${GRAFANA_ADMIN_PARAM_NAME}"
 echo "LOKI_PRIVATE_URL=${LOKI_PRIVATE_URL}"
+echo "PROMETHEUS_PRIVATE_URL=${PROMETHEUS_PRIVATE_URL}"

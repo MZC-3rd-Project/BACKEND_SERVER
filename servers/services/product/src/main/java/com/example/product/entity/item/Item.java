@@ -72,7 +72,7 @@ public class Item extends BaseEntity {
         item.description = description;
         item.price = price;
         item.itemType = itemType;
-        item.status = ItemStatus.DRAFT;
+        item.status = ItemStatus.ON_SALE;
         item.categoryId = categoryId;
         item.sellerId = sellerId;
         item.storeId = storeId;

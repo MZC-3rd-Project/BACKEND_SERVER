@@ -5,6 +5,7 @@ Place one values file per runtime service in this directory.
 Suggested naming:
 
 - `client-gateway.yaml`
+- `business-gateway.yaml`
 - `edge-nginx.yaml`
 - `keycloak.yaml`
 - `auth.yaml`
@@ -36,6 +37,10 @@ public-safe examples or sanitized values files.
 `edge-nginx.yaml` is reserved for the EKS connection-management demo edge that fronts
 `client-gateway` behind a dedicated ALB host.
 
+`business-gateway.yaml` should use a dedicated public host or a dedicated ALB group.
+Do not place it behind the same host/path rules as `client-gateway`, because seller-facing
+routes overlap with the consumer gateway.
+
 When gateway and Keycloak share one public hostname through CloudFront or another edge,
 route `/realms/*` to Keycloak and `/login/oauth2/*` plus application/API paths to
 `client-gateway`. OAuth issuer, redirect URI, and Keycloak `KC_HOSTNAME` must all point to
@@ -44,7 +49,7 @@ the same externally visible host in that topology.
 To generate a focused deploy plan for the demo, run:
 
 ```bash
-DEPLOY_TARGETS=client-gateway,edge-nginx \
+DEPLOY_TARGETS=client-gateway,business-gateway,edge-nginx \
 AWS_DEFAULT_REGION=ap-northeast-2 \
 ACCOUNT_ID=<aws-account-id> \
 ruby scripts/ci/export-eks-deploy-plan.rb

@@ -1,0 +1,83 @@
+<svg width="1600" height="900" viewBox="0 0 1600 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1600" y2="900" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F8FBFF"/>
+      <stop offset="1" stop-color="#F7F7FB"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2563EB"/>
+      <stop offset="1" stop-color="#0EA5E9"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#0F172A" flood-opacity="0.10"/>
+    </filter>
+    <style>
+      .title { font: 700 46px 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; fill: #0F172A; }
+      .subtitle { font: 400 20px 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; fill: #475569; }
+      .section { font: 700 24px 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; fill: #0F172A; }
+      .body { font: 500 24px 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; fill: #1E293B; }
+      .small { font: 500 18px 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; fill: #475569; }
+      .mono { font: 600 24px 'SFMono-Regular', 'Menlo', 'Consolas', monospace; fill: #0F172A; }
+      .monoSmall { font: 600 20px 'SFMono-Regular', 'Menlo', 'Consolas', monospace; fill: #0F172A; }
+      .label { font: 700 14px 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; letter-spacing: 0.12em; fill: #2563EB; }
+      .note { font: 600 18px 'Pretendard', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; fill: #7C2D12; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" rx="32" fill="url(#bg)"/>
+
+  <circle cx="1350" cy="130" r="190" fill="#DBEAFE" opacity="0.55"/>
+  <circle cx="1490" cy="250" r="90" fill="#E0F2FE" opacity="0.8"/>
+  <circle cx="180" cy="780" r="150" fill="#EEF2FF" opacity="0.9"/>
+
+  <rect x="60" y="56" width="1480" height="788" rx="28" fill="#FFFFFF" filter="url(#shadow)"/>
+
+  <text x="110" y="126" class="label">EVENT DESIGN</text>
+  <text x="110" y="186" class="title">토픽 설계 방식과 Trade-off</text>
+  <text x="110" y="226" class="subtitle">도메인 기준으로 크게 묶고, 세부 이벤트는 eventType으로 구분한 이유를 한 장으로 정리</text>
+
+  <rect x="100" y="278" width="760" height="380" rx="24" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="2"/>
+  <text x="140" y="332" class="section">핵심 설계 원칙</text>
+
+  <circle cx="148" cy="392" r="16" fill="url(#accent)"/>
+  <text x="143" y="399" font-family="Pretendard, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF">1</text>
+  <text x="182" y="400" class="body">토픽은 <tspan class="monoSmall">payment-events</tspan> 처럼 큰 도메인 기준으로 묶었습니다.</text>
+
+  <circle cx="148" cy="482" r="16" fill="url(#accent)"/>
+  <text x="143" y="489" font-family="Pretendard, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF">2</text>
+  <text x="182" y="490" class="body">같은 도메인의 세부 상황은 <tspan class="monoSmall">eventType</tspan> 으로 구분했습니다.</text>
+
+  <circle cx="148" cy="572" r="16" fill="url(#accent)"/>
+  <text x="143" y="579" font-family="Pretendard, Apple SD Gothic Neo, Noto Sans KR, sans-serif" font-size="18" font-weight="700" fill="#FFFFFF">3</text>
+  <text x="182" y="580" class="body">소비자는 필요한 이벤트만 골라 처리하도록 설계했습니다.</text>
+
+  <rect x="930" y="278" width="570" height="380" rx="24" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="2"/>
+  <text x="970" y="332" class="section">예시</text>
+  <text x="970" y="384" class="small">Topic</text>
+  <rect x="970" y="402" width="490" height="64" rx="18" fill="#FFFFFF" stroke="#DBEAFE" stroke-width="2"/>
+  <text x="1000" y="443" class="mono">payment-events</text>
+
+  <text x="970" y="518" class="small">Event Types</text>
+  <rect x="970" y="538" width="220" height="44" rx="14" fill="#FFFFFF" stroke="#DBEAFE" stroke-width="2"/>
+  <text x="992" y="567" class="monoSmall">PAYMENT_COMPLETED</text>
+  <rect x="1210" y="538" width="190" height="44" rx="14" fill="#FFFFFF" stroke="#DBEAFE" stroke-width="2"/>
+  <text x="1232" y="567" class="monoSmall">PAYMENT_FAILED</text>
+
+  <rect x="970" y="596" width="230" height="44" rx="14" fill="#FFFFFF" stroke="#DBEAFE" stroke-width="2"/>
+  <text x="992" y="625" class="monoSmall">PAYMENT_CANCELLED</text>
+  <rect x="1220" y="596" width="180" height="44" rx="14" fill="#FFFFFF" stroke="#DBEAFE" stroke-width="2"/>
+  <text x="1242" y="625" class="monoSmall">PAYMENT_REFUNDED</text>
+
+  <rect x="100" y="664" width="1400" height="160" rx="20" fill="#FFF7ED" stroke="#FED7AA" stroke-width="2"/>
+  <text x="134" y="712" class="note">Trade-off</text>
+
+  <rect x="132" y="728" width="640" height="76" rx="16" fill="#FFFFFF" stroke="#FED7AA" stroke-width="1.5"/>
+  <text x="156" y="756" class="small">우리가 선택한 방식: 도메인 토픽 + eventType</text>
+  <text x="156" y="786" class="body">새 이벤트가 추가돼도 토픽을 계속 만들 필요가 없어 producer 수정과 운영 변경 비용이 작습니다.</text>
+
+  <rect x="826" y="728" width="640" height="76" rx="16" fill="#FFFFFF" stroke="#FED7AA" stroke-width="1.5"/>
+  <text x="850" y="756" class="small">대안 방식: 이벤트별 전용 토픽</text>
+  <text x="850" y="786" class="body">이벤트 의미는 선명하지만 토픽, 권한, 모니터링, consumer 설정이 계속 늘어나서 관리 포인트가 많아집니다.</text>
+
+  <text x="134" y="820" class="small">발표 멘트: 저희는 새 이벤트가 자주 추가될 때 토픽과 운영 포인트가 계속 늘어나는 비용이 더 크다고 보고, 도메인 토픽은 유지한 채 eventType으로 세부 이벤트를 구분하는 방식을 선택했습니다.</text>
+</svg>

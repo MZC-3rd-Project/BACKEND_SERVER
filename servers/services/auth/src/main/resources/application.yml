@@ -52,6 +52,10 @@ profile:
 feature:
   sync-profile-create-on-signup: ${FEATURE_SYNC_PROFILE_CREATE_ON_SIGNUP:true}
 
+auth:
+  email-verification:
+    develop-override-code: ${AUTH_EMAIL_VERIFICATION_DEVELOP_OVERRIDE_CODE:}
+
 # ─── App ───────────────────────────────────────
 app:
   snowflake:

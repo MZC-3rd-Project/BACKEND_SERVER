@@ -1,0 +1,202 @@
+<mxfile host="app.diagrams.net" modified="2026-03-29T03:05:00Z" agent="Codex" version="24.7.17" type="device" compressed="false" pages="2">
+  <diagram id="facade-class-diagram" name="Facade Class Diagram">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1400" math="0" shadow="0" background="#ffffff">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="2" value="DonMoa Sync Communication by Facade" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=32;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
+          <mxGeometry x="40" y="24" width="760" height="42" as="geometry"/>
+        </mxCell>
+        <mxCell id="3" value="핵심 구조: 서비스는 좁은 목적의 Facade interface만 의존하고, 실제 WebClient / 에러 처리 / 응답 파싱은 DefaultFacade 안으로 숨긴다" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=17;fontColor=#4b5563;" parent="1" vertex="1">
+          <mxGeometry x="44" y="70" width="1400" height="24" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="10" value="Application Service Layer" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#eff6ff;strokeColor=#1d4ed8;strokeWidth=2;fontSize=22;fontStyle=1;fontColor=#1e3a8a;align=left;verticalAlign=top;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="60" y="140" width="340" height="360" as="geometry"/>
+        </mxCell>
+        <mxCell id="11" value="HotDealCheckoutService" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#93c5fd;strokeWidth=2;fontColor=#334155;fontSize=19;fontStyle=1;spacing=10;" parent="10" vertex="1">
+          <mxGeometry x="24" y="70" width="292" height="54" as="geometry"/>
+        </mxCell>
+        <mxCell id="12" value="- ProductItemQueryClientFacade 주입&#xa;- OrderCreateClientFacade 주입&#xa;- 비즈니스 로직만 담당" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#93c5fd;strokeWidth=1;fontColor=#334155;fontSize=17;spacing=12;" parent="10" vertex="1">
+          <mxGeometry x="24" y="146" width="292" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="13" value="Cart / Notification / Profile / Store / HotDeal 등 다른 서비스도 같은 패턴 사용" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#dbeafe;strokeColor=#60a5fa;strokeWidth=1;fontColor=#1e3a8a;fontSize=16;spacing=12;" parent="10" vertex="1">
+          <mxGeometry x="24" y="288" width="292" height="54" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="20" value="Facade Interfaces" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#f5f3ff;strokeColor=#7c3aed;strokeWidth=2;fontSize=22;fontStyle=1;fontColor=#5b21b6;align=left;verticalAlign=top;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="500" y="140" width="520" height="520" as="geometry"/>
+        </mxCell>
+        <mxCell id="21" value="&lt;&lt;interface&gt;&gt;&#xa;ProductItemQueryClientFacade&#xa;findItem(itemId): JsonNode" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#c4b5fd;strokeWidth=2;fontColor=#334155;fontSize=18;fontStyle=1;spacing=10;" parent="20" vertex="1">
+          <mxGeometry x="28" y="74" width="220" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="22" value="&lt;&lt;interface&gt;&gt;&#xa;ProductItemSummaryClientFacade&#xa;findItemSummary(itemId)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#c4b5fd;strokeWidth=2;fontColor=#334155;fontSize=18;fontStyle=1;spacing=10;" parent="20" vertex="1">
+          <mxGeometry x="270" y="74" width="220" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="23" value="&lt;&lt;interface&gt;&gt;&#xa;ProductQuoteClientFacade&#xa;quoteItems(request)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#c4b5fd;strokeWidth=2;fontColor=#334155;fontSize=18;fontStyle=1;spacing=10;" parent="20" vertex="1">
+          <mxGeometry x="28" y="194" width="220" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="24" value="&lt;&lt;interface&gt;&gt;&#xa;ProductEndingSoonClientFacade&#xa;findItemsEndingSoon()" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#c4b5fd;strokeWidth=2;fontColor=#334155;fontSize=18;fontStyle=1;spacing=10;" parent="20" vertex="1">
+          <mxGeometry x="270" y="194" width="220" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="25" value="&lt;&lt;interface&gt;&gt;&#xa;ProductClientFacade&#xa;extends 4 small facades" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ede9fe;strokeColor=#a78bfa;strokeWidth=2;fontColor=#5b21b6;fontSize=19;fontStyle=1;spacing=10;" parent="20" vertex="1">
+          <mxGeometry x="110" y="340" width="300" height="86" as="geometry"/>
+        </mxCell>
+        <mxCell id="26" value="&lt;&lt;interface&gt;&gt;&#xa;OrderCreateClientFacade&#xa;createOrder(request)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#c4b5fd;strokeWidth=2;fontColor=#334155;fontSize=18;fontStyle=1;spacing=10;" parent="20" vertex="1">
+          <mxGeometry x="110" y="446" width="300" height="86" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="30" value="Default Facade Implementation" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#f0fdf4;strokeColor=#15803d;strokeWidth=2;fontSize=22;fontStyle=1;fontColor=#166534;align=left;verticalAlign=top;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="1120" y="140" width="500" height="520" as="geometry"/>
+        </mxCell>
+        <mxCell id="31" value="DefaultProductClientFacade" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#86efac;strokeWidth=2;fontColor=#166534;fontSize=19;fontStyle=1;spacing=10;" parent="30" vertex="1">
+          <mxGeometry x="28" y="74" width="444" height="62" as="geometry"/>
+        </mxCell>
+        <mxCell id="32" value="- implements ProductClientFacade&#xa;- internally owns WebClient + ObjectMapper&#xa;- calls /internal/v1/items/*&#xa;- parses envelope(success/data)&#xa;- converts failure to ProductClientException" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#bbf7d0;strokeWidth=1;fontColor=#334155;fontSize=17;spacing=12;" parent="30" vertex="1">
+          <mxGeometry x="28" y="156" width="444" height="150" as="geometry"/>
+        </mxCell>
+        <mxCell id="33" value="DefaultOrderClientFacade" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#86efac;strokeWidth=2;fontColor=#166534;fontSize=19;fontStyle=1;spacing=10;" parent="30" vertex="1">
+          <mxGeometry x="28" y="338" width="444" height="62" as="geometry"/>
+        </mxCell>
+        <mxCell id="34" value="- implements OrderCreateClientFacade&#xa;- validates request before HTTP call&#xa;- uses WebClient exchangeToMono&#xa;- maps 409 -> OrderClientConflictException&#xa;- maps 5xx / network -> RetriableException" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#bbf7d0;strokeWidth=1;fontColor=#334155;fontSize=17;spacing=12;" parent="30" vertex="1">
+          <mxGeometry x="28" y="420" width="444" height="150" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="40" value="AutoConfiguration" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#fff7ed;strokeColor=#ea580c;strokeWidth=2;fontSize=22;fontStyle=1;fontColor=#9a3412;align=left;verticalAlign=top;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="1700" y="140" width="420" height="520" as="geometry"/>
+        </mxCell>
+        <mxCell id="41" value="ProductClientAutoConfiguration" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#fdba74;strokeWidth=2;fontColor=#9a3412;fontSize=18;fontStyle=1;spacing=10;" parent="40" vertex="1">
+          <mxGeometry x="24" y="74" width="372" height="54" as="geometry"/>
+        </mxCell>
+        <mxCell id="42" value="- creates DefaultProductClientFacade bean&#xa;- exposes same delegate as&#xa;  ProductClientFacade&#xa;  ProductItemQueryClientFacade&#xa;  ProductItemSummaryClientFacade&#xa;  ProductQuoteClientFacade&#xa;  ProductEndingSoonClientFacade" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#fed7aa;strokeWidth=1;fontColor=#334155;fontSize=17;spacing=12;" parent="40" vertex="1">
+          <mxGeometry x="24" y="146" width="372" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="43" value="OrderClientAutoConfiguration" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#fdba74;strokeWidth=2;fontColor=#9a3412;fontSize=18;fontStyle=1;spacing=10;" parent="40" vertex="1">
+          <mxGeometry x="24" y="376" width="372" height="54" as="geometry"/>
+        </mxCell>
+        <mxCell id="44" value="- creates DefaultOrderClientFacade bean&#xa;- exposes delegate as OrderCreateClientFacade" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#fed7aa;strokeWidth=1;fontColor=#334155;fontSize=17;spacing=12;" parent="40" vertex="1">
+          <mxGeometry x="24" y="448" width="372" height="86" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="50" value="Design Intention" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#f9fafb;strokeColor=#111827;strokeWidth=2;fontSize=21;fontStyle=1;fontColor=#111827;align=left;verticalAlign=top;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="180" y="760" width="1840" height="170" as="geometry"/>
+        </mxCell>
+        <mxCell id="51" value="1. Application service는 좁은 목적의 interface만 주입받아 비즈니스 의도가 드러난다." style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#cbd5e1;strokeWidth=1;fontColor=#334155;fontSize=18;spacing=10;" parent="50" vertex="1">
+          <mxGeometry x="28" y="54" width="580" height="48" as="geometry"/>
+        </mxCell>
+        <mxCell id="52" value="2. 실제 동기 HTTP 호출 세부 구현은 DefaultFacade 안에 숨겨져 서비스 코드가 단순해진다." style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#cbd5e1;strokeWidth=1;fontColor=#334155;fontSize=18;spacing=10;" parent="50" vertex="1">
+          <mxGeometry x="628" y="54" width="610" height="48" as="geometry"/>
+        </mxCell>
+        <mxCell id="53" value="3. AutoConfiguration이 같은 delegate를 여러 interface bean으로 노출해서 사용처는 필요한 능력만 의존할 수 있다." style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#cbd5e1;strokeWidth=1;fontColor=#334155;fontSize=18;spacing=10;" parent="50" vertex="1">
+          <mxGeometry x="1258" y="54" width="554" height="48" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e1" value="depends on" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#111827;strokeWidth=3;fontSize=12;fontColor=#111827;labelBackgroundColor=#ffffff;" parent="1" source="11" target="21" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" value="depends on" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#111827;strokeWidth=3;fontSize=12;fontColor=#111827;labelBackgroundColor=#ffffff;" parent="1" source="11" target="26" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" value="implements" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#15803d;strokeWidth=3;fontSize=12;fontColor=#166534;labelBackgroundColor=#ffffff;" parent="1" source="31" target="25" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e4" value="implements" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;dashed=1;strokeColor=#15803d;strokeWidth=3;fontSize=12;fontColor=#166534;labelBackgroundColor=#ffffff;" parent="1" source="34" target="26" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e5" value="exposes delegate as multiple beans" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#ea580c;strokeWidth=3;fontSize=12;fontColor=#9a3412;labelBackgroundColor=#ffffff;" parent="1" source="41" target="31" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e6" value="exposes bean" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#ea580c;strokeWidth=3;fontSize=12;fontColor=#9a3412;labelBackgroundColor=#ffffff;" parent="1" source="43" target="33" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram id="facade-usage-example" name="Usage Example">
+    <mxGraphModel dx="1600" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1400" math="0" shadow="0" background="#ffffff">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="2" value="Usage Example: HotDealCheckoutService" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=32;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
+          <mxGeometry x="40" y="24" width="760" height="42" as="geometry"/>
+        </mxCell>
+        <mxCell id="3" value="실제 사용 예시: reserve 단계에서는 Product facade로 상품 스냅샷을 읽고, submit 단계에서는 Order facade로 주문 생성을 위임한다" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=17;fontColor=#4b5563;" parent="1" vertex="1">
+          <mxGeometry x="44" y="70" width="1380" height="24" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="10" value="Reserve Flow" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#eff6ff;strokeColor=#1d4ed8;strokeWidth=2;fontSize=24;fontStyle=1;fontColor=#1e3a8a;align=left;verticalAlign=top;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="60" y="140" width="1000" height="500" as="geometry"/>
+        </mxCell>
+        <mxCell id="11" value="HotDealCheckoutService.reserve()" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#93c5fd;strokeWidth=2;fontColor=#334155;fontSize=19;fontStyle=1;spacing=10;" parent="10" vertex="1">
+          <mxGeometry x="30" y="86" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="12" value="ProductItemQueryClientFacade&#xa;findItem(itemId)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#93c5fd;strokeWidth=2;fontColor=#334155;fontSize=19;fontStyle=1;spacing=10;" parent="10" vertex="1">
+          <mxGeometry x="390" y="86" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="13" value="DefaultProductClientFacade&#xa;GET /internal/v1/items/{itemId}" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#93c5fd;strokeWidth=2;fontColor=#334155;fontSize=19;fontStyle=1;spacing=10;" parent="10" vertex="1">
+          <mxGeometry x="740" y="86" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="14" value="Product Service" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#93c5fd;strokeWidth=2;fontColor=#334155;fontSize=19;fontStyle=1;spacing=10;" parent="10" vertex="1">
+          <mxGeometry x="740" y="250" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="15" value="상품 스냅샷(JsonNode)에서&#xa;sellerId / storeId / itemType 등을 읽어&#xa;HotDealCheckoutSession 생성" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#dbeafe;strokeColor=#60a5fa;strokeWidth=1;fontColor=#1e3a8a;fontSize=18;spacing=12;" parent="10" vertex="1">
+          <mxGeometry x="220" y="290" width="420" height="116" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="20" value="Submit Flow" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#f0fdf4;strokeColor=#15803d;strokeWidth=2;fontSize=24;fontStyle=1;fontColor=#166534;align=left;verticalAlign=top;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="1140" y="140" width="1000" height="500" as="geometry"/>
+        </mxCell>
+        <mxCell id="21" value="HotDealCheckoutService.submit()" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#86efac;strokeWidth=2;fontColor=#334155;fontSize=19;fontStyle=1;spacing=10;" parent="20" vertex="1">
+          <mxGeometry x="30" y="86" width="230" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="22" value="OrderCreateClientFacade&#xa;createOrder(request)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#86efac;strokeWidth=2;fontColor=#334155;fontSize=19;fontStyle=1;spacing=10;" parent="20" vertex="1">
+          <mxGeometry x="390" y="86" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="23" value="DefaultOrderClientFacade&#xa;POST /internal/v1/orders" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#86efac;strokeWidth=2;fontColor=#334155;fontSize=19;fontStyle=1;spacing=10;" parent="20" vertex="1">
+          <mxGeometry x="740" y="86" width="220" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="24" value="Order Service" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#86efac;strokeWidth=2;fontColor=#334155;fontSize=19;fontStyle=1;spacing=10;" parent="20" vertex="1">
+          <mxGeometry x="740" y="250" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="25" value="409 Conflict -> OrderClientConflictException&#xa;service layer catches and treats as replay&#xa;other OrderClientException -> BusinessException 변환" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#dcfce7;strokeColor=#86efac;strokeWidth=1;fontColor=#166534;fontSize=18;spacing=12;" parent="20" vertex="1">
+          <mxGeometry x="220" y="290" width="430" height="116" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="30" value="Presentation Point" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#f9fafb;strokeColor=#111827;strokeWidth=2;fontSize=21;fontStyle=1;fontColor=#111827;align=left;verticalAlign=top;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="180" y="760" width="1840" height="200" as="geometry"/>
+        </mxCell>
+        <mxCell id="31" value="1. 서비스는 downstream HTTP 세부사항을 모르고, '상품 조회', '주문 생성' 같은 비즈니스 의미의 facade만 호출한다." style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#cbd5e1;strokeWidth=1;fontColor=#334155;fontSize=18;spacing=10;" parent="30" vertex="1">
+          <mxGeometry x="28" y="58" width="580" height="48" as="geometry"/>
+        </mxCell>
+        <mxCell id="32" value="2. 응답 파싱, 예외 매핑, 재시도/회로차단 같은 기술 관심사는 facade 구현체 안으로 모인다." style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#cbd5e1;strokeWidth=1;fontColor=#334155;fontSize=18;spacing=10;" parent="30" vertex="1">
+          <mxGeometry x="628" y="58" width="580" height="48" as="geometry"/>
+        </mxCell>
+        <mxCell id="33" value="3. 그래서 application service 코드는 orchestration에 집중하고, 동기 통신 구현은 공통 facade 라이브러리로 재사용할 수 있다." style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#cbd5e1;strokeWidth=1;fontColor=#334155;fontSize=18;spacing=10;" parent="30" vertex="1">
+          <mxGeometry x="1228" y="58" width="584" height="48" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=4;" parent="10" source="11" target="12" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=4;" parent="10" source="12" target="13" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563eb;strokeWidth=4;" parent="10" source="13" target="14" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#15803d;strokeWidth=4;" parent="20" source="21" target="22" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#15803d;strokeWidth=4;" parent="20" source="22" target="23" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#15803d;strokeWidth=4;" parent="20" source="23" target="24" edge="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

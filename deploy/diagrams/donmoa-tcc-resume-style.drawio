@@ -1,0 +1,106 @@
+<mxfile host="drawio-plugin" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" modified="2026-03-30T01:36:05.381Z" version="22.1.22" etag="ipSsoas5Kmc6OyLk1uwf" type="embed">
+  <diagram id="teambind-distributed-consistency-saga" name="돈모아 TCC + Saga" compressed="false">
+    <mxGraphModel dx="2273" dy="1163" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="980" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="11" value="돈모아 구매/결제/재고 처리 흐름" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=28;fontStyle=1;fontColor=#F8FAFC;" parent="1" vertex="1">
+          <mxGeometry x="72" y="42" width="560" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="checkout reserve - 재고 보호(Try) - 주문/결제 - 결제 결과에 따른 예약 확정·취소 - 채널 후속 처리" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontColor=#CBD5E1;" parent="1" vertex="1">
+          <mxGeometry x="72" y="78" width="920" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="20" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;arcSize=18;" parent="1" vertex="1">
+          <mxGeometry x="40" y="150" width="1520" height="268" as="geometry" />
+        </mxCell>
+        <mxCell id="21" value="01 기본 처리 흐름" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#64748B;" parent="1" vertex="1">
+          <mxGeometry x="68" y="170" width="180" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="Checkout Service&#xa;reserve 시작" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#BFDBFE;strokeWidth=1.5;arcSize=16;fontSize=15;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="72" y="252" width="170" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="31" value="Stock Service&#xa;재고 임시 확보&#xa;(Try)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#BFDBFE;strokeWidth=1.5;arcSize=16;fontSize=15;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="282" y="252" width="170" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="32" value="orderId / expiresAt 저장&#xa;checkout session 생성" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#BFDBFE;strokeWidth=1.5;arcSize=16;fontSize=15;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="492" y="252" width="170" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="33" value="Order Service&#xa;주문 생성" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#BFDBFE;strokeWidth=1.5;arcSize=16;fontSize=15;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="702" y="252" width="170" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="34" value="Payments Service&#xa;ORDER_CREATED_EVENT 수신&#xa;READY 결제 생성" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EEF2FF;strokeColor=#A5B4FC;strokeWidth=1.5;arcSize=16;fontSize=15;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="912" y="252" width="190" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="35" value="Stock + Order&#xa;payment-events 수신&#xa;예약 확정 / 주문 PAID" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#86EFAC;strokeWidth=1.5;arcSize=16;fontSize=15;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="1142" y="252" width="190" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="36" value="채널 후속 처리&#xa;HotDeal / Funding" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#D1D5DB;strokeWidth=1.5;arcSize=16;fontSize=15;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="1372" y="252" width="150" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="200" value="reserve" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563EB;fontColor=#1D4ED8;" parent="1" source="30" target="31" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="201" value="session 저장" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563EB;fontColor=#1D4ED8;" parent="1" source="31" target="32" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="202" value="createOrder" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563EB;fontColor=#1D4ED8;" parent="1" source="32" target="33" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="203" value="ORDER_CREATED_EVENT" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#4F46E5;fontColor=#4338CA;" parent="1" source="33" target="34" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="204" value="PAYMENT_COMPLETED" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#16A34A;fontColor=#15803D;" parent="1" source="34" target="35" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="205" value="채널 후속 처리" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#6B7280;fontColor=#4B5563;" parent="1" source="35" target="36" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="40" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;arcSize=18;" parent="1" vertex="1">
+          <mxGeometry x="40" y="458" width="960" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="41" value="02 실패 / 취소 / 타임아웃 / 환불 처리" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#64748B;" parent="1" vertex="1">
+          <mxGeometry x="68" y="478" width="240" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="50" value="결제 실패 / 취소 /&#xa;타임아웃 / 환불" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#FCA5A5;strokeWidth=1.5;arcSize=16;fontSize=15;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="90" y="556" width="200" height="94" as="geometry" />
+        </mxCell>
+        <mxCell id="51" value="Stock Service&#xa;예약 취소 +&#xa;재고 복원" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#FCA5A5;strokeWidth=1.5;arcSize=16;fontSize=15;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="360" y="556" width="190" height="94" as="geometry" />
+        </mxCell>
+        <mxCell id="52" value="Order Service&#xa;주문 CANCELLED /&#xa;REFUNDED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FEF2F2;strokeColor=#FCA5A5;strokeWidth=1.5;arcSize=16;fontSize=15;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="620" y="556" width="170" height="94" as="geometry" />
+        </mxCell>
+        <mxCell id="53" value="채널 상태 복원" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECFDF5;strokeColor=#86EFAC;strokeWidth=1.5;arcSize=16;fontSize=15;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="860" y="556" width="110" height="94" as="geometry" />
+        </mxCell>
+        <mxCell id="210" value="payment-events" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#DC2626;fontColor=#B91C1C;" parent="1" source="50" target="51" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="211" value="주문 / 재고 취소" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#DC2626;fontColor=#B91C1C;" parent="1" source="51" target="52" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="212" value="로컬 상태 정리" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#16A34A;fontColor=#15803D;" parent="1" source="52" target="53" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="60" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#CBD5E1;strokeWidth=1.5;arcSize=18;" parent="1" vertex="1">
+          <mxGeometry x="1040" y="458" width="520" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="61" value="03 핵심 운영 포인트" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=12;fontStyle=1;fontColor=#64748B;" parent="1" vertex="1">
+          <mxGeometry x="1068" y="478" width="180" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="62" value="재고 보호는 TCC&#xa;Try / Confirm / Cancel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#E2E8F0;arcSize=14;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="1078" y="526" width="444" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="63" value="payment-events 소비는 Inbox 기반&#xa;idempotent 처리" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#E2E8F0;arcSize=14;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="1078" y="586" width="444" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="64" value="예약 TTL 만료 시&#xa;자동 복원" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#E2E8F0;arcSize=14;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="1078" y="646" width="210" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="65" value="HotDeal / Funding 는 결제 결과 이후&#xa;로컬 상태만 반영" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F8FAFC;strokeColor=#E2E8F0;arcSize=14;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="1312" y="646" width="210" height="48" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

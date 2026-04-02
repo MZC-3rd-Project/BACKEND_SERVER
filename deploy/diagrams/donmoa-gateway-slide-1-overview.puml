@@ -1,0 +1,58 @@
+@startuml
+title 1번 슬라이드. Gateway는 단순 프록시가 아니라 Edge + BFF 계층이다
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam rectangle {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  FontColor #0F172A
+  RoundCorner 18
+}
+
+skinparam note {
+  BackgroundColor #EFF6FF
+  BorderColor #93C5FD
+  FontColor #1E3A8A
+}
+
+left to right direction
+
+rectangle "Client / Browser / Admin" as Client #F8FAFC
+
+package "client-gateway" #EFF6FF {
+  rectangle "GatewayAuthRouteConfig\n기본 라우팅 / rewrite" as ClientRoute #DBEAFE
+  rectangle "CatalogBffService\nCommerceReadBffService\nSearchMediaBffService" as ClientBff #FEF3C7
+}
+
+package "business-gateway" #F0FDF4 {
+  rectangle "application.yml routes\n도메인별 route table" as BizRoute #DCFCE7
+  rectangle "BusinessProductMediaBffService\nBusinessOrderQueryBffService\nBusinessSellerDashboardBffService" as BizBff #FDE68A
+}
+
+rectangle "Downstream Services\nAuth / Profile / Product / Funding / Media / Order / Search ..." as Downstream #F8FAFC
+
+Client --> ClientRoute
+Client --> ClientBff
+Client --> BizRoute
+Client --> BizBff
+ClientRoute --> Downstream
+ClientBff --> Downstream
+BizRoute --> Downstream
+BizBff --> Downstream
+
+note bottom of ClientBff
+client-gateway는 읽기/상세/검색 중심의
+응답 조합과 보강을 담당한다.
+end note
+
+note bottom of BizBff
+business-gateway는 셀러/관리자 쓰기 흐름을
+하나의 BFF 요청으로 묶는다.
+end note
+
+@enduml

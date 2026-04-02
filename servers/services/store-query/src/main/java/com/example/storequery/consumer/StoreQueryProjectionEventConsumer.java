@@ -15,14 +15,12 @@ import org.springframework.transaction.annotation.Transactional;
     defaultMode = ConsumerRoutingMode.INBOX
 )
 public class StoreQueryProjectionEventConsumer extends AbstractProcessorRoutingConsumer {
-
     public StoreQueryProjectionEventConsumer(
         InboxRoutingSupport inboxRoutingSupport,
         StoreQueryProjectionEventProcessor storeQueryProjectionEventProcessor
     ) {
         super(inboxRoutingSupport, storeQueryProjectionEventProcessor);
     }
-
     @KafkaListener(
         topics = {"store-event", "store-events", "item-events", "user-events", "profile-events"},
         groupId = "${spring.kafka.consumer.group-id}"

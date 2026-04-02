@@ -147,6 +147,59 @@ class DefaultOrderClientFacadeTest {
                 .hasMessageContaining("orderId");
     }
 
+    @Test
+    void createOrder_allowsHotDealLineItemWithoutStockMetadata() throws Exception {
+        mockWebServer.enqueue(new MockResponse()
+                .setResponseCode(201)
+                .addHeader("Content-Type", "application/json")
+                .setBody("""
+                        {
+                          "success": true,
+                          "data": {
+                            "orderId": 295788441134858240,
+                            "status": "CREATED"
+                          }
+                        }
+                        """));
+
+        OrderCreateRequest hotDealRequest = new OrderCreateRequest(
+                295788441134858240L,
+                1001L,
+                LocalDateTime.of(2026, 3, 27, 14, 0),
+                15000L,
+                "홍길동",
+                "01012345678",
+                501L,
+                "문 앞에 놓아주세요",
+                List.of(
+                        new OrderCreateLineItem(
+                                "HOT_DEAL",
+                                295770602109829120L,
+                                920001L,
+                                "PRODUCT",
+                                "핫딜 상품",
+                                77L,
+                                10L,
+                                null,
+                                null,
+                                null,
+                                1,
+                                15000L,
+                                15000L,
+                                15000L
+                        )
+                )
+        );
+
+        OrderCreateResponse response = facade.createOrder(hotDealRequest);
+
+        RecordedRequest request = mockWebServer.takeRequest(1, TimeUnit.SECONDS);
+        assertThat(request).isNotNull();
+        assertThat(request.getBody().readUtf8()).contains("\"channelType\":\"HOT_DEAL\"");
+        assertThat(response.orderId()).isEqualTo(295788441134858240L);
+        assertThat(response.status()).isEqualTo("CREATED");
+    }
+
     private OrderCreateRequest validRequest() {
         return new OrderCreateRequest(
                 289581624952246272L,

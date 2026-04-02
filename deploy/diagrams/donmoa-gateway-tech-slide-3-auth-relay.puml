@@ -1,0 +1,49 @@
+@startuml
+title 3번 슬라이드. 세션 인증 결과를 downstream 헤더로 relay한다
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam rectangle {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  FontColor #0F172A
+  RoundCorner 18
+}
+
+skinparam note {
+  BackgroundColor #FFF7ED
+  BorderColor #FDBA74
+  FontColor #7C2D12
+}
+
+left to right direction
+
+rectangle "GatewayBffSecurityConfig\npermitAll + custom filter chain" as SecurityConfig #DBEAFE
+rectangle "GatewaySessionCookieAuthenticationWebFilter" as CookieAuth #DCFCE7
+rectangle "GatewaySessionPrincipalResolver" as Resolver #FEF3C7
+rectangle "SessionHeaderRelayGlobalFilter" as RelayFilter #FDE68A
+rectangle "X-Gateway-Context\nX-User-Id\nX-User-Roles\nX-Session-Id" as Headers #F8FAFC
+rectangle "Downstream Security Starter\nGatewaySecurityValidationFilter\nGatewayRequestVerifier" as DownstreamSecurity #F8FAFC
+
+SecurityConfig --> CookieAuth
+CookieAuth --> Resolver
+Resolver --> RelayFilter
+RelayFilter --> Headers
+Headers --> DownstreamSecurity
+
+note bottom of RelayFilter
+Gateway는 세션 인증 결과를
+downstream 서비스가 검증 가능한
+내부 헤더로 바꿔 전달한다.
+end note
+
+note bottom of DownstreamSecurity
+각 서비스가 인증을 다시 구현하지 않고,
+공통 보안 모듈에서 헤더를 검증한다.
+end note
+
+@enduml

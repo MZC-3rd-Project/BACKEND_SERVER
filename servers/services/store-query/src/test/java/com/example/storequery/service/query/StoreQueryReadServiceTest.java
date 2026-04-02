@@ -4,6 +4,8 @@ import com.example.core.exception.BusinessException;
 import com.example.core.pagination.CursorResponse;
 import com.example.storequery.dto.response.StoreQueryDetailResponse;
 import com.example.storequery.dto.response.StoreQueryListResponse;
+import com.example.storequery.entity.StoreQueryAddressType;
+import com.example.storequery.entity.StoreQueryContactType;
 import com.example.storequery.entity.StoreQueryImageType;
 import com.example.storequery.entity.StoreQueryStatus;
 import com.example.storequery.entity.StoreReadImage;
@@ -13,6 +15,8 @@ import com.example.storequery.repository.StoreReadImageRepository;
 import com.example.storequery.repository.StoreReadItemRepository;
 import com.example.storequery.repository.StoreReadModelRepository;
 import com.example.storequery.repository.StoreReadModelSearchRow;
+import com.example.storequery.source.StoreSourceSnapshot;
+import com.example.storequery.source.StoreSourceSnapshotReader;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +46,9 @@ class StoreQueryReadServiceTest {
     @Mock
     private StoreReadItemRepository storeReadItemRepository;
 
+    @Mock
+    private StoreSourceSnapshotReader storeSourceSnapshotReader;
+
     private StoreQueryReadService service;
 
     @BeforeEach
@@ -54,7 +61,8 @@ class StoreQueryReadServiceTest {
             storeReadImageRepository,
             storeReadItemRepository,
             new StoreSummaryAssembler(storeThumbnailResolver),
-            new StoreDetailAssembler(storeThumbnailResolver, mediaUrlNormalizer)
+            new StoreDetailAssembler(storeThumbnailResolver, mediaUrlNormalizer),
+            storeSourceSnapshotReader
         );
     }
 
@@ -128,6 +136,55 @@ class StoreQueryReadServiceTest {
 
         assertThatThrownBy(() -> service.getStoreDetail(99L))
             .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void detail이_비어있으면_live_snapshot으로_주소와연락처를_보정한다() {
+        LocalDateTime now = LocalDateTime.now();
+        when(storeReadModelRepository.findByStoreIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(StoreReadModel.of(
+            1L,
+            100L,
+            "MZC Store",
+            "owner",
+            "https://owner",
+            StoreQueryStatus.ACTIVE,
+            "desc",
+            null,
+            null,
+            null,
+            null,
+            10L,
+            "https://thumb",
+            0,
+            1,
+            2,
+            now,
+            "store owner",
+            now.minusDays(3),
+            now.minusHours(1),
+            now
+        )));
+        when(storeReadImageRepository.findByStoreIdAndDeletedAtIsNullOrderBySortOrderAsc(1L)).thenReturn(List.of());
+        when(storeReadItemRepository.findByStoreIdAndDeletedAtIsNullOrderBySourceUpdatedAtDesc(1L)).thenReturn(List.of());
+        when(storeSourceSnapshotReader.read(1L)).thenReturn(Optional.of(new StoreSourceSnapshot(
+            1L,
+            100L,
+            "MZC Store",
+            StoreQueryStatus.ACTIVE,
+            "desc",
+            "서울시 구리시 체육관로 28",
+            StoreQueryAddressType.MAIN,
+            "010-8208-9961",
+            StoreQueryContactType.PHONE,
+            List.of(),
+            now.minusDays(3),
+            now.minusHours(1)
+        )));
+
+        StoreQueryDetailResponse result = service.getStoreDetail(1L);
+
+        assertThat(result.address()).isEqualTo("서울시 구리시 체육관로 28");
+        assertThat(result.contactValue()).isEqualTo("010-8208-9961");
     }
 
     @Test

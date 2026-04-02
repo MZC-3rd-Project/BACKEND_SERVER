@@ -1,0 +1,52 @@
+@startuml
+title DonMoa Async Event Consumer Side
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam sequence {
+  ArrowColor #334155
+  LifeLineBorderColor #94A3B8
+  LifeLineBackgroundColor #FFFFFF
+  ParticipantBorderColor #CBD5E1
+  ParticipantBackgroundColor #F8FAFC
+  ParticipantFontColor #0F172A
+}
+
+skinparam note {
+  BackgroundColor #EFF6FF
+  BorderColor #93C5FD
+  FontColor #1E3A8A
+}
+
+participant "Kafka Topic\npayment-events" as Kafka
+participant "NotificationPaymentEventConsumer" as Consumer
+participant "InboxEnqueueService" as InboxEnqueue
+participant "InboxWorkerScheduler" as InboxWorker
+participant "NotificationPaymentEventProcessor" as Processor
+participant "NotificationDispatchSupport" as DispatchSupport
+
+Kafka -> Consumer : @KafkaListener consume(record)
+Consumer -> InboxEnqueue : enqueue(consumerName, eventId, eventType, payload)
+InboxEnqueue -> InboxWorker : signal(consumerName)
+InboxWorker -> Processor : process(message, eventId, eventType)
+Processor -> DispatchSupport : dispatchNotification(...)
+
+note right of Consumer
+consumer 는 Kafka record 를 받고
+inbox 로 적재할지 / 바로 처리할지
+라우팅만 결정한다.
+end note
+
+note right of Processor
+실제 비즈니스 처리는 processor 가 맡는다.
+중복 방지, 재처리, stale recovery 는
+inbox/worker 공통 레이어가 담당한다.
+end note
+
+note bottom
+Consumer 메시지:
+Consumer 서비스도 Kafka 세부 처리보다
+process() 구현과 비즈니스 로직에 집중할 수 있게 만들었다.
+end note
+
+@enduml

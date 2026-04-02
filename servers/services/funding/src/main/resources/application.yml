@@ -65,6 +65,7 @@ app:
 
   # ─── Service URLs ────────────────────────────
   service:
+    order-url: ${ORDER_SERVICE_URL:http://localhost:8090}
     stock-url: ${STOCK_SERVICE_URL:http://localhost:8085}
 
   stock-cancel-retry:

@@ -9,5 +9,7 @@ import java.util.Optional;
 public interface StoreContactRepository extends JpaRepository<StoreContact, Long> {
     Optional<StoreContact> findByStoreIdAndIsPrimaryTrueAndDeletedAtIsNull(Long storeId);
 
+    Optional<StoreContact> findFirstByStoreIdAndDeletedAtIsNullOrderByIsPrimaryDescIdAsc(Long storeId);
+
     Long store(Stores store);
 }

@@ -1,0 +1,61 @@
+<mxfile host="drawio-plugin" modified="2026-03-30T09:32:50.350Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" compressed="false" version="22.1.22" etag="PT9XzDdHTTM3kp-0XPci" type="embed">
+  <diagram id="logging-format-proof" name="실제 로그 포맷과 적용 근거">
+    <mxGraphModel dx="834" dy="416" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1400" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" value="DonMoa 실제 로그 포맷과 적용 근거" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=32;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
+          <mxGeometry x="40" y="24" width="980" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="로깅 표준 설계 뒤에 이어서 보여주는 장표: 실제로 어떤 JSON 로그가 남고, 그 포맷이 설정 파일에 어떻게 반영돼 있는지를 한 장에서 설명" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=17;fontColor=#4b5563;" parent="1" vertex="1">
+          <mxGeometry x="44" y="72" width="1460" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="10" value="앱 로그 포맷" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#eff6ff;strokeColor=#1d4ed8;strokeWidth=2;fontSize=24;fontStyle=1;fontColor=#1e3a8a;align=left;verticalAlign=top;spacing=14;" parent="1" vertex="1">
+          <mxGeometry x="60" y="140" width="980" height="420" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="{&#xa;  &quot;timestamp&quot;: &quot;2026-03-28T11:12:03.145+09:00&quot;,&#xa;  &quot;service.name&quot;: &quot;product-service&quot;,&#xa;  &quot;deployment.environment&quot;: &quot;develop&quot;,&#xa;  &quot;log.type&quot;: &quot;application&quot;,&#xa;  &quot;level&quot;: &quot;INFO&quot;,&#xa;  &quot;logger&quot;: &quot;com.example.product.service.ProductService&quot;,&#xa;  &quot;message&quot;: &quot;Product detail loaded. productId={}&quot;,&#xa;  &quot;requestId&quot;: &quot;req-6f4d8a&quot;,&#xa;  &quot;traceId&quot;: &quot;8b7f5f2c91c4ab12&quot;,&#xa;  &quot;spanId&quot;: &quot;8b7f5f2c91c4ab12&quot;&#xa;}" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#f8fafc;strokeColor=#cbd5e1;strokeWidth=1;fontSize=17;fontColor=#111827;align=left;verticalAlign=top;spacing=12;" parent="10" vertex="1">
+          <mxGeometry x="24" y="70" width="932" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="포인트: 서비스명, 환경, 로그 타입, requestId, traceId가 같은 규칙으로 남는다" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#93c5fd;strokeWidth=1;fontSize=18;fontColor=#334155;spacing=12;" parent="10" vertex="1">
+          <mxGeometry x="24" y="350" width="932" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="20" value="Nginx 로그 포맷" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#f5f3ff;strokeColor=#7c3aed;strokeWidth=2;fontSize=24;fontStyle=1;fontColor=#5b21b6;align=left;verticalAlign=top;spacing=14;" parent="1" vertex="1">
+          <mxGeometry x="1120" y="140" width="980" height="420" as="geometry" />
+        </mxCell>
+        <mxCell id="21" value="{&#xa;  &quot;timestamp&quot;: &quot;2026-03-28T11:12:03+09:00&quot;,&#xa;  &quot;service.name&quot;: &quot;edge-nginx&quot;,&#xa;  &quot;log.type&quot;: &quot;nginx_access&quot;,&#xa;  &quot;request_id&quot;: &quot;req-6f4d8a&quot;,&#xa;  &quot;trace_id&quot;: &quot;8b7f5f2c91c4ab12&quot;,&#xa;  &quot;uri&quot;: &quot;/api/products/42&quot;,&#xa;  &quot;status&quot;: 502,&#xa;  &quot;request_time&quot;: 0.182,&#xa;  &quot;upstream_response_time&quot;: &quot;0.180&quot;&#xa;}" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#f8fafc;strokeColor=#cbd5e1;strokeWidth=1;fontSize=17;fontColor=#111827;align=left;verticalAlign=top;spacing=12;" parent="20" vertex="1">
+          <mxGeometry x="24" y="70" width="932" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="포인트: ingress 단계에서도 request_id, trace_id, status, latency를 구조화해서 남긴다" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#c4b5fd;strokeWidth=1;fontSize=18;fontColor=#334155;spacing=12;" parent="20" vertex="1">
+          <mxGeometry x="24" y="350" width="932" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="실제 적용 근거" style="rounded=1;whiteSpace=wrap;html=1;arcSize=20;fillColor=#f0fdf4;strokeColor=#15803d;strokeWidth=2;fontSize=24;fontStyle=1;fontColor=#166534;align=left;verticalAlign=top;spacing=14;" parent="1" vertex="1">
+          <mxGeometry x="120" y="640" width="1920" height="360" as="geometry" />
+        </mxCell>
+        <mxCell id="31" value="logback-spring.xml&#xa;`customFields` + `includeMdc=true`&#xa;앱 로그를 JSON stdout으로 출력" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#86efac;strokeWidth=2;fontColor=#334155;fontSize=20;spacing=12;" parent="30" vertex="1">
+          <mxGeometry x="40" y="84" width="400" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="32" value="edge-nginx.yaml&#xa;`log_format edge_json`&#xa;`X-Request-Id`, `X-B3-TraceId` 전달" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#86efac;strokeWidth=2;fontColor=#334155;fontSize=20;spacing=12;" parent="30" vertex="1">
+          <mxGeometry x="500" y="84" width="400" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="33" value="alloy-values.yaml&#xa;Kubernetes Pod 로그 수집&#xa;Loki로 push" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#86efac;strokeWidth=2;fontColor=#334155;fontSize=20;spacing=12;" parent="30" vertex="1">
+          <mxGeometry x="960" y="84" width="400" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="34" value="grafana-donmoa-alert-rules.yaml&#xa;5xx Spike / Error Burst 규칙&#xa;로그 기반 감지 구성" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#ffffff;strokeColor=#86efac;strokeWidth=2;fontColor=#334155;fontSize=20;spacing=12;" parent="30" vertex="1">
+          <mxGeometry x="1420" y="84" width="440" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="35" value="핵심 메시지: 로깅 표준은 문서로만 끝난 게 아니라, 실제 설정 파일과 수집기, 알림 규칙으로 반영되어 있고 그래서 검색, 상관관계 추적, 자동 감지가 가능하다" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#bbf7d0;strokeWidth=1;fontSize=21;fontColor=#334155;spacing=14;" parent="30" vertex="1">
+          <mxGeometry x="120" y="246" width="1680" height="64" as="geometry" />
+        </mxCell>
+        <mxCell id="40" value="발표 멘트 예시" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#f9fafb;strokeColor=#111827;strokeWidth=2;fontSize=20;fontStyle=1;fontColor=#111827;align=left;verticalAlign=top;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="180" y="1060" width="1840" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="41" value="저희는 로깅 표준을 먼저 설계하고, 그 포맷이 실제로 남도록 설정 파일에 반영했습니다. 서비스 로그와 Nginx 로그를 JSON으로 통일하고 requestId, traceId를 이어서 수집기와 알림 규칙까지 연결했기 때문에, 지금은 장애가 나면 어느 구간에서 문제가 났는지 빠르게 좁히고 자동으로 감지할 수 있습니다." style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#ffffff;strokeColor=#cbd5e1;strokeWidth=1;fontSize=22;fontColor=#334155;spacing=14;" parent="40" vertex="1">
+          <mxGeometry x="28" y="52" width="1784" height="96" as="geometry" />
+        </mxCell>
+        <mxCell id="42" value="List Item" style="text;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=4;spacingRight=4;overflow=hidden;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;rotatable=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="390" y="310" width="80" height="30" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

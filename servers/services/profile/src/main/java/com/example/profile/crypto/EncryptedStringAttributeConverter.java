@@ -9,7 +9,6 @@ import org.springframework.util.StringUtils;
 public class EncryptedStringAttributeConverter implements AttributeConverter<String, String> {
 
     static final String ENCRYPTED_PREFIX = "enc::";
-
     @Override
     public String convertToDatabaseColumn(String attribute) {
         if (!StringUtils.hasText(attribute)) {
@@ -20,7 +19,6 @@ public class EncryptedStringAttributeConverter implements AttributeConverter<Str
         }
         return ENCRYPTED_PREFIX + ProfileEncryptorHolder.getEncryptor().encrypt(attribute);
     }
-
     @Override
     public String convertToEntityAttribute(String dbData) {
         if (!StringUtils.hasText(dbData)) {
@@ -38,7 +36,6 @@ public class EncryptedStringAttributeConverter implements AttributeConverter<Str
             throw new IllegalStateException("Failed to decrypt profile sensitive field", exception);
         }
     }
-
     static boolean isEncrypted(String value) {
         return StringUtils.hasText(value) && value.startsWith(ENCRYPTED_PREFIX);
     }

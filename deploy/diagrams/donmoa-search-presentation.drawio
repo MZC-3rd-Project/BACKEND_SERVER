@@ -1,0 +1,247 @@
+<mxfile host="drawio-plugin" modified="2026-03-31T09:46:52.938Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" compressed="false" version="22.1.22" etag="EhPavbqNhJg662Bcb1LL" type="embed" pages="4">
+  <diagram id="search-overview" name="1. Search Overview">
+    <mxGraphModel dx="2777" dy="2827" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="t1" value="1번 슬라이드. 우리가 Search에서 하려던 것" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=34;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
+          <mxGeometry x="70" y="36" width="1780" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="s1" value="상품/굿즈/공연 통합 검색과 색인 소비 서비스" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=18;fontColor=#475569;" parent="1" vertex="1">
+          <mxGeometry x="260" y="88" width="1400" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="hero1" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=24;fillColor=#DBEAFE;strokeColor=#93C5FD;strokeWidth=2;" parent="1" vertex="1">
+          <mxGeometry x="620" y="140" width="680" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="hero1t" value="Search Service" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=30;fontStyle=1;fontColor=#1E3A8A;" parent="1" vertex="1">
+          <mxGeometry x="810" y="164" width="300" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="hero1b" value="통합 검색 경험 + 색인 유지 + 운영 복구 + AI/분석 확장" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=20;fontColor=#1E3A8A;" parent="1" vertex="1">
+          <mxGeometry x="690" y="206" width="540" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="c1" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=22;fillColor=#F8FAFC;strokeColor=#E2E8F0;strokeWidth=2;" parent="1" vertex="1">
+          <mxGeometry x="90" y="320" width="840" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="c1b" value="기능 1" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#2563EB;strokeColor=#2563EB;fontColor=#FFFFFF;fontSize=16;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="122" y="348" width="84" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="c1t" value="조회 API" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=28;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
+          <mxGeometry x="122" y="398" width="220" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="c1x" value="- 통합 검색 API 제공&#xa;- 자동완성 제안 제공&#xa;- 검색 클릭 분석 이벤트 발행&#xa;- 예시 코드: SearchQueryController, SearchSuggestionService" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=20;fontColor=#334155;" parent="1" vertex="1">
+          <mxGeometry x="122" y="446" width="760" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="c2" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=22;fillColor=#F8FAFC;strokeColor=#E2E8F0;strokeWidth=2;" parent="1" vertex="1">
+          <mxGeometry x="990" y="320" width="840" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="c2b" value="기능 2" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#16A34A;strokeColor=#16A34A;fontColor=#FFFFFF;fontSize=16;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="1022" y="348" width="84" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="c2t" value="이벤트 기반 색인" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=28;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
+          <mxGeometry x="1022" y="398" width="260" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="c2x" value="- 상품 / 재고 / 스토어 이벤트를 받아 색인 반영&#xa;- 검색 문서 생성 또는 삭제 수행&#xa;- Elasticsearch 인덱스에 upsert / delete 요청&#xa;- 예시 코드: SearchItemEventProcessor, ElasticsearchIndexingService" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=20;fontColor=#334155;" parent="1" vertex="1">
+          <mxGeometry x="1022" y="446" width="760" height="118" as="geometry" />
+        </mxCell>
+        <mxCell id="c3" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=22;fillColor=#F8FAFC;strokeColor=#E2E8F0;strokeWidth=2;" parent="1" vertex="1">
+          <mxGeometry x="90" y="620" width="840" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="c3b" value="기능 3" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#D97706;strokeColor=#D97706;fontColor=#FFFFFF;fontSize=16;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="122" y="648" width="84" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="c3t" value="운영 재색인" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=28;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
+          <mxGeometry x="122" y="698" width="240" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="c3x" value="- 내부 운영용 재색인 API 제공&#xa;- 배치 크기, 최대 페이지 수, 인덱스 재생성 옵션 제어&#xa;- 상품 / 재고 / 스토어 / 펀딩 원본 데이터를 다시 읽어 색인 복구&#xa;- 예시 코드: SearchOpsController, SearchOpsService" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=20;fontColor=#334155;" parent="1" vertex="1">
+          <mxGeometry x="122" y="746" width="760" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="c4" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=22;fillColor=#F8FAFC;strokeColor=#E2E8F0;strokeWidth=2;" parent="1" vertex="1">
+          <mxGeometry x="990" y="620" width="840" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="c4b" value="기능 4" style="rounded=1;whiteSpace=wrap;html=1;arcSize=14;fillColor=#7C3AED;strokeColor=#7C3AED;fontColor=#FFFFFF;fontSize=16;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="1022" y="648" width="84" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="c4t" value="확장 기능" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=28;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
+          <mxGeometry x="1022" y="698" width="220" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="c4x" value="- 색인 이후 AI enrichment 작업 발행&#xa;- AI 태그 / 키워드 / 요약을 검색 문서에 추가 업데이트&#xa;- 검색 실행 / 클릭 이벤트를 분석용으로 발행&#xa;- 예시 코드: SearchAiEnrichmentTaskPublisher, SearchEnrichmentService" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=20;fontColor=#334155;" parent="1" vertex="1">
+          <mxGeometry x="1022" y="746" width="760" height="110" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="search-es-setup" name="2. Elasticsearch Setup">
+    <mxGraphModel dx="1111" dy="1131" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="t2" value="2번 슬라이드. 그걸 위해 Elasticsearch를 이렇게 세팅했다" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=34;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
+          <mxGeometry x="70" y="36" width="1780" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="p1" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=24;fillColor=#DBEAFE;strokeColor=#93C5FD;strokeWidth=2;" parent="1" vertex="1">
+          <mxGeometry x="80" y="150" width="560" height="310" as="geometry" />
+        </mxCell>
+        <mxCell id="p1t" value="설정 값" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=28;fontStyle=1;fontColor=#1E3A8A;" parent="1" vertex="1">
+          <mxGeometry x="112" y="182" width="180" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="p1x" value="- 검색 인덱스 주소와 이름을 설정 파일로 관리&#xa;- 기본값은 localhost:9200, index 이름은 items&#xa;- URI를 여러 개 둘 수 있지만 현재는 첫 번째 주소를 사용&#xa;- 예시 설정: search.elasticsearch.uris, index-name" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=21;fontColor=#1E3A8A;" parent="1" vertex="1">
+          <mxGeometry x="112" y="236" width="500" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="p2" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=24;fillColor=#FEF3C7;strokeColor=#FCD34D;strokeWidth=2;" parent="1" vertex="1">
+          <mxGeometry x="680" y="150" width="560" height="310" as="geometry" />
+        </mxCell>
+        <mxCell id="p2t" value="인덱스 생성 방식" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=28;fontStyle=1;fontColor=#92400E;" parent="1" vertex="1">
+          <mxGeometry x="712" y="182" width="220" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="p2x" value="- 서비스가 인덱스 존재 여부를 직접 확인&#xa;- 없으면 코드에서 직접 인덱스 생성&#xa;- 중복 생성은 내부 플래그로 방지&#xa;- 운영 상황에서는 인덱스를 다시 만드는 기능도 제공&#xa;- 예시 코드: ElasticsearchDocumentClient" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=21;fontColor=#92400E;" parent="1" vertex="1">
+          <mxGeometry x="712" y="236" width="500" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="p3" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=24;fillColor=#ECFDF5;strokeColor=#86EFAC;strokeWidth=2;" parent="1" vertex="1">
+          <mxGeometry x="1280" y="150" width="560" height="310" as="geometry" />
+        </mxCell>
+        <mxCell id="p3t" value="인덱스 세팅" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=28;fontStyle=1;fontColor=#166534;" parent="1" vertex="1">
+          <mxGeometry x="1312" y="182" width="200" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="p3x" value="- shard 1개, replica 0개로 단순 구성&#xa;- 한글 검색을 위해 nori analyzer 사용&#xa;- 검색용 text와 필터용 keyword를 함께 사용&#xa;- 즉, 검색 품질과 exact match를 둘 다 고려한 세팅" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=21;fontColor=#166534;" parent="1" vertex="1">
+          <mxGeometry x="1312" y="236" width="500" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="bottom" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=24;fillColor=#F8FAFC;strokeColor=#E2E8F0;strokeWidth=2;" parent="1" vertex="1">
+          <mxGeometry x="80" y="510" width="1760" height="430" as="geometry" />
+        </mxCell>
+        <mxCell id="bottomTitle" value="검색 문서 모델 ItemDocument" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=28;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
+          <mxGeometry x="112" y="542" width="320" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="f1" value="기본 상품 정보&#xa;itemId, title, description, domainType, status, salesChannel, price" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#FFFFFF;strokeColor=#E2E8F0;strokeWidth=2;fontSize=20;fontStyle=1;fontColor=#334155;" parent="1" vertex="1">
+          <mxGeometry x="120" y="614" width="360" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="f2" value="카테고리 / 스토어 정보&#xa;categoryId, category, categoryPath, categoryCodes, storeId, storeName" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#FFFFFF;strokeColor=#E2E8F0;strokeWidth=2;fontSize=20;fontStyle=1;fontColor=#334155;" parent="1" vertex="1">
+          <mxGeometry x="520" y="614" width="360" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="f3" value="검색용 텍스트 필드&#xa;tags, features, detailTitles, detailDescriptions, detailHighlights" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#FFFFFF;strokeColor=#E2E8F0;strokeWidth=2;fontSize=20;fontStyle=1;fontColor=#334155;" parent="1" vertex="1">
+          <mxGeometry x="920" y="614" width="360" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="f4" value="재고 / 판매 채널 정보&#xa;stock, availableStock, activeHotDealId, activeCampaignId" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#FFFFFF;strokeColor=#E2E8F0;strokeWidth=2;fontSize=20;fontStyle=1;fontColor=#334155;" parent="1" vertex="1">
+          <mxGeometry x="1320" y="614" width="400" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="f5" value="AI enrichment 필드&#xa;aiTags, aiKeywords, aiSummary, aiSourceHash, aiModel, aiStatus, aiEnrichedAt" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#FFFFFF;strokeColor=#E2E8F0;strokeWidth=2;fontSize=20;fontStyle=1;fontColor=#334155;" parent="1" vertex="1">
+          <mxGeometry x="320" y="772" width="520" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="f6" value="정렬 / 추적 필드&#xa;thumbnailMediaId, thumbnailUrl, sourceCreatedAt, sourceUpdatedAt" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#FFFFFF;strokeColor=#E2E8F0;strokeWidth=2;fontSize=20;fontStyle=1;fontColor=#334155;" parent="1" vertex="1">
+          <mxGeometry x="980" y="772" width="520" height="120" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="search-indexing" name="3. Indexing Pipeline">
+    <mxGraphModel dx="833" dy="848" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="t3" value="3번 슬라이드. 그걸 위해 이벤트 기반 색인 구조를 만들었다" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=34;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
+          <mxGeometry x="60" y="36" width="1800" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="src1" value="상품 서비스 이벤트&#xa;등록 / 수정 / 삭제" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#DBEAFE;strokeColor=#93C5FD;strokeWidth=2;fontSize=22;fontStyle=1;fontColor=#1E3A8A;" parent="1" vertex="1">
+          <mxGeometry x="100" y="220" width="320" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="src2" value="재고 서비스 이벤트" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#DBEAFE;strokeColor=#93C5FD;strokeWidth=2;fontSize=22;fontStyle=1;fontColor=#1E3A8A;" parent="1" vertex="1">
+          <mxGeometry x="100" y="420" width="320" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="src3" value="스토어 서비스 이벤트" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#DBEAFE;strokeColor=#93C5FD;strokeWidth=2;fontSize=22;fontStyle=1;fontColor=#1E3A8A;" parent="1" vertex="1">
+          <mxGeometry x="100" y="590" width="320" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="consumer" value="이벤트 수신 계층&#xa;상품 / 재고 / 스토어 이벤트 수신" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#FEF3C7;strokeColor=#FCD34D;strokeWidth=2;fontSize=22;fontStyle=1;fontColor=#92400E;" parent="1" vertex="1">
+          <mxGeometry x="530" y="300" width="360" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="processor" value="이벤트 해석 / 분기 계층&#xa;이벤트 타입에 따라 upsert / delete / reindex 결정" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#FDE68A;strokeColor=#F59E0B;strokeWidth=2;fontSize=22;fontStyle=1;fontColor=#92400E;" parent="1" vertex="1">
+          <mxGeometry x="980" y="300" width="380" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="indexing" value="검색 문서 구성 서비스&#xa;검색 문서 생성 / 갱신 / 삭제" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ECFDF5;strokeColor=#86EFAC;strokeWidth=2;fontSize=22;fontStyle=1;fontColor=#166534;" parent="1" vertex="1">
+          <mxGeometry x="1450" y="300" width="330" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="sources" value="색인용 원본 데이터 재조회&#xa;상품 / 재고 / 스토어 / 펀딩 정보를 다시 읽음" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#F8FAFC;strokeColor=#E2E8F0;strokeWidth=2;fontSize=20;fontStyle=1;fontColor=#334155;" parent="1" vertex="1">
+          <mxGeometry x="1450" y="470" width="330" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="esdoc" value="Elasticsearch 연동 계층&#xa;문서 upsert / delete / stock update" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#F8FAFC;strokeColor=#E2E8F0;strokeWidth=2;fontSize=20;fontStyle=1;fontColor=#334155;" parent="1" vertex="1">
+          <mxGeometry x="1450" y="710" width="330" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="es" value="Elasticsearch Index&#xa;items" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#DBEAFE;strokeColor=#93C5FD;strokeWidth=2;fontSize=24;fontStyle=1;fontColor=#1E3A8A;" parent="1" vertex="1">
+          <mxGeometry x="1450" y="870" width="330" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563EB;strokeWidth=4;" parent="1" source="src1" target="consumer" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563EB;strokeWidth=4;" parent="1" source="src2" target="consumer" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563EB;strokeWidth=4;" parent="1" source="src3" target="consumer" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#F59E0B;strokeWidth=4;" parent="1" source="consumer" target="processor" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#16A34A;strokeWidth=4;" parent="1" source="processor" target="indexing" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#16A34A;strokeWidth=4;" parent="1" source="indexing" target="sources" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#16A34A;strokeWidth=4;" parent="1" source="sources" target="esdoc" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#2563EB;strokeWidth=4;" parent="1" source="esdoc" target="es" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="foot3" value="핵심: Product 서비스의 item-events만 저장하는 것이 아니라, Search 서비스가 Product/Stock/Store/Funding 정보를 다시 모아서 검색 문서를 최종 구성한다." style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#EFF6FF;strokeColor=#93C5FD;strokeWidth=2;fontSize=20;fontStyle=1;fontColor=#1E3A8A;" parent="1" vertex="1">
+          <mxGeometry x="120" y="910" width="1220" height="50" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="search-query-ops" name="4. Query + Ops + AI">
+    <mxGraphModel dx="833" dy="848" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="t4" value="4번 슬라이드. 그래서 이런 기능이 가능해졌다" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;fontSize=34;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
+          <mxGeometry x="70" y="36" width="1780" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="q1" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=24;fillColor=#DBEAFE;strokeColor=#93C5FD;strokeWidth=2;" parent="1" vertex="1">
+          <mxGeometry x="80" y="160" width="860" height="330" as="geometry" />
+        </mxCell>
+        <mxCell id="q1t" value="조회 경로" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=28;fontStyle=1;fontColor=#1E3A8A;" parent="1" vertex="1">
+          <mxGeometry x="112" y="192" width="180" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="q1x" value="- 사용자가 통합 검색 API 호출&#xa;- 검색 조건을 Elasticsearch query로 변환&#xa;- 키워드, 카테고리, 가격, 상태, 정렬 조건을 함께 처리&#xa;- 결과는 커서 기반 페이지 형태로 반환&#xa;- 예시 코드: SearchQueryService" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=21;fontColor=#1E3A8A;" parent="1" vertex="1">
+          <mxGeometry x="112" y="242" width="780" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="q2" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=24;fillColor=#FEF3C7;strokeColor=#FCD34D;strokeWidth=2;" parent="1" vertex="1">
+          <mxGeometry x="980" y="160" width="860" height="330" as="geometry" />
+        </mxCell>
+        <mxCell id="q2t" value="자동완성 / 추천" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=28;fontStyle=1;fontColor=#92400E;" parent="1" vertex="1">
+          <mxGeometry x="1012" y="192" width="240" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="q2x" value="- 제목, 태그, 스토어, 카테고리 기준 자동완성 제안&#xa;- prefix 기반으로 빠르게 후보를 추출&#xa;- 공개 상태 상품만 대상으로 제한&#xa;- 제목 / 태그 / 스토어 / 카테고리 타입으로 구분 반환" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=21;fontColor=#92400E;" parent="1" vertex="1">
+          <mxGeometry x="1012" y="242" width="780" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="q3" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=24;fillColor=#ECFDF5;strokeColor=#86EFAC;strokeWidth=2;" parent="1" vertex="1">
+          <mxGeometry x="80" y="540" width="860" height="360" as="geometry" />
+        </mxCell>
+        <mxCell id="q3t" value="운영 재색인" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=28;fontStyle=1;fontColor=#166534;" parent="1" vertex="1">
+          <mxGeometry x="112" y="572" width="220" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="q3x" value="- 내부 운영자가 재색인 API 실행&#xa;- 배치 크기, 최대 페이지 수, 인덱스 재생성 여부를 선택 가능&#xa;- 원본 데이터를 다시 읽어 검색 인덱스를 복구&#xa;- 얼마나 다시 색인했는지 결과를 응답으로 확인 가능&#xa;- 예시 코드: SearchOpsService" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=21;fontColor=#166534;" parent="1" vertex="1">
+          <mxGeometry x="112" y="622" width="780" height="210" as="geometry" />
+        </mxCell>
+        <mxCell id="q4" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=24;fillColor=#F8FAFC;strokeColor=#E2E8F0;strokeWidth=2;" parent="1" vertex="1">
+          <mxGeometry x="980" y="540" width="860" height="360" as="geometry" />
+        </mxCell>
+        <mxCell id="q4t" value="AI enrichment + Analytics" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=28;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
+          <mxGeometry x="1012" y="572" width="320" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="q4x" value="- 색인 후 AI enrichment 작업을 비동기로 발행&#xa;- AI 태그 / 키워드 / 요약을 검색 문서에 추가 반영&#xa;- 검색 실행 / 클릭 이벤트를 분석용으로 발행&#xa;- 검색 기능과 AI/분석 확장을 분리해서 운영 가능" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;fontSize=21;fontColor=#334155;" parent="1" vertex="1">
+          <mxGeometry x="1012" y="622" width="780" height="210" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

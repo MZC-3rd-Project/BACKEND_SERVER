@@ -37,6 +37,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +60,8 @@ public class AuthService {
     private final String directGrantClientId;
     private final String directGrantClientSecret;
     private final boolean syncProfileCreateOnSignup;
+    private final String activeProfiles;
+    private final String developOverrideVerificationCode;
 
     public AuthService(UserRepository userRepository,
                        UserStatusHistoryRepository statusHistoryRepository,
@@ -71,7 +74,9 @@ public class AuthService {
                        @Value("${keycloak.admin.server-url}") String keycloakServerUrl,
                        @Value("${keycloak.admin.direct-grant-client-id}") String directGrantClientId,
                        @Value("${keycloak.admin.direct-grant-client-secret:}") String directGrantClientSecret,
-                       @Value("${feature.sync-profile-create-on-signup:true}") boolean syncProfileCreateOnSignup) {
+                       @Value("${feature.sync-profile-create-on-signup:true}") boolean syncProfileCreateOnSignup,
+                       @Value("${spring.profiles.active:}") String activeProfiles,
+                       @Value("${auth.email-verification.develop-override-code:}") String developOverrideVerificationCode) {
         this.userRepository = userRepository;
         this.statusHistoryRepository = statusHistoryRepository;
         this.emailVerificationRepository = emailVerificationRepository;
@@ -84,6 +89,8 @@ public class AuthService {
         this.directGrantClientId = directGrantClientId;
         this.directGrantClientSecret = directGrantClientSecret;
         this.syncProfileCreateOnSignup = syncProfileCreateOnSignup;
+        this.activeProfiles = activeProfiles;
+        this.developOverrideVerificationCode = developOverrideVerificationCode;
     }
 
     // ─── 회원가입 ──────────────────────────────────────────────
@@ -232,7 +239,7 @@ public class AuthService {
             throw new BusinessException(AuthErrorCode.VERIFICATION_CODE_EXPIRED);
         }
 
-        if (!verification.getCode().equals(code)) {
+        if (!isAcceptedVerificationCode(verification, code)) {
             throw new BusinessException(AuthErrorCode.VERIFICATION_CODE_INVALID);
         }
 
@@ -243,6 +250,31 @@ public class AuthService {
 
         log.info("Email verified: email={}", email);
         return VerifyEmailResponse.of(true, email);
+    }
+
+    private boolean isAcceptedVerificationCode(EmailVerification verification, String code) {
+        if (verification.getCode().equals(code)) {
+            return true;
+        }
+
+        if (isDevelopOverrideVerificationCode(code)) {
+            log.warn("Develop override verification code used. email={}", verification.getEmail());
+            return true;
+        }
+
+        return false;
+    }
+
+    private boolean isDevelopOverrideVerificationCode(String code) {
+        if (code == null || developOverrideVerificationCode == null || developOverrideVerificationCode.isBlank()) {
+            return false;
+        }
+        if (!developOverrideVerificationCode.equals(code)) {
+            return false;
+        }
+        return Arrays.stream(activeProfiles.split(","))
+                .map(String::trim)
+                .anyMatch("develop"::equalsIgnoreCase);
     }
 
     // ─── 이메일 인증 재발송 ────────────────────────────────────

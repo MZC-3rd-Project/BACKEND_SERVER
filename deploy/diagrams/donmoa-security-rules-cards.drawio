@@ -1,0 +1,779 @@
+<mxfile host="drawio-plugin" modified="2026-03-26T13:43:01.561Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" compressed="false" version="22.1.22" etag="5lCYMFIpddfZKwH2X_at" type="embed">
+  <diagram id="security-rules-cards" name="보안 규칙 표">
+    <mxGraphModel dx="1767" dy="1884" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1400" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="DonMoa 보안 규칙 표" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=30;fontStyle=1;fontColor=#0f172a;" parent="1" vertex="1">
+          <mxGeometry x="40" y="24" width="620" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="발표용 / 리소스별 Inbound · Outbound 규칙을 카드형으로 정리하고 AWS 아이콘과 흐름선을 함께 배치" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=16;fontColor=#475569;" parent="1" vertex="1">
+          <mxGeometry x="44" y="68" width="980" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="vpc_bg" value="VPC · 10.30.0.0/16" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#f8fafc;strokeColor=#cbd5e1;strokeWidth=2;fontColor=#0f172a;fontSize=20;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="40" y="120" width="2120" height="1220" as="geometry" />
+        </mxCell>
+        <mxCell id="public_bg" value="Public Subnet" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#eff6ff;strokeColor=#60a5fa;strokeWidth=2;fontColor=#1e3a8a;fontSize=20;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="70" y="170" width="980" height="360" as="geometry" />
+        </mxCell>
+        <mxCell id="private_bg" value="Private Subnet" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ecfeff;strokeColor=#22c55e;strokeWidth=2;fontColor=#14532d;fontSize=20;fontStyle=1;spacing=12;" parent="1" vertex="1">
+          <mxGeometry x="70" y="560" width="2060" height="730" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_card" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#cbd5e1;strokeWidth=2;shadow=1;" parent="1" vertex="1">
+          <mxGeometry x="100" y="220" width="430" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_header" value="Bastion Host" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#0f172a;strokeColor=#0f172a;fontColor=#ffffff;fontSize=18;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="100" y="220" width="430" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_icon" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ec2;html=1;outlineConnect=0;gradientColor=#F78E04;gradientDirection=north;fillColor=#D05C17;strokeColor=#ffffff;aspect=fixed;" parent="1" vertex="1">
+          <mxGeometry x="118" y="280" width="52" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_tag" value="Public / 운영자 진입점" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#e2e8f0;strokeColor=#cbd5e1;fontColor=#334155;fontSize=12;fontStyle=1;spacing=6;" parent="1" vertex="1">
+          <mxGeometry x="350" y="231" width="160" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_in_label" value="Inbound" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#fee2e2;strokeColor=#ef4444;fontColor=#991b1b;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="190" y="288" width="140" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_label" value="Outbound" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#dbeafe;strokeColor=#3b82f6;fontColor=#1d4ed8;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="190" y="394" width="140" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_in_table" value="" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=tableLayout;align=left;verticalAlign=top;fontFamily=Helvetica;fontSize=11;fontColor=#334155;fillColor=#ffffff;strokeColor=#fecaca;" parent="1" vertex="1">
+          <mxGeometry x="190" y="324" width="320" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_in_row1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="bastion_in_table" vertex="1">
+          <mxGeometry width="320" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_in_h1" value="출발지" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="bastion_in_row1" vertex="1">
+          <mxGeometry width="100" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_in_h2" value="프로토콜" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="bastion_in_row1" vertex="1">
+          <mxGeometry x="100" width="70" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_in_h3" value="포트" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="bastion_in_row1" vertex="1">
+          <mxGeometry x="170" width="50" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_in_h4" value="설명" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="bastion_in_row1" vertex="1">
+          <mxGeometry x="220" width="100" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_in_row2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="bastion_in_table" vertex="1">
+          <mxGeometry y="28" width="320" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_in_c1" value="교내 IP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="bastion_in_row2" vertex="1">
+          <mxGeometry width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_in_c2" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="bastion_in_row2" vertex="1">
+          <mxGeometry x="100" width="70" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_in_c3" value="22" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="bastion_in_row2" vertex="1">
+          <mxGeometry x="170" width="50" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_in_c4" value="SSH 접속" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="bastion_in_row2" vertex="1">
+          <mxGeometry x="220" width="100" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_table" value="" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=tableLayout;align=left;verticalAlign=top;fontFamily=Helvetica;fontSize=11;fontColor=#334155;fillColor=#ffffff;strokeColor=#bfdbfe;" parent="1" vertex="1">
+          <mxGeometry x="190" y="430" width="320" height="98" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_row1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="bastion_out_table" vertex="1">
+          <mxGeometry width="320" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_h1" value="대상" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="bastion_out_row1" vertex="1">
+          <mxGeometry width="100" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_h2" value="프로토콜" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="bastion_out_row1" vertex="1">
+          <mxGeometry x="100" width="70" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_h3" value="포트" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="bastion_out_row1" vertex="1">
+          <mxGeometry x="170" width="50" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_h4" value="설명" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="bastion_out_row1" vertex="1">
+          <mxGeometry x="220" width="100" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_row2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="bastion_out_table" vertex="1">
+          <mxGeometry y="28" width="320" height="23" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_c1" value="Aurora" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="bastion_out_row2" vertex="1">
+          <mxGeometry width="100" height="23" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_c2" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="bastion_out_row2" vertex="1">
+          <mxGeometry x="100" width="70" height="23" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_c3" value="5432" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="bastion_out_row2" vertex="1">
+          <mxGeometry x="170" width="50" height="23" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_c4" value="운영자 DB 접속" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="bastion_out_row2" vertex="1">
+          <mxGeometry x="220" width="100" height="23" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_row3" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="bastion_out_table" vertex="1">
+          <mxGeometry y="51" width="320" height="23" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_c5" value="Worker Node" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="bastion_out_row3" vertex="1">
+          <mxGeometry width="100" height="23" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_c6" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="bastion_out_row3" vertex="1">
+          <mxGeometry x="100" width="70" height="23" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_c7" value="22" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="bastion_out_row3" vertex="1">
+          <mxGeometry x="170" width="50" height="23" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_c8" value="직접 운영 시 SSH" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="bastion_out_row3" vertex="1">
+          <mxGeometry x="220" width="100" height="23" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_row4" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="bastion_out_table" vertex="1">
+          <mxGeometry y="74" width="320" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_c9" value="AWS SSM / Secrets" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="bastion_out_row4" vertex="1">
+          <mxGeometry width="100" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_c10" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="bastion_out_row4" vertex="1">
+          <mxGeometry x="100" width="70" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_c11" value="443" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="bastion_out_row4" vertex="1">
+          <mxGeometry x="170" width="50" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="bastion_out_c12" value="운영 관리 / Secret" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="bastion_out_row4" vertex="1">
+          <mxGeometry x="220" width="100" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_card" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#cbd5e1;strokeWidth=2;shadow=1;" parent="1" vertex="1">
+          <mxGeometry x="580" y="220" width="430" height="290" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_header" value="ALB" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#0f172a;strokeColor=#0f172a;fontColor=#ffffff;fontSize=18;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="580" y="220" width="430" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_icon" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.application_load_balancer;html=1;outlineConnect=0;gradientColor=#945DF2;gradientDirection=north;fillColor=#5A30B5;strokeColor=#ffffff;aspect=fixed;" parent="1" vertex="1">
+          <mxGeometry x="598" y="280" width="52" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_tag" value="Public / 외부 웹 진입점" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#e2e8f0;strokeColor=#cbd5e1;fontColor=#334155;fontSize=12;fontStyle=1;spacing=6;" parent="1" vertex="1">
+          <mxGeometry x="818" y="231" width="170" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_in_label" value="Inbound" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#fee2e2;strokeColor=#ef4444;fontColor=#991b1b;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="670" y="288" width="140" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_out_label" value="Outbound" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#dbeafe;strokeColor=#3b82f6;fontColor=#1d4ed8;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="670" y="430" width="140" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_in_table" value="" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=tableLayout;align=left;verticalAlign=top;fontFamily=Helvetica;fontSize=11;fontColor=#334155;fillColor=#ffffff;strokeColor=#fecaca;" parent="1" vertex="1">
+          <mxGeometry x="670" y="324" width="320" height="82" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_in_row1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="alb_in_table" vertex="1">
+          <mxGeometry width="320" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_in_h1" value="출발지" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="alb_in_row1" vertex="1">
+          <mxGeometry width="100" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_in_h2" value="프로토콜" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="alb_in_row1" vertex="1">
+          <mxGeometry x="100" width="70" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_in_h3" value="포트" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="alb_in_row1" vertex="1">
+          <mxGeometry x="170" width="50" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_in_h4" value="설명" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="alb_in_row1" vertex="1">
+          <mxGeometry x="220" width="100" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_in_row2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="alb_in_table" vertex="1">
+          <mxGeometry y="28" width="320" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_in_c1" value="Internet" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="alb_in_row2" vertex="1">
+          <mxGeometry width="100" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_in_c2" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="alb_in_row2" vertex="1">
+          <mxGeometry x="100" width="70" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_in_c3" value="80" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="alb_in_row2" vertex="1">
+          <mxGeometry x="170" width="50" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_in_c4" value="HTTP 요청" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="alb_in_row2" vertex="1">
+          <mxGeometry x="220" width="100" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_in_row3" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="alb_in_table" vertex="1">
+          <mxGeometry y="55" width="320" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_in_c5" value="CloudFront" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="alb_in_row3" vertex="1">
+          <mxGeometry width="100" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_in_c6" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="alb_in_row3" vertex="1">
+          <mxGeometry x="100" width="70" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_in_c7" value="443" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="alb_in_row3" vertex="1">
+          <mxGeometry x="170" width="50" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_in_c8" value="HTTPS 요청" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="alb_in_row3" vertex="1">
+          <mxGeometry x="220" width="100" height="27" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_out_table" value="" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=tableLayout;align=left;verticalAlign=top;fontFamily=Helvetica;fontSize=11;fontColor=#334155;fillColor=#ffffff;strokeColor=#bfdbfe;" parent="1" vertex="1">
+          <mxGeometry x="670" y="466" width="320" height="58" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_out_row1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="alb_out_table" vertex="1">
+          <mxGeometry width="320" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_out_h1" value="대상" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="alb_out_row1" vertex="1">
+          <mxGeometry width="100" height="28" as="geometry">
+            <mxRectangle width="100" height="28" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="alb_out_h2" value="프로토콜" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="alb_out_row1" vertex="1">
+          <mxGeometry x="100" width="70" height="28" as="geometry">
+            <mxRectangle width="70" height="28" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="alb_out_h3" value="포트" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="alb_out_row1" vertex="1">
+          <mxGeometry x="170" width="50" height="28" as="geometry">
+            <mxRectangle width="50" height="28" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="alb_out_h4" value="설명" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="alb_out_row1" vertex="1">
+          <mxGeometry x="220" width="100" height="28" as="geometry">
+            <mxRectangle width="100" height="28" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="alb_out_row2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="alb_out_table" vertex="1">
+          <mxGeometry y="28" width="320" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="alb_out_c1" value="Worker Node" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="alb_out_row2" vertex="1">
+          <mxGeometry width="100" height="30" as="geometry">
+            <mxRectangle width="100" height="30" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="alb_out_c2" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="alb_out_row2" vertex="1">
+          <mxGeometry x="100" width="70" height="30" as="geometry">
+            <mxRectangle width="70" height="30" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="alb_out_c3" value="8080,8081" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="alb_out_row2" vertex="1">
+          <mxGeometry x="170" width="50" height="30" as="geometry">
+            <mxRectangle width="50" height="30" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="alb_out_c4" value="앱 요청 전달" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="alb_out_row2" vertex="1">
+          <mxGeometry x="220" width="100" height="30" as="geometry">
+            <mxRectangle width="100" height="30" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="worker_card" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#cbd5e1;strokeWidth=2;shadow=1;" parent="1" vertex="1">
+          <mxGeometry x="100" y="620" width="960" height="320" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_header" value="EKS Worker Node" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#0f172a;strokeColor=#0f172a;fontColor=#ffffff;fontSize=18;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="100" y="620" width="960" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_icon" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ec2;html=1;outlineConnect=0;gradientColor=#F78E04;gradientDirection=north;fillColor=#D05C17;strokeColor=#ffffff;aspect=fixed;" parent="1" vertex="1">
+          <mxGeometry x="120" y="690" width="56" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_tag" value="Private / 애플리케이션 런타임" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#dcfce7;strokeColor=#86efac;fontColor=#166534;fontSize=12;fontStyle=1;spacing=6;" parent="1" vertex="1">
+          <mxGeometry x="840" y="631" width="200" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_label" value="Inbound" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#fee2e2;strokeColor=#ef4444;fontColor=#991b1b;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="200" y="692" width="150" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_label" value="Outbound" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#dbeafe;strokeColor=#3b82f6;fontColor=#1d4ed8;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="610" y="692" width="150" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_table" value="" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=tableLayout;align=left;verticalAlign=top;fontFamily=Helvetica;fontSize=11;fontColor=#334155;fillColor=#ffffff;strokeColor=#fecaca;" parent="1" vertex="1">
+          <mxGeometry x="200" y="728" width="340" height="182" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_row1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="worker_in_table" vertex="1">
+          <mxGeometry width="340" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_h1" value="출발지" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="worker_in_row1" vertex="1">
+          <mxGeometry width="110" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_h2" value="프로토콜" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="worker_in_row1" vertex="1">
+          <mxGeometry x="110" width="70" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_h3" value="포트" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="worker_in_row1" vertex="1">
+          <mxGeometry x="180" width="55" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_h4" value="설명" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="worker_in_row1" vertex="1">
+          <mxGeometry x="235" width="105" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_row2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="worker_in_table" vertex="1">
+          <mxGeometry y="28" width="340" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c1" value="ALB" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row2" vertex="1">
+          <mxGeometry width="110" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c2" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row2" vertex="1">
+          <mxGeometry x="110" width="70" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c3" value="8080" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row2" vertex="1">
+          <mxGeometry x="180" width="55" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c4" value="앱 요청 수신" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row2" vertex="1">
+          <mxGeometry x="235" width="105" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_row3" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="worker_in_table" vertex="1">
+          <mxGeometry y="59" width="340" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c5" value="EKS Control" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row3" vertex="1">
+          <mxGeometry width="110" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c6" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row3" vertex="1">
+          <mxGeometry x="110" width="70" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c7" value="443" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row3" vertex="1">
+          <mxGeometry x="180" width="55" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c8" value="제어 통신" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row3" vertex="1">
+          <mxGeometry x="235" width="105" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_row4" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="worker_in_table" vertex="1">
+          <mxGeometry y="90" width="340" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c9" value="EKS Control" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row4" vertex="1">
+          <mxGeometry width="110" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c10" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row4" vertex="1">
+          <mxGeometry x="110" width="70" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c11" value="10250" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row4" vertex="1">
+          <mxGeometry x="180" width="55" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c12" value="kubelet" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row4" vertex="1">
+          <mxGeometry x="235" width="105" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_row5" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="worker_in_table" vertex="1">
+          <mxGeometry y="121" width="340" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c13" value="EKS Control" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row5" vertex="1">
+          <mxGeometry width="110" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c14" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row5" vertex="1">
+          <mxGeometry x="110" width="70" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c15" value="9443" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row5" vertex="1">
+          <mxGeometry x="180" width="55" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c16" value="webhook" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row5" vertex="1">
+          <mxGeometry x="235" width="105" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_row6" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="worker_in_table" vertex="1">
+          <mxGeometry y="152" width="340" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c17" value="Worker Node" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row6" vertex="1">
+          <mxGeometry width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c18" value="ALL" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row6" vertex="1">
+          <mxGeometry x="110" width="70" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c19" value="ALL" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row6" vertex="1">
+          <mxGeometry x="180" width="55" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_in_c20" value="내부 통신" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_in_row6" vertex="1">
+          <mxGeometry x="235" width="105" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_table" value="" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=tableLayout;align=left;verticalAlign=top;fontFamily=Helvetica;fontSize=11;fontColor=#334155;fillColor=#ffffff;strokeColor=#bfdbfe;" parent="1" vertex="1">
+          <mxGeometry x="610" y="728" width="430" height="182" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_row1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="worker_out_table" vertex="1">
+          <mxGeometry width="430" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_h1" value="대상" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="worker_out_row1" vertex="1">
+          <mxGeometry width="145" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_h2" value="프로토콜" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="worker_out_row1" vertex="1">
+          <mxGeometry x="145" width="75" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_h3" value="포트" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="worker_out_row1" vertex="1">
+          <mxGeometry x="220" width="60" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_h4" value="설명" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="worker_out_row1" vertex="1">
+          <mxGeometry x="280" width="150" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_row2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="worker_out_table" vertex="1">
+          <mxGeometry y="28" width="430" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c1" value="EKS Control Plane" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row2" vertex="1">
+          <mxGeometry width="145" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c2" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row2" vertex="1">
+          <mxGeometry x="145" width="75" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c3" value="443" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row2" vertex="1">
+          <mxGeometry x="220" width="60" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c4" value="K8s API 통신" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row2" vertex="1">
+          <mxGeometry x="280" width="150" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_row3" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="worker_out_table" vertex="1">
+          <mxGeometry y="59" width="430" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c5" value="Aurora" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row3" vertex="1">
+          <mxGeometry width="145" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c6" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row3" vertex="1">
+          <mxGeometry x="145" width="75" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c7" value="5432" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row3" vertex="1">
+          <mxGeometry x="220" width="60" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c8" value="DB 연결" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row3" vertex="1">
+          <mxGeometry x="280" width="150" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_row4" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="worker_out_table" vertex="1">
+          <mxGeometry y="90" width="430" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c9" value="Redis" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row4" vertex="1">
+          <mxGeometry width="145" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c10" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row4" vertex="1">
+          <mxGeometry x="145" width="75" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c11" value="6379" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row4" vertex="1">
+          <mxGeometry x="220" width="60" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c12" value="캐시 접근" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row4" vertex="1">
+          <mxGeometry x="280" width="150" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_row5" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="worker_out_table" vertex="1">
+          <mxGeometry y="121" width="430" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c13" value="EC2 Kafka" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row5" vertex="1">
+          <mxGeometry width="145" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c14" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row5" vertex="1">
+          <mxGeometry x="145" width="75" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c15" value="9092" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row5" vertex="1">
+          <mxGeometry x="220" width="60" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c16" value="이벤트 발행 / 구독" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row5" vertex="1">
+          <mxGeometry x="280" width="150" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_row6" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="worker_out_table" vertex="1">
+          <mxGeometry y="152" width="430" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c17" value="NAT Gateway / VPCE" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row6" vertex="1">
+          <mxGeometry width="145" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c18" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row6" vertex="1">
+          <mxGeometry x="145" width="75" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c19" value="443" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row6" vertex="1">
+          <mxGeometry x="220" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="worker_out_c20" value="ECR / Secret / AWS API" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="worker_out_row6" vertex="1">
+          <mxGeometry x="280" width="150" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="data_card" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#cbd5e1;strokeWidth=2;shadow=1;" parent="1" vertex="1">
+          <mxGeometry x="1110" y="620" width="990" height="320" as="geometry" />
+        </mxCell>
+        <mxCell id="data_header" value="Data Layer" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#0f172a;strokeColor=#0f172a;fontColor=#ffffff;fontSize=18;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="1110" y="620" width="990" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="data_tag" value="Private / Aurora · Redis · Kafka · Elasticsearch*" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#dcfce7;strokeColor=#86efac;fontColor=#166534;fontSize=12;fontStyle=1;spacing=6;" parent="1" vertex="1">
+          <mxGeometry x="1810" y="631" width="270" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="data_icon1" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.aurora;html=1;outlineConnect=0;gradientColor=#4D72F3;gradientDirection=north;fillColor=#3334B9;strokeColor=#ffffff;aspect=fixed;" parent="1" vertex="1">
+          <mxGeometry x="1135" y="690" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="data_icon2" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.elasticache;html=1;outlineConnect=0;gradientColor=#4D72F3;gradientDirection=north;fillColor=#3334B9;strokeColor=#ffffff;aspect=fixed;" parent="1" vertex="1">
+          <mxGeometry x="1195" y="690" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="data_icon3" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ec2;html=1;outlineConnect=0;gradientColor=#4D72F3;gradientDirection=north;fillColor=#3334B9;strokeColor=#ffffff;aspect=fixed;" parent="1" vertex="1">
+          <mxGeometry x="1255" y="690" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="data_icon4" value="" style="shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.ec2;html=1;outlineConnect=0;gradientColor=#4D72F3;gradientDirection=north;fillColor=#3334B9;strokeColor=#ffffff;aspect=fixed;" parent="1" vertex="1">
+          <mxGeometry x="1315" y="690" width="50" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_label" value="Inbound" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#fee2e2;strokeColor=#ef4444;fontColor=#991b1b;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="1385" y="692" width="150" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="data_out_label" value="Outbound" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#dbeafe;strokeColor=#3b82f6;fontColor=#1d4ed8;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="1715" y="692" width="150" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_table" value="" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=tableLayout;align=left;verticalAlign=top;fontFamily=Helvetica;fontSize=11;fontColor=#334155;fillColor=#ffffff;strokeColor=#fecaca;" parent="1" vertex="1">
+          <mxGeometry x="1385" y="728" width="300" height="182" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_row1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="data_in_table" vertex="1">
+          <mxGeometry width="300" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_h1" value="출발지" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="data_in_row1" vertex="1">
+          <mxGeometry width="110" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_h2" value="프로토콜" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="data_in_row1" vertex="1">
+          <mxGeometry x="110" width="65" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_h3" value="포트" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="data_in_row1" vertex="1">
+          <mxGeometry x="175" width="50" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_h4" value="설명" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="data_in_row1" vertex="1">
+          <mxGeometry x="225" width="75" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_row2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="data_in_table" vertex="1">
+          <mxGeometry y="28" width="300" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c1" value="Worker Node" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row2" vertex="1">
+          <mxGeometry width="110" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c2" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row2" vertex="1">
+          <mxGeometry x="110" width="65" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c3" value="5432" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row2" vertex="1">
+          <mxGeometry x="175" width="50" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c4" value="Aurora" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row2" vertex="1">
+          <mxGeometry x="225" width="75" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_row3" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="data_in_table" vertex="1">
+          <mxGeometry y="59" width="300" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c5" value="Worker Node" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row3" vertex="1">
+          <mxGeometry width="110" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c6" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row3" vertex="1">
+          <mxGeometry x="110" width="65" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c7" value="6379" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row3" vertex="1">
+          <mxGeometry x="175" width="50" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c8" value="Redis" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row3" vertex="1">
+          <mxGeometry x="225" width="75" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_row4" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="data_in_table" vertex="1">
+          <mxGeometry y="90" width="300" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c9" value="Worker Node" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row4" vertex="1">
+          <mxGeometry width="110" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c10" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row4" vertex="1">
+          <mxGeometry x="110" width="65" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c11" value="9092" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row4" vertex="1">
+          <mxGeometry x="175" width="50" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c12" value="Kafka" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row4" vertex="1">
+          <mxGeometry x="225" width="75" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_row5" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="data_in_table" vertex="1">
+          <mxGeometry y="121" width="300" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c13" value="Worker Node" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row5" vertex="1">
+          <mxGeometry width="110" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c14" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row5" vertex="1">
+          <mxGeometry x="110" width="65" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c15" value="9200" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row5" vertex="1">
+          <mxGeometry x="175" width="50" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c16" value="ES*" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row5" vertex="1">
+          <mxGeometry x="225" width="75" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_row6" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="data_in_table" vertex="1">
+          <mxGeometry y="152" width="300" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c17" value="Bastion Host" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row6" vertex="1">
+          <mxGeometry width="110" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c18" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row6" vertex="1">
+          <mxGeometry x="110" width="65" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c19" value="5432" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row6" vertex="1">
+          <mxGeometry x="175" width="50" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="data_in_c20" value="운영자 DB" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_in_row6" vertex="1">
+          <mxGeometry x="225" width="75" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="data_out_table" value="" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=tableLayout;align=left;verticalAlign=top;fontFamily=Helvetica;fontSize=11;fontColor=#334155;fillColor=#ffffff;strokeColor=#bfdbfe;" parent="1" vertex="1">
+          <mxGeometry x="1715" y="728" width="350" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="data_out_row1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="data_out_table" vertex="1">
+          <mxGeometry width="350" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="data_out_h1" value="대상" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="data_out_row1" vertex="1">
+          <mxGeometry width="130" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="data_out_h2" value="프로토콜" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="data_out_row1" vertex="1">
+          <mxGeometry x="130" width="70" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="data_out_h3" value="포트" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="data_out_row1" vertex="1">
+          <mxGeometry x="200" width="50" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="data_out_h4" value="설명" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="data_out_row1" vertex="1">
+          <mxGeometry x="250" width="100" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="data_out_row2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="data_out_table" vertex="1">
+          <mxGeometry y="28" width="350" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_out_c1" value="NAT Gateway" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_out_row2" vertex="1">
+          <mxGeometry width="130" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_out_c2" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_out_row2" vertex="1">
+          <mxGeometry x="130" width="70" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_out_c3" value="443" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_out_row2" vertex="1">
+          <mxGeometry x="200" width="50" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_out_c4" value="운영 egress" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_out_row2" vertex="1">
+          <mxGeometry x="250" width="100" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_out_row3" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="data_out_table" vertex="1">
+          <mxGeometry y="59" width="350" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_out_c5" value="Aurora / Redis" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_out_row3" vertex="1">
+          <mxGeometry width="130" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_out_c6" value="-" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_out_row3" vertex="1">
+          <mxGeometry x="130" width="70" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_out_c7" value="-" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_out_row3" vertex="1">
+          <mxGeometry x="200" width="50" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="data_out_c8" value="일반적으로 최소화" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="data_out_row3" vertex="1">
+          <mxGeometry x="250" width="100" height="31" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_card" value="" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#ffffff;strokeColor=#cbd5e1;strokeWidth=2;shadow=1;" parent="1" vertex="1">
+          <mxGeometry x="100" y="980" width="760" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_header" value="Private Subnet NACL (공통)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=18;fillColor=#0f172a;strokeColor=#0f172a;fontColor=#ffffff;fontSize=18;fontStyle=1;spacing=10;" parent="1" vertex="1">
+          <mxGeometry x="100" y="980" width="760" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_label" value="Inbound" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#fee2e2;strokeColor=#ef4444;fontColor=#991b1b;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="125" y="1048" width="140" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_label" value="Outbound" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;fillColor=#dbeafe;strokeColor=#3b82f6;fontColor=#1d4ed8;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+          <mxGeometry x="505" y="1048" width="140" height="26" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_table" value="" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=tableLayout;align=left;verticalAlign=top;fontFamily=Helvetica;fontSize=11;fontColor=#334155;fillColor=#ffffff;strokeColor=#fecaca;" parent="1" vertex="1">
+          <mxGeometry x="125" y="1082" width="330" height="156" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_row1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="nacl_in_table" vertex="1">
+          <mxGeometry width="330" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_h1" value="출발지" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="nacl_in_row1" vertex="1">
+          <mxGeometry width="120" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_h2" value="프로토콜" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="nacl_in_row1" vertex="1">
+          <mxGeometry x="120" width="70" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_h3" value="포트" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="nacl_in_row1" vertex="1">
+          <mxGeometry x="190" width="60" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_h4" value="설명" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#fee2e2;fontColor=#991b1b;fontStyle=1;" parent="nacl_in_row1" vertex="1">
+          <mxGeometry x="250" width="80" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_row2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="nacl_in_table" vertex="1">
+          <mxGeometry y="28" width="330" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_c1" value="Private CIDR" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_in_row2" vertex="1">
+          <mxGeometry width="120" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_c2" value="ALL" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_in_row2" vertex="1">
+          <mxGeometry x="120" width="70" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_c3" value="ALL" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_in_row2" vertex="1">
+          <mxGeometry x="190" width="60" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_c4" value="내부 통신" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_in_row2" vertex="1">
+          <mxGeometry x="250" width="80" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_row3" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="nacl_in_table" vertex="1">
+          <mxGeometry y="60" width="330" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_c5" value="Public CIDR" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_in_row3" vertex="1">
+          <mxGeometry width="120" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_c6" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_in_row3" vertex="1">
+          <mxGeometry x="120" width="70" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_c7" value="8080" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_in_row3" vertex="1">
+          <mxGeometry x="190" width="60" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_c8" value="ALB 대상 포트" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_in_row3" vertex="1">
+          <mxGeometry x="250" width="80" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_row4" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="nacl_in_table" vertex="1">
+          <mxGeometry y="92" width="330" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_c9" value="0.0.0.0/0" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_in_row4" vertex="1">
+          <mxGeometry width="120" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_c10" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_in_row4" vertex="1">
+          <mxGeometry x="120" width="70" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_c11" value="1024+" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_in_row4" vertex="1">
+          <mxGeometry x="190" width="60" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_in_c12" value="응답 포트" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_in_row4" vertex="1">
+          <mxGeometry x="250" width="80" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_table" value="" style="shape=table;startSize=0;container=1;collapsible=0;childLayout=tableLayout;align=left;verticalAlign=top;fontFamily=Helvetica;fontSize=11;fontColor=#334155;fillColor=#ffffff;strokeColor=#bfdbfe;" parent="1" vertex="1">
+          <mxGeometry x="495" y="1082" width="340" height="156" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_row1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="nacl_out_table" vertex="1">
+          <mxGeometry width="340" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_h1" value="대상" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="nacl_out_row1" vertex="1">
+          <mxGeometry width="120" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_h2" value="프로토콜" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="nacl_out_row1" vertex="1">
+          <mxGeometry x="120" width="70" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_h3" value="포트" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="nacl_out_row1" vertex="1">
+          <mxGeometry x="190" width="60" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_h4" value="설명" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#dbeafe;fontColor=#1d4ed8;fontStyle=1;" parent="nacl_out_row1" vertex="1">
+          <mxGeometry x="250" width="90" height="28" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_row2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="nacl_out_table" vertex="1">
+          <mxGeometry y="28" width="340" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_c1" value="0.0.0.0/0" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_out_row2" vertex="1">
+          <mxGeometry width="120" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_c2" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_out_row2" vertex="1">
+          <mxGeometry x="120" width="70" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_c3" value="80" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_out_row2" vertex="1">
+          <mxGeometry x="190" width="60" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_c4" value="HTTP egress" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_out_row2" vertex="1">
+          <mxGeometry x="250" width="90" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_row3" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="nacl_out_table" vertex="1">
+          <mxGeometry y="60" width="340" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_c5" value="0.0.0.0/0" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_out_row3" vertex="1">
+          <mxGeometry width="120" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_c6" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_out_row3" vertex="1">
+          <mxGeometry x="120" width="70" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_c7" value="443" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_out_row3" vertex="1">
+          <mxGeometry x="190" width="60" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_c8" value="AWS / 외부 API" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_out_row3" vertex="1">
+          <mxGeometry x="250" width="90" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_row4" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="nacl_out_table" vertex="1">
+          <mxGeometry y="92" width="340" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_c9" value="VPC CIDR" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_out_row4" vertex="1">
+          <mxGeometry width="120" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_c10" value="UDP/TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_out_row4" vertex="1">
+          <mxGeometry x="120" width="70" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_c11" value="53" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_out_row4" vertex="1">
+          <mxGeometry x="190" width="60" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_c12" value="DNS 질의" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_out_row4" vertex="1">
+          <mxGeometry x="250" width="90" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_row5" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;fillColor=none;" parent="nacl_out_table" vertex="1">
+          <mxGeometry y="124" width="340" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_c13" value="Public CIDR" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_out_row5" vertex="1">
+          <mxGeometry width="120" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_c14" value="TCP" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_out_row5" vertex="1">
+          <mxGeometry x="120" width="70" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_c15" value="1024+" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_out_row5" vertex="1">
+          <mxGeometry x="190" width="60" height="32" as="geometry" />
+        </mxCell>
+        <mxCell id="nacl_out_c16" value="응답 포트" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=inherit;overflow=hidden;fillColor=#ffffff;" parent="nacl_out_row5" vertex="1">
+          <mxGeometry x="250" width="90" height="32" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

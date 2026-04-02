@@ -17,11 +17,13 @@ import org.springframework.kafka.listener.ConsumerRecordRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.support.ExponentialBackOffWithMaxRetries;
+import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -75,7 +77,7 @@ public class KafkaConfig {
 
     @Bean
     public DefaultErrorHandler kafkaErrorHandler(
-            DeadLetterMessageRepository deadLetterMessageRepository,
+            DeadLetterStoreService deadLetterStoreService,
             KafkaConsumerProperties consumerProperties
     ) {
         int maxAttempts = Math.max(1, consumerProperties.getMaxRetryAttempts());
@@ -85,7 +87,7 @@ public class KafkaConfig {
         backOff.setMaxInterval(Math.max(100L, consumerProperties.getMaxBackoffMs()));
 
         DefaultErrorHandler errorHandler = new DefaultErrorHandler(
-                deadLetterRecoverer(deadLetterMessageRepository, consumerProperties),
+                deadLetterRecoverer(deadLetterStoreService, consumerProperties),
                 backOff
         );
         errorHandler.addNotRetryableExceptions(IllegalArgumentException.class, DeserializationException.class);
@@ -94,22 +96,22 @@ public class KafkaConfig {
     }
 
     private ConsumerRecordRecoverer deadLetterRecoverer(
-            DeadLetterMessageRepository deadLetterMessageRepository,
+            DeadLetterStoreService deadLetterStoreService,
             KafkaConsumerProperties consumerProperties
     ) {
         return (record, exception) -> {
-            DeadLetterMessage deadLetterMessage = DeadLetterMessage.create(
-                    record.topic(),
-                    record.partition(),
-                    record.offset(),
-                    stringify(record.key()),
-                    stringify(record.value()),
-                    truncateError(exception, consumerProperties.getMaxErrorMessageLength()),
-                    extractJsonField(record, "eventId"),
-                    extractJsonField(record, "eventType")
-            );
             try {
-                deadLetterMessageRepository.save(deadLetterMessage);
+                deadLetterStoreService.store(
+                        record.topic(),
+                        record.partition(),
+                        record.offset(),
+                        stringify(record.key()),
+                        stringify(record.value()),
+                        truncateError(exception, consumerProperties.getMaxErrorMessageLength()),
+                        extractJsonField(record, "eventId"),
+                        extractJsonField(record, "eventType"),
+                        resolveConsumerAttemptCount(record, exception, consumerProperties)
+                );
                 log.error("Kafka message moved to dead letter store: topic={}, partition={}, offset={}",
                         record.topic(), record.partition(), record.offset(), exception);
             } catch (DataAccessException dbEx) {
@@ -118,6 +120,23 @@ public class KafkaConfig {
                 throw dbEx;
             }
         };
+    }
+
+    private int resolveConsumerAttemptCount(
+            ConsumerRecord<?, ?> record,
+            Throwable exception,
+            KafkaConsumerProperties consumerProperties
+    ) {
+        if (record != null) {
+            var header = record.headers().lastHeader(KafkaHeaders.DELIVERY_ATTEMPT);
+            if (header != null && header.value() != null && header.value().length >= Integer.BYTES) {
+                return Math.max(1, ByteBuffer.wrap(header.value()).getInt());
+            }
+        }
+        if (exception instanceof IllegalArgumentException || exception instanceof DeserializationException) {
+            return 1;
+        }
+        return Math.max(1, consumerProperties.getMaxRetryAttempts());
     }
 
     private String extractJsonField(ConsumerRecord<?, ?> record, String key) {

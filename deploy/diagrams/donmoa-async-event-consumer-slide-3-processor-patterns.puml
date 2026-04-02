@@ -1,0 +1,94 @@
+@startuml
+title 비동기 이벤트 소비 구조 - 3. Processor 패턴
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  ArrowColor #475569
+  FontColor #0F172A
+  HeaderBackgroundColor #F8FAFC
+}
+
+skinparam interface {
+  BackgroundColor #F8FAFC
+  BorderColor #94A3B8
+  FontColor #0F172A
+}
+
+skinparam note {
+  BackgroundColor #FFF7ED
+  BorderColor #FDBA74
+  FontColor #7C2D12
+}
+
+left to right direction
+
+interface "EventMessageProcessor" as EventMessageProcessor
+interface "EventEnvelope" as EventEnvelope {
+  + getEventId(): String
+  + getEventType(): String
+}
+
+class "IdempotentConsumerService" as IdempotentConsumerService
+class "InboxConsumerBinding" as InboxConsumerBinding <<annotation>>
+
+package "EventSpec 계열" #FFF7ED {
+  abstract class "AbstractIdempotentEventSpecProcessor" as AbstractIdempotentEventSpecProcessor {
+    # eventSpecs(): Map<String, EventSpec>
+    # idempotentEventType(): String
+  }
+
+  class "EventSpec<T>" as EventSpec
+
+  class "OrderPaymentEventProcessor" as OrderPaymentEventProcessor
+  class "PaymentEventMessage" as PaymentEventMessage
+}
+
+package "RouteSpec 계열" #FEF3C7 {
+  abstract class "AbstractIdempotentRoutingJsonMessageConsumer<T>" as AbstractIdempotentRoutingJsonMessageConsumer {
+    # routeSpecs(): Map<String, RouteSpec<T>>
+    # payloadType(): Class<T>
+    # idempotentEventType(): String
+  }
+
+  class "RouteSpec<T>" as RouteSpec
+
+  class "ChatFundingEventProcessor" as ChatFundingEventProcessor
+  class "FundingEventMessage" as FundingEventMessage
+}
+
+AbstractIdempotentEventSpecProcessor ..|> EventMessageProcessor
+AbstractIdempotentEventSpecProcessor --> IdempotentConsumerService
+AbstractIdempotentEventSpecProcessor --> EventSpec
+OrderPaymentEventProcessor --|> AbstractIdempotentEventSpecProcessor
+OrderPaymentEventProcessor ..> InboxConsumerBinding
+PaymentEventMessage ..|> EventEnvelope
+OrderPaymentEventProcessor --> PaymentEventMessage
+
+AbstractIdempotentRoutingJsonMessageConsumer ..|> EventMessageProcessor
+AbstractIdempotentRoutingJsonMessageConsumer --> IdempotentConsumerService
+AbstractIdempotentRoutingJsonMessageConsumer --> RouteSpec
+ChatFundingEventProcessor --|> AbstractIdempotentRoutingJsonMessageConsumer
+ChatFundingEventProcessor ..> InboxConsumerBinding
+FundingEventMessage ..|> EventEnvelope
+ChatFundingEventProcessor --> FundingEventMessage
+
+note bottom of EventSpec
+eventType마다
+서로 다른 payload 클래스와 action이
+필요할 때 사용한다.
+end note
+
+note bottom of RouteSpec
+하나의 payload 모델 안에서
+여러 eventType을 분기 처리할 때
+사용한다.
+end note
+
+@enduml

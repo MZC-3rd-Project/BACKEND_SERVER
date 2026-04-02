@@ -6,7 +6,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @EnableConfigurationProperties({
         NotificationDeliveryProperties.class,
-        NotificationSseProperties.class
+        NotificationSseProperties.class,
+        NotificationOpsAlertProperties.class
 })
 public class NotificationPropertiesConfig {
 }

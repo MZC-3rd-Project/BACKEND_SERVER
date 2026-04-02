@@ -34,6 +34,31 @@ spec:
         - redis
         - keycloak
 
+    - key: business-gateway
+      runtime:
+        type: spring-boot
+        applicationName: business-gateway
+      build:
+        type: gradle
+        gradleModule: "servers:gateways:business-gateway"
+      image:
+        ecrRepository: donmoa-dev-business-gateway
+        foundationRepositorySuffix: business-gateway
+      deployment:
+        namespace: donmoa-dev
+        releaseName: business-gateway
+        serviceName: business-gateway
+        containerPort: 8080
+        public: true
+        ingressHost: seller.dev.<domain>
+        rolloutWave: 10
+      datastore:
+        type: none
+        readWriteSplit: false
+      externalDependencies:
+        - redis
+        - keycloak
+
     - key: edge-nginx
       runtime:
         type: nginx

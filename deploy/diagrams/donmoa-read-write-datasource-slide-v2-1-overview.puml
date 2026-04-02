@@ -1,0 +1,51 @@
+@startuml
+title 1번 슬라이드. JPA는 하나를 보지만 내부는 Read/Write로 나뉜다
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam rectangle {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  FontColor #0F172A
+  RoundCorner 18
+}
+
+skinparam note {
+  BackgroundColor #EFF6FF
+  BorderColor #93C5FD
+  FontColor #1E3A8A
+}
+
+top to bottom direction
+
+rectangle "Service / Repository\nDataSource를 직접 고르지 않음" as App #F8FAFC
+
+rectangle "routingDataSource\nTransactionRoutingDataSource\n실제로 JPA가 바라보는 대상" as Routing #FEF3C7
+
+rectangle "ReadWriteDataSourceAutoConfiguration\nwrite / read / routing DataSource 등록" as Auto #DBEAFE
+
+rectangle "writeDataSource\nPrimary DB" as Write #FDE68A
+rectangle "readDataSource\nReplica DB" as Read #DCFCE7
+
+App --> Routing
+Auto --> Routing
+Auto --> Write
+Auto --> Read
+Routing --> Write
+Routing --> Read
+
+note bottom of Routing
+애플리케이션은 routingDataSource 하나만 사용하고,
+그 안에서 실제 Read/Write가 분리된다.
+end note
+
+note bottom of Read
+read 설정이 없으면
+write로 폴백 가능하다.
+end note
+
+@enduml

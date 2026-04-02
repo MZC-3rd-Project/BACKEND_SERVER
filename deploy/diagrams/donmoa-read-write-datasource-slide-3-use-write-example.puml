@@ -1,0 +1,78 @@
+@startuml
+title DB Read/Write 분리 구조 - 3. UseWriteDataSource 적용 예시
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  ArrowColor #475569
+  FontColor #0F172A
+  HeaderBackgroundColor #F8FAFC
+}
+
+skinparam interface {
+  BackgroundColor #F8FAFC
+  BorderColor #94A3B8
+  FontColor #0F172A
+}
+
+skinparam note {
+  BackgroundColor #FFF7ED
+  BorderColor #FDBA74
+  FontColor #7C2D12
+}
+
+top to bottom direction
+
+class "ParticipationQueryController" as ParticipationQueryController
+
+class "ParticipationQueryService" as ParticipationQueryService {
+  + findByUserId(...)
+  + findByCampaignId(...)
+}
+
+class "InternalCampaignQueryService" as InternalCampaignQueryService {
+  + findById(...)
+  + findByItemId(...)
+  + findByIds(...)
+}
+
+class "UseWriteDataSource" as UseWriteDataSource <<annotation>>
+class "UseWriteDataSourceAspect" as UseWriteDataSourceAspect
+interface "FundingParticipationRepository" as FundingParticipationRepository
+interface "FundingCampaignRepository" as FundingCampaignRepository
+class "TransactionRoutingDataSource" as TransactionRoutingDataSource
+
+ParticipationQueryController --> ParticipationQueryService
+ParticipationQueryService ..> UseWriteDataSource
+InternalCampaignQueryService ..> UseWriteDataSource
+UseWriteDataSourceAspect ..> UseWriteDataSource
+ParticipationQueryService --> FundingParticipationRepository
+InternalCampaignQueryService --> FundingCampaignRepository
+FundingParticipationRepository --> TransactionRoutingDataSource
+FundingCampaignRepository --> TransactionRoutingDataSource
+
+note bottom of ParticipationQueryService
+기본은 @Transactional(readOnly = true) 조회 서비스지만,
+일부 메서드는 @UseWriteDataSource로
+WRITE DB를 강제한다.
+end note
+
+note bottom of InternalCampaignQueryService
+이 클래스도 @Transactional(readOnly = true) 기반이지만,
+클래스 레벨에 @UseWriteDataSource를 두면
+해당 서비스의 모든 조회가
+WRITE DB를 사용한다.
+end note
+
+note bottom of UseWriteDataSourceAspect
+서비스 코드는 annotation으로 의도만 표현하고,
+실제 WRITE 강제는 Aspect가 처리한다.
+end note
+
+@enduml

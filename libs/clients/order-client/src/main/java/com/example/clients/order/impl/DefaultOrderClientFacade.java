@@ -181,14 +181,11 @@ public class DefaultOrderClientFacade implements OrderCreateClientFacade {
         if (lineItem.itemId() == null || lineItem.itemId() <= 0) {
             throw new OrderClientValidationException(prefix + ".itemId");
         }
-        if (!StringUtils.hasText(lineItem.stockItemType())) {
-            throw new OrderClientValidationException(prefix + ".stockItemType");
-        }
-        if (lineItem.referenceId() == null || lineItem.referenceId() <= 0) {
-            throw new OrderClientValidationException(prefix + ".referenceId");
-        }
         if (lineItem.quantity() == null || lineItem.quantity() <= 0) {
             throw new OrderClientValidationException(prefix + ".quantity");
+        }
+        if (lineItem.storeId() == null || lineItem.storeId() <= 0) {
+            throw new OrderClientValidationException(prefix + ".storeId");
         }
         if (lineItem.finalUnitPrice() == null || lineItem.finalUnitPrice() < 0) {
             throw new OrderClientValidationException(prefix + ".finalUnitPrice");

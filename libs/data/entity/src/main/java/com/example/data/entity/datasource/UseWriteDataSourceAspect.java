@@ -10,7 +10,8 @@ import org.springframework.core.annotation.Order;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class UseWriteDataSourceAspect {
 
-    @Around("@annotation(com.example.data.entity.datasource.UseWriteDataSource) || @within(com.example.data.entity.datasource.UseWriteDataSource)")
+    @Around("@annotation(com.example.data.entity.datasource.UseWriteDataSource) ||" +
+        " @within(com.example.data.entity.datasource.UseWriteDataSource)")
     public Object forceWriteDataSource(ProceedingJoinPoint joinPoint) throws Throwable {
         DataSourceRoutingContext.push(DataSourceRoute.WRITE);
         try {

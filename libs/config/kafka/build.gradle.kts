@@ -18,6 +18,7 @@ dependencies {
 
     // Spring Data JPA (for idempotent consumer)
     api("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation(project(":libs:event:domain"))
 
     // Core modules
     api(project(":libs:core:util"))

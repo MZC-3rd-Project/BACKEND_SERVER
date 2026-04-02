@@ -1,0 +1,104 @@
+fullnameOverride: business-gateway
+
+image:
+  repository: 682405977339.dkr.ecr.ap-northeast-2.amazonaws.com/donmoa-dev-business-gateway
+  tag: latest
+
+service:
+  port: 8080
+
+container:
+  port: 8080
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+deploymentStrategy:
+  type: blueGreen
+  blueGreen:
+    autoPromotionEnabled: true
+    scaleDownDelaySeconds: 30
+    scaleDownDelayRevisionLimit: 1
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/group.name: donmoa-dev-business-gateway
+    alb.ingress.kubernetes.io/group.order: "100"
+    alb.ingress.kubernetes.io/healthcheck-path: /actuator/health
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+    alb.ingress.kubernetes.io/security-groups: sg-065a56592ff01dccd
+    alb.ingress.kubernetes.io/manage-backend-security-group-rules: "false"
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/success-codes: 200-399
+    alb.ingress.kubernetes.io/target-type: ip
+  hosts:
+    - paths:
+        - path: /
+          pathType: Prefix
+
+env:
+  SERVER_PORT: "8080"
+  SPRING_PROFILES_ACTIVE: local
+  SERVER_FORWARD_HEADERS_STRATEGY: framework
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: health,info,metrics,prometheus
+  MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: always
+  GATEWAY_OAUTH2_ISSUER_URI: https://daoy75hsrrswu.cloudfront.net/realms/don-moa
+  GATEWAY_OAUTH2_CLIENT_ID: don-moa-business-gateway
+  GATEWAY_OAUTH2_CLIENT_AUTHENTICATION_METHOD: client_secret_basic
+  GATEWAY_OAUTH2_SCOPES: openid,profile,email
+  GATEWAY_OIDC_REDIRECT_URI: https://d1gtl8s8lkzt35.cloudfront.net/login/oauth2/code/keycloak
+  GATEWAY_AUTH_LOGIN_SUCCESS_URL: /
+  GATEWAY_AUTH_LOGIN_FAILURE_URL: /auth/login?error=login_failed
+  GATEWAY_CORS_ALLOWED_ORIGIN_PATTERNS: "*"
+  GATEWAY_AUTH_ENABLED: "true"
+  GATEWAY_SESSION_ENABLED: "true"
+  GATEWAY_SECURITY_INTERNAL_AUTH_HEADER: X-Gateway-Auth
+  GATEWAY_SECURITY_ALLOW_CLIENT_IDENTITY_HEADERS: "false"
+  GATEWAY_SECURITY_ALLOW_CLIENT_SIGNED_CONTEXT_HEADER: "false"
+  GATEWAY_SESSION_COOKIE_NAME: DONMOA_BIZ_SESSION
+  APP_SECURITY_CONTEXT_MAX_AGE_MILLIS: "300000"
+  REDIS_HOST: donmoa-dev-redis.awmnbx.ng.0001.apn2.cache.amazonaws.com
+  REDIS_PORT: "6379"
+  SPRING_DATA_REDIS_HOST: donmoa-dev-redis.awmnbx.ng.0001.apn2.cache.amazonaws.com
+  SPRING_DATA_REDIS_PORT: "6379"
+  APP_SERVICE_AUTH_URL: http://auth-service:8081
+  APP_SERVICE_USER_URL: http://profile-service:8071
+  APP_SERVICE_PROFILE_URL: http://profile-service:8071
+  APP_SERVICE_PRODUCT_URL: http://product-service:8084
+  APP_SERVICE_STORE_URL: http://store-service:8072
+  APP_SERVICE_STORE_QUERY_URL: http://store-query-service:8091
+  APP_SERVICE_FUNDING_URL: http://funding-service:8086
+  APP_SERVICE_HOT_DEAL_URL: http://hot-deal-service:8089
+  APP_SERVICE_MEDIA_URL: http://media-api:8094
+  APP_SERVICE_ORDER_URL: http://order-service:8090
+  APP_SERVICE_ORDER_QUERY_URL: http://order-query-service:8073
+  APP_SERVICE_REVIEW_URL: http://review-service:8097
+  APP_SERVICE_CHAT_URL: http://chat-service:8093
+  APP_SERVICE_CHAT_WS_URL: ws://chat-service:8093
+  APP_SERVICE_ANALYTICS_DASHBOARD_URL: http://analytics-dashboard:8095
+
+secretEnv:
+  APP_SECURITY_CONTEXT_SIGNING_KEY:
+    remoteRef: donmoa/dev/common
+    property: APP_SECURITY_CONTEXT_SIGNING_KEY
+  GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN:
+    remoteRef: donmoa/dev/common
+    property: APP_GATEWAY_SECURITY_INTERNAL_AUTH_TOKEN
+  GATEWAY_OAUTH2_CLIENT_SECRET:
+    remoteRef: donmoa/dev/common
+    property: GATEWAY_OAUTH2_CLIENT_SECRET
+  GATEWAY_SESSION_REFRESH_TOKEN_HASH_PEPPER:
+    remoteRef: donmoa/dev/common
+    property: GATEWAY_SESSION_REFRESH_TOKEN_HASH_PEPPER
+
+serviceMonitor:
+  enabled: false
+  additionalLabels:
+    prometheus: donmoa

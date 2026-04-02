@@ -5,6 +5,8 @@ import com.example.core.id.jpa.SnowflakeGenerated;
 import com.example.profile.crypto.EncryptedStringAttributeConverter;
 import com.example.data.entity.BaseEntity;
 import com.example.profile.dto.request.ProfileRequest;
+import com.example.security.crypto.pii.PiiField;
+import com.example.security.crypto.pii.PiiType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
@@ -35,16 +37,21 @@ public class Profiles extends BaseEntity {
 
     @Convert(converter = EncryptedStringAttributeConverter.class)
     @Column(name = "email", nullable = false, length = 512)
+    @PiiField(type = PiiType.EMAIL)
     private String email;
 
     @Column(name = "nickname", length = 100)
+    @PiiField(type = PiiType.EMAIL)
+
     private String nickname;
 
     @Convert(converter = EncryptedStringAttributeConverter.class)
     @Column(name = "phone_number", length = 256)
+    @PiiField(type = PiiType.EMAIL)
     private String phoneNumber;
 
     @OneToOne(mappedBy = "profile", fetch = FetchType.LAZY)
+    @PiiField(type = PiiType.EMAIL)
     private ProfilesImage profileImage;
 
     public void updateProfile(ProfileRequest profile

@@ -1,0 +1,72 @@
+@startuml
+title DB Read/Write 분리 구조 - 2. 라우팅 결정 규칙
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam linetype ortho
+skinparam packageStyle rectangle
+skinparam defaultTextAlignment center
+
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #CBD5E1
+  ArrowColor #475569
+  FontColor #0F172A
+  HeaderBackgroundColor #F8FAFC
+}
+
+skinparam note {
+  BackgroundColor #F0FDF4
+  BorderColor #86EFAC
+  FontColor #166534
+}
+
+top to bottom direction
+
+class "TransactionRoutingDataSource" as TransactionRoutingDataSource {
+  + determineCurrentLookupKey(): Object
+}
+
+class "DataSourceRoutingContext" as DataSourceRoutingContext {
+  + current(): DataSourceRoute
+}
+
+enum "DataSourceRoute" as DataSourceRoute {
+  WRITE
+  READ
+}
+
+class "UseWriteDataSourceAspect" as UseWriteDataSourceAspect {
+  + forceWriteDataSource(joinPoint): Object
+}
+
+class "UseWriteDataSource" as UseWriteDataSource <<annotation>>
+class "Transactional" as Transactional <<annotation>> {
+  + readOnly(): boolean
+}
+
+TransactionRoutingDataSource --> DataSourceRoutingContext
+TransactionRoutingDataSource --> DataSourceRoute
+UseWriteDataSourceAspect ..> UseWriteDataSource
+UseWriteDataSourceAspect --> DataSourceRoutingContext
+Transactional ..> TransactionRoutingDataSource
+
+note bottom of TransactionRoutingDataSource
+라우팅 결정 순서
+1. DataSourceRoutingContext에 강제 경로가 있으면 우선 사용
+2. 없으면 readOnly 트랜잭션은 READ 사용
+3. 그 외에는 WRITE 사용
+end note
+
+note bottom of UseWriteDataSourceAspect
+@UseWriteDataSource가 붙으면
+readOnly 트랜잭션 안에서도
+WRITE 경로를 강제로 선택한다.
+end note
+
+note bottom of Transactional
+@Transactional(readOnly = true)는
+기본적으로 READ 라우팅 힌트로 동작한다.
+end note
+
+@enduml
